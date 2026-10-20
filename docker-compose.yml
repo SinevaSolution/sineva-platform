@@ -1,0 +1,167 @@
+services:
+  postgres:
+    image: postgres:17-alpine
+    container_name: sineva-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-sineva_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-sineva_secret_password}
+      POSTGRES_DB: ${POSTGRES_DB:-sineva_platform}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-sineva_user} -d ${POSTGRES_DB:-sineva_platform}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - sineva_internal
+
+  redis:
+    image: redis:7.4-alpine
+    container_name: sineva-redis
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - sineva_internal
+
+  seaweedfs-master:
+    image: chrislusf/seaweedfs:latest
+    container_name: sineva-seaweedfs-master
+    restart: unless-stopped
+    command: "master -ip=seaweedfs-master -ip.bind=0.0.0.0"
+    ports:
+      - "9333:9333"
+    volumes:
+      - seaweed_master_data:/data
+    networks:
+      - sineva_internal
+
+  seaweedfs-volume:
+    image: chrislusf/seaweedfs:latest
+    container_name: sineva-seaweedfs-volume
+    restart: unless-stopped
+    command: "volume -mserver=seaweedfs-master:9333 -ip.bind=0.0.0.0 -port=8080"
+    depends_on:
+      - seaweedfs-master
+    volumes:
+      - seaweed_volume_data:/data
+    networks:
+      - sineva_internal
+
+  seaweedfs-filer:
+    image: chrislusf/seaweedfs:latest
+    container_name: sineva-seaweedfs-filer
+    restart: unless-stopped
+    command: "filer -master=seaweedfs-master:9333 -ip.bind=0.0.0.0"
+    depends_on:
+      - seaweedfs-master
+      - seaweedfs-volume
+    ports:
+      - "8888:8888"
+    networks:
+      - sineva_internal
+
+  seaweedfs-s3:
+    image: chrislusf/seaweedfs:latest
+    container_name: sineva-seaweedfs-s3
+    restart: unless-stopped
+    command: "s3 -filer=seaweedfs-filer:8888 -ip.bind=0.0.0.0 -port=8333"
+    depends_on:
+      - seaweedfs-filer
+    ports:
+      - "8333:8333"
+    networks:
+      - sineva_internal
+
+  qdrant:
+    image: qdrant/qdrant:v1.13.4
+    container_name: sineva-qdrant
+    restart: unless-stopped
+    ports:
+      - "6333:6333"
+    volumes:
+      - qdrant_data:/qdrant/storage
+    networks:
+      - sineva_internal
+
+  # Strictly internal FastAPI AI Engine — NO host ports exposed!
+  # Only reachable from sineva-platform via http://sineva-ai:8000 on sineva_internal network.
+  sineva-ai:
+    build:
+      context: ../sineva-ai
+      dockerfile: Dockerfile
+    container_name: sineva-ai
+    restart: unless-stopped
+    expose:
+      - "8000"
+    environment:
+      APP_ENV: production
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-sineva_user}:${POSTGRES_PASSWORD:-sineva_secret_password}@postgres:5432/${POSTGRES_DB:-sineva_platform}
+      REDIS_URL: redis://redis:6379/1
+      QDRANT_URL: http://qdrant:6333
+      S3_ENDPOINT: http://seaweedfs-s3:8333
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      qdrant:
+        condition: service_started
+    networks:
+      - sineva_internal
+
+  sineva-platform:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: sineva-platform
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      NODE_ENV: production
+      NEXT_PUBLIC_APP_URL: http://localhost:3000
+      NEXT_PUBLIC_API_BASE_URL: http://localhost:3000/api/v1
+      DATABASE_URL: postgresql://${POSTGRES_USER:-sineva_user}:${POSTGRES_PASSWORD:-sineva_secret_password}@postgres:5432/${POSTGRES_DB:-sineva_platform}
+      REDIS_URL: redis://redis:6379/0
+      S3_ENDPOINT: http://seaweedfs-s3:8333
+      S3_REGION: us-east-1
+      S3_ACCESS_KEY_ID: sineva_s3_key
+      S3_SECRET_ACCESS_KEY: sineva_s3_secret
+      S3_BUCKET_NAME: sineva-assets
+      S3_FORCE_PATH_STYLE: "true"
+      AI_ENGINE_INTERNAL_URL: http://sineva-ai:8000
+      AI_ENGINE_INTERNAL_API_KEY: ${AI_ENGINE_INTERNAL_API_KEY:-sineva_internal_service_token_dev}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      seaweedfs-s3:
+        condition: service_started
+    networks:
+      - sineva_internal
+
+volumes:
+  postgres_data:
+  redis_data:
+  seaweed_master_data:
+  seaweed_volume_data:
+  qdrant_data:
+
+networks:
+  sineva_internal:
+    name: sineva_internal
+    driver: bridge

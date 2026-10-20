@@ -1,0 +1,114 @@
+@import "tailwindcss";
+
+/* ============================================================================
+ * SINEVA 3-LAYER DESIGN TOKEN SYSTEM
+ * Layer 1: Primitive Tokens (Brand Teal, Warm Sand/Ink, Aqua, Warm Sun)
+ * Layer 2: Semantic Tokens (Light Editorial Warm Sand & Dark Deep Teal Slate)
+ * Layer 3: Component & Motion Tokens (WCAG 2.2 AA & Reduced Motion)
+ * ============================================================================ */
+
+:root {
+  /* Layer 1: Primitive Palette */
+  --teal-50: #effaf8;
+  --teal-100: #d7f3ee;
+  --teal-200: #b2e6de;
+  --teal-500: #0fa38c;
+  --teal-600: #0b8471;
+  --teal-700: #0a6b5c;
+  --teal-800: #0b554a;
+  --teal-900: #093b34;
+
+  --aqua-400: #3dd9c3;
+  --sun-100: #fef3c7;
+  --sun-500: #f59e0b;
+
+  --ink-50: #fbf9f5;
+  --ink-100: #f4f0e8;
+  --ink-200: #e8e2d5;
+  --ink-300: #d5ccb8;
+  --ink-500: #6e6a61;
+  --ink-600: #524e46;
+  --ink-800: #262420;
+  --ink-900: #181714;
+  --ink-950: #0b1516;
+
+  /* Layer 2: Semantic Tokens — Light Mode (Warm Editorial Sand) */
+  --color-canvas: var(--ink-50);
+  --color-surface: #ffffff;
+  --color-surface-elevated: #ffffff;
+  --color-surface-muted: var(--ink-100);
+
+  --color-text: var(--ink-900);
+  --color-text-muted: var(--ink-600);
+  --color-text-subtle: var(--ink-500);
+  --color-text-inverse: #ffffff;
+
+  --color-border: var(--ink-200);
+  --color-border-strong: var(--ink-300);
+
+  --color-action-primary: var(--teal-700);
+  --color-action-primary-hover: var(--teal-800);
+  --color-accent-highlight: var(--aqua-400);
+
+  /* Layer 3: Motion & Elevation */
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+[data-theme="dark"] {
+  /* Layer 2: Semantic Tokens — Dark Mode (Deep Teal Slate) */
+  --color-canvas: #0b1516;
+  --color-surface: #112022;
+  --color-surface-elevated: #16292c;
+  --color-surface-muted: #1b3236;
+
+  --color-text: #f3f7f6;
+  --color-text-muted: #a6bdbb;
+  --color-text-subtle: #789492;
+  --color-text-inverse: #081213;
+
+  --color-border: #213b3f;
+  --color-border-strong: #2e5257;
+
+  --color-action-primary: var(--aqua-400);
+  --color-action-primary-hover: var(--teal-200);
+  --color-accent-highlight: var(--sun-500);
+}
+
+html,
+body {
+  background-color: var(--color-canvas);
+  color: var(--color-text);
+  font-family:
+    var(--font-jakarta),
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    Roboto,
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+code,
+pre,
+kbd {
+  font-family:
+    var(--font-geist-mono),
+    ui-monospace,
+    SFMono-Regular,
+    Menlo,
+    Monaco,
+    Consolas,
+    monospace;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

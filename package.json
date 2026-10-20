@@ -1,0 +1,30 @@
+{
+  "name": "sineva-platform",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Sineva AI Platform Monorepo — Unified Web Platform & BFF Interface",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "engines": {
+    "node": ">=24.0.0"
+  },
+  "packageManager": "npm@11.19.0",
+  "scripts": {
+    "dev": "turbo run dev",
+    "build": "turbo run build",
+    "lint": "turbo run lint",
+    "typecheck": "turbo run typecheck",
+    "test": "turbo run test",
+    "format": "prettier --write \"**/*.{ts,tsx,md,json}\"",
+    "format:check": "prettier --check \"**/*.{ts,tsx,md,json}\"",
+    "docker:up": "docker compose up -d --build",
+    "docker:down": "docker compose down -v"
+  },
+  "devDependencies": {
+    "prettier": "^3.5.3",
+    "turbo": "^2.5.0",
+    "typescript": "^5.7.3"
+  }
+}
