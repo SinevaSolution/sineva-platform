@@ -8,6 +8,9 @@ import type { AiEngineGateway } from './domain/repositories/ai_engine_gateway';
 import type { CacheRepository } from './domain/repositories/cache_repository';
 import type { DatabaseHealthProbe } from './domain/repositories/database_health_probe';
 import type { StorageRepository } from './domain/repositories/storage_repository';
+import type { EmailSender } from './domain/email/email_sender';
+import { FakeEmailSender } from './infrastructure/email/fake_email_sender';
+import { SmtpEmailSender } from './infrastructure/email/smtp_email_sender';
 import { RedisCacheRepository } from './infrastructure/cache/redis_cache_repository';
 import { getEnvConfig } from './infrastructure/config/env';
 import { PrismaAgentRepository } from './infrastructure/database/prisma_agent_repository';
@@ -53,8 +56,21 @@ const getAiEngineGateway = memoize<AiEngineGateway>(
 const getStorageRepository = memoize<StorageRepository>(
   () => new SeaweedStorageRepository(),
 );
+const getEmailSender = memoize<EmailSender>(() => {
+  const env = getEnvConfig();
+  if (env.email_server_host) {
+    return new SmtpEmailSender({
+      host: env.email_server_host,
+      port: env.email_server_port ?? 587,
+      user: env.email_server_user,
+      password: env.email_server_password,
+      from: env.email_from ?? 'Sineva <noreply@sineva.ai>',
+    });
+  }
+  return new FakeEmailSender();
+});
 
-export { getPrismaClient };
+export { getPrismaClient, getEmailSender };
 
 export const getGetAgentsUseCase = memoize(
   () => new GetAgentsUseCase(getAgentRepository(), getCacheRepository()),
