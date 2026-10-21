@@ -193,12 +193,12 @@ The cross-tenant session issue in `sineva-ai` (AI-1) is also a security item; it
 
 | | |
 | :--- | :--- |
-| Symptom | Only `agent_configs` has code. `workspaces`, `users`, `chat_sessions`, `chat_messages` and `storage_objects` are empty tables. `chat_messages.reasoning_summary`, `suggested_actions` and `tokens_used` match no field in any reply. |
+| Symptom | Previously only `agent_configs` had code. `workspaces`, `users`, `chat_sessions`, `chat_messages` and `storage_objects` were empty tables. `chat_messages.reasoning_summary`, `suggested_actions` and `tokens_used` match no field in any reply. |
 | Root cause | The schema was drawn before the features and before the `sineva-ai` contract ([ADR-0015](../decisions/0015-sineva-ai-owns-internal-chat-contract.md)). |
 | Location | `apps/web/prisma/schema.prisma` |
 | Severity | Low |
 | Do not copy | Adding columns no code fills. |
-| Suggested fix | Decide chat persistence together with the one-chat design (API-4), then drop or reshape the tables in a migration. |
+| Suggested fix | Partially resolved in WP-M0-21 (`users` and `workspaces` reshaped into multi-tenant identity and RBAC schema). Chat persistence tables will be reshaped in WP-M0-29. |
 
 ### DOM-6 Databases seeded with old slugs keep stale rows
 

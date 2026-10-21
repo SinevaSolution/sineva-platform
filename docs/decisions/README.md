@@ -2,7 +2,7 @@
 title: "Architecture Decision Records"
 category: "decisions"
 status: "active"
-version: "1.1.0"
+version: "1.2.0"
 last_updated: "2026-10-21"
 owner: "Sineva Engineering"
 tags: ["sineva", "adr", "decisions", "index"]
@@ -18,7 +18,7 @@ supersedes: []
 
 # Architecture Decision Records
 
-An ADR records one decision: what was chosen, why, and what it costs. All 16 are Accepted. This folder holds decisions only. How-to guides, current-state descriptions and the rules derived from the decisions live elsewhere ([agent rules](../governance/agent_rules.md), [engineering](../engineering/README.md)). When a rule and its ADR disagree, the ADR wins and the rule gets fixed.
+An ADR records one decision: what was chosen, why, and what it costs. All 21 are Accepted. This folder holds decisions only. How-to guides, current-state descriptions and the rules derived from the decisions live elsewhere ([agent rules](../governance/agent_rules.md), [engineering](../engineering/README.md)). When a rule and its ADR disagree, the ADR wins and the rule gets fixed.
 
 Items marked "cross-service" are mirrored in `sineva-ai` (`docs/decisions/` there, a sineva-ai ADR of the same title). Change both repos together.
 
@@ -40,6 +40,11 @@ Items marked "cross-service" are mirrored in `sineva-ai` (`docs/decisions/` ther
 | [0014](0014-uuid-primary-keys.md) | UUID primary keys, `gen_random_uuid()` (cross-service) | You add a table or an id field |
 | [0015](0015-sineva-ai-owns-internal-chat-contract.md) | `sineva-ai` owns the chat contract; fixtures copied byte for byte (cross-service) | You change the chat request or reply |
 | [0016](0016-upstream-failures-return-502-503.md) | Bad upstream answer is 502, unreachable upstream is 503 (cross-service) | You handle a `sineva-ai` failure |
+| [0017](0017-authentication-mechanism.md) | Better Auth on platform schema, 14-day sliding sessions, password policy | You touch auth or user registration |
+| [0018](0018-workspace-tenancy-and-public-contract.md) | Workspace tenancy, path-based routing, no identity in request bodies | You add or modify tenant-scoped routes |
+| [0019](0019-role-and-permission-model.md) | Four static roles, permission registry, specialist scoping | You add or check route permissions |
+| [0020](0020-multi-tenancy-isolation-and-lifecycle.md) | Seven isolation layers, seven workspace lifecycle states | You implement tenancy, isolation or limits |
+| [0021](0021-signed-internal-context.md) | EdDSA compact JWS internal context token (cross-service) | You call or verify sineva-ai internal requests |
 
 ## Suggested reading order
 

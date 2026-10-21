@@ -11,7 +11,10 @@ async function truncatePlatformTables(): Promise<void> {
   await prisma.$executeRawUnsafe(
     'TRUNCATE TABLE "platform"."chat_messages", "platform"."chat_sessions", ' +
       '"platform"."storage_objects", "platform"."agent_configs", ' +
-      '"platform"."users", "platform"."workspaces" CASCADE',
+      '"platform"."workspace_member_specialists", "platform"."workspace_members", ' +
+      '"platform"."workspace_invitations", "platform"."sessions", "platform"."accounts", ' +
+      '"platform"."verifications", "platform"."platform_staff", "platform"."auth_login_attempts", ' +
+      '"platform"."workspaces", "platform"."users" CASCADE',
   );
 }
 
