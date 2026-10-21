@@ -1,53 +1,30 @@
 ---
-title: "Standardized API Response Pattern"
+title: "API Response Pattern"
 category: "engineering"
 status: "active"
-version: "1.0.0"
+version: "2.0.0"
 last_updated: "2026-10-21"
 owner: "Sineva Engineering"
-tags: ["sineva", "response-pattern", "api-envelope", "pagination", "error-handling", "shared"]
-summary: "Complete specification of the @sineva/shared API response envelope (success, status, message, data, meta, errors) and helper utilities."
+tags: ["sineva", "response-pattern", "api-envelope", "pagination", "response-helper", "shared"]
+summary: "The ApiResponse envelope from @sineva/shared, the three response_helper functions route handlers use, the status codes the code actually produces, and the gaps."
 related_docs:
   - "coding_standards.md"
+  - "error_handling_and_failure_modes.md"
   - "../api-spec/overview.md"
-  - "design_pattern.md"
+  - "../api-spec/agents_and_chat_endpoints.md"
+  - "../governance/agent_rules.md"
+  - "../decisions/0003-snake-case-wire-contract.md"
 ---
 
-# Standardized API Response Pattern (`@sineva/shared`)
+# API Response Pattern
 
-Every HTTP endpoint in `sineva-platform` (`/api/v1/*`) and `sineva-ai` (`http://sineva-ai:8000/api/v1/*`) MUST return a JSON payload wrapped in the standardized `ApiResponse<T>` envelope defined in [`packages/shared/src/response.ts`](../../packages/shared/src/response.ts).
+Rules: R-23 and R-24 in [agent rules](../governance/agent_rules.md). Decision: [ADR-0003](../decisions/0003-snake-case-wire-contract.md). Every `/api/v1/*` response uses one envelope, built by `@sineva/shared` and sent through `apps/web/src/server/http/response_helper.ts`. The one exception is `GET /api/openapi.json`, which returns the raw OpenAPI document.
 
----
+## 1. Envelope
 
-## 1. Envelope Schema Specification
+Defined in `packages/shared/src/response.ts`:
 
 ```typescript
-export interface ResponseMeta {
-  page?: number;
-  per_page?: number;
-  total_items?: number;
-  total_pages?: number;
-  has_next?: boolean;
-  has_prev?: boolean;
-  request_id: string;
-  timestamp: string;
-}
-
-export interface PaginationMeta extends ResponseMeta {
-  page: number;
-  per_page: number;
-  total_items: number;
-  total_pages: number;
-  has_next: boolean;
-  has_prev: boolean;
-}
-
-export interface ErrorDetail {
-  code: string;
-  field: string | null;
-  detail: string;
-}
-
 export interface ApiResponse<T> {
   success: boolean;
   status: number;
@@ -56,111 +33,117 @@ export interface ApiResponse<T> {
   meta: ResponseMeta | null;
   errors: ErrorDetail[] | null;
 }
+
+export interface ErrorDetail {
+  code: string;
+  field: string | null;
+  detail: string;
+}
 ```
 
-### Top-Level Fields
-| Field | Type | Description |
+| Field | Success | Error |
 | :--- | :--- | :--- |
-| `success` | `boolean` | `true` for 2xx responses; `false` for 4xx/5xx responses. |
-| `status` | `number` | Numeric HTTP status code (`200`, `201`, `400`, `401`, `404`, `422`, `500`, etc.) mirrored in body for client convenience. |
-| `message` | `string` | Human-readable summary of the operation result. |
-| `data` | `T \| null` | The `snake_case` payload object or array on success; always `null` on error. |
-| `meta` | `ResponseMeta \| null` | Always includes `request_id` (`req_<timestamp>_<random>`) and ISO-8601 `timestamp`. Includes pagination counters on paginated list endpoints. |
-| `errors` | `ErrorDetail[] \| null` | `null` on success; non-empty array of structured `ErrorDetail` objects (`code`, `field`, `detail`) on failure. |
+| `success` | `true` | `false` |
+| `status` | The HTTP status, repeated in the body | Same |
+| `message` | Set by the route (default "Operation completed successfully") | The error message |
+| `data` | The payload (an array for lists) | `null` |
+| `meta` | `request_id` and `timestamp`; plus `page`, `per_page`, `total_items`, `total_pages`, `has_next`, `has_prev` on lists | `request_id` and `timestamp` |
+| `errors` | `null` | At least one `ErrorDetail` |
 
----
+`request_id` is `req_<Date.now()>_<8 random base36 chars>`, made by `generateRequestId`. It is not read from an incoming header, so it cannot be correlated with a caller's id.
 
-## 2. Helper Functions in `@sineva/shared`
+## 2. Building responses
 
-### 2.1 `createSuccessResponse<T>(options)`
-Used for single-resource reads (`200 OK`), resource creation (`201 Created`), or action invocations.
+Route handlers never call `NextResponse.json` themselves. They use three functions from `@/server/http/response_helper`:
+
+| Function | Use | Wraps |
+| :--- | :--- | :--- |
+| `sendSuccessJson({ data, message, status })` | Single resource or action result | `createSuccessResponse` |
+| `sendPaginatedJson({ items, page, per_page, total_items, message })` | Lists | `createPaginatedResponse` |
+| `handleRouteError(error)` | The `catch` of every handler | `createErrorResponse` |
+
+`createPaginatedResponse` clamps `page` and `per_page` to at least 1 and computes `total_pages`, `has_next` and `has_prev`. `createErrorResponse` adds a default `INTERNAL_SERVER_ERROR` detail when `errors` is empty.
+
+Shape of every handler (see the full path in [clean architecture layers](../project-structure/clean_architecture_layers.md)):
+
+```typescript
+export async function POST(request: NextRequest) {
+  try {
+    const body: unknown = await request.json();
+    const input = someDtoSchema.parse(body);
+    const data = await getSomeUseCase().execute(input);
+    return sendSuccessJson({ data, message: '...', status: 201 });
+  } catch (error) {
+    return handleRouteError(error);
+  }
+}
+```
+
+## 3. Examples
+
+Chat reply (`POST /api/v1/agents/{agent_slug}/chat`, status 200). `data` mirrors sineva-ai's response fields plus `latency_ms` ([ADR-0015](../decisions/0015-sineva-ai-owns-internal-chat-contract.md)). Values here are placeholders:
 
 ```json
 {
   "success": true,
   "status": 200,
-  "message": "Agent chat response generated successfully",
+  "message": "Agent companion message processed successfully",
   "data": {
-    "agent_slug": "sino-finance",
-    "conversation_id": "conv_20261021_9f8a",
-    "reply_markdown": "Q3 operating margin improved by **4.2%** due to lower cloud egress costs.",
-    "tokens_used": 342
+    "message_id": "<uuid>",
+    "session_id": "<uuid>",
+    "agent_slug": "sinofinance",
+    "display_name": "SinoFinance",
+    "handle": "@SinoFinance",
+    "routed_agent_slug": "sinofinance",
+    "reply_content": "<text produced by sineva-ai>",
+    "model_id": "<model id>",
+    "execution_mode": "<mode>",
+    "token_usage": { "total_tokens": 0 },
+    "tool_calls": [],
+    "citations": [],
+    "created_at": "<ISO 8601>",
+    "latency_ms": 0
   },
-  "meta": {
-    "request_id": "req_1761001200000_x8k2m9p1",
-    "timestamp": "2026-10-21T00:20:00.000Z"
-  },
+  "meta": { "request_id": "req_<ms>_<random>", "timestamp": "<ISO 8601>" },
   "errors": null
 }
 ```
 
-### 2.2 `createPaginatedResponse<T>(options)`
-Used for collection endpoints (`GET /api/v1/agents`). Automatically computes `total_pages`, `has_next`, and `has_prev` safely (clamping `page >= 1` and `per_page >= 1`).
-
-```json
-{
-  "success": true,
-  "status": 200,
-  "message": "AI companions retrieved successfully",
-  "data": [
-    {
-      "agent_id": "agt_01",
-      "agent_slug": "sino-people",
-      "display_name": "@SinoPeople",
-      "department": "hr",
-      "is_active": true
-    }
-  ],
-  "meta": {
-    "page": 1,
-    "per_page": 10,
-    "total_items": 6,
-    "total_pages": 1,
-    "has_next": false,
-    "has_prev": false,
-    "request_id": "req_1761001200000_a1b2c3d4",
-    "timestamp": "2026-10-21T00:20:00.000Z"
-  },
-  "errors": null
-}
-```
-
-### 2.3 `createErrorResponse(options)`
-Used for all `4xx` and `5xx` errors. Ensures `data` is `null` and `errors` contains at least one structured `ErrorDetail`.
+Validation failure (any route, status 422):
 
 ```json
 {
   "success": false,
   "status": 422,
-  "message": "Validation failed for request payload",
+  "message": "Request payload validation failed",
   "data": null,
-  "meta": {
-    "request_id": "req_1761001200000_err9912a",
-    "timestamp": "2026-10-21T00:20:00.000Z"
-  },
+  "meta": { "request_id": "req_<ms>_<random>", "timestamp": "<ISO 8601>" },
   "errors": [
-    {
-      "code": "VALIDATION_ERROR",
-      "field": "agent_slug",
-      "detail": "Field 'agent_slug' must be a non-empty lowercase kebab-case slug"
-    }
+    { "code": "VALIDATION_ERROR", "field": "message_text", "detail": "message_text is required" }
   ]
 }
 ```
 
----
+Endpoint-by-endpoint payloads are in [api-spec](../api-spec/agents_and_chat_endpoints.md).
 
-## 3. HTTP Status Code Mapping
+## 4. Status codes the code produces
 
-| HTTP Status | Standard Error Code | When to Use |
+| Status | `errors[].code` | Source |
 | :--- | :--- | :--- |
-| `200 OK` | — | Successful read (`GET`) or synchronous action (`POST /chat`, `POST /presign`). |
-| `201 Created` | — | Resource created (`POST /api/v1/agents`). |
-| `400 Bad Request` | `BAD_REQUEST` | Malformed JSON or non-`snake_case` payload keys. |
-| `401 Unauthorized` | `UNAUTHORIZED` | Missing or invalid authentication token. |
-| `403 Forbidden` | `FORBIDDEN` | Insufficient permissions for the workspace/agent. |
-| `404 Not Found` | `RESOURCE_NOT_FOUND` | Requested `agent_slug` or `conversation_id` does not exist. |
-| `409 Conflict` | `RESOURCE_CONFLICT` | Duplicate `agent_slug` registration. |
-| `422 Unprocessable Entity` | `VALIDATION_ERROR` | Field-level schema validation failure. |
-| `502 Bad Gateway` | `UPSTREAM_AI_ENGINE_ERROR` | Internal `sineva-ai` engine returned an unexpected error. |
-| `500 Internal Server Error` | `INTERNAL_SERVER_ERROR` | Unhandled server exception. |
+| 200 | none | `sendSuccessJson` default, `sendPaginatedJson`, chat, health |
+| 201 | none | `POST /api/v1/agents`, `POST /api/v1/storage/presign` |
+| 404 | `RESOURCE_NOT_FOUND` | `NotFoundError` (unknown `agent_slug` on chat) |
+| 409 | `RESOURCE_CONFLICT` | `ConflictError` (duplicate `agent_slug` on register) |
+| 422 | `VALIDATION_ERROR` | `ZodError`, or `ValidationError` |
+| 502 | `UPSTREAM_ERROR` | `UpstreamServiceError` |
+| 503 | `UPSTREAM_UNAVAILABLE` | `UpstreamUnavailableError` |
+| 500 | `INTERNAL_SERVER_ERROR` | Any other thrown value |
+
+The mapping logic and logging are in [error handling and failure modes](error_handling_and_failure_modes.md). 400, 401 and 403 are not produced anywhere: there is no authentication, and a request body that is not valid JSON makes `request.json()` throw a `SyntaxError`, which `handleRouteError` turns into a 500 (not a 4xx).
+
+## 5. Rules
+
+- Keys are `snake_case` in `data`, `meta` and `errors` (R-23). `assertSnakeCaseKeys` from `@sineva/shared` checks only the top-level keys of the object you pass. It is used in `packages/shared/src/response.test.ts`; the route tests in `apps/web` do not call it today, so a new route test that cares about key casing has to add the call.
+- Do not hand-build the envelope (R-24). `grep -rn "NextResponse.json" apps/web/src/app` should show only the OpenAPI route.
+- New routes are registered in `server/infrastructure/openapi/spec.ts` (R-25).
+- A new payload shape that the browser reads gets a view type in `src/shared` and a guard in `server/http` (R-14).

@@ -1,83 +1,121 @@
----
-title: "AGENTS.md — Sineva Platform Engineering Guidelines"
-description: "Mandatory architectural, naming, styling, and testing instructions for AI coding agents working in sineva-platform."
-category: "governance"
-status: "active"
-version: "1.0.0"
-last_updated: "2026-10-21"
----
+# AGENTS.md: sineva-platform
 
-# AGENTS.md — Sineva Platform (`sineva-platform`)
+Router for AI coding agents and humans. Details live in `docs/`. The numbered rules (R-xx) are in [`docs/governance/agent_rules.md`](docs/governance/agent_rules.md). Decisions are in [`docs/decisions/`](docs/decisions/README.md).
 
-Before writing any code, API routes, database schemas, or UI components, read [`docs/README.md`](docs/README.md) and navigate to the relevant category inside [`docs/`](docs/).
+"Current" means what the code does today. "Target" means decided, not yet built.
 
-## 1. Purpose & Role in the Sineva Ecosystem
+## 1. What this repo is
 
-`sineva-platform` is the **Unified Web Platform & BFF (Backend-for-Frontend) Interface** of the Sineva AI ecosystem:
-- Built as a **Turborepo** monorepo (`apps/web`, `packages/shared`, `packages/ui`) with **Next.js 16 (App Router)**, **React 19**, **TypeScript 5 (Strict)**, and **Redux Toolkit**.
-- Acts as the sole public gateway (`/api/v1/*`) and communicates with `sineva-ai` (Python FastAPI AI Engine) **exclusively over the internal Docker bridge network** (`http://sineva-ai:8000/api/v1` on `sineva_internal` with `X-Internal-Api-Key`). `sineva-ai` never exposes public ports to the host.
-- Shares core stateful infrastructure with `sineva-ai`: **PostgreSQL 17** (`sineva_db` via Drizzle ORM), **Redis 7.4** (via `ioredis`), and **SeaweedFS S3** (via `@aws-sdk/client-s3`).
+- Sineva Platform: the web app and BFF (Backend-for-Frontend) for the Sineva suite. It is the only public entry point; `sineva-ai` (Python FastAPI) is reachable only over the internal Docker network.
+- Turborepo monorepo (npm workspaces): `apps/web` (`@sineva/web`), `packages/shared` (`@sineva/shared`: response envelope), `packages/ui` (`@sineva/ui`).
+- Stack: Next.js 16.4 App Router, React 19.2, TypeScript 5.7, Redux Toolkit, Tailwind 4, Zod, Prisma 7.10.1 (`@prisma/adapter-pg`), ioredis, AWS SDK S3, Vitest. Node 24 (`.nvmrc`).
+- Shared infrastructure with `sineva-ai`: Postgres 17 (database `sineva_platform`), Redis 7.4, SeaweedFS S3, Qdrant (used by `sineva-ai`).
 
-## 2. Clean Architecture Layering (`apps/web/src/`)
+## 2. Read this first
 
-Every feature in `apps/web/src/` must respect strict inward-pointing dependencies (see [`docs/project-structure/clean_architecture_layers.md`](docs/project-structure/clean_architecture_layers.md)):
+| If you are... | Read |
+| :--- | :--- |
+| Choosing where code goes | [clean_architecture_layers](docs/project-structure/clean_architecture_layers.md), [frontend_architecture](docs/project-structure/frontend_architecture.md), ADR-0004 |
+| Adding or changing an API route | [api-spec/overview](docs/api-spec/overview.md), [response_pattern](docs/engineering/response_pattern.md), [swagger_and_openapi](docs/api-spec/swagger_and_openapi.md) |
+| Touching the database | [database_conventions](docs/engineering/database_conventions.md), [database_migrations_workflow](docs/engineering/database_migrations_workflow.md), ADR-0005, ADR-0006, ADR-0014 |
+| Touching the sineva-ai chat contract | [agents_and_chat_endpoints](docs/api-spec/agents_and_chat_endpoints.md), ADR-0015, ADR-0016 |
+| Writing tests | [testing_strategy](docs/engineering/testing_strategy.md), ADR-0007 |
+| Handling errors or failures | [error_handling_and_failure_modes](docs/engineering/error_handling_and_failure_modes.md), ADR-0008, ADR-0016 |
+| Building UI | [design_system](docs/design-context/design_system.md), [design_tokens](docs/design-context/design_tokens.md), [state_management_redux](docs/engineering/state_management_redux.md) |
+| Writing user-facing copy | [product_model_and_wording](docs/product/product_model_and_wording.md), [copywriting_and_brand](docs/design-context/copywriting_and_brand.md), ADR-0010 to ADR-0012 |
+| Running or deploying | [docker_compose_topology](docs/deployment/docker_compose_topology.md), [environment_variables](docs/deployment/environment_variables.md), [ci_cd_pipeline](docs/deployment/ci_cd_pipeline.md) |
+| Debugging | [troubleshooting/common_issues](docs/troubleshooting/common_issues.md) |
+| Committing or opening a PR | [git_and_pr_workflow](docs/governance/git_and_pr_workflow.md) |
+| Planning a feature | [feature_development_workflow](docs/development/feature_development_workflow.md), [known_issues_and_tech_debt](docs/development/known_issues_and_tech_debt.md) |
 
-1. **`domain/`**: Enterprise business entities (`agent.ts`, `workspace.ts`, `chat_session.ts`, `user.ts`), domain errors (`domain_error.ts`), and pure repository/gateway interfaces (`agent_repository.ts`, `ai_engine_gateway.ts`, `cache_repository.ts`, `storage_repository.ts`). Zero framework or ORM imports.
-2. **`application/`**: Use-case orchestrators (`get_agents_use_case.ts`, `send_agent_message_use_case.ts`, `presign_storage_upload_use_case.ts`, `get_system_health_use_case.ts`) and Zod DTO schemas (`agent_dto.ts`, `chat_dto.ts`, `pagination_dto.ts`). Depends only on `domain/`.
-3. **`infrastructure/`**: Concrete adapters for PostgreSQL + Drizzle (`database/`), Redis (`cache/`), SeaweedFS S3 (`storage/`), Internal AI Engine HTTP Gateway (`gateways/`), and OpenAPI 3.1 specifications (`openapi/`).
-4. **`presentation/`**: Redux Toolkit slices (`store/`), HTTP response helpers (`http/`), and React 19 UI components (`components/`).
-5. **`app/`**: Next.js 16 App Router pages and REST API Route Handlers (`app/api/v1/...`, `app/api/openapi.json/route.ts`, `app/api-docs/page.tsx`).
+Full index: [`docs/README.md`](docs/README.md).
 
-## 3. Mandatory `snake_case` Contract & Response Utility
+## 3. Commands
 
-- **All JSON keys** in request bodies, query parameters (`page`, `per_page`, `category_filter`), database tables/columns (`workspaces`, `users`, `agent_configs`, `chat_sessions`, `chat_messages`, `storage_objects`), Redux state payloads, and responses MUST use **`snake_case`**. See [`docs/engineering/database_conventions.md`](docs/engineering/database_conventions.md) and [`docs/engineering/response_pattern.md`](docs/engineering/response_pattern.md).
-- **All API responses** MUST use `@sineva/shared` (`createSuccessResponse`, `createPaginatedResponse`, `createErrorResponse`) wrapped by `presentation/http/response_helper.ts`:
-  ```json
-  {
-    "success": true,
-    "status": 200,
-    "message": "Operation completed successfully",
-    "data": {},
-    "meta": {
-      "page": 1,
-      "per_page": 10,
-      "total_items": 6,
-      "total_pages": 1,
-      "has_next": false,
-      "has_prev": false,
-      "request_id": "req_...",
-      "timestamp": "2026-10-21T00:00:00.000Z"
-    },
-    "errors": null
-  }
-  ```
-
-## 4. Design System, Frontend Libraries & Accessibility Rules
-
-Read [`docs/design-context/design_system.md`](docs/design-context/design_system.md), [`docs/design-context/design_tokens.md`](docs/design-context/design_tokens.md), and [`docs/design-context/ux_and_frontend_libraries.md`](docs/design-context/ux_and_frontend_libraries.md):
-- **Three-Layer Token Architecture**: Never hardcode raw hex values in components. Reference semantic CSS variables (`--color-canvas`, `--color-surface`, `--color-surface-elevated`, `--color-text`, `--color-text-muted`, `--color-action-primary`, `--color-border`) defined in `apps/web/src/app/globals.css`.
-- **UI & UX Stack**: Use Radix UI / shadcn primitives (`@radix-ui/react-*`), `class-variance-authority` (CVA), `clsx` + `tailwind-merge` (`cn`), `lucide-react` icons, `motion` + `gsap` for exponential-eased transitions, `cmdk` for the `⌘K` Command Palette, `sonner` for toasts, and `next-themes` for Light/Dark mode.
-- **WCAG 2.2 AA**: Maintain `>= 44x44px` interactive hit targets, keyboard navigation (`⌘K` Command Palette), and `prefers-reduced-motion` support.
-
-## 5. Documentation Map (`docs/`)
-
-All engineering, design, API, deployment, and research documentation uses standardized YAML frontmatter and is indexed in [`docs/README.md`](docs/README.md):
-- [`docs/project-structure/`](docs/project-structure/) — Monorepo layout, Turborepo workspaces, Clean Architecture layers
-- [`docs/engineering/`](docs/engineering/) — Coding standards, design patterns, `snake_case` response utility, Redux state, database conventions, testing & CI
-- [`docs/design-context/`](docs/design-context/) — Design system, 3-layer design tokens, UX/frontend libraries, copywriting & brand
-- [`docs/api-spec/`](docs/api-spec/) — REST conventions, Swagger/OpenAPI 3.1, agents/chat/storage/health endpoints
-- [`docs/troubleshooting/`](docs/troubleshooting/) — Common issues, Docker internal network, Postgres/Redis/SeaweedFS debugging
-- [`docs/development/`](docs/development/) — Roadmap, vertical-slice feature workflow, future features RFC template
-- [`docs/deployment/`](docs/deployment/) — Docker Compose topology, zero-port internal AI Engine security, CI/CD pipeline
-- [`docs/research/`](docs/research/) — BFF gateway architecture, SeaweedFS S3 architecture, agentic UX patterns
-
-## 6. Verification Commands
-
-Before completing any task or opening a PR, run all checks from the repository root:
+From the repo root:
 
 ```bash
-npm run lint
-npm run typecheck
-npm run test
-npm run build
+npm install
+npm run dev               # prisma generate, then Next.js on 127.0.0.1:3000
+npm run lint              # eslint, zero warnings
+npm run typecheck         # prisma generate, next typegen, tsc --noEmit
+npm run test              # vitest unit tests, contract tests, architecture.test.ts (no DB)
+npm run test:integration  # Prisma against a throwaway Postgres; needs TEST_DATABASE_URL
+npm run build             # prisma generate, then next build
+npm run docker:up         # full stack: docker compose up -d --build
 ```
+
+Database scripts live in `apps/web` and run through the workspace, for example `npm --workspace=@sineva/web run db:generate`: `db:generate`, `db:migrate:dev`, `db:migrate:deploy`, `db:seed`. `TEST_DATABASE_URL` must name a database whose name contains "test"; the setup refuses anything else.
+
+## 4. Hard rules (summary; the rule text and checks are in agent_rules.md)
+
+- TDD: failing test first, with red evidence (R-01). Done means lint, typecheck, test, build pass, plus `test:integration` for database code (R-02).
+- Conventional Commits; PRs use the template with evidence (R-03, R-04). Surgical edits; ask on ambiguity (R-05, R-06).
+- Layers: domain, then application and infrastructure inward only (R-07, R-12, R-13). Client never imports `@/server` (R-08). `import 'server-only'` on infrastructure and container (R-09). Adapters built only in `server/container.ts` (R-10). Thin route handlers (R-11). Shared view types guarded (R-14).
+- Prisma only, pinned exactly to 7.10.1 (R-15, R-16). Tables in schema `platform` (R-17). UUID primary keys, column `id` (R-21, R-39). Never reset or push against a shared DB; `migrate dev` on throwaway DBs only; `migrate deploy` with `?schema=platform`; commit migration SQL (R-18 to R-20, R-42). Never edit the generated client (R-22).
+- snake_case on the wire and in the DB; envelope via `response_helper`; register routes in OpenAPI (R-21, R-23 to R-25). The sineva-ai chat contract is owned by sineva-ai; fixtures are copied, not edited (R-40).
+- No silent fallbacks; upstream failures are typed 502 or 503 (R-26, R-41). No new hardcoded secrets, no identity from request bodies in new code, `sineva-ai` internal only (R-27 to R-29).
+- Semantic tokens only; loading, error and not-found states; WCAG 2.2 AA (R-30 to R-32).
+- Wording, guardrails, generic integrations, @mention syntax, canonical slugs; update docs in the same change (R-33 to R-38).
+
+## 5. Layout
+
+```text
+apps/web/
+  prisma/                  schema.prisma, migrations/, seed.ts (platform schema only)
+  prisma.config.ts
+  src/
+    app/                   routing edge: pages, layouts, /api/v1/* handlers
+    server/                backend, 'server-only'
+      domain/              entities, ports, domain errors (incl. 409, 502, 503 types)
+      application/         use cases, Zod DTOs
+      infrastructure/      adapters (database, cache, storage, gateways, config, openapi)
+      http/                response_helper, agent_view_contract, chat_view_contract
+      container.ts         the only place adapters are constructed
+    client/                components/, store/ (Redux Toolkit)
+    shared/                wire/view types (agent_view, chat_view)
+    __tests__/             unit tests, fakes/, contract/ (+ fixtures/), integration/, stubs/, architecture.test.ts
+packages/shared/           @sineva/shared: response envelope, snake_case helpers
+packages/ui/               @sineva/ui
+docs/                      see docs/README.md
+```
+
+## 6. Gotchas
+
+- Prisma: never install `prisma`, `@prisma/client` or `@prisma/adapter-pg` unpinned. On 2026-10-21 npm `latest` for `prisma` was `8.0.0-rc.23` (a release candidate). Use `npm install --save-exact <pkg>@7.10.1`.
+- The Postgres database is shared with `sineva-ai`. The platform owns schema `platform`; `sineva-ai` owns schema `sineva_ai` (Alembic). Nobody uses `public`. Check `DATABASE_URL` before any Prisma command.
+- `_prisma_migrations` placement: with a plain `DATABASE_URL` Prisma puts its bookkeeping table in `public`. With `?schema=platform` it goes to `platform`, but `migrate dev` then emits unqualified SQL. So: `migrate dev` on a throwaway DB with a plain URL; `migrate deploy` on the shared DB with `?schema=platform`. Migrations are an explicit release step, not part of the Docker `CMD`.
+- `prisma.config.ts` reads `process.env.DATABASE_URL ?? ''` on purpose: `env()` throws when the variable is unset, and `generate`, `build` and `typecheck` must run without a database. Commands that connect (`migrate`, `db seed`) fail on the empty URL.
+- Primary keys are UUID (`gen_random_uuid()`, v4). Do not add prefixed string ids, and do not hand-generate ids in application code.
+- Compose publishes Postgres (5432), Redis (6379, no password), Qdrant (6333) and the SeaweedFS master, filer and S3 ports (9333, 8888, 8333) on the host. Only `sineva-ai` (8000, `expose` only) and `seaweedfs-volume` have no host port. "Only public entry point" describes application traffic, not these data-store ports ([docker_compose_topology](docs/deployment/docker_compose_topology.md)).
+- `npm run docker:down` runs `docker compose down -v`. It deletes all volumes, including the shared Postgres data. Use `docker compose down` (no `-v`) to keep data.
+- `server-only` throws outside a React Server Components build. Vitest aliases it to `src/__tests__/stubs/server_only.ts` (`apps/web/vitest.config.ts` and `vitest.integration.config.ts`). Keep both aliases.
+- The container memoizes adapters, including the Prisma connection pool, so state persists across calls in one process. There is no reset hook (`resetContainerForTests` was removed). Unit tests build use cases with fakes directly, and route tests mock `@/server/container`; do not reach into the container from tests.
+- `src/__tests__/contract/fixtures/` are copied byte-for-byte from `../sineva-ai/tests/contract/fixtures/`. Never edit the copies. Change them in `sineva-ai` first, copy them here in the same change, and open the matching change in both repos (ADR-0015).
+- Re-seeding an existing database that was seeded with the old `sino-*` slugs leaves stale rows. `prisma/seed.ts` upserts by `agent_slug`, so it adds the canonical rows and never removes or renames the old ones. Fix such a database with a manual or data migration (ADR-0012).
+- Known debt, not patterns to copy: the "Redis" cache is an in-memory `Map` with `ping()` always true, presigning returns an unsigned URL on error, the health check reports Postgres healthy when `DATABASE_URL` is merely set, and `getEnvConfig()` and `docker-compose.yml` hold hardcoded default secrets. Details: [known_issues_and_tech_debt](docs/development/known_issues_and_tech_debt.md).
+- Cross-service: `sineva-ai` has migrated to the canonical slugs (`sinopeople`, `sinofinance`, and so on; its orchestrator is `sino`), so the old `sino_*` mismatch no longer exists. It owns the chat contract (ADR-0015): the platform sends `user_message` and reads `reply_content`, so the public chat response no longer has `reply_text`. The internal header is `X-Internal-Api-Key` (ADR-0013). `sineva-ai` non-2xx or an invalid body becomes 502, and an unreachable `sineva-ai` becomes 503 (ADR-0016).
+
+## 7. Product wording
+
+- One chat: the user talks to Sino and calls a product by @mention, `@SinoHelp …`, no comma.
+- User-facing copy: Sino is a "companion" (ID: "teman kerja", "teman AI"). Never "chatbot", "assistant" or "agent". Code identifiers and `/api/v1/agents` keep "agent".
+- Slugs: `sinopeople`, `sinofinance`, `sinosales`, `sinosocial`, `sinohelp`, `sinoinsights`. SinoMoney is now SinoFinance.
+- Guardrails and integrations wording: R-34, R-35, and [product_model_and_wording](docs/product/product_model_and_wording.md).
+
+## 8. Workflow
+
+1. TDD: write the failing test and watch it fail.
+2. Implement the smallest change that passes.
+3. Verify: `npm run lint && npm run typecheck && npm run test && npm run build` (plus `npm run test:integration` for database code).
+4. Commit with Conventional Commits.
+5. Open a PR with the template, with evidence for every ticked item. See [git_and_pr_workflow](docs/governance/git_and_pr_workflow.md).
+
+## 9. Nested AGENTS.md
+
+More specific rules apply inside these folders. Read them when you work there.
+
+- [`apps/web/src/server/AGENTS.md`](apps/web/src/server/AGENTS.md): backend layers, container, adapters
+- [`apps/web/src/client/AGENTS.md`](apps/web/src/client/AGENTS.md): components, store, boundary rules
+- [`apps/web/src/app/AGENTS.md`](apps/web/src/app/AGENTS.md): routes and handlers
+- [`apps/web/prisma/AGENTS.md`](apps/web/prisma/AGENTS.md): schema, migrations, safety

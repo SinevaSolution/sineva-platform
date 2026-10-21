@@ -1,50 +1,90 @@
 ---
-title: "CI/CD Pipeline & Production Rollout Checklist"
+title: "CI/CD Pipeline"
 category: "deployment"
 status: "active"
-version: "1.0.0"
+version: "2.0.0"
 last_updated: "2026-10-21"
-owner: "Sineva DevOps & Engineering"
-tags: ["sineva", "ci-cd", "github-actions", "dockerfile", "deployment"]
-summary: "GitHub Actions CI/CD pipeline specification, multi-stage Dockerfile architecture, and production rollout verification checklist."
+owner: "Sineva Engineering"
+tags: ["sineva", "ci-cd", "github-actions", "dockerfile", "release", "migrations"]
+summary: "What the GitHub Actions workflow runs today, how the Dockerfile builds the image, the release order including database migrations, and the rollout checklist."
 related_docs:
   - "docker_compose_topology.md"
-  - "../engineering/testing_and_ci.md"
+  - "environment_variables.md"
+  - "../engineering/testing_strategy.md"
+  - "../engineering/database_migrations_workflow.md"
+  - "../decisions/0007-tdd-fakes-integration-containers.md"
+  - "../governance/git_and_pr_workflow.md"
 ---
 
-# CI/CD Pipeline & Production Rollout Checklist
+# CI/CD Pipeline
 
----
+"Current" is what the repo does today. "Target" is decided but not built. Test layers and commands are in [testing strategy](../engineering/testing_strategy.md); this page covers the pipeline and the release.
 
-## 1. GitHub Actions Workflow (`.github/workflows/ci.yml`)
+## CI workflow (Current)
 
-Every push and pull request triggers the automated verification pipeline:
+`.github/workflows/ci.yml`, workflow "Sineva Platform CI", is the only workflow. One job, `verify`, on `ubuntu-latest`.
 
-```mermaid
-flowchart LR
-    Checkout["Checkout & Node 22 Setup"] --> Install["npm install"]
-    Install --> Typecheck["npm run typecheck"]
-    Typecheck --> Lint["npm run lint"]
-    Lint --> Test["npm run test (Vitest)"]
-    Test --> Build["npm run build (Turborepo)"]
-```
+Triggers: a push to `main` or `develop`, and a pull request targeting `main` or `develop`.
 
-All four quality gates (`typecheck`, `lint`, `test`, `build`) must exit with code `0` before a PR can be merged.
+Steps, in order:
 
----
+1. `actions/checkout@v4`.
+2. `actions/setup-node@v4` with Node `24` and the npm cache. `.nvmrc` pins `24.21.0` locally; CI takes the latest 24.x.
+3. `npm ci`.
+4. `npm run lint`.
+5. `npm run typecheck`.
+6. `npm run test`.
+7. `npm run build`.
 
-## 2. Multi-Stage Production `Dockerfile`
+All four commands go through turbo (`lint`, `typecheck`, `test`, `build`) and must pass before merge. `typecheck` and `build` run `prisma generate` first, which needs no database, so CI has no `DATABASE_URL`.
 
-The root [`Dockerfile`](../../Dockerfile) builds a minimal, hardened Node 22 Alpine container image:
-1. **`base` / `deps` stage**: Uses `node:22-alpine`, copies root and workspace `package.json` manifests, and installs dependencies.
-2. **`builder` stage**: Copies source code and runs `npm run build` (`turbo run build`) to compile `@sineva/shared`, `@sineva/ui`, and `@sineva/web`.
-3. **`runner` stage**: Runs with `NODE_ENV=production` on port `3000`.
+Gaps:
 
----
+- The `test` step is named "Run Unit & Integration Tests" but runs `npm run test`, which excludes `src/__tests__/integration/`. CI has no Postgres, so integration tests never run there.
+- There is no deploy job, no image build or push, and no migration job. Deployment is manual.
+- Dependabot, security scanning and a Docker build check are not configured.
 
-## 3. Production Rollout Checklist
+Target: a Postgres service container in `verify` (or a second job), a database whose name contains `test`, `TEST_DATABASE_URL` set to it, and `npm run test:integration` as a step ([ADR-0007](../decisions/0007-tdd-fakes-integration-containers.md)). Until then, run integration tests locally for any database change and report the result in the PR.
 
-- [ ] **Environment Secrets**: Rotate `POSTGRES_PASSWORD`, `S3_SECRET_ACCESS_KEY`, and `AI_ENGINE_INTERNAL_API_KEY` in production secret storage.
-- [ ] **Zero-Port Check**: Confirm `docker compose ps` shows host port mapping `0.0.0.0:3000->3000/tcp` for `sineva-platform` and only `8000/tcp` (no host IP) for `sineva-ai`.
-- [ ] **Health Verification**: Query `GET /api/v1/health` and verify `status === 200` and `data.dependencies.ai_engine_status === "reachable"`.
-- [ ] **OpenAPI Verification**: Load `/api-docs` and `/api/openapi.json` to confirm all endpoint schemas render properly.
+## Dockerfile
+
+The root `Dockerfile` has four stages on `node:24-alpine`:
+
+| Stage | What it does |
+| :--- | :--- |
+| `base` | Sets `WORKDIR /app` and disables Next telemetry |
+| `deps` | Adds `libc6-compat`, copies the root and workspace `package.json` files plus `package-lock.json` and `turbo.json`, runs `npm install` |
+| `builder` | Takes `node_modules` from `deps`, copies the source, runs `npm run build` (turbo, then `prisma generate`, then `next build`) |
+| `runner` | Sets `NODE_ENV=production`, creates a non-root user `nextjs` (uid 1001), copies the whole `/app` from `builder`, exposes 3000 |
+
+`CMD` is `npm --workspace=@sineva/web run start`, which is `next start --hostname 0.0.0.0 --port 3000`.
+
+Facts to know:
+
+- The image contains the generated Prisma client. `.dockerignore` excludes the host's `generated` folder, and the builder regenerates it through `npm run build`. The build needs no database; the home page is `force-dynamic`, so `next build` does not query one.
+- The runner is not a slim image. It copies all of `/app`, including source, dev dependencies and the Prisma CLI. That is what lets the release step below run `prisma migrate deploy` from the same image.
+- `deps` uses `npm install`, not `npm ci`, so the image build does not enforce the lockfile the way CI does.
+- No `HEALTHCHECK` instruction. Use `GET /api/v1/health`.
+- `.dockerignore` also excludes `.git`, `docs`, `*.md`, `.env` and `.env.local`, so no secrets from a local env file enter the image.
+
+## Release order
+
+Migrations are an explicit release step. They are not in `CMD` and not in compose, so a starting container never changes the schema, and several replicas never race to apply one migration.
+
+1. Merge to `main` after CI passes.
+2. Build the image.
+3. Run `db:migrate:deploy` with `?schema=platform` on the database URL ([migrations workflow](../engineering/database_migrations_workflow.md)). On a new environment, also run `db:seed`.
+4. Run `sineva-ai`'s own `alembic upgrade head` if its release changed its schema.
+5. Start or recreate `sineva-platform`.
+
+Order matters in one direction: apply the migration before the code that needs it starts. Keep migrations backward compatible with the previous release for the window between steps 3 and 5 (add columns before code uses them; remove them one release later).
+
+## Rollout checklist
+
+- [ ] Secrets rotated in the target environment: `POSTGRES_PASSWORD`, `S3_SECRET_ACCESS_KEY` and `AI_ENGINE_INTERNAL_API_KEY` ([environment variables](environment_variables.md)). The values in the repo are public defaults.
+- [ ] `docker compose ps` shows `0.0.0.0:3000->3000/tcp` for `sineva-platform` and `8000/tcp` with no host address for `sineva-ai`. Decide on purpose what to do with the published Postgres, Redis, Qdrant and SeaweedFS ports ([topology](docker_compose_topology.md)).
+- [ ] `db:migrate:deploy` ran with `?schema=platform`, and `platform._prisma_migrations` exists (not `public._prisma_migrations`).
+- [ ] `GET /api/v1/health` returns 200 and `data.subsystems.sineva_ai_engine.status` is `healthy`. This is the only real check in that response: the Postgres entry reports `healthy` whenever `DATABASE_URL` is set, Redis always reports `healthy`, and S3 reports `healthy` whenever an endpoint is configured.
+- [ ] `GET /api/v1/agents` returns the six companions. This reaches Postgres, so it proves the database, the schema and the seed.
+- [ ] A chat request to one companion returns 200. A 502 or 503 here points at the key, the slug or the engine ([troubleshooting](../troubleshooting/docker_and_internal_network.md)).
+- [ ] `/api/openapi.json` loads and lists every route.

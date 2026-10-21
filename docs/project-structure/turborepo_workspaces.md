@@ -1,102 +1,95 @@
 ---
-title: "Turborepo Workspaces & Build Pipeline"
+title: "Turborepo Workspaces and Build Pipeline"
 category: "project-structure"
 status: "active"
-version: "1.0.0"
+version: "2.0.0"
 last_updated: "2026-10-21"
 owner: "Sineva Engineering"
-tags: ["sineva", "turborepo", "workspaces", "monorepo", "shared", "ui", "nextjs"]
-summary: "Detailed specification of the Turborepo workspace packages (apps/web, @sineva/shared, @sineva/ui), dependency graph, and task pipeline."
+tags: ["sineva", "turborepo", "workspaces", "monorepo", "npm", "shared", "ui"]
+summary: "The three npm workspaces, what each exports, how they depend on each other, what each turbo task runs, and how to add code to a package."
 related_docs:
   - "overview.md"
   - "clean_architecture_layers.md"
   - "../engineering/coding_standards.md"
+  - "../engineering/testing_strategy.md"
+  - "../deployment/ci_cd_pipeline.md"
 ---
 
-# Turborepo Workspaces & Build Pipeline
+# Turborepo Workspaces and Build Pipeline
 
-`sineva-platform` uses **Turborepo** with npm workspaces (`"workspaces": ["apps/*", "packages/*"]`) to manage shared libraries, enforce strict module boundaries, and parallelize builds, linting, typechecking, and test execution.
+The repo is an npm workspaces monorepo (`"workspaces": ["apps/*", "packages/*"]`, `packageManager: npm@11.19.0`, Node `>=24`) with Turborepo running the tasks. Root scripts call `turbo run <task>`. Source of truth: root `package.json`, `turbo.json` and each workspace's `package.json`.
 
----
+## 1. Workspaces
 
-## 1. Workspace Packages Inventory
+| Workspace | Directory | Contains |
+| :--- | :--- | :--- |
+| `@sineva/web` | `apps/web` | The Next.js 16.4 app and BFF: routes, backend layers, client UI, Prisma. See [overview](overview.md). |
+| `@sineva/shared` | `packages/shared` | `ApiResponse<T>` and helpers (`createSuccessResponse`, `createPaginatedResponse`, `createErrorResponse`, `generateRequestId`), the `ErrorDetail`, `ResponseMeta` and `PaginationMeta` types, and the `snake_case` helpers (`toSnakeCase`, `isSnakeCaseKey`, `assertSnakeCaseKeys`). One test file: `response.test.ts`. |
+| `@sineva/ui` | `packages/ui` | `cn`, `Button`, `Card`, `Badge`, `Container`, `StatusPill`, built with Radix Slot, class-variance-authority and tailwind-merge. No tests of its own. |
 
-| Workspace Package | Directory | Package Name | Purpose & Exports |
-| :--- | :--- | :--- | :--- |
-| **Web Application & BFF** | `apps/web` | `@sineva/web` | Next.js 15+ App Router application, `/api/v1/*` BFF endpoints, OpenAPI `/api-docs`, Clean Architecture layers, and Redux UI. |
-| **Shared Core Utilities** | `packages/shared` | `@sineva/shared` | Standardized API response envelope (`createSuccessResponse`, `createPaginatedResponse`, `createErrorResponse`), `snake_case` validators/converters, and cross-package TypeScript contracts. |
-| **Shared UI Primitives** | `packages/ui` | `@sineva/ui` | Design-system primitives (`Button`, `Badge`, `Card`, layout primitives) styled with CVA and Sineva design tokens. |
+Both packages are consumed as TypeScript source: `main`, `types` and `exports` point at `src/index.ts` (`src/index.tsx` for ui). `apps/web/next.config.ts` lists them in `transpilePackages`, so Next compiles them. Their `build` script is `tsc --noEmit`, which only type-checks and produces no `dist`.
 
----
-
-## 2. Package Dependency Graph
-
-Packages follow a strict directed acyclic graph (DAG). Circular dependencies between workspaces are forbidden.
+## 2. Dependency graph
 
 ```mermaid
 flowchart TD
-    Web["@sineva/web\n(apps/web)"]
-    UI["@sineva/ui\n(packages/ui)"]
-    Shared["@sineva/shared\n(packages/shared)"]
-
-    Web --> UI
-    Web --> Shared
-    UI -.->|"Optional types"| Shared
+    Web["@sineva/web"] --> Shared["@sineva/shared"]
+    Web --> UI["@sineva/ui"]
 ```
 
-### Dependency Rules
-1. **`@sineva/shared`** has **zero** internal workspace dependencies. It may only depend on pure utility types or standard runtime APIs so it can be imported in Node.js, Edge Runtime, or browser bundles.
-2. **`@sineva/ui`** contains stateless/reusable React UI primitives and must never import application-specific use cases, Redux stores, or database drivers from `@sineva/web`.
-3. **`@sineva/web`** consumes both `@sineva/shared` and `@sineva/ui`, transpiling them seamlessly via `transpilePackages: ['@sineva/shared', '@sineva/ui']` in `apps/web/next.config.ts`.
+Current rules, matching the `package.json` files:
 
----
+1. `@sineva/shared` has no workspace dependencies, only dev dependencies. Keep it free of React and Node-only APIs so any runtime can import it.
+2. `@sineva/ui` depends on no workspace package. It must not import `@sineva/web` code (Redux, use cases, the container).
+3. `@sineva/web` depends on both, declared as `"*"`.
+4. No cycles between workspaces.
 
-## 3. Turborepo Task Pipeline (`turbo.json`)
+`@sineva/shared` is not the same as `apps/web/src/shared`. The package holds the response envelope and helpers used by the backend and by tests. The folder holds the view types the browser reads (`AgentView`, `ChatReplyView`). Do not put one in the other.
 
-The root `turbo.json` defines deterministic task orchestration and caching behavior:
+## 3. Tasks (`turbo.json`)
 
-```json
-{
-  "$schema": "https://turbo.build/schema.json",
-  "tasks": {
-    "build": {
-      "dependsOn": ["^build"],
-      "outputs": [".next/**", "!.next/cache/**", "dist/**"]
-    },
-    "dev": {
-      "cache": false,
-      "persistent": true
-    },
-    "lint": {
-      "dependsOn": ["^build"]
-    },
-    "typecheck": {
-      "dependsOn": ["^build"]
-    },
-    "test": {
-      "dependsOn": ["^build"],
-      "outputs": ["coverage/**"]
-    }
-  }
-}
-```
+| Task | `dependsOn` | Notes |
+| :--- | :--- | :--- |
+| `build` | `^build` | Outputs `.next/**` (except `.next/cache/**`) and `dist/**`. |
+| `dev` | none | `cache: false`, `persistent: true`. |
+| `lint` | `^lint` | |
+| `typecheck` | `^typecheck` | |
+| `test` | `^build` | Outputs `coverage/**`. |
+| `test:integration` | none | `cache: false`, env `TEST_DATABASE_URL`. Only `@sineva/web` defines it. |
 
-### Key Root Scripts (`package.json`)
-- **`npm run dev`**: Launches `turbo run dev` across workspaces in watch mode.
-- **`npm run build`**: Builds `@sineva/shared` and `@sineva/ui` (`tsc -b`) first (`"dependsOn": ["^build"]`), then builds `@sineva/web` (`next build`).
-- **`npm run typecheck`**: Runs `tsc --noEmit` across every workspace in parallel after upstream declaration files are built.
-- **`npm run lint`**: Executes ESLint across all workspaces with zero-warning tolerance.
-- **`npm run test`**: Executes Vitest test suites across `@sineva/shared`, `@sineva/ui`, and `@sineva/web`.
+What each workspace runs for those tasks:
 
----
+| Task | `@sineva/shared` | `@sineva/ui` | `@sineva/web` |
+| :--- | :--- | :--- | :--- |
+| `build` | `tsc --noEmit` | `tsc --noEmit` | `npm run db:generate && next build` |
+| `lint` | `tsc --noEmit` | `tsc --noEmit` | `eslint . --max-warnings 0` |
+| `typecheck` | `tsc --noEmit` | `tsc --noEmit` | `npm run db:generate && next typegen && tsc --noEmit` |
+| `test` | `vitest run` | `tsc --noEmit` | `vitest run` |
+| `test:integration` | none | none | `npm run db:generate && vitest run -c vitest.integration.config.ts` |
 
-## 4. Adding a New Shared Utility or UI Component
+Root scripts: `dev`, `build`, `lint`, `typecheck`, `test`, `test:integration` (all through turbo), `format` and `format:check` (prettier), `docker:up` and `docker:down`.
 
-1. **Shared Utility (`@sineva/shared`)**:
-   - Create the module in `packages/shared/src/<module_name>.ts` using `snake_case` filenames.
-   - Export all public types and functions from `packages/shared/src/index.ts`.
-   - Add a companion unit test in `packages/shared/src/<module_name>.test.ts`.
-2. **UI Primitive (`@sineva/ui`)**:
-   - Create the component in `packages/ui/src/<component_name>.tsx`.
-   - Use semantic CSS variables (`var(--color-surface)`, `var(--color-action-primary)`) rather than hardcoded hex colors.
-   - Re-export from `packages/ui/src/index.tsx`.
+Gotchas:
+
+- `@sineva/shared` and `@sineva/ui` have no real lint step: their `lint` is a type check. ESLint runs only in `@sineva/web`.
+- `npm run docker:down` runs `docker compose down -v` and deletes volumes, including the shared Postgres data. Use `docker compose down` to keep data.
+- Prisma commands (`db:generate`, `db:migrate:dev`, `db:migrate:deploy`, `db:seed`) are scripts of `@sineva/web`. From the root, run them as `npm --workspace=@sineva/web run <script>`.
+- `build`, `typecheck` and `test:integration` run `prisma generate` first, and `dev` does too. The generated client is gitignored build output.
+- `format:check` is not part of CI, and the code does not pass it today. See [coding standards](../engineering/coding_standards.md).
+
+## 4. Adding code to a package
+
+`@sineva/shared`:
+
+1. Create `packages/shared/src/<name>.ts` in `snake_case`.
+2. Export it from `packages/shared/src/index.ts`.
+3. Write the failing test first in `packages/shared/src/<name>.test.ts` (R-01).
+
+`@sineva/ui`:
+
+1. Create `packages/ui/src/<name>.tsx`, or add to `index.tsx` (the current components all live there).
+2. Style with semantic tokens (`var(--color-surface)`), not hex (R-30).
+3. Export it from `packages/ui/src/index.tsx`.
+4. The package has no test runner. Run `npm run typecheck`, and exercise the component through the web app.
+
+A new workspace needs `build`, `lint`, `typecheck` and `test` scripts so turbo can run them, and an entry in the table above.

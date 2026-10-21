@@ -1,95 +1,126 @@
 ---
-title: "Design Tokens & Typography Scale"
+title: "Design Tokens"
 category: "design-context"
 status: "active"
-version: "1.0.0"
+version: "2.0.0"
 last_updated: "2026-10-21"
-owner: "Sineva Design & Engineering"
-tags: ["sineva", "design-tokens", "css-variables", "typography", "theming", "dark-mode"]
-summary: "Three-layer design token specification (Primitive, Semantic, Component) across Light and Dark themes, plus the Plus Jakarta Sans and Geist Mono typography scale."
+owner: "Sineva Engineering"
+tags: ["sineva", "design-tokens", "css-variables", "theming", "dark-mode", "typography", "tailwind-v4"]
+summary: "The CSS variables actually defined in apps/web/src/app/globals.css, how the dark theme is applied, the dark: variant gap, and the fonts."
 related_docs:
+  - "README.md"
   - "design_system.md"
   - "ux_and_frontend_libraries.md"
+  - "../governance/agent_rules.md"
+  - "../development/known_issues_and_tech_debt.md"
 ---
 
-# Design Tokens & Typography Scale
+# Design tokens
 
-`sineva-platform` enforces a strict **Three-Layer Token Architecture** (`Primitive` → `Semantic` → `Component`). Components in `@sineva/ui` and `apps/web` must reference **Semantic Tokens** (`var(--color-canvas)`, `var(--color-action-primary)`) rather than raw hex values.
+Source of truth: `apps/web/src/app/globals.css`. If this document and that file disagree, the file wins and this document is wrong.
 
----
+"Current" is what the code does. "Target" is decided but not built.
 
-## 1. Layer 1: Primitive Color Tokens (`:root`)
+## Gotchas first
 
-```css
-:root {
-  /* Sineva Signature Teal Scale */
-  --teal-50:  #eefbfa;
-  --teal-100: #d5f5f2;
-  --teal-200: #afeae6;
-  --teal-300: #7ad8d4;
-  --teal-400: #3fbec0;
-  --teal-500: #1aa3a8;
-  --teal-600: #138289;
-  --teal-700: #13686f;
-  --teal-800: #155359;
-  --teal-900: #16454b;
+- Dark mode is `[data-theme="dark"]` only. There is no `.dark` class and no `prefers-color-scheme` rule for the semantic tokens.
+- Tailwind v4's `dark:` variant defaults to `prefers-color-scheme`. `globals.css` has no `@custom-variant dark`, so `dark:` classes follow the OS setting, not the app's theme. The app starts in light and ignores the OS (`enableSystem={false}`). A user on a dark OS who sees the light theme gets dark-variant colors on light surfaces. A user on a light OS who toggles dark gets no dark-variant colors at all. Current users of `dark:`: `Badge` in `packages/ui/src/index.tsx`, and the dashboard (emerald status text, product icon tile).
+- There is no `@theme` block. Tailwind does not generate utilities such as `bg-canvas`; components write `bg-[var(--color-canvas)]`.
+- Raw primitives (`--teal-*`, `--ink-*`, `--sun-*`, `--aqua-*`) do not change with the theme. Use them only where a fixed color is intended.
+- Layer 3 is one token (`--ease-out-expo`) and nothing uses it.
 
-  /* Editorial Ink Neutral Scale */
-  --ink-50:   #f8fafc;
-  --ink-100:  #f1f5f9;
-  --ink-200:  #e2e8f0;
-  --ink-300:  #cbd5e1;
-  --ink-400:  #94a3b8;
-  --ink-500:  #64748b;
-  --ink-600:  #475569;
-  --ink-700:  #334155;
-  --ink-800:  #1e293b;
-  --ink-900:  #0f172a;
-  --ink-950:  #060b14;
+## Layers
 
-  /* Accent & Signal Primitives */
-  --aqua-400: #22d3ee;
-  --sun-100:  #fef3c7;
-}
-```
+| Layer | Contents | Where |
+| :--- | :--- | :--- |
+| 1 Primitive | Raw palette: teal, aqua, sun, ink | `:root` |
+| 2 Semantic | Meaning-based colors: canvas, surface, text, border, action | `:root` (light), `[data-theme="dark"]` (dark) |
+| 3 Motion | `--ease-out-expo` | `:root` |
 
----
+Components reference layer 2 (R-30). No component hardcodes hex.
 
-## 2. Layer 2: Semantic Theme Tokens (Light vs. Dark)
+## Layer 1: primitives
 
-| Semantic Token | Light Theme (`:root`) | Dark Theme (`.dark` / `[data-theme="dark"]`) | Purpose |
+| Token | Value | | Token | Value |
+| :--- | :--- | :--- | :--- | :--- |
+| `--teal-50` | `#effaf8` | | `--ink-50` | `#fbf9f5` |
+| `--teal-100` | `#d7f3ee` | | `--ink-100` | `#f4f0e8` |
+| `--teal-200` | `#b2e6de` | | `--ink-200` | `#e8e2d5` |
+| `--teal-500` | `#0fa38c` | | `--ink-300` | `#d5ccb8` |
+| `--teal-600` | `#0b8471` | | `--ink-500` | `#6e6a61` |
+| `--teal-700` | `#0a6b5c` | | `--ink-600` | `#524e46` |
+| `--teal-800` | `#0b554a` | | `--ink-800` | `#262420` |
+| `--teal-900` | `#093b34` | | `--ink-900` | `#181714` |
+| `--aqua-400` | `#3dd9c3` | | `--ink-950` | `#0b1516` |
+| `--sun-100` | `#fef3c7` | | `--sun-500` | `#f59e0b` |
+
+Steps that do not exist: `--teal-300`, `--teal-400`, `--ink-400`, `--ink-700`. Do not reference them.
+
+## Layer 2: semantic tokens
+
+| Token | Light | Dark |
+| :--- | :--- | :--- |
+| `--color-canvas` | `--ink-50` | `#0b1516` |
+| `--color-surface` | `#ffffff` | `#112022` |
+| `--color-surface-elevated` | `#ffffff` | `#16292c` |
+| `--color-surface-muted` | `--ink-100` | `#1b3236` |
+| `--color-text` | `--ink-900` | `#f3f7f6` |
+| `--color-text-muted` | `--ink-600` | `#a6bdbb` |
+| `--color-text-subtle` | `--ink-500` | `#789492` |
+| `--color-text-inverse` | `#ffffff` | `#081213` |
+| `--color-border` | `--ink-200` | `#213b3f` |
+| `--color-border-strong` | `--ink-300` | `#2e5257` |
+| `--color-action-primary` | `--teal-700` | `--aqua-400` |
+| `--color-action-primary-hover` | `--teal-800` | `--teal-200` |
+| `--color-accent-highlight` | `--aqua-400` | `--sun-500` |
+
+- `--color-text-inverse` is the text color on `--color-action-primary`. It flips to dark text in the dark theme because the primary color becomes light.
+- `--color-surface` and `--color-surface-elevated` are the same white in the light theme, so `elevated` cards differ only by shadow there.
+- Contrast numbers for the pairs in use are in [design system](design_system.md).
+- There are no tokens for focus ring color, shadows, radii or spacing. Components use Tailwind's scale and a hardcoded `rounded-xl` or `rounded-2xl`.
+- `--color-accent-highlight` is defined and not referenced by any component.
+
+## Layer 3: motion
+
+`--ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1)`. `Button` and `Card` in `@sineva/ui` write the same curve inline (`ease-[cubic-bezier(0.16,1,0.3,1)]`, 200 ms) instead of using the variable, and use `transition-all`. A `prefers-reduced-motion: reduce` rule in `globals.css` shortens animations and transitions to 0.01 ms.
+
+## Theme mechanism
+
+`next-themes` sets `data-theme="light"` or `data-theme="dark"` on `<html>` (`client/store/provider.tsx`). Default light, no system detection. `suppressHydrationWarning` is on `<html>` in `app/layout.tsx` for the attribute.
+
+Target: make `dark:` follow the same attribute. In Tailwind v4 this is a `@custom-variant` declaration in `globals.css` that matches `[data-theme="dark"]` and its descendants (recalled from the Tailwind v4 dark mode docs, not verified in this repository). The alternative is to remove every `dark:` class and use semantic tokens only, which is the better fit with R-30. Either way, fix it as one change with a visual check in both themes.
+
+## Typography
+
+| Role | Font | Variable | Loaded by |
 | :--- | :--- | :--- | :--- |
-| `--color-canvas` | `var(--ink-50)` (`#f8fafc`) | `var(--ink-950)` (`#060b14`) | Root page background canvas |
-| `--color-surface` | `#ffffff` | `var(--ink-900)` (`#0f172a`) | Primary cards, workspace panels, modals |
-| `--color-surface-elevated` | `var(--ink-100)` (`#f1f5f9`) | `var(--ink-800)` (`#1e293b`) | Hover states, nested code/telemetry blocks |
-| `--color-text` | `var(--ink-900)` (`#0f172a`) | `var(--ink-50)` (`#f8fafc`) | Primary headings and body copy |
-| `--color-text-muted` | `var(--ink-600)` (`#475569`) | `var(--ink-400)` (`#94a3b8`) | Secondary metadata, timestamps, labels |
-| `--color-border` | `var(--ink-200)` (`#e2e8f0`) | `var(--ink-800)` (`#1e293b`) | Subtle 1px structural dividers and card borders |
-| `--color-action-primary` | `var(--teal-600)` (`#138289`) | `var(--teal-400)` (`#3fbec0`) | Primary CTA buttons, active rings, links |
-| `--color-action-hover` | `var(--teal-700)` (`#13686f`) | `var(--teal-300)` (`#7ad8d4`) | Primary CTA hover state |
-| `--color-accent-signal` | `var(--aqua-400)` (`#22d3ee`) | `var(--aqua-400)` (`#22d3ee`) | Live streaming indicators & AI pulse badges |
-| `--color-highlight-warm` | `var(--sun-100)` (`#fef3c7`) | `rgba(254, 243, 199, 0.14)` | Callout highlights and warm tags |
+| UI and display | Plus Jakarta Sans | `--font-jakarta` | `next/font/google` in `app/layout.tsx` (latin subset, `display: swap`) |
+| Code, slugs, metrics | Geist Mono | `--font-geist-mono` | same |
 
----
+`globals.css` sets `html, body` to `var(--font-jakarta)` with system fallbacks, and `code, pre, kbd` to `var(--font-geist-mono)` with monospace fallbacks. There is no `--font-sans` or `--font-mono` variable and no type-scale token: sizes are Tailwind classes in the components (for example the page heading is `text-3xl` up to `lg:text-[2.65rem]`, bold, tight tracking).
 
-## 3. Companion Signature Accent Tokens
+## Product accent tokens
 
-Each of the 6 specialized AI companions has a distinct visual accent token stored in `avatar_accent_token`:
-- **`@SinoPeople`** (`sino-people`): `--teal-500` (People & Culture Warm Teal)
-- **`@SinoFinance`** (`sino-finance`): `--teal-700` (Fiscal Precision Deep Teal)
-- **`@SinoSales`** (`sino-sales`): `--aqua-400` (Revenue Velocity Electric Aqua)
-- **`@SinoSocial`** (`sino-social`): `--sun-100` / `--teal-400` (Creative Editorial Accent)
-- **`@SinoHelp`** (`sino-help`): `--teal-600` (Service Reliability Teal)
-- **`@SinoInsights`** (`sino-insights`): `--ink-800` / `--aqua-400` (Analytical Deep Ink & Cyan)
+The seed sets `accent_token` per product, and `GET /api/v1/agents` returns it. No UI code reads it: product cards use a fixed teal tile.
 
----
+| Product | `accent_token` |
+| :--- | :--- |
+| SinoPeople | `--teal-500` |
+| SinoFinance | `--teal-700` |
+| SinoSales | `--aqua-400` |
+| SinoSocial | `--sun-500` |
+| SinoHelp | `--teal-500` |
+| SinoInsights | `--teal-700` |
 
-## 4. Typography & Spatial Scale
+A product created through `POST /api/v1/agents` gets `--teal-500`. The value is a CSS variable name, so it has to be one of the primitives above.
 
-- **Primary UI & Display Sans**: `'Plus Jakarta Sans'`, system-ui, -apple-system, sans-serif (`--font-sans`)
-- **Technical Telemetry, Slugs & Code**: `'Geist Mono'`, ui-monospace, SFMono-Regular, monospace (`--font-mono`)
-- **Type Scale**:
-  - Hero Headline: `clamp(2rem, 3.2vw, 2.75rem)`, `font-weight: 700`, `letter-spacing: -0.025em`
-  - Section Header: `1.375rem` (`22px`), `font-weight: 600`, `letter-spacing: -0.015em`
-  - Body Copy: `0.9375rem` (`15px`), `line-height: 1.6`
-  - Monospace Badge / Metric: `0.75rem` (`12px`), `font-variant-numeric: tabular-nums`
+## Adding or changing a token
+
+1. Add the semantic token in `:root` and in `[data-theme="dark"]`, in the same change.
+2. Compute contrast for every text pair it creates, in both themes. Normal text 4.5:1, non-text 3:1.
+3. Use it as `var(--token)` in components. Do not add hex to `src/client` (check: `grep -rnE "#[0-9a-fA-F]{3,8}\b" apps/web/src/client`).
+4. Update this document.
+
+## Related
+
+[Design system](design_system.md), [UX and frontend libraries](ux_and_frontend_libraries.md), [agent rules](../governance/agent_rules.md) (R-30), [known issues and tech debt](../development/known_issues_and_tech_debt.md).

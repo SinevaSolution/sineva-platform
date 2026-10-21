@@ -1,63 +1,51 @@
 ---
-title: "Internal Network Security & Zero-Port Isolation"
+title: "Internal Network Security"
 category: "deployment"
 status: "active"
-version: "1.0.0"
+version: "2.0.0"
 last_updated: "2026-10-21"
-owner: "Sineva Security & Infrastructure"
-tags: ["sineva", "security", "network-isolation", "zero-trust", "sineva_internal", "api-key"]
-summary: "Security architecture enforcing zero host-port exposure for sineva-ai and authenticated service-to-service communication over sineva_internal."
+owner: "Sineva Engineering"
+tags: ["sineva", "security", "network-isolation", "sineva_internal", "api-key", "secrets"]
+summary: "How sineva-ai is kept off the host network and authenticated with X-Internal-Api-Key, which variables may reach the browser, how to rotate the shared key, and the security gaps that remain."
 related_docs:
   - "docker_compose_topology.md"
-  - "../research/bff_gateway_pattern.md"
+  - "environment_variables.md"
   - "../troubleshooting/docker_and_internal_network.md"
+  - "../decisions/0001-bff-gateway.md"
+  - "../decisions/0013-internal-service-auth-header.md"
+  - "../governance/agent_rules.md"
 ---
 
-# Internal Network Security & Zero-Port Isolation
+# Internal Network Security
 
-A core architectural invariant of the Sineva system is that **`sineva-ai` is strictly an internal microservice** and must never be directly reachable from the public internet or host network.
+`sineva-ai` is an internal service. The browser talks to `sineva-platform`, and only `sineva-platform` talks to `sineva-ai` ([ADR-0001](../decisions/0001-bff-gateway.md), R-29). Two controls enforce that, and one gap sits next to them.
 
----
+## Control 1: no host port
 
-## 1. Zero Host-Port Exposure (`expose` vs `ports`)
+In `docker-compose.yml`, `sineva-ai` has `expose: ["8000"]` and no `ports:` entry. Docker does not bind port 8000 on the host, so only containers on the `sineva_internal` network can resolve `sineva-ai` and connect to `http://sineva-ai:8000`. Check with `docker compose ps`: `sineva-ai` shows `8000/tcp` with no `0.0.0.0:` mapping, and `sineva-platform` shows `0.0.0.0:3000->3000/tcp`.
 
-In [`docker-compose.yml`](../../docker-compose.yml):
-```yaml
-  sineva-ai:
-    build:
-      context: ../sineva-ai
-      dockerfile: Dockerfile
-    container_name: sineva-ai
-    restart: unless-stopped
-    expose:
-      - "8000"
-    networks:
-      - sineva_internal
+## Control 2: shared secret on every call
+
+The platform sends `X-Internal-Api-Key` with the value of `AI_ENGINE_INTERNAL_API_KEY` on every request to `sineva-ai`: chat (`POST /api/v1/agents/{slug}/chat`) and the health probe (`GET /api/v1/health`). The gateway is `InternalAiEngineGateway` in `apps/web/src/server/infrastructure/gateways/`. It sends no other auth or tracing header. The old header `X-Internal-Service-Token` was a bug and is gone; the contract test asserts it is never sent ([ADR-0013](../decisions/0013-internal-service-auth-header.md)).
+
+`sineva-ai` compares the header with its `INTERNAL_API_KEY` using `secrets.compare_digest` and answers 401 when the header is missing or wrong. That check can be switched off with its `ENFORCE_INTERNAL_AUTH` setting, which defaults to on and which compose does not set. Keep it on.
+
+Rotating the key: set a new `AI_ENGINE_INTERNAL_API_KEY` in the environment that compose reads, then recreate both containers so both pick it up together:
+
+```bash
+docker compose up -d --force-recreate sineva-ai sineva-platform
 ```
-- **No `ports:` directive is present** on `sineva-ai`. Docker does not bind port `8000` to `0.0.0.0` or `127.0.0.1` on the host.
-- Only containers attached to the `sineva_internal` bridge network (`sineva-platform`) can resolve DNS hostname `sineva-ai` and connect to `http://sineva-ai:8000`.
 
----
+Between the first container restarting and the second, calls fail with 401 on the engine side and 502 on the platform side. Do it when that is acceptable.
 
-## 2. Defense-in-Depth: `X-Internal-Api-Key` Verification
+## What may reach the browser
 
-Network isolation is paired with cryptographic shared-secret authentication at the application layer:
-1. **`sineva-platform` Outbound Gateway (`AiEngineHttpGateway`)**:
-   - Reads `AI_ENGINE_INTERNAL_URL` (`http://sineva-ai:8000`) and `AI_ENGINE_INTERNAL_API_KEY` from server-only environment variables (never prefixed with `NEXT_PUBLIC_`).
-   - Attaches `X-Internal-Api-Key` and `X-Request-Id` on every request to `sineva-ai`.
-2. **`sineva-ai` Inbound Middleware**:
-   - Validates `X-Internal-Api-Key` using constant-time comparison (`secrets.compare_digest`) before executing any agent or workflow route.
-   - Rejects unauthorized requests immediately with `401 Unauthorized` wrapped in the standard `snake_case` error envelope.
+Only `NEXT_PUBLIC_*` variables ship to the client, and no secret belongs in one (R-28). Every variable the app actually reads is server-only; the full list is in [environment variables](environment_variables.md). Server modules carry `import 'server-only'`, and the architecture test and ESLint stop client code from importing them.
 
----
+## Gaps
 
-## 3. Environment Variable Hygiene
-
-| Variable | Scope | Exposed to Browser? |
-| :--- | :--- | :--- |
-| `NEXT_PUBLIC_APP_URL` | Client & Server | Yes |
-| `NEXT_PUBLIC_API_BASE_URL` | Client & Server | Yes (`/api/v1`) |
-| `AI_ENGINE_INTERNAL_URL` | Server-Only BFF | **NEVER** |
-| `AI_ENGINE_INTERNAL_API_KEY` | Server-Only BFF | **NEVER** |
-| `DATABASE_URL` | Server-Only BFF | **NEVER** |
-| `S3_SECRET_ACCESS_KEY` | Server-Only BFF | **NEVER** |
+- Hardcoded default secrets. The internal key, the Postgres password and the S3 key pair have defaults in code and in `docker-compose.yml` (`sineva_internal_service_token_dev` and friends). Anyone who reads the repo knows them. Set real values in every shared environment.
+- Published data-store ports. Postgres (5432), Redis (6379, no password), Qdrant (6333) and the SeaweedFS master, filer and S3 ports are published on all host interfaces. See the [topology](docker_compose_topology.md). Network isolation protects `sineva-ai` only.
+- No user authentication. The platform has no login, `user_id` is trusted from the request body, and `POST /api/v1/storage/presign` takes `workspace_id` from the body. Anyone who can reach port 3000 can call chat and presign (R-27).
+- Upstream error bodies in logs. When `sineva-ai` answers with a non-2xx status, the gateway logs the first 500 characters of the body. An error body may contain user text. The key itself is never logged (a contract test checks this).
+- Presign failure. `SeaweedStorageRepository` returns an unsigned URL when signing throws, instead of failing.

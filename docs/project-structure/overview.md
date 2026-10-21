@@ -1,107 +1,108 @@
 ---
-title: "Architecture & Project Structure Overview"
+title: "Architecture and Project Structure Overview"
 category: "project-structure"
 status: "active"
-version: "1.0.0"
+version: "2.0.0"
 last_updated: "2026-10-21"
 owner: "Sineva Engineering"
-tags: ["sineva", "architecture", "turborepo", "bff", "topology", "clean-architecture"]
-summary: "High-level architecture overview of the Sineva Platform Turborepo monorepo, BFF gateway topology, and shared infrastructure with the internal Sineva AI Engine."
+tags: ["sineva", "architecture", "turborepo", "bff", "topology", "nextjs"]
+summary: "What sineva-platform is, how it connects to sineva-ai and the shared data stores, which parts of that wiring are real today, and where code lives in the repository."
 related_docs:
-  - "../README.md"
+  - "README.md"
   - "turborepo_workspaces.md"
   - "clean_architecture_layers.md"
+  - "frontend_architecture.md"
   - "../deployment/docker_compose_topology.md"
+  - "../decisions/0001-bff-gateway.md"
+  - "../decisions/0004-web-app-structure-and-dependency-rules.md"
 ---
 
-# Architecture & Project Structure Overview
+# Architecture and Project Structure Overview
 
-`sineva-platform` is the user-facing web application and Backend-for-Frontend (BFF) API gateway for the Sineva AI ecosystem. Built as a strict TypeScript Turborepo monorepo around Next.js 15+ (App Router), it provides the unified workspace where users collaborate with specialized AI companions (`@SinoPeople`, `@SinoFinance`, `@SinoSales`, `@SinoSocial`, `@SinoHelp`, `@SinoInsights`) while acting as the security and orchestration boundary over the internal Python AI Engine (`sineva-ai`).
+`sineva-platform` is the web app and Backend-for-Frontend (BFF) for the Sineva suite. It is the only public entry point. `sineva-ai` (Python FastAPI) runs the companions and is reachable only from the platform, over the internal Docker network ([ADR-0001](../decisions/0001-bff-gateway.md)).
 
----
+It is one Next.js 16.4 App Router application in a Turborepo monorepo. The user talks to Sino in one chat and calls a product by @mention ([ADR-0010](../decisions/0010-one-chat-with-mentions.md)). "Current" below is what the code does today. "Target" is decided and not built.
 
-## 1. High-Level System Topology
-
-All public HTTP traffic enters exclusively through `sineva-platform` on port `3000`. The Python FastAPI AI Engine (`sineva-ai`) never exposes ports to the host machine or public internet; instead, `sineva-platform` communicates with `sineva-ai` over an isolated Docker bridge network (`sineva_internal`) using authenticated service-to-service headers (`X-Internal-Api-Key`).
+## 1. Topology
 
 ```mermaid
 flowchart TB
-    subgraph Public["Public Network / Browser"]
-        Browser["Web Client (React 19 + Redux Toolkit)"]
+    Browser["Browser (React 19, Redux Toolkit)"]
+
+    subgraph Net["Docker network: sineva_internal"]
+        Platform["sineva-platform (Next.js BFF)\nport 3000, published"]
+        AI["sineva-ai (FastAPI)\nport 8000, expose only"]
+        PG[("Postgres 17\ndb sineva_platform\nschemas: platform, sineva_ai")]
+        Redis[("Redis 7.4\nDB 0 platform, DB 1 sineva-ai")]
+        S3[("SeaweedFS S3\nbucket sineva-assets")]
+        Qdrant[("Qdrant")]
     end
 
-    subgraph Internal["Docker Bridge Network: sineva_internal"]
-        Platform["sineva-platform (Next.js 15 BFF)\nPort 3000 (Public)"]
-        AIEngine["sineva-ai (FastAPI + Agno + MCP)\nPort 8000 (Internal Only - expose: 8000)"]
-        Postgres[("PostgreSQL 17\nsineva_platform (:5432)")]
-        Redis[("Redis 7.4\nDB 0: Platform | DB 1: AI (:6379)")]
-        SeaweedS3[("SeaweedFS S3 Gateway\nsineva-assets (:8333)")]
-        Qdrant[("Qdrant Vector DB\n(:6333)")]
-    end
-
-    Browser <-->|"HTTPS / JSON (snake_case)"| Platform
-    Browser -.->|"Presigned PUT/GET"| SeaweedS3
-    Platform <-->|"HTTP + X-Internal-Api-Key\nhttp://sineva-ai:8000"| AIEngine
-    Platform <-->|"Drizzle ORM"| Postgres
-    Platform <-->|"ioredis (DB 0)"| Redis
-    Platform <-->|"AWS SDK S3"| SeaweedS3
-    AIEngine <-->|"SQLAlchemy Async"| Postgres
-    AIEngine <-->|"redis-py (DB 1)"| Redis
-    AIEngine <-->|"aioboto3"| SeaweedS3
-    AIEngine <-->|"qdrant-client"| Qdrant
+    Browser <-->|"JSON, snake_case"| Platform
+    Browser -.->|"presigned PUT"| S3
+    Platform <-->|"X-Internal-Api-Key"| AI
+    Platform <-->|"Prisma + adapter-pg"| PG
+    Platform -.->|"cache port (in-memory today)"| Redis
+    Platform <-->|"AWS SDK S3"| S3
+    AI <--> PG
+    AI <--> Redis
+    AI <--> Qdrant
 ```
 
----
+The diagram shows who talks to whom, not what is published. `docker-compose.yml` also publishes Postgres (5432), Redis (6379, no password), Qdrant (6333) and the SeaweedFS master, filer and S3 ports (9333, 8888, 8333) on the host. Only `sineva-ai` and `seaweedfs-volume` have no host port ([topology](../deployment/docker_compose_topology.md)).
 
-## 2. Monorepo Directory Layout
+What is real today:
 
-The repository is organized as a Turborepo monorepo with clear separation between reusable packages (`packages/*`) and deployable applications (`apps/*`):
+| Link | Current |
+| :--- | :--- |
+| Browser to platform | Real. Public routes under `/api/v1/*`. |
+| Platform to sineva-ai | Real. `InternalAiEngineGateway` calls it with `X-Internal-Api-Key` ([ADR-0013](../decisions/0013-internal-service-auth-header.md)). Failures surface as 502 or 503. |
+| Platform to Postgres | Real for agents: `PrismaAgentRepository` over `@prisma/adapter-pg`. Only `agent_configs` has an adapter. The schema also defines `workspaces`, `users`, `chat_sessions`, `chat_messages` and `storage_objects`, which no code reads or writes yet. |
+| Platform to Redis | Not real. `RedisCacheRepository` stores values in an in-process `Map` and `ping()` always returns `true`. `redis_client.ts` builds an `ioredis` client that nothing calls. |
+| Platform to SeaweedFS | Real for presigning (`SeaweedStorageRepository`). When signing throws, it returns an unsigned URL, and its health check only tests that an endpoint is configured. |
+
+The shared database holds two schemas: the platform owns `platform`, sineva-ai owns `sineva_ai`, and neither writes to `public` ([ADR-0006](../decisions/0006-shared-postgres-platform-schema.md)). The remaining stubs are listed in [known issues](../development/known_issues_and_tech_debt.md).
+
+## 2. Repository layout
 
 ```text
 sineva-platform/
-├── .github/
-│   └── workflows/
-│       └── ci.yml                 # Automated lint, typecheck, test, and build pipeline
-├── apps/
-│   └── web/                       # Primary Next.js 15+ App Router application & BFF Gateway
-│       ├── src/
-│       │   ├── domain/            # Enterprise business entities, repository interfaces, domain errors
-│       │   ├── application/       # Use cases, DTOs, validation schemas, application services
-│       │   ├── infrastructure/    # Drizzle DB, Redis, SeaweedFS S3, Internal AI HTTP Gateway
-│       │   ├── presentation/      # Redux store/slices, UI components, hooks, design tokens
-│       │   └── app/               # Next.js App Router pages and /api/v1/* Route Handlers
-│       ├── next.config.ts
-│       ├── tsconfig.json
-│       └── vitest.config.ts
-├── packages/
-│   ├── shared/                    # @sineva/shared: Response envelopes, snake_case utilities, shared types
-│   │   └── src/
-│   │       ├── index.ts
-│   │       ├── response.ts        # createSuccessResponse, createPaginatedResponse, createErrorResponse
-│   │       └── snake_case.ts      # Compile-time and runtime snake_case key enforcement
-│   └── ui/                        # @sineva/ui: Shared accessible UI primitives (Radix + CVA + Tailwind)
-│       └── src/
-│           └── index.tsx
-├── docs/                          # Comprehensive YAML-frontmatter engineering documentation
-├── Dockerfile                     # Multi-stage production container build
-├── docker-compose.yml             # Full-stack local & staging orchestration
-├── package.json                   # Root workspace scripts and devDependencies
-└── turbo.json                     # Turborepo task dependency graph and caching config
+  apps/web/                    @sineva/web: the Next.js app and BFF
+    prisma/                    schema.prisma, migrations/, seed.ts
+    prisma.config.ts
+    src/
+      app/                     routing edge: pages, layouts, /api/v1/* handlers, /api-docs
+      server/                  backend, never shipped to the browser
+        domain/                entities, ports (repositories/), errors
+        application/           use-cases/, dtos/
+        infrastructure/        database, cache, storage, gateways, config, openapi
+        http/                  response_helper, agent_view_contract, chat_view_contract
+        container.ts           composition root
+      client/                  components/, store/
+      shared/                  agent_view.ts, chat_view.ts (wire types)
+      __tests__/               unit tests, fakes/, contract/, integration/, stubs/
+  packages/shared/             @sineva/shared: response envelope, snake_case helpers
+  packages/ui/                 @sineva/ui: Button, Card, Badge, Container, StatusPill
+  docs/
+  docker-compose.yml, Dockerfile, turbo.json, package.json
 ```
 
----
+Where to read next:
 
-## 3. Core Architectural Pillars
+- Layers and import rules: [clean architecture layers](clean_architecture_layers.md).
+- Workspaces and the build graph: [turborepo workspaces](turborepo_workspaces.md).
+- Browser side: [frontend architecture](frontend_architecture.md).
 
-### 3.1 Clean Architecture Inside `apps/web`
-Rather than coupling database queries or external API calls directly inside Next.js Route Handlers or Server Components, `apps/web/src` is partitioned into four strict concentric layers:
-1. **`domain/`**: Pure TypeScript entities, value objects, and repository/gateway interfaces. Zero framework imports.
-2. **`application/`**: Use cases (`ListAgentsUseCase`, `SendAgentChatUseCase`, `CreatePresignedUploadUseCase`) that orchestrate domain interfaces.
-3. **`infrastructure/`**: Concrete adapters for PostgreSQL (Drizzle ORM), Redis (`ioredis`), SeaweedFS S3 (`@aws-sdk/client-s3`), and the internal AI Engine HTTP client (`AiEngineHttpGateway`).
-4. **`presentation/` & `app/`**: Next.js Route Handlers (`/api/v1/*`), Swagger UI (`/api-docs`), React components, and Redux Toolkit state slices.
+## 3. Core decisions
 
-### 3.2 End-to-End `snake_case` Contract
-Because `sineva-platform` (TypeScript) and `sineva-ai` (Python 3.13 + Pydantic + SQLAlchemy) share PostgreSQL, Redis, and JSON payloads over the wire, **every data property key** across database columns, REST request/response payloads, OpenAPI schemas, and Redux state slices uses strict `snake_case` (e.g., `agent_slug`, `conversation_id`, `total_items`, `request_id`). Zero runtime camelCase-to-snake_case translation overhead is incurred.
+- Structure ([ADR-0004](../decisions/0004-web-app-structure-and-dependency-rules.md)): `app`, `server`, `client` and `shared` inside one app, with import rules enforced by `architecture.test.ts` and ESLint. Backend as separate packages and a separate API app were both rejected.
+- Wire contract ([ADR-0003](../decisions/0003-snake-case-wire-contract.md)): `snake_case` JSON keys everywhere, and every `/api/v1/*` response goes through the `ApiResponse<T>` envelope from `@sineva/shared` via `response_helper`.
+- Data ([ADR-0005](../decisions/0005-prisma-replaces-drizzle.md), [ADR-0014](../decisions/0014-uuid-primary-keys.md)): Prisma 7.10.1 pinned exactly, UUID primary keys in both services.
+- Chat contract ([ADR-0015](../decisions/0015-sineva-ai-owns-internal-chat-contract.md)): sineva-ai owns it and the platform adapts. The public chat response mirrors sineva-ai's field names.
+- Failures ([ADR-0008](../decisions/0008-no-silent-fallbacks.md), [ADR-0016](../decisions/0016-upstream-failures-return-502-503.md)): no silent fallbacks. A failed dependency is an error the user can see.
 
-### 3.3 Standardized API Envelope
-Every endpoint under `/api/v1/*` returns the deterministic `ApiResponse<T>` envelope from `@sineva/shared` (`success`, `status`, `message`, `data`, `meta`, `errors`), matching the exact schema returned by `sineva-ai`.
+## 4. Known gaps that shape the design
+
+- No authentication. The chat and presign bodies carry `user_id` and `workspace_id`, and the server trusts them (R-27).
+- Default secrets are hardcoded in `server/infrastructure/config/env.ts` and `docker-compose.yml` (R-28).
+- The `/api-docs` page renders the OpenAPI document as a static list and JSON dump. It is not Swagger UI.

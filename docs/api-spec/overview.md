@@ -1,53 +1,149 @@
 ---
-title: "REST API Overview & Contracts"
+title: "API Overview"
 category: "api-spec"
 status: "active"
-version: "1.0.0"
+version: "2.0.0"
 last_updated: "2026-10-21"
 owner: "Sineva Engineering"
-tags: ["sineva", "api-spec", "rest", "snake-case", "bff", "versioning"]
-summary: "Overview of the sineva-platform public RESTful API (/api/v1/*), strict snake_case request/response contract, headers, and BFF gateway routing."
+tags: ["sineva", "api-spec", "rest", "envelope", "errors", "snake-case", "bff"]
+summary: "The five HTTP routes of sineva-platform, the shared response envelope, how request ids and timestamps are produced, every error code, and what the API does not have yet."
 related_docs:
-  - "../engineering/response_pattern.md"
-  - "swagger_and_openapi.md"
+  - "README.md"
   - "agents_and_chat_endpoints.md"
   - "storage_and_health_endpoints.md"
+  - "swagger_and_openapi.md"
+  - "../engineering/response_pattern.md"
+  - "../engineering/error_handling_and_failure_modes.md"
+  - "../decisions/0003-snake-case-wire-contract.md"
 ---
 
-# REST API Overview & Contracts
+# API overview
 
-`sineva-platform` exposes a versioned RESTful API under `/api/v1/*` implemented via Next.js App Router Route Handlers (`apps/web/src/app/api/v1/`). It serves both the React/Redux web client and authorized external integrations while acting as the BFF gateway to the isolated `sineva-ai` microservice.
+`sineva-platform` is the only public entry point of the suite ([ADR-0001](../decisions/0001-bff-gateway.md)). Its HTTP API is five Next.js route handlers in `apps/web/src/app/api`. Each handler does three things: parse input with Zod, call a use case from `@/server/container`, answer through `server/http/response_helper`. Responses use the envelope from `@sineva/shared` (`packages/shared/src/response.ts`).
 
----
+"Current" is what the code does. "Target" is decided but not built.
 
-## 1. Base URLs & Versioning
+## Gotchas first
 
-| Environment | Public Base URL | OpenAPI Spec JSON | Interactive Swagger UI |
+- Current: there is no authentication or authorization on any route. `user_id` and `workspace_id` come from the request body. Anyone who can reach the port can register an agent, chat as any user, and presign an upload into any workspace prefix.
+- A malformed or empty JSON body returns 500, not 400 or 422. `request.json()` throws a `SyntaxError` that no handler catches as a validation problem, so `handleRouteError` falls through to the generic 500 branch.
+- A 500 carries the raw `error.message` of whatever was thrown. A database or driver error text can reach the client.
+- Unknown keys in a request body are silently dropped (Zod `z.object` strips them). A misspelled optional field is ignored, not rejected.
+- `meta.request_id` is generated per response by `Math.random`. It is not read from a request header, not sent to `sineva-ai`, and not returned as a header.
+- The health route returns 200 even when every subsystem is `standby`.
+
+## Entry points
+
+| Item | Value |
+| :--- | :--- |
+| Base path | `/api/v1` (path versioning) |
+| Local host and port | `http://localhost:3000` (`next dev` and the compose service both use 3000) |
+| OpenAPI document | `GET /api/openapi.json` |
+| Docs page | `/api-docs` (a static view, see [swagger and OpenAPI](swagger_and_openapi.md)) |
+| Production host | Not documented in this repository. The OpenAPI `servers` list only has the local URL. |
+
+## Route inventory
+
+| Method | Path | Handler | Use case | Success | Error statuses |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| `GET` | `/api/v1/health` | `app/api/v1/health/route.ts` | `GetSystemHealthUseCase` | 200 | 500 |
+| `GET` | `/api/v1/agents` | `app/api/v1/agents/route.ts` | `GetAgentsUseCase.execute` | 200 | 422, 500 |
+| `POST` | `/api/v1/agents` | `app/api/v1/agents/route.ts` | `GetAgentsUseCase.registerAgent` | 201 | 409, 422, 500 |
+| `POST` | `/api/v1/agents/{agent_slug}/chat` | `app/api/v1/agents/[agent_slug]/chat/route.ts` | `SendAgentMessageUseCase` | 200 | 404, 422, 500, 502, 503 |
+| `POST` | `/api/v1/storage/presign` | `app/api/v1/storage/presign/route.ts` | `PresignStorageUploadUseCase` | 201 | 422, 500 |
+| `GET` | `/api/openapi.json` | `app/api/openapi.json/route.ts` | none (static) | 200 | none |
+
+`/api/v1/agents` keeps the word "agent" in the path, the JSON keys and the types. User-facing copy says "companion" and "product" ([ADR-0011](../decisions/0011-user-facing-wording.md), [product model](../product/product_model_and_wording.md)).
+
+## The envelope
+
+Every route except `/api/openapi.json` answers with `ApiResponse<T>`:
+
+```ts
+interface ApiResponse<T> {
+  success: boolean;
+  status: number;            // same number as the HTTP status
+  message: string;
+  data: T | null;            // null on errors
+  meta: ResponseMeta | null; // always an object today
+  errors: ErrorDetail[] | null; // null on success
+}
+interface ErrorDetail { code: string; field: string | null; detail: string }
+```
+
+Three constructors build it: `createSuccessResponse`, `createPaginatedResponse`, `createErrorResponse`. Handlers never build it by hand (R-24); they call `sendSuccessJson`, `sendPaginatedJson` or `handleRouteError` from `server/http/response_helper.ts`.
+
+Success:
+
+```json
+{
+  "success": true,
+  "status": 200,
+  "message": "Sineva platform and shared infrastructure health verified",
+  "data": {},
+  "meta": { "request_id": "req_1792547075000_k3j9x2ab", "timestamp": "2026-10-21T01:44:35.000Z" },
+  "errors": null
+}
+```
+
+Paginated (`GET /api/v1/agents`) adds to `meta`: `page`, `per_page`, `total_items`, `total_pages`, `has_next`, `has_prev`. `total_pages` is at least 1, even for an empty list, so an empty result has `total_pages: 1` and `has_next: false`.
+
+Error:
+
+```json
+{
+  "success": false,
+  "status": 404,
+  "message": "Agent 'unknown-companion' was not found",
+  "data": null,
+  "meta": { "request_id": "req_1792547075000_k3j9x2ab", "timestamp": "2026-10-21T01:44:35.000Z" },
+  "errors": [{ "code": "RESOURCE_NOT_FOUND", "field": null, "detail": "Agent 'unknown-companion' was not found" }]
+}
+```
+
+### Request id and timestamp
+
+- `request_id` is `req_<Date.now()>_<up to 8 base36 characters>`, from `generateRequestId()` in `packages/shared/src/response.ts`. It is not cryptographically random and not guaranteed unique. Do not use it as a security token or a database key.
+- `timestamp` is `new Date().toISOString()` at the moment the envelope is built (UTC, millisecond precision).
+- There is no `X-Request-Id` handling and no response header. Target: accept an incoming id, echo it in a header and forward it to `sineva-ai`, so one request can be traced across both services.
+
+## Errors
+
+`handleRouteError` maps what a handler throws:
+
+| Thrown | Status | `errors[].code` | `message` |
 | :--- | :--- | :--- | :--- |
-| **Local Development / Docker** | `http://localhost:3000/api/v1` | `http://localhost:3000/api/openapi.json` | `http://localhost:3000/api-docs` |
-| **Production** | `https://app.sineva.ai/api/v1` | `https://app.sineva.ai/api/openapi.json` | `https://app.sineva.ai/api-docs` |
+| `ZodError` | 422 | `VALIDATION_ERROR` (one entry per issue) | `Request payload validation failed` |
+| `NotFoundError` | 404 | `RESOURCE_NOT_FOUND` | `<Resource> '<id>' was not found` |
+| `ConflictError` | 409 | `RESOURCE_CONFLICT` | `<Resource> '<id>' already exists` |
+| `UpstreamServiceError` | 502 | `UPSTREAM_ERROR` | `The AI engine returned an unexpected response` |
+| `UpstreamUnavailableError` | 503 | `UPSTREAM_UNAVAILABLE` | `The AI engine is unavailable` |
+| any other `DomainError` | its own `status` (default 400) | its own `code` | its own message |
+| anything else (including `SyntaxError`) | 500 | `INTERNAL_SERVER_ERROR` | the raw `error.message`, or `Unexpected server error` |
 
----
+- Validation: `errors[].field` is the Zod path joined with `.` (for example `capabilities.0`), or `null` for a root-level problem. `detail` is Zod's default message text, which can change when Zod is upgraded. Clients should key on `code` and `field`, not on `detail`.
+- 502 and 503 messages are fixed and client-safe. The upstream status and body go to the server log only ([ADR-0016](../decisions/0016-upstream-failures-return-502-503.md)).
+- Check order in the chat route: JSON parse (500 on bad JSON), Zod validation (422), agent lookup (404), then the upstream call (502 or 503). A bad body for an unknown slug returns 422, not 404.
+- Current gap: the 500 branch should return a fixed message and log the cause. It is listed in [known issues and tech debt](../development/known_issues_and_tech_debt.md).
 
-## 2. Core Contract Rules
+## Conventions
 
-1. **Strict `snake_case` Wire Protocol**:
-   - Every query parameter (`?page=1&per_page=10&is_active=true`), path parameter (`{agent_slug}`), JSON request body key (`conversation_id`, `file_name`, `content_type`), and JSON response key (`request_id`, `total_items`, `reply_markdown`) MUST be `snake_case`.
-   - Requests containing non-`snake_case` top-level or nested keys are rejected with `400 Bad Request` (`INVALID_KEY_CONVENTION`) or normalized at the boundary.
-2. **Standardized Envelope (`ApiResponse<T>`)**:
-   - All responses return `success`, `status`, `message`, `data`, `meta`, and `errors` via `@sineva/shared`.
-3. **Request Tracing (`X-Request-Id`)**:
-   - Clients may pass an optional `X-Request-Id` header. If omitted, the platform generates a deterministic `req_<timestamp>_<random>` identifier, echoes it in `meta.request_id`, and forwards it to `sineva-ai`.
+- `snake_case` for every JSON key, query parameter, path parameter and `meta` field (R-23, [ADR-0003](../decisions/0003-snake-case-wire-contract.md)). `assertSnakeCaseKeys` in `@sineva/shared` checks one level of keys and is only used by the tests in `packages/shared`; no route test calls it today, so the convention is held by review and by the typed views. Free-form maps such as `context_metadata`, `token_usage` and `tool_calls[].arguments` hold whatever keys the caller or `sineva-ai` put in them.
+- Timestamps are ISO 8601 strings. Agent ids are UUIDs generated by the database ([ADR-0014](../decisions/0014-uuid-primary-keys.md)).
+- Pagination: `page` (from 1) and `per_page` (1 to 100, default 10) in the query.
+- Content type: `application/json` in and out. The handlers do not check the request `Content-Type`; they call `request.json()`.
 
----
+## What the API does not have yet
 
-## 3. Endpoint Summary Matrix
+| Missing | Effect today |
+| :--- | :--- |
+| Authentication and authorization | Every route is open. Identity is whatever the body says (R-27). |
+| Rate limiting | None. Repeated chat failures cost one upstream timeout each. |
+| CORS configuration | None in code. Browsers can only call the API from the same origin. |
+| Idempotency keys | A retried chat turn can run twice. See the retry note in [agents and chat endpoints](agents_and_chat_endpoints.md). |
+| Deprecation policy | Only the `/v1` prefix and `info.version` `1.0.0` in the OpenAPI document. No policy is written down. |
+| Request body size limit beyond field limits | Field maximums apply after the body is read. |
 
-| Method | Path | Use Case | Description |
-| :--- | :--- | :--- | :--- |
-| `GET` | `/api/v1/health` | `CheckSystemHealthUseCase` | Platform, database, Redis, S3, and internal `sineva-ai` connectivity health check. |
-| `GET` | `/api/v1/agents` | `ListAgentsUseCase` | Paginated list of Sineva AI companions (`@SinoPeople`..`@SinoInsights`) with department filtering. |
-| `POST` | `/api/v1/agents` | `CreateAgentUseCase` | Register a new specialized AI companion in the workspace catalog. |
-| `POST` | `/api/v1/agents/{agent_slug}/chat` | `ChatWithAgentUseCase` | Dispatch a user prompt to a specific companion via the internal `sineva-ai` engine. |
-| `POST` | `/api/v1/storage/presign` | `GeneratePresignedUploadUseCase` | Generate a SeaweedFS S3 presigned upload (`PUT`) and download (`GET`) ticket. |
-| `GET` | `/api/openapi.json` | OpenAPI Generator | Complete OpenAPI 3.1.0 machine-readable specification. |
+## Related
+
+[Agents and chat endpoints](agents_and_chat_endpoints.md), [storage and health endpoints](storage_and_health_endpoints.md), [swagger and OpenAPI](swagger_and_openapi.md), [response pattern](../engineering/response_pattern.md), [known issues and tech debt](../development/known_issues_and_tech_debt.md).

@@ -2,87 +2,135 @@
 title: "Sineva Platform Documentation Index"
 category: "root"
 status: "active"
-version: "1.0.0"
+version: "2.1.0"
 last_updated: "2026-10-21"
 owner: "Sineva Engineering"
-tags: ["sineva", "platform", "documentation", "index", "architecture", "turborepo"]
-summary: "Master documentation index for the Sineva Platform (Next.js BFF, Turborepo monorepo, Clean Architecture, UI Design System, and API Specifications)."
+tags: ["sineva", "platform", "documentation", "index"]
+summary: "Index of every folder and document under docs/, with the folder READMEs and a pointer to the rules and decisions that govern changes."
 related_docs:
+  - "governance/README.md"
+  - "governance/agent_rules.md"
+  - "decisions/README.md"
   - "project-structure/overview.md"
-  - "engineering/coding_standards.md"
-  - "design-context/design_system.md"
-  - "api-spec/overview.md"
 ---
 
-# Sineva Platform Documentation (`sineva-platform`)
+# Sineva Platform Documentation
 
-Welcome to the official engineering, architecture, and design documentation for **`sineva-platform`**. Every document in this repository begins with structured YAML frontmatter so both human engineers and autonomous AI coding agents can rapidly index, traverse, and enforce platform invariants.
+Index of the docs for `sineva-platform`. Start with the root [`AGENTS.md`](../AGENTS.md), which routes you by task. Every folder has a `README.md` that says what the folder is for, lists its files, and suggests a reading order. Every doc starts with YAML frontmatter (`title`, `category`, `status`, `version`, `last_updated`, `owner`, `tags`, `summary`, `related_docs`).
 
----
+In these docs, "Current" means what the code does today and "Target" means decided but not yet built. Rules are cited as R-xx ([agent rules](governance/agent_rules.md)) and decisions as ADR-NNNN ([decisions](decisions/README.md)).
 
-## System Snapshot
+## Snapshot
 
-| Attribute | Specification |
+| Attribute | Value |
 | :--- | :--- |
-| **Monorepo Orchestrator** | Turborepo (`apps/web`, `packages/shared`, `packages/ui`) |
-| **Primary Framework** | Next.js 15+ (App Router, React 19, TypeScript 5.8+ Strict Mode) |
-| **Architectural Pattern** | Clean Architecture (`domain` → `application` → `infrastructure` → `presentation`) + BFF Gateway |
-| **Data & Serialization Contract** | Strict `snake_case` across PostgreSQL (Drizzle ORM), Redis, REST JSON payloads, and Redux Toolkit slices |
-| **Shared Infrastructure** | PostgreSQL 17, Redis 7.4, SeaweedFS S3 (`:8333`), and internal bridge (`sineva_internal`) to `sineva-ai:8000` |
+| Repository | Turborepo monorepo: `apps/web`, `packages/shared`, `packages/ui` |
+| Framework | Next.js 16.4 App Router, React 19.2, TypeScript 5.7 |
+| App structure | One BFF app: `src/app` (routes), `src/server` (backend layers and container), `src/client` (frontend), `src/shared` (wire types) |
+| Data | Postgres 17 database `sineva_platform`, schema `platform` (Prisma 7.10.1, UUID keys), shared with `sineva-ai` (schema `sineva_ai`); Redis 7.4; SeaweedFS S3 |
+| Wire contract | `snake_case` JSON, shared response envelope |
+| Internal AI engine | `sineva-ai`, internal network only, `X-Internal-Api-Key`; it owns the chat contract; failures return 502 or 503 |
 
----
+## Governance (`governance/`)
 
-## Complete Documentation Directory
+Rules for changing the repository. Folder guide: [README](governance/README.md).
 
-### 1. Project Structure (`docs/project-structure/`)
-Architectural topology, workspace boundaries, and Clean Architecture dependency rules.
-- [Architecture & Topology Overview](./project-structure/overview.md) — End-to-end BFF-to-AI Engine topology, shared data stores, and monorepo layout.
-- [Turborepo Workspaces & Build Pipeline](./project-structure/turborepo_workspaces.md) — Boundaries and build graph for `apps/web`, `@sineva/shared`, and `@sineva/ui`.
-- [Clean Architecture Layers](./project-structure/clean_architecture_layers.md) — Strict inward dependency rules across `domain`, `application`, `infrastructure`, and `presentation`.
+- [Agent Rules](governance/agent_rules.md): numbered MUST and MUST NOT rules, each with a reason and a check.
+- [Git and PR Workflow](governance/git_and_pr_workflow.md): Conventional Commits, PR template, evidence.
 
-### 2. Engineering Standards (`docs/engineering/`)
-Core coding conventions, design patterns, standardized response envelopes, database rules, and testing pipelines.
-- [Coding Standards & Naming Conventions](./engineering/coding_standards.md) — TypeScript strict mode, `snake_case` data/API enforcement, ESLint, and Prettier rules.
-- [Software Design Patterns](./engineering/design_pattern.md) — Repository, Use Case, Gateway/Adapter, Factory, and Redux Toolkit slice patterns.
-- [Standardized API Response Pattern](./engineering/response_pattern.md) — Specification of `@sineva/shared` (`ApiResponse<T>`, `ResponseMeta`, `PaginationMeta`, `ErrorDetail`).
-- [Database & Drizzle ORM Conventions](./engineering/database_conventions.md) — PostgreSQL 17 + Drizzle ORM schema rules, `snake_case` columns, indexing, and migrations.
-- [State Management with Redux Toolkit](./engineering/state_management_redux.md) — Typed Redux store architecture, async thunks, and `snake_case` client state slices.
-- [Testing Strategy & CI Pipeline](./engineering/testing_and_ci.md) — TDD workflow with Vitest, unit vs. integration testing boundaries, and GitHub Actions automation.
+## Decisions (`decisions/`)
 
-### 3. Design Context & UI System (`docs/design-context/`)
-AI-Native visual hierarchy, three-layer CSS token architecture, accessible primitives, and brand voice.
-- [AI-Native Design System Philosophy](./design-context/design_system.md) — Visual hierarchy, progressive disclosure, optimistic UI, and WCAG AA accessibility.
-- [Design Tokens & Typography Scale](./design-context/design_tokens.md) — Primitive (`--teal-*`, `--ink-*`, `--aqua-400`, `--sun-100`), Semantic, and Component tokens with Plus Jakarta Sans & Geist Mono.
-- [UX Patterns & Frontend Libraries](./design-context/ux_and_frontend_libraries.md) — Radix UI / shadcn primitives, CVA, Tailwind CSS v4, Motion/GSAP exponential easing, `cmdk` (`⌘K`), and `sonner`.
-- [Copywriting & Brand Voice](./design-context/copywriting_and_brand.md) — Sineva brand personality, companion naming (`@SinoPeople`, `@SinoFinance`, `@SinoSales`, `@SinoSocial`, `@SinoHelp`, `@SinoInsights`), and microcopy guidelines.
+Architecture decision records. Folder guide and index: [README](decisions/README.md).
 
-### 4. API Specification (`docs/api-spec/`)
-Public RESTful BFF endpoints, OpenAPI 3.1 auto-generation, and request/response payload contracts.
-- [REST API Overview & Contracts](./api-spec/overview.md) — Versioning (`/api/v1`), `snake_case` enforcement, authentication headers, and error codes.
-- [Swagger UI & OpenAPI Specification](./api-spec/swagger_and_openapi.md) — How `/api/openapi.json` and `/api-docs` work and how to register new route schemas.
-- [Agents & Chat Endpoints](./api-spec/agents_and_chat_endpoints.md) — Specifications for `GET /api/v1/agents`, `POST /api/v1/agents`, and `POST /api/v1/agents/{agent_slug}/chat`.
-- [Storage & Health Endpoints](./api-spec/storage_and_health_endpoints.md) — Specifications for `GET /api/v1/health` and `POST /api/v1/storage/presign` (SeaweedFS S3).
+- [0001 BFF gateway](decisions/0001-bff-gateway.md)
+- [0002 SeaweedFS presigned uploads](decisions/0002-seaweedfs-presigned-uploads.md)
+- [0003 snake_case wire contract](decisions/0003-snake-case-wire-contract.md)
+- [0004 Web app structure and dependency rules](decisions/0004-web-app-structure-and-dependency-rules.md)
+- [0005 Prisma replaces Drizzle](decisions/0005-prisma-replaces-drizzle.md)
+- [0006 Shared Postgres platform schema](decisions/0006-shared-postgres-platform-schema.md)
+- [0007 TDD, fakes and integration containers](decisions/0007-tdd-fakes-integration-containers.md)
+- [0008 No silent fallbacks](decisions/0008-no-silent-fallbacks.md)
+- [0009 Conventional Commits and PR template](decisions/0009-conventional-commits-and-pr-template.md)
+- [0010 One chat with mentions](decisions/0010-one-chat-with-mentions.md)
+- [0011 User-facing wording](decisions/0011-user-facing-wording.md)
+- [0012 Canonical product slugs and guardrails](decisions/0012-canonical-product-slugs-and-guardrails.md)
+- [0013 Internal service auth header](decisions/0013-internal-service-auth-header.md)
+- [0014 UUID primary keys](decisions/0014-uuid-primary-keys.md)
+- [0015 sineva-ai owns the internal chat contract](decisions/0015-sineva-ai-owns-internal-chat-contract.md)
+- [0016 Upstream failures return 502 or 503](decisions/0016-upstream-failures-return-502-503.md)
 
-### 5. Troubleshooting (`docs/troubleshooting/`)
-Diagnostic runbooks for local development, Docker bridge networking, and storage/database services.
-- [Common Build & Development Issues](./troubleshooting/common_issues.md) — Fixing Turborepo build cache, TypeScript path aliases, and ESLint/Vitest issues.
-- [Docker & Internal Network Debugging](./troubleshooting/docker_and_internal_network.md) — Diagnosing `sineva_internal` bridge traffic between `sineva-platform` and `sineva-ai`.
-- [Storage, PostgreSQL & Redis Troubleshooting](./troubleshooting/storage_db_and_redis.md) — Resolving Drizzle connection issues, Redis key eviction, and SeaweedFS S3 presigned URL signatures.
+## Project Structure (`project-structure/`)
 
-### 6. Development Workflows (`docs/development/`)
-Roadmaps, vertical-slice implementation guides, and RFC templates for human and AI engineers.
-- [Platform Roadmap & Milestones](./development/roadmap.md) — Phased delivery milestones for the Sineva Platform.
-- [Feature Development Workflow](./development/feature_development_workflow.md) — Step-by-step guide to building a feature from Domain entities to Next.js UI and API routes.
-- [Future Features PRD/RFC Template](./development/future_features_template.md) — Standardized template with YAML frontmatter for proposing new platform capabilities.
+Folder guide: [README](project-structure/README.md).
 
-### 7. Deployment & Infrastructure (`docs/deployment/`)
-Container orchestration, zero-trust internal networking, and production CI/CD pipelines.
-- [Docker Compose Topology](./deployment/docker_compose_topology.md) — Complete orchestration of Postgres, Redis, SeaweedFS (Master/Volume/Filer/S3), Qdrant, `sineva-ai`, and `sineva-platform`.
-- [Internal Network Security](./deployment/internal_network_security.md) — Zero host-port exposure for `sineva-ai`, `X-Internal-Api-Key` verification, and network isolation.
-- [CI/CD Pipeline & Rollout Checklist](./deployment/ci_cd_pipeline.md) — GitHub Actions quality gates, multi-stage Docker builds, and zero-downtime deployment steps.
+- [Overview](project-structure/overview.md): topology, shared data stores, repository layout.
+- [Turborepo Workspaces](project-structure/turborepo_workspaces.md): workspace boundaries and the build graph.
+- [Clean Architecture Layers](project-structure/clean_architecture_layers.md): backend layers and dependency rules.
+- [Frontend Architecture](project-structure/frontend_architecture.md): `src/client`, `src/shared` and the client/server boundary.
 
-### 8. Architectural Research (`docs/research/`)
-Architecture Decision Records (ADRs) and deep-dive evaluations behind core platform choices.
-- [BFF Gateway Pattern over Isolated AI Engine](./research/bff_gateway_pattern.md) — Architectural rationale for making Next.js the sole public gateway over an internal FastAPI AI Engine.
-- [SeaweedFS S3 Architecture for Multi-Agent Artifacts](./research/seaweedfs_s3_architecture.md) — Performance evaluation and configuration of SeaweedFS S3 (`:8333`) for high-throughput agent files.
-- [Agentic UX & Streaming Interfaces](./research/ux_agentic_interfaces.md) — Research on command palettes (`⌘K`), multi-agent delegation timelines, and optimistic UI.
+## Engineering (`engineering/`)
+
+Folder guide: [README](engineering/README.md).
+
+- [Coding Standards](engineering/coding_standards.md): TypeScript, naming, lint and format.
+- [Design Patterns](engineering/design_pattern.md): repository, use case, gateway, container.
+- [Response Pattern](engineering/response_pattern.md): the `@sineva/shared` envelope and `response_helper`.
+- [Error Handling and Failure Modes](engineering/error_handling_and_failure_modes.md): domain errors, 502 and 503, and what to do when a dependency fails.
+- [Database Conventions](engineering/database_conventions.md): Prisma schema, naming, UUID keys, the `platform` schema.
+- [Database Migrations Workflow](engineering/database_migrations_workflow.md): creating, reviewing and applying migrations safely.
+- [State Management with Redux](engineering/state_management_redux.md): store, slices, thunks.
+- [Testing Strategy](engineering/testing_strategy.md): unit tests with fakes, contract tests, integration tests, architecture tests, CI.
+
+## API Specification (`api-spec/`)
+
+Folder guide: [README](api-spec/README.md).
+
+- [Overview](api-spec/overview.md): versioning, envelope, errors, conventions.
+- [Agents and Chat Endpoints](api-spec/agents_and_chat_endpoints.md)
+- [Storage and Health Endpoints](api-spec/storage_and_health_endpoints.md)
+- [Swagger and OpenAPI](api-spec/swagger_and_openapi.md): how `/api/openapi.json` and `/api-docs` work, and how to register a route.
+
+## Product (`product/`)
+
+Folder guide: [README](product/README.md).
+
+- [Product Model and Wording](product/product_model_and_wording.md): one chat, @mentions, companion wording, guardrails.
+
+## Design Context (`design-context/`)
+
+Folder guide: [README](design-context/README.md).
+
+- [Design System](design-context/design_system.md)
+- [Design Tokens](design-context/design_tokens.md)
+- [UX and Frontend Libraries](design-context/ux_and_frontend_libraries.md)
+- [Copywriting and Brand](design-context/copywriting_and_brand.md)
+
+## Deployment (`deployment/`)
+
+Folder guide: [README](deployment/README.md).
+
+- [Docker Compose Topology](deployment/docker_compose_topology.md)
+- [Internal Network Security](deployment/internal_network_security.md)
+- [CI/CD Pipeline](deployment/ci_cd_pipeline.md)
+- [Environment Variables](deployment/environment_variables.md)
+
+## Development (`development/`)
+
+Folder guide: [README](development/README.md).
+
+- [Feature Development Workflow](development/feature_development_workflow.md)
+- [Future Features Template](development/future_features_template.md)
+- [Roadmap](development/roadmap.md)
+- [Known Issues and Tech Debt](development/known_issues_and_tech_debt.md): current deviations from the rules, and their status.
+
+## Troubleshooting (`troubleshooting/`)
+
+Folder guide: [README](troubleshooting/README.md).
+
+- [Common Issues](troubleshooting/common_issues.md)
+- [Docker and Internal Network](troubleshooting/docker_and_internal_network.md)
+- [Storage, Database and Redis](troubleshooting/storage_db_and_redis.md)
+
+## Keeping the docs true
+
+Update the affected doc in the same change as the code (rule R-38). When you add, move or delete a doc, update this index, the folder `README.md` and the `related_docs` of the files that link to it. There is no `docs/research/` folder: its content became ADR-0001, ADR-0002 and ADR-0010.
