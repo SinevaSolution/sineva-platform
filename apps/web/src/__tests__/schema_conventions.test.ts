@@ -154,6 +154,7 @@ describe('Prisma Schema Conventions (WP-M0-21)', () => {
       'Verification',
       'PlatformStaff',
       'AuthLoginAttempt',
+      'SigningKey',
     ];
 
     for (const modelName of globalModels) {

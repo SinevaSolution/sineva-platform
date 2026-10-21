@@ -31,6 +31,10 @@ import { ListUserWorkspacesUseCase } from './application/use-cases/workspace/lis
 import { SeaweedStorageRepository } from './infrastructure/storage/seaweed_storage_repository';
 import { PwnedPasswordsBreachedChecker } from './infrastructure/security/pwned_passwords_checker';
 import { JwtAuthService } from './infrastructure/auth/jwt_auth_service';
+import type { SigningKeyRepository } from './domain/repositories/signing_key_repository';
+import { PrismaSigningKeyRepository } from './infrastructure/database/prisma_signing_key_repository';
+import type { ContextSigner } from './domain/context/signed_context';
+import { createDefaultContextSigner } from './infrastructure/security/context_signer';
 
 // Composition root: the only module that knows which concrete adapter backs
 // each port. Route handlers and pages ask for use cases here instead of
@@ -138,6 +142,18 @@ export const getUpdateWorkspaceUseCase = memoize(
 export const getListUserWorkspacesUseCase = memoize(
   () => new ListUserWorkspacesUseCase(getWorkspaceRepository()),
 );
+
+export const getSigningKeyRepository = memoize<SigningKeyRepository>(
+  () => new PrismaSigningKeyRepository(getPrismaClient()),
+);
+
+export const getContextSigner = memoize<ContextSigner>(() => {
+  const env = getEnvConfig();
+  return createDefaultContextSigner(
+    env.internal_context_signing_key,
+    env.internal_context_kid,
+  );
+});
 
 export const getSystemHealthUseCase = memoize(
   () =>

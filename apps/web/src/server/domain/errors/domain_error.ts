@@ -148,3 +148,16 @@ export class DependencyUnavailableError extends DomainError {
   }
 }
 
+// Signed context token exceeds header budget (assumed 8KB, fail closed)
+export class ContextTooLargeError extends DomainError {
+  constructor(message = 'Context token exceeds header budget (8KB)') {
+    super({
+      message,
+      code: 'context_too_large',
+      status: 500,
+      field: null,
+    });
+    this.name = 'ContextTooLargeError';
+  }
+}
+

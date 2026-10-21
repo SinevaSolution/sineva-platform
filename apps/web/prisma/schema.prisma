@@ -243,6 +243,23 @@ model AuthLoginAttempt {
   @@schema("platform")
 }
 
+model SigningKey {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  kid         String   @unique @map("kid") @db.VarChar(64)
+  alg         String   @default("EdDSA") @map("alg") @db.VarChar(32)
+  public_key  String   @map("public_key") @db.Text
+  status      String   @default("active") @map("status") @db.VarChar(32) // active | next | retired
+  purpose     String   @default("context") @map("purpose") @db.VarChar(32) // context | mcp_access_token
+  valid_from  DateTime @default(now()) @map("valid_from") @db.Timestamptz(6)
+  valid_until DateTime @map("valid_until") @db.Timestamptz(6)
+  created_at  DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updated_at  DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@index([purpose, status])
+  @@map("signing_keys")
+  @@schema("platform")
+}
+
 // ---------------------------------------------------------------------------
 // Agents & Operations (Carried over from Init)
 // ---------------------------------------------------------------------------

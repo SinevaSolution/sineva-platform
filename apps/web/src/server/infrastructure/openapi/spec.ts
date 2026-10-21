@@ -91,8 +91,42 @@ export function getOpenApiSpec(): Record<string, unknown> {
         name: 'Workspaces',
         description: 'Multi-tenant workspace lifecycle, isolation, and configuration',
       },
+      {
+        name: 'Internal',
+        description: 'Internal service-to-service endpoints guarded by X-Internal-Api-Key',
+      },
     ],
     paths: {
+      '/api/internal/v1/keys': {
+        get: {
+          tags: ['Internal'],
+          summary: 'Retrieve valid public signing keys for context verification',
+          description: 'Guarded by X-Internal-Api-Key. Used by internal services to fetch valid Ed25519 public keys during key rotation.',
+          operationId: 'list_internal_signing_keys',
+          responses: {
+            '200': {
+              description: 'List of valid public signing keys',
+              content: {
+                'application/json': {
+                  schema: {
+                    $ref: '#/components/schemas/StandardEnvelope',
+                  },
+                },
+              },
+            },
+            '401': {
+              description: 'Missing or invalid X-Internal-Api-Key header',
+              content: {
+                'application/json': {
+                  schema: {
+                    $ref: '#/components/schemas/StandardEnvelope',
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
       '/api/v1/health': {
         get: {
           tags: ['Health'],
