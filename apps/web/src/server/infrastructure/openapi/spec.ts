@@ -87,6 +87,10 @@ export function getOpenApiSpec(): Record<string, unknown> {
         name: 'Auth',
         description: 'Identity, custom JWT authentication, session, and password lifecycle',
       },
+      {
+        name: 'Workspaces',
+        description: 'Multi-tenant workspace lifecycle, isolation, and configuration',
+      },
     ],
     paths: {
       '/api/v1/health': {
@@ -547,6 +551,126 @@ export function getOpenApiSpec(): Record<string, unknown> {
             },
             '401': {
               description: 'No active session',
+              content: {
+                'application/json': {
+                  schema: { $ref: '#/components/schemas/StandardEnvelope' },
+                },
+              },
+            },
+          },
+        },
+      },
+      '/api/v1/workspaces': {
+        get: {
+          tags: ['Workspaces'],
+          summary: 'List workspaces for the current authenticated user',
+          operationId: 'list_workspaces',
+          responses: {
+            '200': {
+              description: 'User workspaces and role list',
+              content: {
+                'application/json': {
+                  schema: { $ref: '#/components/schemas/StandardEnvelope' },
+                },
+              },
+            },
+          },
+        },
+        post: {
+          tags: ['Workspaces'],
+          summary: 'Create a new workspace tenant',
+          operationId: 'create_workspace',
+          responses: {
+            '201': {
+              description: 'Workspace created',
+              content: {
+                'application/json': {
+                  schema: { $ref: '#/components/schemas/StandardEnvelope' },
+                },
+              },
+            },
+            '422': {
+              description: 'Invalid input or reserved slug',
+              content: {
+                'application/json': {
+                  schema: { $ref: '#/components/schemas/StandardEnvelope' },
+                },
+              },
+            },
+          },
+        },
+      },
+      '/api/v1/workspaces/{workspace_id}': {
+        get: {
+          tags: ['Workspaces'],
+          summary: 'Get details for a workspace',
+          operationId: 'get_workspace',
+          parameters: [
+            {
+              name: 'workspace_id',
+              in: 'path',
+              required: true,
+              schema: { type: 'string', format: 'uuid' },
+            },
+          ],
+          responses: {
+            '200': {
+              description: 'Workspace details',
+              content: {
+                'application/json': {
+                  schema: { $ref: '#/components/schemas/StandardEnvelope' },
+                },
+              },
+            },
+            '404': {
+              description: 'Workspace not found or caller has no membership (FR-AUTH-24)',
+              content: {
+                'application/json': {
+                  schema: { $ref: '#/components/schemas/StandardEnvelope' },
+                },
+              },
+            },
+          },
+        },
+        patch: {
+          tags: ['Workspaces'],
+          summary: 'Update workspace settings and slug (slug editable once, FR-SHELL-13)',
+          operationId: 'update_workspace',
+          parameters: [
+            {
+              name: 'workspace_id',
+              in: 'path',
+              required: true,
+              schema: { type: 'string', format: 'uuid' },
+            },
+          ],
+          responses: {
+            '200': {
+              description: 'Workspace updated successfully',
+              content: {
+                'application/json': {
+                  schema: { $ref: '#/components/schemas/StandardEnvelope' },
+                },
+              },
+            },
+            '403': {
+              description: 'Forbidden: caller role lacks workspace.update permission',
+              content: {
+                'application/json': {
+                  schema: { $ref: '#/components/schemas/StandardEnvelope' },
+                },
+              },
+            },
+            '404': {
+              description: 'Workspace not found or caller has no membership (FR-AUTH-24)',
+              content: {
+                'application/json': {
+                  schema: { $ref: '#/components/schemas/StandardEnvelope' },
+                },
+              },
+            },
+            '422': {
+              description: 'Validation failed (e.g. slug already customized once)',
               content: {
                 'application/json': {
                   schema: { $ref: '#/components/schemas/StandardEnvelope' },

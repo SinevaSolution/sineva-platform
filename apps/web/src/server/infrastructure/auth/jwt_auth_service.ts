@@ -510,6 +510,48 @@ export class JwtAuthService {
       where: { id: verification.id },
     });
 
+    // Hook: Create provisional workspace "My workspace" idempotently (WP-M0-26, FR-AUTH-10)
+    if (this.prisma.workspaceMember && this.prisma.workspace) {
+      const existingMembership = await this.prisma.workspaceMember.findFirst({
+        where: { user_id: user.id },
+      });
+      if (!existingMembership) {
+        const workspace = await this.prisma.workspace.create({
+          data: {
+            workspace_name: 'My workspace',
+            workspace_slug: `my-workspace-${user.id.substring(0, 8)}`,
+            owner_user_id: user.id,
+            status: 'active',
+            subscription_tier: 'growth',
+            default_locale: (user as { locale?: string }).locale ?? 'id',
+            timezone: (user as { timezone?: string }).timezone ?? 'Asia/Jakarta',
+            members: {
+              create: {
+                user_id: user.id,
+                role: 'owner',
+                specialist_scope: 'all',
+              },
+            },
+          },
+        });
+
+        await this.auditLogger.log({
+          action: 'workspace.created',
+          context: {
+            ...createAnonymousRequestContext('workspace-provisional-created'),
+            user_id: user.id,
+            workspace_id: workspace.id,
+          },
+          target_resource_id: workspace.id,
+          target_resource_type: 'workspace',
+          metadata: {
+            is_provisional: true,
+            workspace_slug: workspace.workspace_slug,
+          },
+        });
+      }
+    }
+
     await this.auditLogger.log({
       action: 'user.email_verified',
       context: {

@@ -2,6 +2,7 @@ import 'server-only';
 import { HeadBucketCommand, PutObjectCommand } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { UpstreamServiceError } from '@/server/domain/errors/domain_error';
+import { buildStorageKey } from '@/server/domain/tenancy/tenant_isolation';
 import type {
   PresignUploadRequest,
   PresignUploadResult,
@@ -20,7 +21,10 @@ export class SeaweedStorageRepository implements StorageRepository {
     const sanitizedName = request.file_name
       .replace(/[^a-zA-Z0-9._-]/g, '_')
       .toLowerCase();
-    const object_key = `workspaces/${request.workspace_id}/${Date.now()}_${sanitizedName}`;
+    const object_key = buildStorageKey(
+      request.workspace_id,
+      `${Date.now()}_${sanitizedName}`,
+    );
     const expires_in_seconds = 900;
 
     try {

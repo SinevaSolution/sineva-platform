@@ -38,6 +38,7 @@ model Workspace {
   default_locale          String    @default("id") @map("default_locale")
   logo_url                String?   @map("logo_url")
   deleted_at              DateTime? @map("deleted_at") @db.Timestamptz(6)
+  slug_changed_at         DateTime? @map("slug_changed_at") @db.Timestamptz(6)
 
   // Usage, Plans & Billing fields (kept untouched per WP-M0-21, moved in WP-M3-27 / WP-M4-38)
   subscription_tier       String    @default("growth") @map("subscription_tier")

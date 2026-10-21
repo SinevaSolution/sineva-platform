@@ -20,6 +20,14 @@ import { PrismaAgentRepository } from './infrastructure/database/prisma_agent_re
 import { PrismaDatabaseHealthProbe } from './infrastructure/database/prisma_database_health_probe';
 import { getPrismaClient } from './infrastructure/database/prisma_client';
 import { InternalAiEngineGateway } from './infrastructure/gateways/internal_ai_engine_gateway';
+import type { WorkspaceRepository } from './domain/repositories/workspace_repository';
+import type { WorkspaceMemberRepository } from './domain/repositories/workspace_member_repository';
+import { PrismaWorkspaceRepository } from './infrastructure/database/prisma_workspace_repository';
+import { PrismaWorkspaceMemberRepository } from './infrastructure/database/prisma_workspace_member_repository';
+import { CreateWorkspaceUseCase } from './application/use-cases/workspace/create_workspace_use_case';
+import { GetWorkspaceUseCase } from './application/use-cases/workspace/get_workspace_use_case';
+import { UpdateWorkspaceUseCase } from './application/use-cases/workspace/update_workspace_use_case';
+import { ListUserWorkspacesUseCase } from './application/use-cases/workspace/list_user_workspaces_use_case';
 import { SeaweedStorageRepository } from './infrastructure/storage/seaweed_storage_repository';
 import { PwnedPasswordsBreachedChecker } from './infrastructure/security/pwned_passwords_checker';
 import { JwtAuthService } from './infrastructure/auth/jwt_auth_service';
@@ -106,6 +114,29 @@ export const getSendAgentMessageUseCase = memoize(
 
 export const getPresignStorageUploadUseCase = memoize(
   () => new PresignStorageUploadUseCase(getStorageRepository()),
+);
+
+export const getWorkspaceRepository = memoize<WorkspaceRepository>(
+  () => new PrismaWorkspaceRepository(getPrismaClient()),
+);
+export const getWorkspaceMemberRepository = memoize<WorkspaceMemberRepository>(
+  () => new PrismaWorkspaceMemberRepository(getPrismaClient()),
+);
+
+export const getCreateWorkspaceUseCase = memoize(
+  () => new CreateWorkspaceUseCase(getWorkspaceRepository(), defaultAuditLogger),
+);
+
+export const getGetWorkspaceUseCase = memoize(
+  () => new GetWorkspaceUseCase(getWorkspaceRepository()),
+);
+
+export const getUpdateWorkspaceUseCase = memoize(
+  () => new UpdateWorkspaceUseCase(getWorkspaceRepository(), defaultAuditLogger),
+);
+
+export const getListUserWorkspacesUseCase = memoize(
+  () => new ListUserWorkspacesUseCase(getWorkspaceRepository()),
 );
 
 export const getSystemHealthUseCase = memoize(

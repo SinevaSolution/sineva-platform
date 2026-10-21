@@ -33,10 +33,14 @@ export const workspaceSlice = createSlice({
     ) {
       state.orchestrator_mode = action.payload;
     },
+    resetWorkspaceClientState() {
+      // FR-AUTH-35: Reset client state on workspace switch to prevent cross-tenant data bleed
+      return initialState;
+    },
   },
 });
 
-export const { incrementTokensConsumed, setOrchestratorMode } =
+export const { incrementTokensConsumed, setOrchestratorMode, resetWorkspaceClientState } =
   workspaceSlice.actions;
 
 export default workspaceSlice.reducer;

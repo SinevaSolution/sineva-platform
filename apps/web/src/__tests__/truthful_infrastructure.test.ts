@@ -165,7 +165,7 @@ describe('WP-M0-08: Truthful Infrastructure (H4)', () => {
       try {
         const seaweed = new SeaweedStorageRepository();
         const result = await seaweed.createPresignedUploadUrl({
-          workspace_id: 'wks_sineva_01',
+          workspace_id: '11111111-1111-4111-8111-111111111111',
           file_name: 'document.pdf',
           content_type: 'application/pdf',
           file_size_bytes: 1024,
