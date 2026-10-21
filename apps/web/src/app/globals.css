@@ -1,105 +1,269 @@
 @import "tailwindcss";
 
 /* ============================================================================
- * SINEVA 3-LAYER DESIGN TOKEN SYSTEM
- * Layer 1: Primitive Tokens (Brand Teal, Warm Sand/Ink, Aqua, Warm Sun)
- * Layer 2: Semantic Tokens (Light Editorial Warm Sand & Dark Deep Teal Slate)
- * Layer 3: Component & Motion Tokens (WCAG 2.2 AA & Reduced Motion)
- * ============================================================================ */
+ * Sineva design tokens (app density).
+ * Values follow sineva-compro/docs/design/tokens.md so the app and the public
+ * site read as one product. Three layers:
+ *   1. primitives in :root
+ *   2. semantic tokens in :root, swapped for [data-theme="dark"]
+ *   3. Tailwind theme mapping (@theme inline) so components write
+ *      `bg-surface text-fg` instead of raw values or arbitrary properties.
+ * Dark mode is driven by `data-theme` on <html> (next-themes), not by the
+ * Tailwind `dark:` variant, so components never need `dark:` classes.
+ * ========================================================================== */
 
 :root {
-  /* Layer 1: Primitive Palette */
-  --teal-50: #effaf8;
-  --teal-100: #d7f3ee;
-  --teal-200: #b2e6de;
-  --teal-500: #0fa38c;
-  --teal-600: #0b8471;
-  --teal-700: #0a6b5c;
-  --teal-800: #0b554a;
-  --teal-900: #093b34;
+  /* 1. Primitives (compro) */
+  --teal-50: #eaf6f6;
+  --teal-100: #d3eeee;
+  --teal-200: #a6dedf;
+  --teal-300: #6cc6c9;
+  --teal-400: #2fb0b5;
+  --teal-500: #00949b;
+  --teal-600: #007a80;
+  --teal-700: #00686d;
+  --teal-800: #005257;
+  --teal-900: #083f4c;
 
-  --aqua-400: #3dd9c3;
-  --sun-100: #fef3c7;
-  --sun-500: #f59e0b;
+  --ink-950: #0b2a31;
+  --ink-700: #3f5359;
+  --ink-500: #5b6f75;
+  --ink-400: #7c9197;
+  --ink-200: #d5e0e2;
+  --ink-100: #e7eeef;
+  --ink-50: #f5f8f8;
 
-  --ink-50: #fbf9f5;
-  --ink-100: #f4f0e8;
-  --ink-200: #e8e2d5;
-  --ink-300: #d5ccb8;
-  --ink-500: #6e6a61;
-  --ink-600: #524e46;
-  --ink-800: #262420;
-  --ink-900: #181714;
-  --ink-950: #0b1516;
+  --red-700: #b42318;
+  --red-50: #fef3f2;
+  --green-700: #067647;
+  --amber-700: #b54708;
 
-  /* Layer 2: Semantic Tokens — Light Mode (Warm Editorial Sand) */
-  --color-canvas: var(--ink-50);
-  --color-surface: #ffffff;
-  --color-surface-elevated: #ffffff;
-  --color-surface-muted: var(--ink-100);
+  /* 2. Semantic, light */
+  --color-canvas: #f3f6f6; /* app background behind the content panel */
+  --color-sidebar: #f3f6f6;
+  --color-surface: #ffffff; /* content panel, cards */
+  --color-surface-alt: var(--ink-50);
+  --color-surface-tint: var(--teal-50);
+  --color-hover: rgba(11, 42, 49, 0.05);
+  --color-selected: rgba(11, 42, 49, 0.08);
 
-  --color-text: var(--ink-900);
-  --color-text-muted: var(--ink-600);
-  --color-text-subtle: var(--ink-500);
+  --color-text: var(--ink-950);
+  --color-text-secondary: var(--ink-700);
+  --color-text-tertiary: var(--ink-500);
+  --color-text-brand: var(--teal-700);
   --color-text-inverse: #ffffff;
 
-  --color-border: var(--ink-200);
-  --color-border-strong: var(--ink-300);
+  --color-border: var(--ink-100);
+  --color-border-strong: var(--ink-200);
 
   --color-action-primary: var(--teal-700);
   --color-action-primary-hover: var(--teal-800);
-  --color-accent-highlight: var(--aqua-400);
+  --color-focus: var(--teal-500);
+  --color-danger: var(--red-700);
+  --color-danger-surface: var(--red-50);
+  --color-success: var(--green-700);
+  --color-warning: var(--amber-700);
 
-  /* Layer 3: Motion & Elevation */
-  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+  --shadow-panel: 0 0 0 1px rgba(11, 42, 49, 0.06), 0 1px 2px rgba(11, 42, 49, 0.04);
+  --shadow-popover: 0 4px 12px rgba(11, 42, 49, 0.08), 0 12px 32px rgba(11, 42, 49, 0.1);
+
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+
+  /* Specialist accents (decorative only: tiles and chips) */
+  --accent-people: #f2705e;
+  --accent-finance: #f0a429;
+  --accent-sales: #4fae3a;
+  --accent-social: #d9478c;
+  --accent-help: #2f95d6;
+  --accent-insights: #6470dd;
+  --accent-brand: var(--teal-500);
 }
 
 [data-theme="dark"] {
-  /* Layer 2: Semantic Tokens — Dark Mode (Deep Teal Slate) */
-  --color-canvas: #0b1516;
-  --color-surface: #112022;
-  --color-surface-elevated: #16292c;
-  --color-surface-muted: #1b3236;
+  --color-canvas: #071417;
+  --color-sidebar: #071417;
+  --color-surface: #0c1f24;
+  --color-surface-alt: #0f272d;
+  --color-surface-tint: #0e3236;
+  --color-hover: rgba(238, 244, 245, 0.05);
+  --color-selected: rgba(238, 244, 245, 0.09);
 
-  --color-text: #f3f7f6;
-  --color-text-muted: #a6bdbb;
-  --color-text-subtle: #789492;
-  --color-text-inverse: #081213;
+  --color-text: #eef4f5;
+  --color-text-secondary: #bccbce;
+  --color-text-tertiary: #93a7ab;
+  --color-text-brand: #6cc6c9;
 
-  --color-border: #213b3f;
-  --color-border-strong: #2e5257;
+  --color-border: #18343a;
+  --color-border-strong: #29494f;
 
-  --color-action-primary: var(--aqua-400);
-  --color-action-primary-hover: var(--teal-200);
-  --color-accent-highlight: var(--sun-500);
+  --color-action-primary: #00686d;
+  --color-action-primary-hover: #007a80;
+  --color-focus: #2fb0b5;
+  --color-danger: #ff8a80;
+  --color-danger-surface: #3a1714;
+  --color-success: #4ad295;
+
+  --shadow-panel: 0 0 0 1px rgba(238, 244, 245, 0.06);
+  --shadow-popover: 0 4px 12px rgba(0, 0, 0, 0.4), 0 12px 32px rgba(0, 0, 0, 0.5);
+}
+
+/* 3. Tailwind theme mapping */
+@theme inline {
+  --font-sans: var(--font-plus-jakarta-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, SFMono-Regular, Menlo, monospace;
+
+  --color-canvas: var(--color-canvas);
+  --color-sidebar: var(--color-sidebar);
+  --color-surface: var(--color-surface);
+  --color-surface-alt: var(--color-surface-alt);
+  --color-surface-tint: var(--color-surface-tint);
+  --color-hover: var(--color-hover);
+  --color-selected: var(--color-selected);
+  --color-fg: var(--color-text);
+  --color-fg-secondary: var(--color-text-secondary);
+  --color-fg-tertiary: var(--color-text-tertiary);
+  --color-fg-brand: var(--color-text-brand);
+  --color-fg-inverse: var(--color-text-inverse);
+  --color-line: var(--color-border);
+  --color-line-strong: var(--color-border-strong);
+  --color-primary: var(--color-action-primary);
+  --color-primary-hover: var(--color-action-primary-hover);
+  --color-focus: var(--color-focus);
+  --color-danger: var(--color-danger);
+  --color-danger-surface: var(--color-danger-surface);
+  --color-success: var(--color-success);
+
+  --shadow-panel: var(--shadow-panel);
+  --shadow-popover: var(--shadow-popover);
+  --ease-out: var(--ease-out);
 }
 
 html,
 body {
   background-color: var(--color-canvas);
   color: var(--color-text);
-  font-family:
-    var(--font-jakarta),
-    -apple-system,
-    BlinkMacSystemFont,
-    "Segoe UI",
-    Roboto,
-    sans-serif;
+  font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
-code,
-pre,
-kbd {
-  font-family:
-    var(--font-geist-mono),
-    ui-monospace,
-    SFMono-Regular,
-    Menlo,
-    Monaco,
-    Consolas,
-    monospace;
+body {
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+/* In @layer base on purpose: unlayered CSS beats every Tailwind utility, so
+   a field that draws its own focus state (composer, Field) could not opt out
+   with `outline-none` and showed a square outline inside its rounded box. */
+@layer base {
+  :focus-visible {
+    outline: 2px solid var(--color-focus);
+    outline-offset: 2px;
+  }
+}
+
+::selection {
+  background: var(--teal-200);
+  color: var(--ink-950);
+}
+
+/*
+ * Motion. One staggered entrance per screen (set --d for the delay) and a
+ * slow idle float for Sino. Exponential ease-out only, transform and opacity
+ * only. The reduced-motion block below flattens all of it.
+ */
+:root {
+  --ease-out-quint: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+}
+
+@keyframes float {
+  50% {
+    transform: translateY(-5px);
+  }
+}
+
+.anim-rise {
+  animation: rise 560ms var(--ease-out-quint) both;
+  animation-delay: var(--d, 0ms);
+}
+
+/* Auth showcase: specialists orbit Sino. The ring spins, each figure
+   counter-spins by the same amount so it stays upright. */
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes spin-reverse {
+  to {
+    transform: rotate(-360deg);
+  }
+}
+
+@keyframes drift {
+  33% {
+    transform: translate(6%, -4%) scale(1.06);
+  }
+  66% {
+    transform: translate(-5%, 5%) scale(0.96);
+  }
+}
+
+@keyframes fade-swap {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+    filter: blur(4px);
+  }
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+}
+
+.anim-fade {
+  animation: fade-in 700ms var(--ease-out-quint) both;
+}
+
+@keyframes dash {
+  to {
+    stroke-dashoffset: -120;
+  }
+}
+
+.anim-dash {
+  animation: dash 4s linear infinite;
+}
+
+.anim-orbit {
+  animation: spin var(--orbit-duration, 64s) linear infinite;
+}
+
+.anim-orbit-upright {
+  animation: spin-reverse var(--orbit-duration, 64s) linear infinite;
+}
+
+.anim-drift {
+  animation: drift var(--drift-duration, 22s) ease-in-out infinite;
+}
+
+.anim-swap {
+  animation: fade-swap 640ms var(--ease-out-quint) both;
+}
+
+.anim-float {
+  animation: float 5.5s ease-in-out infinite;
+  animation-delay: var(--d, 0ms);
 }
 
 @media (prefers-reduced-motion: reduce) {
