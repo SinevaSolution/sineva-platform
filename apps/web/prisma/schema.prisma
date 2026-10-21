@@ -162,6 +162,8 @@ model Account {
   user_id                  String    @map("user_id") @db.Uuid
   account_id               String    @map("account_id")
   provider_id              String    @map("provider_id")
+  provider_email           String?   @map("provider_email")
+  provider_username        String?   @map("provider_username")
   access_token             String?   @map("access_token")
   refresh_token            String?   @map("refresh_token")
   access_token_expires_at  DateTime? @map("access_token_expires_at") @db.Timestamptz(6)

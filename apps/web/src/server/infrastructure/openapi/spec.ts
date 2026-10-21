@@ -594,6 +594,146 @@ export function getOpenApiSpec(): Record<string, unknown> {
           },
         },
       },
+      '/api/v1/auth/oauth/{provider}': {
+        get: {
+          tags: ['Auth'],
+          summary: 'Initiate OAuth 2.0 / OIDC authorization flow with PKCE S256',
+          operationId: 'auth_oauth_initiate',
+          parameters: [
+            {
+              name: 'provider',
+              in: 'path',
+              required: true,
+              schema: { type: 'string', enum: ['google', 'github'] },
+            },
+            {
+              name: 'return_to',
+              in: 'query',
+              required: false,
+              schema: { type: 'string' },
+            },
+          ],
+          responses: {
+            '302': {
+              description: 'Redirect to external OAuth authorization URL',
+            },
+          },
+        },
+      },
+      '/api/v1/auth/oauth/{provider}/callback': {
+        get: {
+          tags: ['Auth'],
+          summary: 'Handle OAuth callback, exchange authorization code, and authenticate user',
+          operationId: 'auth_oauth_callback',
+          parameters: [
+            {
+              name: 'provider',
+              in: 'path',
+              required: true,
+              schema: { type: 'string', enum: ['google', 'github'] },
+            },
+            {
+              name: 'code',
+              in: 'query',
+              required: true,
+              schema: { type: 'string' },
+            },
+            {
+              name: 'state',
+              in: 'query',
+              required: true,
+              schema: { type: 'string' },
+            },
+          ],
+          responses: {
+            '302': {
+              description: 'Redirect to destination with session cookie set',
+            },
+            '400': {
+              description: 'State mismatch, invalid code, or unverified email',
+              content: {
+                'application/json': {
+                  schema: { $ref: '#/components/schemas/StandardEnvelope' },
+                },
+              },
+            },
+          },
+        },
+      },
+      '/api/v1/me/accounts': {
+        get: {
+          tags: ['Auth'],
+          summary: 'List linked OAuth and credential sign-in accounts for the authenticated user',
+          operationId: 'auth_list_accounts',
+          responses: {
+            '200': {
+              description: 'List of linked sign-in accounts',
+              content: {
+                'application/json': {
+                  schema: { $ref: '#/components/schemas/StandardEnvelope' },
+                },
+              },
+            },
+            '401': {
+              description: 'Unauthenticated',
+              content: {
+                'application/json': {
+                  schema: { $ref: '#/components/schemas/StandardEnvelope' },
+                },
+              },
+            },
+          },
+        },
+      },
+      '/api/v1/me/accounts/{provider}': {
+        delete: {
+          tags: ['Auth'],
+          summary: 'Unlink an OAuth provider from user account (requires fresh session)',
+          operationId: 'auth_unlink_account',
+          parameters: [
+            {
+              name: 'provider',
+              in: 'path',
+              required: true,
+              schema: { type: 'string', enum: ['google', 'github'] },
+            },
+          ],
+          responses: {
+            '200': {
+              description: 'Account unlinked successfully',
+              content: {
+                'application/json': {
+                  schema: { $ref: '#/components/schemas/StandardEnvelope' },
+                },
+              },
+            },
+            '400': {
+              description: 'Cannot remove the last sign-in method',
+              content: {
+                'application/json': {
+                  schema: { $ref: '#/components/schemas/StandardEnvelope' },
+                },
+              },
+            },
+            '403': {
+              description: 'Fresh session required',
+              content: {
+                'application/json': {
+                  schema: { $ref: '#/components/schemas/StandardEnvelope' },
+                },
+              },
+            },
+            '404': {
+              description: 'Account not found',
+              content: {
+                'application/json': {
+                  schema: { $ref: '#/components/schemas/StandardEnvelope' },
+                },
+              },
+            },
+          },
+        },
+      },
       '/api/v1/workspaces': {
         get: {
           tags: ['Workspaces'],

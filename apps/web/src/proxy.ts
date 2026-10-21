@@ -5,26 +5,26 @@ import { NextResponse } from 'next/server';
  * Sanitizes the `next` redirect parameter to prevent open-redirect phishing attacks.
  * Only allows safe relative paths starting with `/` (and disallows protocol-relative `//`).
  */
-export function sanitizeNextRedirect(rawPath?: string | null): string {
+export function sanitizeNextRedirect(rawPath?: string | null, fallback: string = '/'): string {
   if (!rawPath || typeof rawPath !== 'string') {
-    return '/';
+    return fallback;
   }
 
   const trimmed = rawPath.trim();
 
   // Must begin with single `/` and NOT `//`
   if (!trimmed.startsWith('/') || trimmed.startsWith('//')) {
-    return '/';
+    return fallback;
   }
 
   // Reject URLs containing protocol schemes before a query/hash
   if (/^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(trimmed)) {
-    return '/';
+    return fallback;
   }
 
   // Reject javascript:, data:, vbscript: pseudo-protocols
   if (/^(javascript|data|vbscript):/i.test(trimmed)) {
-    return '/';
+    return fallback;
   }
 
   return trimmed;

@@ -357,6 +357,59 @@ export class JwtAuthService {
     };
   }
 
+  async createSession(
+    userId: string,
+    ipAddress?: string,
+    userAgent?: string,
+    _workspaceId?: string,
+  ): Promise<{ sessionId: string; token: string; fresh_until: Date; expires_at: Date }> {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+    });
+    if (!user) {
+      throw new UnauthorizedError('User not found.');
+    }
+
+    const sessionId = 'sess_' + crypto.randomBytes(16).toString('hex');
+    const freshUntil = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes fresh window
+    const expiresAt = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000); // 14 days
+
+    const token = JwtService.sign(
+      {
+        sub: user.id,
+        jti: sessionId,
+        email: user.email,
+        name: user.full_name,
+        email_verified: user.email_verified,
+        fresh_until: Math.floor(freshUntil.getTime() / 1000),
+      },
+      this.authSecret,
+      { expiresInSeconds: 14 * 24 * 60 * 60 },
+    );
+
+    const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
+
+    const session = await this.prisma.session.create({
+      data: {
+        id: sessionId,
+        user_id: user.id,
+        token,
+        token_hash: tokenHash,
+        fresh_until: freshUntil,
+        expires_at: expiresAt,
+        ip_address: ipAddress,
+        user_agent: userAgent,
+      },
+    });
+
+    return {
+      sessionId: session.id,
+      token,
+      fresh_until: freshUntil,
+      expires_at: expiresAt,
+    };
+  }
+
   async requestPasswordReset(params: { email: string }): Promise<{ message: string }> {
     const email = params.email.toLowerCase().trim();
     const user = await this.prisma.user.findUnique({ where: { email } });

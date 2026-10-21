@@ -268,6 +268,15 @@ export function withAuth<TParams = Record<string, string | string[]>>(
         throw new UnauthorizedError('Authentication required');
       }
 
+      // 4a. Fresh session check (FR-AUTH-06, FR-AUTH-01c)
+      if (options.requireFreshSession) {
+        if (!session.freshUntil || session.freshUntil.getTime() <= Date.now()) {
+          throw new ForbiddenError(
+            'A fresh session is required for this action. Please re-authenticate.',
+          );
+        }
+      }
+
       // 5. CSRF protection on cookie-authenticated state-changing methods
       if (request) {
         const isStateChanging = ['POST', 'PUT', 'PATCH', 'DELETE'].includes(request.method);
@@ -420,6 +429,8 @@ export function withAuth<TParams = Record<string, string | string[]>>(
         session_id: session.sessionId,
         request_id: requestId,
         staff_role: session.staffRole,
+        fresh_until: session.freshUntil,
+        email_verified: session.emailVerified,
         actor: {
           type: 'user',
           id: session.userId,

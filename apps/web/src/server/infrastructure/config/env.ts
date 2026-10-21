@@ -28,6 +28,10 @@ export interface AppEnvConfig {
   email_server_port?: number;
   email_server_user?: string;
   email_server_password?: string;
+  google_client_id?: string;
+  google_client_secret?: string;
+  github_client_id?: string;
+  github_client_secret?: string;
 }
 
 // SHA-256 hashes of dev secrets from .env.example.
@@ -166,6 +170,10 @@ export function validateEnvConfig(
       : undefined,
     email_server_user: raw.EMAIL_SERVER_USER,
     email_server_password: raw.EMAIL_SERVER_PASSWORD,
+    google_client_id: raw.GOOGLE_CLIENT_ID,
+    google_client_secret: raw.GOOGLE_CLIENT_SECRET,
+    github_client_id: raw.GITHUB_CLIENT_ID,
+    github_client_secret: raw.GITHUB_CLIENT_SECRET,
   };
 }
 

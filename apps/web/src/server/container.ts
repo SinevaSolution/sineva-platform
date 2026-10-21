@@ -35,6 +35,18 @@ import type { SigningKeyRepository } from './domain/repositories/signing_key_rep
 import { PrismaSigningKeyRepository } from './infrastructure/database/prisma_signing_key_repository';
 import type { ContextSigner } from './domain/context/signed_context';
 import { createDefaultContextSigner } from './infrastructure/security/context_signer';
+import type { OAuthProvider } from './domain/auth/oauth_provider';
+import { GoogleOAuthProvider, GitHubOAuthProvider } from './infrastructure/auth/oauth_providers';
+import { OAuthSignInUseCase } from './application/use-cases/auth/oauth_sign_in_use_case';
+import { LinkAccountUseCase } from './application/use-cases/auth/link_account_use_case';
+import { UnlinkAccountUseCase } from './application/use-cases/auth/unlink_account_use_case';
+import { ListUserAccountsUseCase } from './application/use-cases/auth/list_user_accounts_use_case';
+import type { AccountRepository } from './domain/repositories/account_repository';
+import { PrismaAccountRepository } from './infrastructure/database/prisma_account_repository';
+import type { OAuthAuthService } from './domain/auth/oauth_auth_service';
+import { PrismaOAuthAuthService } from './infrastructure/auth/prisma_oauth_auth_service';
+import { generateOAuthState, verifyOAuthState } from './infrastructure/security/oauth_state_service';
+import { ValidationError } from './domain/errors/domain_error';
 
 // Composition root: the only module that knows which concrete adapter backs
 // each port. Route handlers and pages ask for use cases here instead of
@@ -154,6 +166,110 @@ export const getContextSigner = memoize<ContextSigner>(() => {
     env.internal_context_kid,
   );
 });
+
+export const getGoogleOAuthProvider = memoize<OAuthProvider>(() => {
+  const env = getEnvConfig();
+  return new GoogleOAuthProvider({
+    clientId: env.google_client_id ?? 'dev-google-client-id',
+    clientSecret: env.google_client_secret ?? 'dev-google-client-secret',
+  });
+});
+
+export const getGitHubOAuthProvider = memoize<OAuthProvider>(() => {
+  const env = getEnvConfig();
+  return new GitHubOAuthProvider({
+    clientId: env.github_client_id ?? 'dev-github-client-id',
+    clientSecret: env.github_client_secret ?? 'dev-github-client-secret',
+  });
+});
+
+export function getOAuthProvider(provider: string): OAuthProvider {
+  if (provider === 'google') return getGoogleOAuthProvider();
+  if (provider === 'github') return getGitHubOAuthProvider();
+  throw new ValidationError(`Unsupported OAuth provider: ${provider}`, [
+    {
+      code: 'unsupported_oauth_provider',
+      field: 'provider',
+      detail: `Provider '${provider}' is not supported`,
+    },
+  ]);
+}
+
+export const getAccountRepository = memoize<AccountRepository>(
+  () => new PrismaAccountRepository(getPrismaClient()),
+);
+
+export const getOAuthAuthService = memoize<OAuthAuthService>(
+  () => new PrismaOAuthAuthService(getPrismaClient(), getJwtAuthService()),
+);
+
+export const getOAuthSignInUseCase = memoize(
+  () => new OAuthSignInUseCase(getAccountRepository(), getOAuthAuthService(), defaultAuditLogger),
+);
+
+export const getLinkAccountUseCase = memoize(
+  () => new LinkAccountUseCase(getAccountRepository(), defaultAuditLogger),
+);
+
+export const getUnlinkAccountUseCase = memoize(
+  () => new UnlinkAccountUseCase(getAccountRepository(), defaultAuditLogger),
+);
+
+export const getListUserAccountsUseCase = memoize(
+  () => new ListUserAccountsUseCase(getAccountRepository()),
+);
+
+export function initiateOAuthFlow(
+  provider: string,
+  returnTo?: string,
+): { authUrl: string; signedCookieValue: string } {
+  const env = getEnvConfig();
+  const oauthProvider = getOAuthProvider(provider);
+  const { state, codeChallenge, signedCookieValue } = generateOAuthState(
+    provider,
+    env.auth_secret,
+    returnTo,
+  );
+  const redirectUri = `${env.next_public_app_url}/api/v1/auth/oauth/${provider}/callback`;
+  const authUrl = oauthProvider.getAuthorizationUrl({
+    state,
+    codeChallenge,
+    redirectUri,
+  });
+  return { authUrl, signedCookieValue };
+}
+
+export async function handleOAuthCallback(params: {
+  provider: string;
+  code: string;
+  state: string;
+  stateCookie?: string;
+  ipAddress?: string;
+  userAgent?: string;
+}): Promise<{ sessionToken: string; targetPath: string }> {
+  const env = getEnvConfig();
+  const statePayload = verifyOAuthState(params.stateCookie, params.state, env.auth_secret);
+  const redirectUri = `${env.next_public_app_url}/api/v1/auth/oauth/${params.provider}/callback`;
+  const oauthProvider = getOAuthProvider(params.provider);
+
+  const profile = await oauthProvider.exchangeCode({
+    code: params.code,
+    codeVerifier: statePayload.codeVerifier,
+    redirectUri,
+  });
+
+  const signInUseCase = getOAuthSignInUseCase();
+  const result = await signInUseCase.execute({
+    profile,
+    ipAddress: params.ipAddress,
+    userAgent: params.userAgent,
+  });
+
+  return {
+    sessionToken: result.session.token,
+    targetPath: statePayload.returnTo ?? '/w',
+  };
+}
 
 export const getSystemHealthUseCase = memoize(
   () =>
