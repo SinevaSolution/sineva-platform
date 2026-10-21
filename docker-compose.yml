@@ -96,6 +96,17 @@ services:
     networks:
       - sineva_internal
 
+  # Dev mailbox container (Mailpit) for local transactional email inspection (WP-M0-24)
+  mailpit:
+    image: axllent/mailpit:latest
+    container_name: sineva-mailpit
+    restart: unless-stopped
+    ports:
+      - "1025:1025" # SMTP port
+      - "8025:8025" # Web UI port
+    networks:
+      - sineva_internal
+
   # Strictly internal FastAPI AI Engine — NO host ports exposed!
   # Only reachable from sineva-platform via http://sineva-ai:8000 on sineva_internal network.
   sineva-ai:

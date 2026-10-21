@@ -134,3 +134,17 @@ export class UpstreamUnavailableError extends DomainError {
     this.name = 'UpstreamUnavailableError';
   }
 }
+
+// Required infrastructure dependency unavailable (database, cache, storage, email transport)
+export class DependencyUnavailableError extends DomainError {
+  constructor(message = 'A required infrastructure dependency is unavailable') {
+    super({
+      message,
+      code: 'dependency_unavailable',
+      status: 503,
+      field: null,
+    });
+    this.name = 'DependencyUnavailableError';
+  }
+}
+
