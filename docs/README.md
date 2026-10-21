@@ -78,6 +78,7 @@ Folder guide: [README](engineering/README.md).
 - [Error Handling and Failure Modes](engineering/error_handling_and_failure_modes.md): domain errors, 502 and 503, and what to do when a dependency fails.
 - [Database Conventions](engineering/database_conventions.md): Prisma schema, naming, UUID keys, the `platform` schema.
 - [Database Migrations Workflow](engineering/database_migrations_workflow.md): creating, reviewing and applying migrations safely.
+- [Logging and PII Masking](engineering/logging_and_pii_masking.md): the logger wrapper, field allowlist, lint rule, identifier masking and shared vectors.
 - [State Management with Redux](engineering/state_management_redux.md): store, slices, thunks.
 - [Testing Strategy](engineering/testing_strategy.md): unit tests with fakes, contract tests, integration tests, architecture tests, CI.
 

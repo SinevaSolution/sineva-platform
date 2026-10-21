@@ -26,6 +26,7 @@ How code in `apps/web` and `packages/shared` is written, structured and tested. 
 | [design_pattern.md](design_pattern.md) | Ports and adapters, use cases, container getters, Zod at the edges, contract-guard types | You add a use case, adapter or route |
 | [response_pattern.md](response_pattern.md) | The `ApiResponse` envelope, `response_helper`, status codes the code produces | You add or change an endpoint response |
 | [error_handling_and_failure_modes.md](error_handling_and_failure_modes.md) | `DomainError` to HTTP status, logging, the no-silent-fallback rule, fallbacks that remain | You touch an adapter or an error path |
+| [logging_and_pii_masking.md](logging_and_pii_masking.md) | The logger wrapper and its field allowlist, the lint rule, NIK, NPWP, phone, bank, email and secret masking, the shared vectors | You log anything or handle personal identifiers |
 | [state_management_redux.md](state_management_redux.md) | The two slices, per-mount store, what belongs in Redux | You change client state |
 | [database_conventions.md](database_conventions.md) | Schema ownership, tables, UUID keys, naming, timestamps, row-to-entity mapping | You read or write the Prisma schema or a repository |
 | [database_migrations_workflow.md](database_migrations_workflow.md) | Adding a table step by step, deploy, seeding, forbidden commands, recovery | You change the schema or deploy a migration |

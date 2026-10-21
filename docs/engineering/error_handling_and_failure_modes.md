@@ -42,18 +42,18 @@ Rules: R-26 (no hidden failures) and R-41 (upstream failures are typed 502 or 50
 | `DomainError` (base) | its own `code` | its own `status`, default 400 | Nothing throws the base class directly |
 | Anything else | `INTERNAL_SERVER_ERROR` | 500 | `handleRouteError` fallthrough |
 
-`handleRouteError` checks in this order: `ZodError`, then `DomainError`, then everything else. Upstream error messages are client-safe on purpose ("The AI engine returned an unexpected response", "The AI engine is unavailable"). The upstream status and body stay in the server log.
+`handleRouteError` checks in this order: `ZodError`, then `DomainError`, then everything else. Upstream error messages are client-safe on purpose ("The AI engine returned an unexpected response", "The AI engine is unavailable"). The upstream status and body size (not the body) stay in the server log.
 
 ## 3. What gets logged
 
-Only the AI gateway logs, with `console.error` and a `[ai-engine]` prefix:
+Only the AI gateway logs, through the logger wrapper ([logging and PII masking](logging_and_pii_masking.md)): one JSON line with a fixed `event` and allowlisted fields.
 
 | Event | Fields logged |
 | :--- | :--- |
-| Request failed (network, timeout, abort) | `url`, `reason` (the error name), `aborted` |
-| Non-2xx answer | `url`, `status`, `body` truncated to 500 characters |
-| Non-JSON body | `url`, `status`, `body` truncated to 500 characters |
-| Envelope failed validation | `url`, `status`, `issues` (path and message per issue) |
+| `ai_engine.request_failed` (network, timeout, abort) | `agent_slug`, `reason` (the error name), `aborted`, `latency_ms` |
+| `ai_engine.non_2xx` | `agent_slug`, `status`, `byte_length`, `latency_ms` |
+| `ai_engine.non_json` | `agent_slug`, `status`, `byte_length`, `latency_ms` |
+| `ai_engine.contract_violation` | `agent_slug`, `status`, `issue_paths` (schema paths, never values) |
 
 Not logged:
 
@@ -63,7 +63,7 @@ Not logged:
 
 Gotchas:
 
-- The truncated upstream body can contain user text if sineva-ai echoes input in an error. Treat these logs as sensitive.
+- The upstream body is never logged, because sineva-ai can echo user text in an error. Do not add it back; log the size instead.
 - For an unknown error, `handleRouteError` puts the raw `Error.message` in the response. That can leak internals: a Prisma error text, `Agent 'x' has unknown category 'y'` from the repository mapper, or the `SyntaxError` text from a malformed JSON body.
 - A request body that is not valid JSON throws from `request.json()` before the DTO runs, so it is a 500, not a 4xx.
 
@@ -111,7 +111,6 @@ These break R-26 or its neighbours. Do not copy them. Removing one needs a faili
 - `getEnvConfig()` has hardcoded default secrets and hosts (database URL and password, S3 keys, the internal API key). `docker-compose.yml` has defaults too.
 - `AI_ENGINE_TIMEOUT_MS` is parsed with `Number(process.env.AI_ENGINE_TIMEOUT_MS ?? '15000')`. A non-numeric value gives `NaN`, and Node's `setTimeout` then fires after about 1 ms, so every chat call would abort and return 503.
 - `handleRouteError` does not log, returns raw messages for unknown errors, and turns malformed JSON into a 500.
-- Upstream non-2xx bodies are logged up to 500 characters and may contain user text.
 - `DomainError` carries an HTTP `status` and imports a type from `@sineva/shared`, so the domain knows about HTTP.
 
 ## 6. UI behavior

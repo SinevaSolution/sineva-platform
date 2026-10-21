@@ -7,7 +7,7 @@ Router for AI coding agents and humans. Details live in `docs/`. The numbered ru
 ## 1. What this repo is
 
 - Sineva Platform: the web app and BFF (Backend-for-Frontend) for the Sineva suite. It is the only public entry point; `sineva-ai` (Python FastAPI) is reachable only over the internal Docker network.
-- Turborepo monorepo (npm workspaces): `apps/web` (`@sineva/web`), `packages/shared` (`@sineva/shared`: response envelope), `packages/ui` (`@sineva/ui`).
+- Turborepo monorepo (npm workspaces): `apps/web` (`@sineva/web`), `packages/shared` (`@sineva/shared`: response envelope, PII masking), `packages/ui` (`@sineva/ui`).
 - Stack: Next.js 16.4 App Router, React 19.2, TypeScript 5.7, Redux Toolkit, Tailwind 4, Zod, Prisma 7.10.1 (`@prisma/adapter-pg`), ioredis, AWS SDK S3, Vitest. Node 24 (`.nvmrc`).
 - Shared infrastructure with `sineva-ai`: Postgres 17 (database `sineva_platform`), Redis 7.4, SeaweedFS S3, Qdrant (used by `sineva-ai`).
 
@@ -75,7 +75,7 @@ apps/web/
     client/                components/, store/ (Redux Toolkit)
     shared/                wire/view types (agent_view, chat_view)
     __tests__/             unit tests, fakes/, contract/ (+ fixtures/), integration/, stubs/, architecture.test.ts
-packages/shared/           @sineva/shared: response envelope, snake_case helpers
+packages/shared/           @sineva/shared: response envelope, snake_case helpers, pii/ (identifier detectors and mask)
 packages/ui/               @sineva/ui
 docs/                      see docs/README.md
 ```

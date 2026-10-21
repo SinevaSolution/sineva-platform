@@ -10,6 +10,7 @@ import type {
 } from '@/server/domain/repositories/storage_repository';
 import { getEnvConfig } from '../config/env';
 import { getS3Client, getS3SignerClient } from './s3_client';
+import { logger } from '../logging/logger';
 
 const S3_HEALTH_TIMEOUT_MS = 1500;
 
@@ -48,7 +49,7 @@ export class SeaweedStorageRepository implements StorageRepository {
       };
     } catch (error) {
       // INF-2: Never return an unsigned URL on failure (R-26). Throw typed 502 UpstreamServiceError.
-      console.error('[storage] presigned upload url generation failed', error);
+      logger.error('storage.presign_failed', { reason: error instanceof Error ? error.name : 'unknown' });
       throw new UpstreamServiceError(
         'Failed to generate presigned upload URL from storage service',
       );

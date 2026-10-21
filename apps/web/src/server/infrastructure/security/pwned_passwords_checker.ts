@@ -1,6 +1,7 @@
 import 'server-only';
 import crypto from 'node:crypto';
 import type { BreachedPasswordChecker } from '@/server/domain/auth/breached_password_checker';
+import { logger } from '../logging/logger';
 
 /**
  * Checks passwords against HaveIBeenPwned Pwned Passwords Range API using k-Anonymity (SHA-1 prefix).
@@ -40,9 +41,7 @@ export class PwnedPasswordsBreachedChecker implements BreachedPasswordChecker {
       clearTimeout(timeout);
 
       if (!response.ok) {
-        console.warn(
-          `[breach-checker] PwnedPasswords API returned status ${response.status}. Failing open.`,
-        );
+        logger.warn('breach_check.failed', { status: response.status, reason: 'fail_open' });
         return false;
       }
 
@@ -58,10 +57,7 @@ export class PwnedPasswordsBreachedChecker implements BreachedPasswordChecker {
 
       return false;
     } catch (err) {
-      console.warn(
-        '[breach-checker] Failed to query PwnedPasswords API. Failing open.',
-        err instanceof Error ? err.message : String(err),
-      );
+      logger.warn('breach_check.failed', { reason: err instanceof Error ? err.name : 'unknown' });
       return false;
     }
   }

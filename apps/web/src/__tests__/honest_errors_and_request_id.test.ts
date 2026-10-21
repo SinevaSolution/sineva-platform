@@ -128,15 +128,16 @@ describe('Honest Errors & Request ID (WP-M0-07)', () => {
     ).rejects.toThrow();
 
     expect(consoleSpy).toHaveBeenCalled();
-    const logCall = consoleSpy.mock.calls.find((call) =>
-      typeof call[0] === 'string' &&
-      (call[0].includes('non-2xx') || call[0].includes('[ai-engine]')),
-    );
-    expect(logCall).toBeDefined();
-    const loggedObj = logCall?.[1] as Record<string, unknown>;
+    // The logger writes one JSON line per event (WP-M0-34).
+    const lines = consoleSpy.mock.calls
+      .map((call) => call[0])
+      .filter((line): line is string => typeof line === 'string' && line.includes('ai_engine.non_2xx'));
+    expect(lines).toHaveLength(1);
+    const loggedObj = JSON.parse(lines[0]) as Record<string, unknown>;
     expect(loggedObj.status).toBe(500);
     expect(loggedObj.byte_length).toBe(sensitiveBody.length);
     expect(loggedObj.body).toBeUndefined();
+    expect(JSON.stringify(consoleSpy.mock.calls)).not.toContain('Sensitive personal');
   });
 
   it('gateway forwards X-Request-Id header to sineva-ai (API-5)', async () => {

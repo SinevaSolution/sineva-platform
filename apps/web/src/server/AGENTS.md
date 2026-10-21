@@ -25,6 +25,7 @@ Backend code. It never ships to the browser. Rules R-07 to R-14, R-24 to R-29, R
 - No silent fallbacks (R-26): no empty `catch`, no invented data, no health check that does not check. The AI gateway is the model: network, timeout or abort is `UpstreamUnavailableError` (503); non-2xx, non-JSON or an envelope that fails Zod is `UpstreamServiceError` (502).
 - sineva-ai owns the chat contract. Auth header is `X-Internal-Api-Key`. Never expose its port or call it from the browser.
 - Do not edit `infrastructure/database/generated` (gitignored `prisma generate` output).
+- Log only through `infrastructure/logging/logger.ts` (fixed event, allowlisted fields, free text masked). `console` and content keys such as `body` or `prompt` in a log call fail lint. Details: `docs/engineering/logging_and_pii_masking.md`.
 - Read config through `getEnvConfig()`. Do not add hardcoded secret defaults (R-28).
 
 ## Wire types
