@@ -1,3 +1,4 @@
+import { installHeaderSessionResolver } from './fakes/header_session_resolver';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { NextRequest } from 'next/server';
 import { GET as getHealth } from '@/app/api/v1/health/route';
@@ -34,6 +35,8 @@ vi.mock('@/server/container', () => ({
   getGetAgentsUseCase: vi.fn(),
   getSendAgentMessageUseCase: vi.fn(),
 }));
+
+installHeaderSessionResolver();
 
 describe('WP-M0-08: Truthful Infrastructure (H4)', () => {
   let dbProbe: FakeDatabaseHealthProbe;

@@ -1,3 +1,4 @@
+import { installHeaderSessionResolver } from './fakes/header_session_resolver';
 import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import { join, relative, resolve } from 'node:path';
 import { NextRequest } from 'next/server';
@@ -30,6 +31,8 @@ function getRouteFiles(dir: string): string[] {
 
   return files;
 }
+
+installHeaderSessionResolver();
 
 describe('Permission Registry & RBAC Matrix (WP-M0-22)', () => {
   it('defines all canonical permission keys from Section C2', () => {

@@ -1,3 +1,4 @@
+import { installHeaderSessionResolver } from './fakes/header_session_resolver';
 import { NextRequest } from 'next/server';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { POST as postAgent } from '@/app/api/v1/agents/route';
@@ -18,6 +19,8 @@ vi.mock('@/server/container', () => ({
     execute: vi.fn(),
   }),
 }));
+
+installHeaderSessionResolver();
 
 describe('Honest Errors & Request ID (WP-M0-07)', () => {
   beforeEach(() => {

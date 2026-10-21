@@ -1,3 +1,4 @@
+import { installHeaderSessionResolver } from './fakes/header_session_resolver';
 import { NextRequest } from 'next/server';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { GET as getWorkspaces, POST as postWorkspace } from '@/app/api/v1/workspaces/route';
@@ -18,6 +19,8 @@ vi.mock('@/server/container', async (importOriginal) => {
     getListUserWorkspacesUseCase: () => ({ execute: mockListUserWorkspaces }),
   };
 });
+
+installHeaderSessionResolver();
 
 describe('Workspace API Routes (WP-M0-26, FR-AUTH-10, 11, 12, 24, 29, 30)', () => {
   const workspaceIdA = '11111111-1111-4111-8111-111111111111';

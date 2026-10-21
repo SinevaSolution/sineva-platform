@@ -1,3 +1,4 @@
+import { installHeaderSessionResolver } from './fakes/header_session_resolver';
 import { NextRequest } from 'next/server';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
@@ -28,6 +29,8 @@ vi.mock('@/server/container', async (importOriginal) => {
     getCreateMessageUseCase: () => ({ execute: mockCreateMessage }),
   };
 });
+
+installHeaderSessionResolver();
 
 describe('Conversation & Message API Routes (WP-M0-29, FR-HUB-20, FR-HUB-32, D-M0-3)', () => {
   const workspaceIdA = '11111111-1111-4111-8111-111111111111';
