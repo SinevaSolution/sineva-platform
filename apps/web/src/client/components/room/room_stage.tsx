@@ -60,38 +60,54 @@ export function RoomStage({
   return (
     <section
       ref={ref}
-      className="relative isolate flex min-h-0 flex-1 overflow-hidden bg-[var(--ink-950,#0b2a31)] [--px:0] [--py:0]"
+      className="relative isolate flex min-h-0 flex-1 overflow-hidden bg-[var(--ink-950,#0b2a31)] [container-type:size] [--px:0] [--py:0]"
     >
-      {/* Room */}
-      <div aria-hidden="true" className="absolute -inset-4 -z-20">
+      {/* Room. A 16:9 box that always covers the panel (container units),
+          anchored at 70% across and 60% down so Sino and the floor stay in
+          view. Sino lives inside the same box in image coordinates, so his
+          feet land on the rendered floor at any panel size. Placement comes
+          from the Blender camera (sino-3d-mascot/export/rooms/rooms.json):
+          frame = 0.555 of image height, left 0.628, bottom 0.124. */}
+      <div
+        aria-hidden="true"
+        className="absolute -z-20 aspect-video w-[max(100cqw,calc(100cqh*16/9))]"
+        style={{
+          left: '70%',
+          top: '60%',
+          transform:
+            'translate3d(calc(-70% + var(--px) * -14px), calc(-60% + var(--py) * -8px), 0) scale(1.03)',
+        }}
+      >
         <div
           key={room.slug}
-          className="anim-fade absolute inset-0 bg-cover bg-[position:60%_center] transition-transform duration-500 ease-out"
+          className="anim-fade absolute inset-0 bg-cover bg-center"
           style={{
-            backgroundImage: `image-set(url("${room.background}.avif") type("image/avif"), url("${room.background}.webp") type("image/webp")), radial-gradient(80% 70% at 70% 40%, #1f5c63, #0b2a31)`,
-            transform: 'translate3d(calc(var(--px) * -14px), calc(var(--py) * -8px), 0) scale(1.03)',
+            backgroundImage: `image-set(url("${room.background}.avif") type("image/avif"), url("${room.background}.webp") type("image/webp")), url("${room.background}-blur.webp"), radial-gradient(80% 70% at 70% 40%, #1f5c63, #0b2a31)`,
           }}
         />
+        {/* Sino on the floor: hidden when the panel is too narrow for him
+            to stand clear of the chat column. */}
+        <div
+          className="absolute hidden aspect-square h-[55.5%] [@container(min-aspect-ratio:6/5)]:block"
+          style={{
+            left: '62.8%',
+            bottom: '12.4%',
+            transform: 'translate3d(calc(var(--px) * 18px), calc(var(--py) * 6px), 0)',
+          }}
+        >
+          <span className="absolute bottom-[4%] left-1/2 h-[7%] w-[52%] -translate-x-1/2 rounded-[50%] bg-[radial-gradient(closest-side,rgba(0,0,0,0.5),transparent)]" />
+          <div className="anim-rise absolute left-1/2 top-[2%] flex -translate-x-1/2 items-center gap-1.5 whitespace-nowrap rounded-full bg-[color-mix(in_oklab,var(--color-surface)_90%,transparent)] px-3 py-1 text-xs font-semibold text-fg shadow-popover backdrop-blur-md [--d:300ms]">
+            <span className={cn('size-1.5 rounded-full', mood === 'working' ? 'animate-pulse bg-[#ffb547]' : 'bg-[#22c55e]')} />
+            {label}
+          </div>
+          <SinoLoop key={roomLoop(slug, mood)} loop={roomLoop(slug, mood)} priority className="anim-fade relative" />
+        </div>
       </div>
       {/* Scrim: darker behind the chat column, clear where Sino stands. */}
       <div
         aria-hidden="true"
-        className="absolute inset-0 -z-10 bg-[linear-gradient(90deg,rgba(6,24,28,0.62)_0%,rgba(6,24,28,0.38)_42%,rgba(6,24,28,0.06)_72%),linear-gradient(0deg,rgba(6,24,28,0.45),transparent_35%)]"
+        className="absolute inset-0 -z-10 bg-[linear-gradient(90deg,rgba(6,24,28,0.62)_0%,rgba(6,24,28,0.38)_42%,rgba(6,24,28,0.04)_70%),linear-gradient(0deg,rgba(6,24,28,0.4),transparent_30%)]"
       />
-
-      {/* Sino on the floor */}
-      <div
-        aria-hidden="true"
-        className="pointer-events-none absolute bottom-0 right-[3%] -z-10 hidden w-[min(44%,560px)] md:block"
-        style={{ transform: 'translate3d(calc(var(--px) * 10px), calc(var(--py) * 4px), 0)' }}
-      >
-        <div className="anim-rise relative mx-auto flex w-fit -translate-y-3 items-center gap-1.5 rounded-full bg-[color-mix(in_oklab,var(--color-surface)_90%,transparent)] px-3 py-1 text-xs font-semibold text-fg shadow-popover backdrop-blur-md [--d:300ms]">
-          <span className={cn('size-1.5 rounded-full', mood === 'working' ? 'animate-pulse bg-[#ffb547]' : 'bg-[#22c55e]')} />
-          {label}
-        </div>
-        <span className="absolute bottom-[3%] left-1/2 h-[6%] w-[46%] -translate-x-1/2 rounded-[50%] bg-[radial-gradient(closest-side,rgba(0,0,0,0.45),transparent)]" />
-        <SinoLoop key={roomLoop(slug, mood)} loop={roomLoop(slug, mood)} priority className="anim-fade relative" />
-      </div>
 
       {/* Chat column */}
       <div className="relative flex min-h-0 w-full flex-1 flex-col md:max-w-[min(640px,58%)]">
