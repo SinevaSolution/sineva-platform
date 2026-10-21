@@ -18,6 +18,17 @@ export interface PaginationMeta extends ResponseMeta {
   has_prev: boolean;
 }
 
+export type ApiErrorCode =
+  | 'validation_failed'
+  | 'unauthenticated'
+  | 'forbidden'
+  | 'not_found'
+  | 'conflict'
+  | 'model_unavailable'
+  | 'dependency_unavailable'
+  | 'internal_error'
+  | string;
+
 export interface ErrorDetail {
   code: string;
   field: string | null;
@@ -28,6 +39,7 @@ export interface ApiResponse<T> {
   success: boolean;
   status: number;
   message: string;
+  code?: ApiErrorCode;
   data: T | null;
   meta: ResponseMeta | null;
   errors: ErrorDetail[] | null;
@@ -53,11 +65,15 @@ export interface CreatePaginatedResponseOptions<T> {
 export interface CreateErrorResponseOptions {
   message: string;
   status?: number;
+  code?: ApiErrorCode;
   errors?: ErrorDetail[];
   request_id?: string;
 }
 
 export function generateRequestId(): string {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID();
+  }
   const randomSuffix = Math.random().toString(36).substring(2, 10);
   return `req_${Date.now()}_${randomSuffix}`;
 }
@@ -123,7 +139,7 @@ export function createErrorResponse(
       ? options.errors
       : [
           {
-            code: 'INTERNAL_SERVER_ERROR',
+            code: options.code ?? 'INTERNAL_SERVER_ERROR',
             field: null,
             detail: options.message,
           },
@@ -133,6 +149,7 @@ export function createErrorResponse(
     success: false,
     status,
     message: options.message,
+    code: options.code,
     data: null,
     meta: {
       request_id,

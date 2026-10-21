@@ -44,11 +44,30 @@ export class ValidationError extends DomainError {
   constructor(message: string, details: ErrorDetail[]) {
     super({
       message,
-      code: 'VALIDATION_ERROR',
+      code: 'validation_failed',
       status: 422,
       details,
     });
     this.name = 'ValidationError';
+  }
+}
+
+export class MalformedJsonError extends DomainError {
+  constructor(detail = 'Invalid or malformed JSON payload') {
+    super({
+      message: 'Request payload validation failed',
+      code: 'validation_failed',
+      status: 422,
+      field: null,
+      details: [
+        {
+          code: 'validation_failed',
+          field: null,
+          detail,
+        },
+      ],
+    });
+    this.name = 'MalformedJsonError';
   }
 }
 

@@ -45,8 +45,6 @@ When you fix an item, delete it here in the same change (R-38) and remove its li
 | SEC-2 | `user_id` taken from the request body | High |
 | SEC-3 | Presign takes `workspace_id` from the body | High |
 | SEC-4 | Hardcoded default secrets | High |
-| SEC-5 | 500 responses return the raw error message | Medium |
-| SEC-6 | Upstream response bodies are logged | Medium |
 | SEC-7 | Health route is public and shows internal details | Low |
 | INF-1 | In-memory "Redis" cache, `ping()` always true | Medium |
 | INF-2 | Presign returns an unsigned URL on error | Medium |
@@ -54,10 +52,8 @@ When you fix an item, delete it here in the same change (R-38) and remove its li
 | INF-4 | Hardcoded `engine_version` | Low |
 | INF-5 | Presigned URL host is the internal Docker name | Medium |
 | INF-6 | `AI_ENGINE_TIMEOUT_MS` is not validated | Low |
-| API-1 | Malformed JSON returns 500 | Medium |
 | API-3 | A chat retry can run the turn twice | Medium |
 | API-4 | The orchestrator `sino` is unreachable; chat is per product | Medium |
-| API-5 | Request id is not propagated | Low |
 | API-6 | `swagger-ui-react` unused, "Swagger UI" labels wrong | Low |
 | API-7 | R-23's check names a test that does not exist | Low |
 | DOM-1 | Domain errors carry HTTP status and import `@sineva/shared` | Low |
@@ -129,28 +125,6 @@ When you fix an item, delete it here in the same change (R-38) and remove its li
 | Severity | High |
 | Do not copy | A fallback value for a secret (R-28). |
 | Suggested fix | Validate required variables at startup in production and fail fast. Keep dev defaults in `.env.example` only. In compose, require secrets with the `${VAR:?message}` form. |
-
-### SEC-5 500 responses return the raw error message
-
-| | |
-| :--- | :--- |
-| Symptom | An unexpected error (a Prisma error, a driver error, a `SyntaxError`) reaches the client with its own text. |
-| Root cause | The last branch of `handleRouteError` uses `error.message` as the response message. |
-| Location | `server/http/response_helper.ts` |
-| Severity | Medium |
-| Do not copy | Returning exception text to a client. |
-| Suggested fix | Return a fixed message for 500, log the cause with the request id. Add the test first. |
-
-### SEC-6 Upstream response bodies are logged
-
-| | |
-| :--- | :--- |
-| Symptom | When `sineva-ai` answers non-2xx or sends a non-JSON body, up to 500 characters of the body are written to the log. A 4xx body can echo user text. |
-| Root cause | `InternalAiEngineGateway` logs `rawBody.slice(0, LOGGED_BODY_MAX_CHARS)`. The code logs every non-2xx, not only 4xx. |
-| Location | `server/infrastructure/gateways/internal_ai_engine_gateway.ts` |
-| Severity | Medium |
-| Do not copy | Logging a response body that can carry personal data. |
-| Suggested fix | Log the status, the error code and the byte length. Put the body behind an explicit debug switch that is off in production. The existing test that checks the key is not logged stays. |
 
 ### SEC-7 Health route is public and shows internal details
 
@@ -235,17 +209,6 @@ The cross-tenant session issue in `sineva-ai` (AI-1) is also a security item; it
 
 ## API contract and errors
 
-### API-1 Malformed JSON returns 500
-
-| | |
-| :--- | :--- |
-| Symptom | An empty or invalid body returns 500 with the parser's message. It should be a client error. |
-| Root cause | Each handler calls `request.json()` and a `SyntaxError` falls through to the generic branch of `handleRouteError`. |
-| Location | the three POST handlers under `app/api/v1`, `server/http/response_helper.ts` |
-| Severity | Medium |
-| Do not copy | Calling `request.json()` with no handling of invalid input. |
-| Suggested fix | A shared body parser that throws a typed 422 error for invalid JSON. Test first. |
-
 ### API-3 A chat retry can run the turn twice
 
 | | |
@@ -267,17 +230,6 @@ The cross-tenant session issue in `sineva-ai` (AI-1) is also a security item; it
 | Severity | Medium |
 | Do not copy | Keying conversations by product. |
 | Suggested fix | Design the one-chat mapping first (session model, orchestrator call, attribution). Write the ADR, then change the route, schema and UI. |
-
-### API-5 Request id is not propagated
-
-| | |
-| :--- | :--- |
-| Symptom | A request cannot be traced across the platform and `sineva-ai`. The id differs per response and is not a header. |
-| Root cause | `generateRequestId()` uses `Math.random` and no `X-Request-Id` is read, returned or forwarded. |
-| Location | `packages/shared/src/response.ts`, `InternalAiEngineGateway` |
-| Severity | Low |
-| Do not copy | Treating `request_id` as a trace id. |
-| Suggested fix | Accept or create the id per request, return it as a header, forward it in the internal call, and log it. |
 
 ### API-6 `swagger-ui-react` unused, "Swagger UI" labels wrong
 

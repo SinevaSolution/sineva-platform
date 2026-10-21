@@ -9,6 +9,7 @@ export interface AiEngineChatRequest {
   user_id: string;
   message_text: string;
   context_metadata?: Record<string, unknown>;
+  request_id?: string;
 }
 
 export interface AiEngineToolCall {

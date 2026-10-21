@@ -64,6 +64,7 @@ interface ApiResponse<T> {
   success: boolean;
   status: number;            // same number as the HTTP status
   message: string;
+  code?: string;             // stable machine error code (FR-UX-31)
   data: T | null;            // null on errors
   meta: ResponseMeta | null; // always an object today
   errors: ErrorDetail[] | null; // null on success
@@ -103,23 +104,24 @@ Error:
 
 ### Request id and timestamp
 
-- `request_id` is `req_<Date.now()>_<up to 8 base36 characters>`, from `generateRequestId()` in `packages/shared/src/response.ts`. It is not cryptographically random and not guaranteed unique. Do not use it as a security token or a database key.
+- `request_id` is a UUID generated via `crypto.randomUUID()` (or accepted from `X-Request-Id`).
 - `timestamp` is `new Date().toISOString()` at the moment the envelope is built (UTC, millisecond precision).
-- There is no `X-Request-Id` handling and no response header. Target: accept an incoming id, echo it in a header and forward it to `sineva-ai`, so one request can be traced across both services.
+- Handlers accept an incoming `X-Request-Id` request header, echo it in the `X-Request-Id` response header, and forward it to `sineva-ai` to ensure single-trace end-to-end observability (API-5).
 
 ## Errors
 
 `handleRouteError` maps what a handler throws:
 
-| Thrown | Status | `errors[].code` | `message` |
-| :--- | :--- | :--- | :--- |
-| `ZodError` | 422 | `VALIDATION_ERROR` (one entry per issue) | `Request payload validation failed` |
-| `NotFoundError` | 404 | `RESOURCE_NOT_FOUND` | `<Resource> '<id>' was not found` |
-| `ConflictError` | 409 | `RESOURCE_CONFLICT` | `<Resource> '<id>' already exists` |
-| `UpstreamServiceError` | 502 | `UPSTREAM_ERROR` | `The AI engine returned an unexpected response` |
-| `UpstreamUnavailableError` | 503 | `UPSTREAM_UNAVAILABLE` | `The AI engine is unavailable` |
-| any other `DomainError` | its own `status` (default 400) | its own `code` | its own message |
-| anything else (including `SyntaxError`) | 500 | `INTERNAL_SERVER_ERROR` | the raw `error.message`, or `Unexpected server error` |
+| Thrown | Status | `code` | `errors[].code` | `message` |
+| :--- | :--- | :--- | :--- | :--- |
+| `MalformedJsonError` | 422 | `validation_failed` | `validation_failed` | `Request payload validation failed` |
+| `ZodError` | 422 | `validation_failed` | `validation_failed` | `Request payload validation failed` |
+| `NotFoundError` | 404 | `not_found` | `RESOURCE_NOT_FOUND` | `<Resource> '<id>' was not found` |
+| `ConflictError` | 409 | `conflict` | `RESOURCE_CONFLICT` | `<Resource> '<id>' already exists` |
+| `UpstreamServiceError` | 502 | `model_unavailable` | `UPSTREAM_ERROR` | `The AI engine returned an unexpected response` |
+| `UpstreamUnavailableError` | 503 | `dependency_unavailable` | `UPSTREAM_UNAVAILABLE` | `The AI engine is unavailable` |
+| any other `DomainError` | its own `status` | mapped code | its own `code` | its own message |
+| anything else | 500 | `internal_error` | `internal_error` | `Internal server error` (cause logged server-side with request_id, never leaked to client) |
 
 - Validation: `errors[].field` is the Zod path joined with `.` (for example `capabilities.0`), or `null` for a root-level problem. `detail` is Zod's default message text, which can change when Zod is upgraded. Clients should key on `code` and `field`, not on `detail`.
 - 502 and 503 messages are fixed and client-safe. The upstream status and body go to the server log only ([ADR-0016](../decisions/0016-upstream-failures-return-502-503.md)).

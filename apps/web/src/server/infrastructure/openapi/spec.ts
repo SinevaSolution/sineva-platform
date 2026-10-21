@@ -348,6 +348,21 @@ export function getOpenApiSpec(): Record<string, unknown> {
               type: 'string',
               example: 'Operation completed successfully',
             },
+            code: {
+              type: 'string',
+              enum: [
+                'validation_failed',
+                'unauthenticated',
+                'forbidden',
+                'not_found',
+                'conflict',
+                'model_unavailable',
+                'dependency_unavailable',
+                'internal_error',
+              ],
+              example: 'validation_failed',
+              description: 'Stable machine code mapped to client message keys (FR-UX-31)',
+            },
             data: { type: ['object', 'array', 'null'] },
             meta: {
               type: ['object', 'null'],

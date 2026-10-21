@@ -67,7 +67,9 @@ describe('Next.js App Router API v1 Route Handlers', () => {
     expect(res.status).toBe(200);
     expect(body.success).toBe(true);
     expect(body.data.service_name).toBe('sineva-platform');
-    expect(body.meta.request_id).toMatch(/^req_/);
+    expect(body.meta.request_id).toMatch(
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$|^req_/i,
+    );
     expect(body.errors).toBeNull();
   });
 

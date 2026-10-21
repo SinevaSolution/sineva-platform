@@ -82,14 +82,19 @@ export class InternalAiEngineGateway implements AiEngineGateway {
     let status: number;
     let rawBody: string;
     try {
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+        [INTERNAL_API_KEY_HEADER]: env.ai_engine_internal_api_key,
+      };
+      if (payload.request_id) {
+        headers['X-Request-Id'] = payload.request_id;
+      }
+
       // The timer must outlive the body read: an LLM reply can stall after the
       // headers arrive, and the abort should cover that too.
       const response = await fetch(url, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          [INTERNAL_API_KEY_HEADER]: env.ai_engine_internal_api_key,
-        },
+        headers,
         body,
         signal: controller.signal,
       });
@@ -106,11 +111,14 @@ export class InternalAiEngineGateway implements AiEngineGateway {
       clearTimeout(timeout);
     }
 
+    const debugUpstream = process.env.DEBUG_LOG_UPSTREAM_BODIES === 'true';
+
     if (status < 200 || status >= 300) {
       console.error('[ai-engine] chat returned non-2xx', {
         url,
         status,
-        body: rawBody.slice(0, LOGGED_BODY_MAX_CHARS),
+        byte_length: rawBody.length,
+        ...(debugUpstream ? { body: rawBody.slice(0, LOGGED_BODY_MAX_CHARS) } : {}),
       });
       throw new UpstreamServiceError();
     }
@@ -122,7 +130,8 @@ export class InternalAiEngineGateway implements AiEngineGateway {
       console.error('[ai-engine] chat returned non-JSON body', {
         url,
         status,
-        body: rawBody.slice(0, LOGGED_BODY_MAX_CHARS),
+        byte_length: rawBody.length,
+        ...(debugUpstream ? { body: rawBody.slice(0, LOGGED_BODY_MAX_CHARS) } : {}),
       });
       throw new UpstreamServiceError();
     }
