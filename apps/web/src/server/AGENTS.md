@@ -34,7 +34,6 @@ A shape the browser reads goes in `src/shared/<name>_view.ts` with a guard in `h
 ## Known debt: do not copy
 
 - `DomainError` carries an HTTP `status` and imports `@sineva/shared`.
-- `handleRouteError` does not log and returns the raw message of unknown errors; malformed JSON becomes a 500.
 - In-memory "Redis" cache with `ping()` always true; presign returns an unsigned URL on error; no real Postgres health check; hardcoded `engine_version`.
 - New-agent defaults live in `PrismaAgentRepository.create`.
 - `user_id` and `workspace_id` come from request bodies (R-27); do not extend that.

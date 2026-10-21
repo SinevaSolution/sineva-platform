@@ -51,21 +51,21 @@ Only the AI gateway logs, with `console.error` and a `[ai-engine]` prefix:
 | Event | Fields logged |
 | :--- | :--- |
 | Request failed (network, timeout, abort) | `url`, `reason` (the error name), `aborted` |
-| Non-2xx answer | `url`, `status`, `body` truncated to 500 characters |
-| Non-JSON body | `url`, `status`, `body` truncated to 500 characters |
+| Non-2xx answer | `url`, `status`, `byte_length`, `code` (only when it is a machine token) |
+| Non-JSON body | `url`, `status`, `byte_length` |
 | Envelope failed validation | `url`, `status`, `issues` (path and message per issue) |
 
 Not logged:
 
-- `handleRouteError` logs nothing. A 500 leaves no trace on the server except the response the caller saw.
+- Upstream response bodies. The gateway never logs them and never copies upstream error text into a thrown error, because those messages reach the client.
 - A 404, 409 or 422 is not logged (they are caller errors, so this is fine).
-- The `request_id` in the response is not written to any log line, so a user-reported id cannot be traced.
+- Request or response content anywhere. `handleRouteError` logs the cause of an unexpected error with the `request_id` (`[server-error] request_id=...`), so a user-reported id can be traced.
 
 Gotchas:
 
-- The truncated upstream body can contain user text if sineva-ai echoes input in an error. Treat these logs as sensitive.
-- For an unknown error, `handleRouteError` puts the raw `Error.message` in the response. That can leak internals: a Prisma error text, `Agent 'x' has unknown category 'y'` from the repository mapper, or the `SyntaxError` text from a malformed JSON body.
-- A request body that is not valid JSON throws from `request.json()` before the DTO runs, so it is a 500, not a 4xx.
+- The cause of a 500 is logged with the `request_id` and may contain driver or ORM text. Treat server logs as sensitive. The response carries a fixed message and the same `request_id`.
+- A request body that is empty or not valid JSON is a 422 `validation_failed` (`parseJsonBody` throws `MalformedJsonError`). Handlers must not call `request.json()` directly.
+- A client `X-Request-Id` is trusted only when it is 8 to 128 characters of `A-Za-z0-9._-`; otherwise a UUID is generated.
 
 ## 4. No silent fallbacks
 
@@ -110,8 +110,6 @@ These break R-26 or its neighbours. Do not copy them. Removing one needs a faili
 - `checkHealth` returns a hardcoded `engine_version`.
 - `getEnvConfig()` has hardcoded default secrets and hosts (database URL and password, S3 keys, the internal API key). `docker-compose.yml` has defaults too.
 - `AI_ENGINE_TIMEOUT_MS` is parsed with `Number(process.env.AI_ENGINE_TIMEOUT_MS ?? '15000')`. A non-numeric value gives `NaN`, and Node's `setTimeout` then fires after about 1 ms, so every chat call would abort and return 503.
-- `handleRouteError` does not log, returns raw messages for unknown errors, and turns malformed JSON into a 500.
-- Upstream non-2xx bodies are logged up to 500 characters and may contain user text.
 - `DomainError` carries an HTTP `status` and imports a type from `@sineva/shared`, so the domain knows about HTTP.
 
 ## 6. UI behavior

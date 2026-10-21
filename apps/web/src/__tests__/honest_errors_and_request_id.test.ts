@@ -2,7 +2,8 @@ import { NextRequest } from 'next/server';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { POST as postAgent } from '@/app/api/v1/agents/route';
 import { POST as postStoragePresign } from '@/app/api/v1/storage/presign/route';
-import { handleRouteError } from '@/server/http/response_helper';
+import { DomainError } from '@/server/domain/errors/domain_error';
+import { extractRequestId, handleRouteError } from '@/server/http/response_helper';
 import { InternalAiEngineGateway } from '@/server/infrastructure/gateways/internal_ai_engine_gateway';
 
 // We mock the container so we can test route handling without real external services
@@ -179,5 +180,55 @@ describe('Honest Errors & Request ID (WP-M0-07)', () => {
     });
 
     expect(capturedHeaders['X-Request-Id']).toBe('req_trace_uuid_555');
+  });
+  it('replaces a client X-Request-Id that is not a safe token with a generated one (API-5)', async () => {
+    const hostile = 'abc\r\n[server-error] forged log line';
+    const req = new NextRequest('http://localhost:3000/api/v1/agents', {
+      method: 'POST',
+      body: 'invalid',
+      headers: { 'Content-Type': 'application/json', 'X-Request-Id': 'x'.repeat(300) },
+    });
+    const res = await postAgent(req);
+    const body = await res.json();
+    expect(res.headers.get('X-Request-Id')).not.toContain('xxxx');
+    expect(body.meta.request_id).toMatch(
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/,
+    );
+    // Header values cannot carry CR/LF in a real fetch, but the helper is also
+    // called with plain Request objects, so the charset rule is checked directly.
+    const direct = extractRequestId(new Request('http://localhost/x', { headers: { 'x-request-id': hostile.replace(/[\r\n]/g, ' ') } }));
+    expect(direct).toMatch(/^[0-9a-f-]{36}$/);
+  });
+
+  it('never forwards upstream error text to the client on 502 and 503 (SEC-6)', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    const leaky = 'internal stack detail: db password hunter2 for user alice';
+    const gateway = new InternalAiEngineGateway();
+    for (const status of [500, 502, 503]) {
+      global.fetch = vi.fn().mockResolvedValue({
+        status,
+        text: vi.fn().mockResolvedValue(
+          JSON.stringify({ success: false, code: 'weird upstream code!', message: leaky }),
+        ),
+      } as unknown as Response);
+
+      const error = await gateway
+        .dispatchAgentChat({
+          agent_slug: 'sinohelp',
+          session_id: '8f3a1c2d-6b4e-4d7a-9c15-2e0b7a41f9d3',
+          user_id: 'usr_12345',
+          message_text: 'hello',
+          request_id: 'req_test_123',
+        })
+        .then(
+          () => null,
+          (e: unknown) => e,
+        );
+      expect(error).toBeInstanceOf(DomainError);
+      const res = handleRouteError(error);
+      const text = JSON.stringify(await res.json());
+      expect(text).not.toContain('hunter2');
+      expect(text).not.toContain('weird upstream code');
+    }
   });
 });
