@@ -1,0 +1,73 @@
+import type { NextRequest } from 'next/server';
+import { NextResponse } from 'next/server';
+
+/**
+ * Sanitizes the `next` redirect parameter to prevent open-redirect phishing attacks.
+ * Only allows safe relative paths starting with `/` (and disallows protocol-relative `//`).
+ */
+export function sanitizeNextRedirect(rawPath?: string | null): string {
+  if (!rawPath || typeof rawPath !== 'string') {
+    return '/';
+  }
+
+  const trimmed = rawPath.trim();
+
+  // Must begin with single `/` and NOT `//`
+  if (!trimmed.startsWith('/') || trimmed.startsWith('//')) {
+    return '/';
+  }
+
+  // Reject URLs containing protocol schemes before a query/hash
+  if (/^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(trimmed)) {
+    return '/';
+  }
+
+  // Reject javascript:, data:, vbscript: pseudo-protocols
+  if (/^(javascript|data|vbscript):/i.test(trimmed)) {
+    return '/';
+  }
+
+  return trimmed;
+}
+
+/**
+ * Cheap edge/proxy page rejection: unauthenticated page requests are redirected
+ * to `/login?next=...`. This never replaces the authoritative application-layer check (FR-AUTH-22).
+ */
+export function proxyPageGuard(request: NextRequest): NextResponse | null {
+  const pathname = request.nextUrl.pathname;
+
+  // Static assets and API endpoints are ignored by the page guard
+  if (
+    pathname.startsWith('/api') ||
+    pathname.startsWith('/_next') ||
+    pathname.includes('.') ||
+    pathname === '/login' ||
+    pathname === '/sign-up' ||
+    pathname === '/'
+  ) {
+    return null;
+  }
+
+  // Check session cookie
+  const sessionToken =
+    request.cookies.get('sineva_session')?.value ||
+    request.cookies.get('better-auth.session_token')?.value;
+
+  if (!sessionToken) {
+    const nextPath = sanitizeNextRedirect(request.nextUrl.pathname + request.nextUrl.search);
+    const loginUrl = new URL('/login', request.url);
+    loginUrl.searchParams.set('next', nextPath);
+    return NextResponse.redirect(loginUrl);
+  }
+
+  return null;
+}
+
+export function proxy(request: NextRequest): NextResponse {
+  const result = proxyPageGuard(request);
+  return result ?? NextResponse.next();
+}
+
+export default proxy;
+

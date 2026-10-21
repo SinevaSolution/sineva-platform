@@ -6,14 +6,14 @@ import {
 import { getGetAgentsUseCase } from '@/server/container';
 import {
   extractRequestId,
-  handleRouteError,
   parseJsonBody,
   sendPaginatedJson,
   sendSuccessJson,
 } from '@/server/http/response_helper';
+import { withAuth } from '@/server/http/with_auth';
 
-export async function GET(request: NextRequest) {
-  try {
+export const GET = withAuth(
+  async (request: NextRequest) => {
     const requestId = extractRequestId(request);
     const searchParams = request.nextUrl.searchParams;
     const rawQuery = {
@@ -33,13 +33,12 @@ export async function GET(request: NextRequest) {
       message: 'Specialized Sineva AI companions retrieved successfully',
       request_id: requestId,
     });
-  } catch (error) {
-    return handleRouteError(error, request);
-  }
-}
+  },
+  { scope: 'public', permission: 'specialist.view' },
+);
 
-export async function POST(request: NextRequest) {
-  try {
+export const POST = withAuth(
+  async (request: NextRequest) => {
     const requestId = extractRequestId(request);
     const body = await parseJsonBody(request);
     const validatedInput = createAgentDtoSchema.parse(body);
@@ -52,7 +51,11 @@ export async function POST(request: NextRequest) {
       status: 201,
       request_id: requestId,
     });
-  } catch (error) {
-    return handleRouteError(error, request);
-  }
-}
+  },
+  {
+    scope: 'user',
+    permission: 'specialist.enable',
+    allowInternalApiKey: true,
+    requiredRoleOrInternal: 'owner',
+  },
+);

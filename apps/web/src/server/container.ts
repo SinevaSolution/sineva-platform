@@ -54,6 +54,8 @@ const getStorageRepository = memoize<StorageRepository>(
   () => new SeaweedStorageRepository(),
 );
 
+export { getPrismaClient };
+
 export const getGetAgentsUseCase = memoize(
   () => new GetAgentsUseCase(getAgentRepository(), getCacheRepository()),
 );
