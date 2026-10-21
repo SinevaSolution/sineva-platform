@@ -55,7 +55,6 @@ When you fix an item, delete it here in the same change (R-38) and remove its li
 | INF-5 | Presigned URL host is the internal Docker name | Medium |
 | INF-6 | `AI_ENGINE_TIMEOUT_MS` is not validated | Low |
 | API-1 | Malformed JSON returns 500 | Medium |
-| API-2 | OpenAPI is hand-written, incomplete and unguarded | Medium |
 | API-3 | A chat retry can run the turn twice | Medium |
 | API-4 | The orchestrator `sino` is unreachable; chat is per product | Medium |
 | API-5 | Request id is not propagated | Low |
@@ -80,8 +79,6 @@ When you fix an item, delete it here in the same change (R-38) and remove its li
 | UI-9 | Transcripts are lost on reload | Medium |
 | UI-10 | Unused front-end packages and tokens | Low |
 | UI-11 | The orchestrator mode toggle does nothing verified | Low |
-| OPS-1 | CI has no Postgres, so integration tests do not run | Medium |
-| OPS-2 | `npm run docker:down` deletes volumes | High |
 | OPS-3 | Prettier width disagrees with the code | Low |
 | AI-1 | sineva-ai: session ownership is not checked | High |
 | AI-2 | sineva-ai: Postgres persistence is dormant | Medium |
@@ -248,17 +245,6 @@ The cross-tenant session issue in `sineva-ai` (AI-1) is also a security item; it
 | Severity | Medium |
 | Do not copy | Calling `request.json()` with no handling of invalid input. |
 | Suggested fix | A shared body parser that throws a typed 422 error for invalid JSON. Test first. |
-
-### API-2 OpenAPI is hand-written, incomplete and unguarded
-
-| | |
-| :--- | :--- |
-| Symptom | The document can drift from the Zod schemas. Health, list and presign have no response schema and no constraints. A route added without a spec entry passes every test. |
-| Root cause | `getOpenApiSpec()` is a static object, and `api_routes.test.ts` asserts only the chat contract, the health path and the 409. |
-| Location | `server/infrastructure/openapi/spec.ts`, `__tests__/api_routes.test.ts` |
-| Severity | Medium |
-| Do not copy | A route with no spec entry (R-25). |
-| Suggested fix | Add the guard test described in [swagger and OpenAPI](../api-spec/swagger_and_openapi.md), then fill the gaps listed there. |
 
 ### API-3 A chat retry can run the turn twice
 
@@ -531,28 +517,6 @@ The cross-tenant session issue in `sineva-ai` (AI-1) is also a security item; it
 | Suggested fix | Remove it, or implement an approval step for real and write the ADR. |
 
 ## Tooling and operations
-
-### OPS-1 CI has no Postgres, so integration tests do not run
-
-| | |
-| :--- | :--- |
-| Symptom | `npm run test:integration` passes only on a developer machine. CI cannot catch a broken Prisma adapter. |
-| Root cause | `.github/workflows/ci.yml` runs lint, typecheck, `npm run test` and build. It has no database service and no integration step. |
-| Location | `.github/workflows/ci.yml` |
-| Severity | Medium |
-| Do not copy | Marking database code as tested when only fakes ran. |
-| Suggested fix | Add a Postgres 17 service container, set `TEST_DATABASE_URL` to a database whose name contains "test", and run `npm run test:integration`. |
-
-### OPS-2 `npm run docker:down` deletes volumes
-
-| | |
-| :--- | :--- |
-| Symptom | Running the script erases Postgres, Redis, SeaweedFS and Qdrant data, including the data `sineva-ai` keeps in the shared database. |
-| Root cause | The root script is `docker compose down -v`. |
-| Location | root `package.json` |
-| Severity | High |
-| Do not copy | A convenience script with a destructive flag. |
-| Suggested fix | Make `docker:down` plain `docker compose down` and add a separate, clearly named `docker:reset` that asks first. |
 
 ### OPS-3 Prettier width disagrees with the code
 

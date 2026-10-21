@@ -21,7 +21,8 @@
     "format": "prettier --write \"**/*.{ts,tsx,md,json}\"",
     "format:check": "prettier --check \"**/*.{ts,tsx,md,json}\"",
     "docker:up": "docker compose up -d --build",
-    "docker:down": "docker compose down -v"
+    "docker:down": "docker compose down",
+    "docker:reset": "node -e 'if (process.env.CONFIRM_RESET !== \"yes\") { console.error(\"Refusing to reset without CONFIRM_RESET=yes. This destroys all local volumes.\"); process.exit(1); }' && docker compose down -v"
   },
   "devDependencies": {
     "prettier": "^3.5.3",
