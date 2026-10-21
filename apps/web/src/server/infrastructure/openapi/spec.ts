@@ -597,6 +597,103 @@ export function getOpenApiSpec(): Record<string, unknown> {
           },
         },
       },
+      '/api/v1/me/profile': {
+        get: {
+          tags: ['Auth'],
+          summary: 'Get the profile of the authenticated user',
+          operationId: 'get_my_profile',
+          responses: {
+            '200': {
+              description: 'Profile: id, email, email_verified, full_name, avatar_url, locale, timezone, created_at',
+              content: {
+                'application/json': {
+                  schema: { $ref: '#/components/schemas/StandardEnvelope' },
+                },
+              },
+            },
+            '401': {
+              description: 'Unauthenticated',
+              content: {
+                'application/json': {
+                  schema: { $ref: '#/components/schemas/StandardEnvelope' },
+                },
+              },
+            },
+            '404': {
+              description: 'The session user no longer exists',
+              content: {
+                'application/json': {
+                  schema: { $ref: '#/components/schemas/StandardEnvelope' },
+                },
+              },
+            },
+          },
+        },
+        patch: {
+          tags: ['Auth'],
+          summary: 'Update the profile of the authenticated user (identity comes from the session, never the body)',
+          operationId: 'update_my_profile',
+          requestBody: {
+            required: true,
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  additionalProperties: false,
+                  minProperties: 1,
+                  properties: {
+                    full_name: { type: 'string', minLength: 1, maxLength: 100, description: 'Trimmed before validation' },
+                    locale: { type: 'string', enum: ['en', 'id'] },
+                    timezone: { type: 'string', description: 'IANA time zone, for example Asia/Jakarta' },
+                  },
+                },
+              },
+            },
+          },
+          responses: {
+            '200': {
+              description: 'Updated profile',
+              content: {
+                'application/json': {
+                  schema: { $ref: '#/components/schemas/StandardEnvelope' },
+                },
+              },
+            },
+            '401': {
+              description: 'Unauthenticated',
+              content: {
+                'application/json': {
+                  schema: { $ref: '#/components/schemas/StandardEnvelope' },
+                },
+              },
+            },
+            '403': {
+              description: 'Missing CSRF header (x-sineva-action) or a mismatched origin on a cookie-authenticated request',
+              content: {
+                'application/json': {
+                  schema: { $ref: '#/components/schemas/StandardEnvelope' },
+                },
+              },
+            },
+            '404': {
+              description: 'The session user no longer exists',
+              content: {
+                'application/json': {
+                  schema: { $ref: '#/components/schemas/StandardEnvelope' },
+                },
+              },
+            },
+            '422': {
+              description: 'Validation failed: empty body, unknown key, blank or over-long full_name, unsupported locale, invalid time zone',
+              content: {
+                'application/json': {
+                  schema: { $ref: '#/components/schemas/StandardEnvelope' },
+                },
+              },
+            },
+          },
+        },
+      },
       '/api/v1/workspaces': {
         get: {
           tags: ['Workspaces'],

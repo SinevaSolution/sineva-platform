@@ -55,6 +55,10 @@ import { GetConversationUseCase } from './application/use-cases/chat/get_convers
 import { ListConversationsUseCase } from './application/use-cases/chat/list_conversations_use_case';
 import { ListMessagesUseCase } from './application/use-cases/chat/list_messages_use_case';
 import { CreateMessageUseCase } from './application/use-cases/chat/create_message_use_case';
+import type { UserProfileRepository } from './domain/repositories/user_profile_repository';
+import { PrismaUserProfileRepository } from './infrastructure/database/prisma_user_profile_repository';
+import { GetProfileUseCase } from './application/use-cases/profile/get_profile_use_case';
+import { UpdateProfileUseCase } from './application/use-cases/profile/update_profile_use_case';
 
 // Composition root: the only module that knows which concrete adapter backs
 // each port. Route handlers and pages ask for use cases here instead of
@@ -271,7 +275,7 @@ export async function handleOAuthCallback(params: {
 
   return {
     sessionToken: result.session.token,
-    targetPath: statePayload.returnTo ?? '/w',
+    targetPath: statePayload.returnTo ?? '/',
   };
 }
 
@@ -312,4 +316,16 @@ export const getListMessagesUseCase = memoize(
 
 export const getCreateMessageUseCase = memoize(
   () => new CreateMessageUseCase(getConversationRepository(), getMessageRepository()),
+);
+
+export const getUserProfileRepository = memoize<UserProfileRepository>(
+  () => new PrismaUserProfileRepository(getPrismaClient()),
+);
+
+export const getGetProfileUseCase = memoize(
+  () => new GetProfileUseCase(getUserProfileRepository()),
+);
+
+export const getUpdateProfileUseCase = memoize(
+  () => new UpdateProfileUseCase(getUserProfileRepository()),
 );
