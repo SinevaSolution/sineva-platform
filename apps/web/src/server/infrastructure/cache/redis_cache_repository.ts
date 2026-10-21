@@ -2,7 +2,7 @@ import 'server-only';
 import type Redis from 'ioredis';
 import type { CacheRepository } from '@/server/domain/repositories/cache_repository';
 import { getEnvConfig } from '../config/env';
-import { getRedisClient } from './redis_client';
+import { ensureRedisReady, getRedisClient } from './redis_client';
 
 export class RedisCacheRepository implements CacheRepository {
   private readonly prefix: string;
@@ -19,6 +19,7 @@ export class RedisCacheRepository implements CacheRepository {
 
   async get<T>(cache_key: string): Promise<T | null> {
     const fullKey = this.withPrefix(cache_key);
+    await ensureRedisReady(this.client);
     const raw = await this.client.get(fullKey);
     if (!raw) {
       return null;
@@ -36,6 +37,7 @@ export class RedisCacheRepository implements CacheRepository {
     ttl_seconds = 60,
   ): Promise<void> {
     const fullKey = this.withPrefix(cache_key);
+    await ensureRedisReady(this.client);
     const serialized = JSON.stringify(value);
     if (ttl_seconds > 0) {
       await this.client.set(fullKey, serialized, 'EX', ttl_seconds);
@@ -46,11 +48,13 @@ export class RedisCacheRepository implements CacheRepository {
 
   async del(cache_key: string): Promise<void> {
     const fullKey = this.withPrefix(cache_key);
+    await ensureRedisReady(this.client);
     await this.client.del(fullKey);
   }
 
   async delByPrefix(prefix: string): Promise<void> {
     const fullPattern = this.withPrefix(`${prefix}*`);
+    await ensureRedisReady(this.client);
     const stream = this.client.scanStream({
       match: fullPattern,
       count: 100,
@@ -70,6 +74,7 @@ export class RedisCacheRepository implements CacheRepository {
 
   async ping(): Promise<boolean> {
     try {
+      await ensureRedisReady(this.client);
       const res = await this.client.ping();
       return res === 'PONG';
     } catch {
