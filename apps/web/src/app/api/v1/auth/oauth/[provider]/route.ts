@@ -9,7 +9,7 @@ export const GET = withAuth(
       const resolvedParams = await Promise.resolve(params);
       const provider = resolvedParams?.provider?.toLowerCase();
       if (!provider) {
-        return NextResponse.redirect(new URL('/login?error=missing_provider', request.url));
+        return NextResponse.redirect(new URL('/sign-in?error=missing_provider', request.url));
       }
 
       const searchParams = request.nextUrl.searchParams;

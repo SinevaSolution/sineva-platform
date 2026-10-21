@@ -8,7 +8,7 @@ import {
   hasPermission,
 } from '@/server/domain/permissions/registry';
 import { withAuth } from '@/server/http/with_auth';
-import { sanitizeNextRedirect } from '@/proxy';
+import { proxyPageGuard, sanitizeNextRedirect } from '@/proxy';
 import { sendSuccessJson } from '@/server/http/response_helper';
 
 const API_ROOT = resolve(import.meta.dirname, '../app/api');
@@ -293,5 +293,23 @@ describe('proxy.ts Page Guard & Open Redirect Defense (WP-M0-22)', () => {
     expect(sanitizeNextRedirect('')).toBe('/');
     expect(sanitizeNextRedirect(null)).toBe('/');
     expect(sanitizeNextRedirect(undefined)).toBe('/');
+  });
+});
+
+describe('proxyPageGuard public auth pages', () => {
+  const guard = (path: string) => proxyPageGuard(new NextRequest(new URL(path, 'http://127.0.0.1:3001')));
+
+  it.each(['/sign-in', '/sign-up', '/forgot-password', '/reset-password', '/verify-email'])(
+    'lets a signed-out visitor open %s',
+    (path) => {
+      expect(guard(path)).toBeNull();
+    },
+  );
+
+  it('sends a signed-out visitor on a workspace page to /sign-in with next', () => {
+    const res = guard('/w/sineva-hq?x=1');
+    const location = new URL(res?.headers.get('location') ?? '');
+    expect(location.pathname).toBe('/sign-in');
+    expect(location.searchParams.get('next')).toBe('/w/sineva-hq?x=1');
   });
 });

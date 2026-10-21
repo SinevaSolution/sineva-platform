@@ -99,7 +99,7 @@ describe('OAuth API Routes (WP-M0-25)', () => {
 
     const res = await getOAuthCallback(req, { params: Promise.resolve({ provider: 'google' }) });
     expect(res.status).toBe(307);
-    expect(res.headers.get('location')).toContain('/login?error=access_denied');
+    expect(res.headers.get('location')).toContain('/sign-in?error=access_denied');
   });
 
   it('GET /api/v1/auth/oauth/[provider]/callback validates PKCE, exchanges code, and sets session cookie', async () => {

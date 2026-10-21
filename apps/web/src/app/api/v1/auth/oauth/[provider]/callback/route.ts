@@ -11,14 +11,14 @@ export const GET = withAuth(
       const resolvedParams = await Promise.resolve(params);
       const provider = resolvedParams?.provider?.toLowerCase();
       if (!provider) {
-        return NextResponse.redirect(new URL('/login?error=missing_provider', request.url));
+        return NextResponse.redirect(new URL('/sign-in?error=missing_provider', request.url));
       }
 
       const searchParams = request.nextUrl.searchParams;
       const errorParam = searchParams.get('error');
       if (errorParam) {
         return NextResponse.redirect(
-          new URL(`/login?error=${encodeURIComponent(errorParam)}`, request.url),
+          new URL(`/sign-in?error=${encodeURIComponent(errorParam)}`, request.url),
         );
       }
 
@@ -27,7 +27,7 @@ export const GET = withAuth(
 
       if (!code || !state) {
         return NextResponse.redirect(
-          new URL('/login?error=missing_code_or_state', request.url),
+          new URL('/sign-in?error=missing_code_or_state', request.url),
         );
       }
 
@@ -47,7 +47,7 @@ export const GET = withAuth(
         userAgent,
       });
 
-      const safeRedirect = sanitizeNextRedirect(targetPath, '/w');
+      const safeRedirect = sanitizeNextRedirect(targetPath, '/');
       const response = NextResponse.redirect(new URL(safeRedirect, request.url));
 
       // Set session cookie

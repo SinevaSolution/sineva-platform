@@ -32,8 +32,12 @@ export function sanitizeNextRedirect(rawPath?: string | null, fallback: string =
 
 /**
  * Cheap edge/proxy page rejection: unauthenticated page requests are redirected
- * to `/login?next=...`. This never replaces the authoritative application-layer check (FR-AUTH-22).
+ * to `/sign-in?next=...`. This never replaces the authoritative application-layer check (FR-AUTH-22).
  */
+// Auth screens a signed-out visitor must be able to reach. The emailed
+// verify and reset links land here before any session exists.
+const PUBLIC_PAGES = new Set(['/', '/sign-in', '/sign-up', '/forgot-password', '/reset-password', '/verify-email']);
+
 export function proxyPageGuard(request: NextRequest): NextResponse | null {
   const pathname = request.nextUrl.pathname;
 
@@ -42,9 +46,7 @@ export function proxyPageGuard(request: NextRequest): NextResponse | null {
     pathname.startsWith('/api') ||
     pathname.startsWith('/_next') ||
     pathname.includes('.') ||
-    pathname === '/login' ||
-    pathname === '/sign-up' ||
-    pathname === '/'
+    PUBLIC_PAGES.has(pathname)
   ) {
     return null;
   }
@@ -56,9 +58,9 @@ export function proxyPageGuard(request: NextRequest): NextResponse | null {
 
   if (!sessionToken) {
     const nextPath = sanitizeNextRedirect(request.nextUrl.pathname + request.nextUrl.search);
-    const loginUrl = new URL('/login', request.url);
-    loginUrl.searchParams.set('next', nextPath);
-    return NextResponse.redirect(loginUrl);
+    const signInUrl = new URL('/sign-in', request.url);
+    signInUrl.searchParams.set('next', nextPath);
+    return NextResponse.redirect(signInUrl);
   }
 
   return null;
