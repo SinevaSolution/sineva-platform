@@ -112,6 +112,9 @@ services:
       REDIS_URL: redis://redis:6379/1
       QDRANT_URL: http://qdrant:6333
       S3_ENDPOINT: http://seaweedfs-s3:8333
+      # Same variable and default as sineva-platform's AI_ENGINE_INTERNAL_API_KEY
+      # below, so both sides always agree on the shared secret.
+      INTERNAL_API_KEY: ${AI_ENGINE_INTERNAL_API_KEY:-sineva_internal_service_token_dev}
     depends_on:
       postgres:
         condition: service_healthy

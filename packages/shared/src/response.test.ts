@@ -10,7 +10,7 @@ import {
 describe('@sineva/shared response utility', () => {
   it('creates a standard snake_case success response envelope', () => {
     const res = createSuccessResponse({
-      data: { agent_slug: 'sino-people', active_sessions: 4 },
+      data: { agent_slug: 'sinopeople', active_sessions: 4 },
       message: 'Agent details fetched',
       status: 200,
       request_id: 'req_test_001',
@@ -19,7 +19,7 @@ describe('@sineva/shared response utility', () => {
     expect(res.success).toBe(true);
     expect(res.status).toBe(200);
     expect(res.message).toBe('Agent details fetched');
-    expect(res.data).toEqual({ agent_slug: 'sino-people', active_sessions: 4 });
+    expect(res.data).toEqual({ agent_slug: 'sinopeople', active_sessions: 4 });
     expect(res.meta?.request_id).toBe('req_test_001');
     expect(res.errors).toBeNull();
     expect(assertSnakeCaseKeys(res.data as Record<string, unknown>)).toBe(true);
@@ -27,7 +27,7 @@ describe('@sineva/shared response utility', () => {
 
   it('creates a standard snake_case paginated response envelope', () => {
     const res = createPaginatedResponse({
-      items: [{ agent_slug: 'sino-finance' }],
+      items: [{ agent_slug: 'sinofinance' }],
       page: 1,
       per_page: 10,
       total_items: 6,
@@ -69,6 +69,6 @@ describe('@sineva/shared response utility', () => {
 
   it('converts camelCase and kebab-case strings to snake_case', () => {
     expect(toSnakeCase('workspaceId')).toBe('workspace_id');
-    expect(toSnakeCase('sino-people')).toBe('sino_people');
+    expect(toSnakeCase('workspace-id')).toBe('workspace_id');
   });
 });

@@ -1,0 +1,137 @@
+// Database safety — read before running any Prisma command.
+//
+// This Postgres instance is shared with sineva-ai (Python/SQLAlchemy), which
+// owns the `public` schema. Every platform model therefore lives in the
+// dedicated Postgres schema `platform` (`schemas` below + `@@schema` on each
+// model), and migrations created from this file only ever touch `platform`.
+//
+// Never run `prisma migrate reset` or `prisma db push` against a database that
+// holds data you care about: both can drop objects. Use them only against a
+// throwaway container (see `test:integration`). Production gets
+// `prisma migrate deploy` only.
+
+generator client {
+  provider = "prisma-client"
+  // The generated client is build output, not source: it is gitignored and
+  // rebuilt by `npm run db:generate` (which `build` and `typecheck` run first).
+  output   = "../src/server/infrastructure/database/generated"
+}
+
+datasource db {
+  provider = "postgresql"
+  schemas  = ["platform"]
+}
+
+model Workspace {
+  id                      String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  workspace_slug          String   @unique
+  workspace_name          String
+  subscription_tier       String   @default("growth")
+  monthly_token_quota     Int      @default(1000000)
+  monthly_tokens_consumed Int      @default(0)
+  created_at              DateTime @default(now()) @db.Timestamptz(6)
+  updated_at              DateTime @default(now()) @db.Timestamptz(6)
+
+  users           User[]
+  agent_configs   AgentConfig[]
+  chat_sessions   ChatSession[]
+  storage_objects StorageObject[]
+
+  @@map("workspaces")
+  @@schema("platform")
+}
+
+model User {
+  id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  workspace_id String   @db.Uuid
+  email        String   @unique
+  full_name    String
+  role         String   @default("member")
+  avatar_url   String?
+  is_active    Boolean  @default(true)
+  created_at   DateTime @default(now()) @db.Timestamptz(6)
+  updated_at   DateTime @default(now()) @db.Timestamptz(6)
+
+  workspace     Workspace     @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
+  chat_sessions ChatSession[]
+
+  @@map("users")
+  @@schema("platform")
+}
+
+model AgentConfig {
+  id                    String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  workspace_id          String?  @db.Uuid
+  agent_slug            String   @unique
+  display_name          String
+  role_title            String
+  category              String
+  status                String   @default("online")
+  short_description     String
+  capabilities          Json     @default("[]")
+  model_name            String   @default("sineva-core-v2")
+  avg_latency_ms        Int      @default(420)
+  active_sessions_count Int      @default(0)
+  daily_tokens_used     Int      @default(0)
+  accent_token          String   @default("--teal-500")
+  created_at            DateTime @default(now()) @db.Timestamptz(6)
+  updated_at            DateTime @default(now()) @db.Timestamptz(6)
+
+  workspace Workspace? @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
+
+  @@map("agent_configs")
+  @@schema("platform")
+}
+
+model ChatSession {
+  id            String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  workspace_id  String   @db.Uuid
+  user_id       String   @db.Uuid
+  agent_slug    String
+  session_title String
+  is_archived   Boolean  @default(false)
+  created_at    DateTime @default(now()) @db.Timestamptz(6)
+  updated_at    DateTime @default(now()) @db.Timestamptz(6)
+
+  workspace     Workspace     @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
+  user          User          @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  chat_messages ChatMessage[]
+
+  @@map("chat_sessions")
+  @@schema("platform")
+}
+
+model ChatMessage {
+  id                String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  session_id        String   @db.Uuid
+  agent_slug        String
+  sender_role       String
+  message_text      String
+  reasoning_summary String?
+  suggested_actions Json     @default("[]")
+  tokens_used       Int      @default(0)
+  latency_ms        Int      @default(0)
+  created_at        DateTime @default(now()) @db.Timestamptz(6)
+
+  session ChatSession @relation(fields: [session_id], references: [id], onDelete: Cascade)
+
+  @@map("chat_messages")
+  @@schema("platform")
+}
+
+model StorageObject {
+  id              String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  workspace_id    String   @db.Uuid
+  object_key      String   @unique
+  bucket_name     String
+  file_name       String
+  content_type    String
+  file_size_bytes Int
+  created_at      DateTime @default(now()) @db.Timestamptz(6)
+  updated_at      DateTime @default(now()) @db.Timestamptz(6)
+
+  workspace Workspace @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
+
+  @@map("storage_objects")
+  @@schema("platform")
+}

@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { ArrowLeft, FileCode2 } from 'lucide-react';
 import { Badge, Button, Card, Container } from '@sineva/ui';
-import { getOpenApiSpec } from '@/infrastructure/openapi/spec';
+import { getOpenApiSpec } from '@/server/infrastructure/openapi/spec';
 
 export default function ApiDocsPage() {
   const spec = getOpenApiSpec();

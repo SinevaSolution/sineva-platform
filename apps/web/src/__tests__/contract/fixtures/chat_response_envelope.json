@@ -1,0 +1,39 @@
+{
+  "success": true,
+  "status_code": 200,
+  "message": "Companion 'sinofinance' completed chat turn.",
+  "data": {
+    "message_id": "c2e8f1a4-0d93-4b6e-a7c5-5f1d3e9b8a60",
+    "session_id": "8f3a1c2d-6b4e-4d7a-9c15-2e0b7a41f9d3",
+    "agent_slug": "sinofinance",
+    "display_name": "Sino Finance",
+    "handle": "@SinoFinance",
+    "routed_agent_slug": "sinofinance",
+    "reply_content": "**Sino Finance (`@SinoFinance`)** processed your request using skills `[fpna_burn_and_budget_analysis]`.\n\n- **Grounded Knowledge (`sineva_knowledge_finance`)**: Software subscriptions above $2,500/month require VP Finance approval. Quarterly runway target is maintained above 24 months with SaaS burn metrics.\n- **Tool Telemetry**: `{'tool_name': 'calculate_saas_burn_metrics', 'monthly_revenue_usd': 420000.0, 'monthly_expenses_usd': 310000.0, 'net_burn_usd': 0.0, 'net_cash_flow_usd': 110000.0, 'estimated_runway_months': 999.0}`\n- **Resolution for Prompt**: What is our current monthly burn rate and runway?",
+    "model_id": "openai:gpt-4o-mini",
+    "execution_mode": "agno_deterministic_runtime",
+    "token_usage": {
+      "prompt_tokens": 18,
+      "completion_tokens": 122,
+      "total_tokens": 140
+    },
+    "tool_calls": [
+      {
+        "tool_name": "calculate_saas_burn_metrics",
+        "arguments": {},
+        "result_summary": "{'tool_name': 'calculate_saas_burn_metrics', 'monthly_revenue_usd': 420000.0, 'monthly_expenses_usd': 310000.0, 'net_burn_usd': 0.0, 'net_cash_flow_usd': 110000.0, 'estimated_runway_months': 999.0}"
+      }
+    ],
+    "citations": [
+      {
+        "document_id": "89e98e76-fd4a-52fe-bcb2-c7c8e220eb25",
+        "title": "Corporate Expense & Procurement Controls",
+        "similarity_score": 0.9002,
+        "source_uri": "s3://sineva-artifacts/finance/expense_controls.pdf"
+      }
+    ],
+    "created_at": "2026-10-21T01:44:34.656409Z"
+  },
+  "meta": null,
+  "errors": null
+}

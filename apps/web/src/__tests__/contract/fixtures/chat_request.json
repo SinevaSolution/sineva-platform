@@ -1,0 +1,10 @@
+{
+  "user_message": "What is our current monthly burn rate and runway?",
+  "session_id": "8f3a1c2d-6b4e-4d7a-9c15-2e0b7a41f9d3",
+  "user_id": "usr_01J9ZQ4K7M",
+  "tenant_id": "tnt_sineva_demo",
+  "context_metadata": {
+    "locale": "id-ID",
+    "channel": "web_chat"
+  }
+}

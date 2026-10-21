@@ -28,3 +28,6 @@ yarn-error.log*
 *.pem
 *.tsbuildinfo
 next-env.d.ts
+
+# Prisma generated client (rebuilt by `npm run db:generate`)
+apps/web/src/server/infrastructure/database/generated

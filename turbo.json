@@ -20,6 +20,10 @@
     "test": {
       "dependsOn": ["^build"],
       "outputs": ["coverage/**"]
+    },
+    "test:integration": {
+      "cache": false,
+      "env": ["TEST_DATABASE_URL"]
     }
   }
 }

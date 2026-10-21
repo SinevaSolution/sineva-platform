@@ -2,20 +2,13 @@ import type { NextRequest } from 'next/server';
 import {
   createAgentDtoSchema,
   listAgentsQuerySchema,
-} from '@/application/dtos/agent_dto';
-import { GetAgentsUseCase } from '@/application/use-cases/get_agents_use_case';
-import { defaultCacheRepository } from '@/infrastructure/cache/redis_cache_repository';
-import { defaultAgentRepository } from '@/infrastructure/database/client';
+} from '@/server/application/dtos/agent_dto';
+import { getGetAgentsUseCase } from '@/server/container';
 import {
   handleRouteError,
   sendPaginatedJson,
   sendSuccessJson,
-} from '@/presentation/http/response_helper';
-
-const getAgentsUseCase = new GetAgentsUseCase(
-  defaultAgentRepository,
-  defaultCacheRepository,
-);
+} from '@/server/http/response_helper';
 
 export async function GET(request: NextRequest) {
   try {
@@ -27,7 +20,7 @@ export async function GET(request: NextRequest) {
     };
 
     const validatedQuery = listAgentsQuerySchema.parse(rawQuery);
-    const result = await getAgentsUseCase.execute(validatedQuery);
+    const result = await getGetAgentsUseCase().execute(validatedQuery);
 
     return sendPaginatedJson({
       items: result.items,
@@ -45,7 +38,8 @@ export async function POST(request: NextRequest) {
   try {
     const body: unknown = await request.json();
     const validatedInput = createAgentDtoSchema.parse(body);
-    const createdAgent = await getAgentsUseCase.registerAgent(validatedInput);
+    const createdAgent =
+      await getGetAgentsUseCase().registerAgent(validatedInput);
 
     return sendSuccessJson({
       data: createdAgent,
