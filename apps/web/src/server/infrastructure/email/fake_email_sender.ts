@@ -15,11 +15,15 @@ export class FakeEmailSender implements EmailSender {
   constructor(renderer?: EmailTemplateRenderer) {
     this.renderer =
       renderer ??
-      ((template) => ({
-        subject: `[Sineva] ${template}`,
-        text: `Content for ${template}`,
-        html: `<p>Content for ${template}</p>`,
-      }));
+      ((template, _locale, params) => {
+        const record = params as Record<string, unknown> | undefined;
+        const url = (record?.url ?? record?.verification_url ?? '') as string;
+        return {
+          subject: `[Sineva] ${template}`,
+          text: `Content for ${template} ${url}`.trim(),
+          html: `<p>Content for ${template} ${url}</p>`,
+        };
+      });
   }
 
   async send<T extends EmailTemplateName>(options: EmailSendOptions<T>): Promise<void> {

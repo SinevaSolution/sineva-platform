@@ -90,6 +90,7 @@ describe('Route Inventory Guard Verification (WP-M0-22)', () => {
     const PUBLIC_ALLOWLIST = [
       'app/api/openapi.json/route.ts',
       'app/api/v1/health/route.ts',
+      'app/api/auth/[...all]/route.ts',
     ];
 
     const HTTP_METHODS = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'];
@@ -250,6 +251,29 @@ describe('withAuth Guard Runtime Enforcement (WP-M0-22)', () => {
 
     const allowedRes = await specialistHandler(allowedReq);
     expect(allowedRes.status).toBe(200);
+  });
+
+  it('rejects unverified user on workspace action with 403 email_not_verified (FR-AUTH-03)', async () => {
+    const handler = withAuth(
+      async () => sendSuccessJson({ data: { ok: true } }),
+      { permission: 'chat.create', scope: 'workspace' },
+    );
+
+    const req = new NextRequest('http://localhost:3000/api/v1/workspaces/wks_alpha/chat', {
+      method: 'POST',
+      headers: {
+        'x-test-session-user-id': 'usr_unverified',
+        'x-test-session-role': 'member',
+        'x-test-session-workspaces': 'wks_alpha',
+        'x-test-email-verified': 'false',
+      },
+    });
+
+    const res = await handler(req);
+    expect(res.status).toBe(403);
+    const body = await res.json();
+    expect(body.code).toBe('email_not_verified');
+    expect(body.message).toContain('Email verification is required');
   });
 });
 

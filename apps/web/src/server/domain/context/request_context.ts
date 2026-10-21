@@ -17,6 +17,8 @@ export interface RequestContext {
   request_id: string;
   staff_role?: StaffRole | null;
   actor?: ActorContext;
+  fresh_until?: Date | null;
+  email_verified?: boolean;
 }
 
 export function createAnonymousRequestContext(requestId: string): RequestContext {

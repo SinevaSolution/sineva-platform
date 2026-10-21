@@ -9,6 +9,9 @@ import type { CacheRepository } from './domain/repositories/cache_repository';
 import type { DatabaseHealthProbe } from './domain/repositories/database_health_probe';
 import type { StorageRepository } from './domain/repositories/storage_repository';
 import type { EmailSender } from './domain/email/email_sender';
+import type { BreachedPasswordChecker } from './domain/auth/breached_password_checker';
+import { FakeBreachedPasswordChecker } from './domain/auth/breached_password_checker';
+import { defaultAuditLogger } from './domain/audit/audit_logger';
 import { FakeEmailSender } from './infrastructure/email/fake_email_sender';
 import { SmtpEmailSender } from './infrastructure/email/smtp_email_sender';
 import { RedisCacheRepository } from './infrastructure/cache/redis_cache_repository';
@@ -18,6 +21,8 @@ import { PrismaDatabaseHealthProbe } from './infrastructure/database/prisma_data
 import { getPrismaClient } from './infrastructure/database/prisma_client';
 import { InternalAiEngineGateway } from './infrastructure/gateways/internal_ai_engine_gateway';
 import { SeaweedStorageRepository } from './infrastructure/storage/seaweed_storage_repository';
+import { PwnedPasswordsBreachedChecker } from './infrastructure/security/pwned_passwords_checker';
+import { JwtAuthService } from './infrastructure/auth/jwt_auth_service';
 
 // Composition root: the only module that knows which concrete adapter backs
 // each port. Route handlers and pages ask for use cases here instead of
@@ -71,6 +76,25 @@ const getEmailSender = memoize<EmailSender>(() => {
 });
 
 export { getPrismaClient, getEmailSender };
+
+const getBreachedPasswordChecker = memoize<BreachedPasswordChecker>(() => {
+  if (process.env.NODE_ENV === 'test') {
+    return new FakeBreachedPasswordChecker();
+  }
+  return new PwnedPasswordsBreachedChecker();
+});
+
+export const getJwtAuthService = memoize<JwtAuthService>(() => {
+  const env = getEnvConfig();
+  return new JwtAuthService({
+    prisma: getPrismaClient(),
+    emailSender: getEmailSender(),
+    auditLogger: defaultAuditLogger,
+    breachedChecker: getBreachedPasswordChecker(),
+    authSecret: env.auth_secret,
+    appUrl: env.next_public_app_url,
+  });
+});
 
 export const getGetAgentsUseCase = memoize(
   () => new GetAgentsUseCase(getAgentRepository(), getCacheRepository()),

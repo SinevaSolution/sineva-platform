@@ -11,9 +11,9 @@ import {
   UnauthorizedError,
 } from '@/server/domain/errors/domain_error';
 import { verifyCsrf } from '@/server/http/csrf_guard';
-import { extractRequestId, handleRouteError } from '@/server/http/response_helper';
+import { extractRequestId, handleRouteError, sendErrorJson } from '@/server/http/response_helper';
 import { getEnvConfig } from '@/server/infrastructure/config/env';
-import { getPrismaClient } from '@/server/container';
+import { getPrismaClient, getJwtAuthService } from '@/server/container';
 
 export interface RouteAuthOptions {
   permission?: PermissionKey;
@@ -42,6 +42,7 @@ export interface ResolvedSession {
   role?: UserRole;
   freshUntil?: Date | null;
   staffRole?: 'operator' | 'platform_admin' | 'support' | null;
+  emailVerified?: boolean;
   memberships: Array<{
     workspaceId: string;
     role: UserRole;
@@ -83,6 +84,7 @@ export async function resolveSession(request?: NextRequest): Promise<ResolvedSes
       | 'operator'
       | 'platform_admin'
       | null;
+    const testEmailVerified = request?.headers?.get('x-test-email-verified') !== 'false';
 
     return {
       userId: testUserId,
@@ -90,6 +92,7 @@ export async function resolveSession(request?: NextRequest): Promise<ResolvedSes
       role: testRole,
       freshUntil: new Date(Date.now() + 3600000),
       staffRole: testStaffRole,
+      emailVerified: testEmailVerified,
       memberships: testWorkspaces.map((wsId) => ({
         workspaceId: wsId.trim(),
         role: testRole,
@@ -135,6 +138,22 @@ export async function resolveSession(request?: NextRequest): Promise<ResolvedSes
   }
 
   try {
+    if (token.includes('.')) {
+      const authService = getJwtAuthService();
+      const resolved = await authService.resolveSessionFromToken(token);
+      if (resolved) {
+        return {
+          userId: resolved.userId,
+          sessionId: resolved.sessionId,
+          role: resolved.memberships[0]?.role,
+          freshUntil: resolved.freshUntil,
+          staffRole: resolved.staffRole,
+          emailVerified: resolved.emailVerified,
+          memberships: resolved.memberships,
+        };
+      }
+    }
+
     const prisma = getPrismaClient();
     const session = await prisma.session.findFirst({
       where: {
@@ -312,6 +331,19 @@ export function withAuth<TParams = Record<string, string | string[]>>(
 
         if (!targetWorkspaceId) {
           targetWorkspaceId = 'default_workspace';
+        }
+
+        // FR-AUTH-03: Email verification is required before taking any workspace action
+        if (session.emailVerified === false) {
+          return sendErrorJson(
+            {
+              message: 'Email verification is required before taking workspace actions.',
+              code: 'email_not_verified',
+              status: 403,
+              request_id: requestId,
+            },
+            { status: 403 },
+          );
         }
 
         // FR-AUTH-24: If user is NOT a member of targetWorkspaceId, return 404 (never 403)

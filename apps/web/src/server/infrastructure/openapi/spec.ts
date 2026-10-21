@@ -83,6 +83,10 @@ export function getOpenApiSpec(): Record<string, unknown> {
         name: 'Storage',
         description: 'SeaweedFS S3 presigned upload workflows',
       },
+      {
+        name: 'Auth',
+        description: 'Identity, custom JWT authentication, session, and password lifecycle',
+      },
     ],
     paths: {
       '/api/v1/health': {
@@ -339,6 +343,213 @@ export function getOpenApiSpec(): Record<string, unknown> {
                   schema: {
                     $ref: '#/components/schemas/StandardEnvelope',
                   },
+                },
+              },
+            },
+          },
+        },
+      },
+      '/api/v1/auth/sign-up': {
+        post: {
+          tags: ['Auth'],
+          summary: 'Register a new user account with email and password',
+          operationId: 'auth_sign_up',
+          responses: {
+            '201': {
+              description: 'User registered successfully and verification email dispatched',
+              content: {
+                'application/json': {
+                  schema: { $ref: '#/components/schemas/StandardEnvelope' },
+                },
+              },
+            },
+            '422': {
+              description: 'Validation failed (e.g. password policy or breached password)',
+              content: {
+                'application/json': {
+                  schema: { $ref: '#/components/schemas/StandardEnvelope' },
+                },
+              },
+            },
+          },
+        },
+      },
+      '/api/v1/auth/sign-in': {
+        post: {
+          tags: ['Auth'],
+          summary: 'Authenticate with email and password, setting secure session cookie',
+          operationId: 'auth_sign_in',
+          responses: {
+            '200': {
+              description: 'Signed in successfully with JWT session cookie',
+              content: {
+                'application/json': {
+                  schema: { $ref: '#/components/schemas/StandardEnvelope' },
+                },
+              },
+            },
+            '401': {
+              description: 'Invalid credentials',
+              content: {
+                'application/json': {
+                  schema: { $ref: '#/components/schemas/StandardEnvelope' },
+                },
+              },
+            },
+            '403': {
+              description: 'Account locked out due to consecutive failed attempts',
+              content: {
+                'application/json': {
+                  schema: { $ref: '#/components/schemas/StandardEnvelope' },
+                },
+              },
+            },
+          },
+        },
+      },
+      '/api/v1/auth/sign-out': {
+        post: {
+          tags: ['Auth'],
+          summary: 'Sign out and revoke active session',
+          operationId: 'auth_sign_out',
+          responses: {
+            '200': {
+              description: 'Signed out and session cookie cleared',
+              content: {
+                'application/json': {
+                  schema: { $ref: '#/components/schemas/StandardEnvelope' },
+                },
+              },
+            },
+          },
+        },
+      },
+      '/api/v1/auth/request-password-reset': {
+        post: {
+          tags: ['Auth'],
+          summary: 'Request a password reset link (non-enumerating)',
+          operationId: 'auth_request_password_reset',
+          responses: {
+            '200': {
+              description: 'Password reset email dispatched if account exists',
+              content: {
+                'application/json': {
+                  schema: { $ref: '#/components/schemas/StandardEnvelope' },
+                },
+              },
+            },
+          },
+        },
+      },
+      '/api/v1/auth/reset-password': {
+        post: {
+          tags: ['Auth'],
+          summary: 'Reset password using one-time verification token',
+          operationId: 'auth_reset_password',
+          responses: {
+            '200': {
+              description: 'Password updated and previous sessions revoked',
+              content: {
+                'application/json': {
+                  schema: { $ref: '#/components/schemas/StandardEnvelope' },
+                },
+              },
+            },
+            '422': {
+              description: 'Invalid or expired reset token or invalid password',
+              content: {
+                'application/json': {
+                  schema: { $ref: '#/components/schemas/StandardEnvelope' },
+                },
+              },
+            },
+          },
+        },
+      },
+      '/api/v1/auth/verify-email': {
+        get: {
+          tags: ['Auth'],
+          summary: 'Verify user email address via link query parameter',
+          operationId: 'auth_verify_email_get',
+          parameters: [
+            {
+              name: 'token',
+              in: 'query',
+              required: true,
+              schema: { type: 'string' },
+            },
+          ],
+          responses: {
+            '200': {
+              description: 'Email verified successfully',
+              content: {
+                'application/json': {
+                  schema: { $ref: '#/components/schemas/StandardEnvelope' },
+                },
+              },
+            },
+          },
+        },
+        post: {
+          tags: ['Auth'],
+          summary: 'Verify user email address via JSON token',
+          operationId: 'auth_verify_email_post',
+          responses: {
+            '200': {
+              description: 'Email verified successfully',
+              content: {
+                'application/json': {
+                  schema: { $ref: '#/components/schemas/StandardEnvelope' },
+                },
+              },
+            },
+          },
+        },
+      },
+      '/api/v1/auth/reauthenticate': {
+        post: {
+          tags: ['Auth'],
+          summary: 'Re-authenticate with current password to extend fresh session window',
+          operationId: 'auth_reauthenticate',
+          responses: {
+            '200': {
+              description: 'Session fresh window extended',
+              content: {
+                'application/json': {
+                  schema: { $ref: '#/components/schemas/StandardEnvelope' },
+                },
+              },
+            },
+            '401': {
+              description: 'Invalid password or unauthenticated',
+              content: {
+                'application/json': {
+                  schema: { $ref: '#/components/schemas/StandardEnvelope' },
+                },
+              },
+            },
+          },
+        },
+      },
+      '/api/v1/auth/session': {
+        get: {
+          tags: ['Auth'],
+          summary: 'Retrieve currently authenticated session and membership details',
+          operationId: 'auth_get_session',
+          responses: {
+            '200': {
+              description: 'Active session details',
+              content: {
+                'application/json': {
+                  schema: { $ref: '#/components/schemas/StandardEnvelope' },
+                },
+              },
+            },
+            '401': {
+              description: 'No active session',
+              content: {
+                'application/json': {
+                  schema: { $ref: '#/components/schemas/StandardEnvelope' },
                 },
               },
             },
