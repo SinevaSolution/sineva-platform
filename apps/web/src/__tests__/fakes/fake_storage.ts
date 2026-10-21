@@ -6,6 +6,7 @@ import type {
 
 export class FakeStorage implements StorageRepository {
   public readonly requests: PresignUploadRequest[] = [];
+  public isHealthy = true;
 
   async createPresignedUploadUrl(
     request: PresignUploadRequest,
@@ -22,6 +23,6 @@ export class FakeStorage implements StorageRepository {
   }
 
   async checkHealth(): Promise<boolean> {
-    return true;
+    return this.isHealthy;
   }
 }

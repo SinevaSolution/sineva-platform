@@ -6,10 +6,12 @@ import { SendAgentMessageUseCase } from './application/use-cases/send_agent_mess
 import type { AgentRepository } from './domain/repositories/agent_repository';
 import type { AiEngineGateway } from './domain/repositories/ai_engine_gateway';
 import type { CacheRepository } from './domain/repositories/cache_repository';
+import type { DatabaseHealthProbe } from './domain/repositories/database_health_probe';
 import type { StorageRepository } from './domain/repositories/storage_repository';
 import { RedisCacheRepository } from './infrastructure/cache/redis_cache_repository';
 import { getEnvConfig } from './infrastructure/config/env';
 import { PrismaAgentRepository } from './infrastructure/database/prisma_agent_repository';
+import { PrismaDatabaseHealthProbe } from './infrastructure/database/prisma_database_health_probe';
 import { getPrismaClient } from './infrastructure/database/prisma_client';
 import { InternalAiEngineGateway } from './infrastructure/gateways/internal_ai_engine_gateway';
 import { SeaweedStorageRepository } from './infrastructure/storage/seaweed_storage_repository';
@@ -39,6 +41,9 @@ function memoize<T>(factory: () => T): () => T {
 const getAgentRepository = memoize<AgentRepository>(
   () => new PrismaAgentRepository(getPrismaClient()),
 );
+const getDatabaseHealthProbe = memoize<DatabaseHealthProbe>(
+  () => new PrismaDatabaseHealthProbe(getPrismaClient()),
+);
 const getCacheRepository = memoize<CacheRepository>(
   () => new RedisCacheRepository(),
 );
@@ -64,6 +69,7 @@ export const getPresignStorageUploadUseCase = memoize(
 export const getSystemHealthUseCase = memoize(
   () =>
     new GetSystemHealthUseCase(
+      getDatabaseHealthProbe(),
       getCacheRepository(),
       getStorageRepository(),
       getAiEngineGateway(),

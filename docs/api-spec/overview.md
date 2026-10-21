@@ -46,11 +46,11 @@ related_docs:
 
 | Method | Path | Handler | Use case | Success | Error statuses |
 | :--- | :--- | :--- | :--- | :--- | :--- |
-| `GET` | `/api/v1/health` | `app/api/v1/health/route.ts` | `GetSystemHealthUseCase` | 200 | 500 |
+| `GET` | `/api/v1/health` | `app/api/v1/health/route.ts` | `GetSystemHealthUseCase` | 200 | 503, 500 |
 | `GET` | `/api/v1/agents` | `app/api/v1/agents/route.ts` | `GetAgentsUseCase.execute` | 200 | 422, 500 |
 | `POST` | `/api/v1/agents` | `app/api/v1/agents/route.ts` | `GetAgentsUseCase.registerAgent` | 201 | 409, 422, 500 |
 | `POST` | `/api/v1/agents/{agent_slug}/chat` | `app/api/v1/agents/[agent_slug]/chat/route.ts` | `SendAgentMessageUseCase` | 200 | 404, 422, 500, 502, 503 |
-| `POST` | `/api/v1/storage/presign` | `app/api/v1/storage/presign/route.ts` | `PresignStorageUploadUseCase` | 201 | 422, 500 |
+| `POST` | `/api/v1/storage/presign` | `app/api/v1/storage/presign/route.ts` | `PresignStorageUploadUseCase` | 201 | 422, 502, 500 |
 | `GET` | `/api/openapi.json` | `app/api/openapi.json/route.ts` | none (static) | 200 | none |
 
 `/api/v1/agents` keeps the word "agent" in the path, the JSON keys and the types. User-facing copy says "companion" and "product" ([ADR-0011](../decisions/0011-user-facing-wording.md), [product model](../product/product_model_and_wording.md)).

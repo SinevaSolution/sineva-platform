@@ -45,19 +45,12 @@ When you fix an item, delete it here in the same change (R-38) and remove its li
 | SEC-2 | `user_id` taken from the request body | High |
 | SEC-3 | Presign takes `workspace_id` from the body | High |
 | SEC-4 | Hardcoded default secrets | High |
-| SEC-7 | Health route is public and shows internal details | Low |
-| INF-1 | In-memory "Redis" cache, `ping()` always true | Medium |
-| INF-2 | Presign returns an unsigned URL on error | Medium |
-| INF-3 | Health reports healthy without checking | High |
-| INF-4 | Hardcoded `engine_version` | Low |
-| INF-5 | Presigned URL host is the internal Docker name | Medium |
 | INF-6 | `AI_ENGINE_TIMEOUT_MS` is not validated | Low |
 | API-3 | A chat retry can run the turn twice | Medium |
 | API-4 | The orchestrator `sino` is unreachable; chat is per product | Medium |
 | API-6 | `swagger-ui-react` unused, "Swagger UI" labels wrong | Low |
 | API-7 | R-23's check names a test that does not exist | Low |
 | DOM-1 | Domain errors carry HTTP status and import `@sineva/shared` | Low |
-| DOM-2 | Cache invalidation clears one key | Low |
 | DOM-3 | New-agent defaults live in the repository | Low |
 | DOM-4 | Two companion registries | Medium |
 | DOM-5 | Unused tables and columns | Low |
@@ -126,75 +119,9 @@ When you fix an item, delete it here in the same change (R-38) and remove its li
 | Do not copy | A fallback value for a secret (R-28). |
 | Suggested fix | Validate required variables at startup in production and fail fast. Keep dev defaults in `.env.example` only. In compose, require secrets with the `${VAR:?message}` form. |
 
-### SEC-7 Health route is public and shows internal details
-
-| | |
-| :--- | :--- |
-| Symptom | `GET /api/v1/health` shows the `sineva-ai` internal URL, the S3 bucket name and uptime to anyone. |
-| Root cause | The route has no auth and returns every field the use case builds. |
-| Location | `get_system_health_use_case.ts`, `app/api/v1/health/route.ts` |
-| Severity | Low |
-| Do not copy | Returning internal addresses from a public route. |
-| Suggested fix | Keep a minimal public probe (status only). Return detail to authenticated callers. |
-
 The cross-tenant session issue in `sineva-ai` (AI-1) is also a security item; it lives in the other repository.
 
 ## Infrastructure stubs and health
-
-### INF-1 In-memory "Redis" cache, `ping()` always true
-
-| | |
-| :--- | :--- |
-| Symptom | The cache is per process and is lost on restart. Two instances disagree. The health route reports Redis healthy whatever Redis does. |
-| Root cause | `RedisCacheRepository` keeps a `Map` and never opens a connection. `redis_client.ts` (ioredis) exists and nothing calls it. |
-| Location | `server/infrastructure/cache/redis_cache_repository.ts`, `redis_client.ts` |
-| Severity | Medium |
-| Do not copy | A class named for a technology that it does not use. It breaks R-26. |
-| Suggested fix | Implement the adapter with ioredis, with a real `PING`, and test it against a throwaway Redis. Or remove the cache, and the health entry, until it is needed. |
-
-### INF-2 Presign returns an unsigned URL on error
-
-| | |
-| :--- | :--- |
-| Symptom | The route answers 201 with a URL that will be rejected by S3. Nothing in the response says it is unsigned. |
-| Root cause | `createPresignedUploadUrl` catches every error and builds `<endpoint>/<bucket>/<key>?X-Amz-Expires=900`. |
-| Location | `server/infrastructure/storage/seaweed_storage_repository.ts` |
-| Severity | Medium |
-| Do not copy | A `catch` that returns a plausible value (R-26, [ADR-0008](../decisions/0008-no-silent-fallbacks.md)). |
-| Suggested fix | Remove the `catch`, or throw a typed domain error that maps to a 5xx. Test: a signing failure produces an error response. |
-
-### INF-3 Health reports healthy without checking
-
-| | |
-| :--- | :--- |
-| Symptom | Stopping Postgres, Redis or SeaweedFS does not change `/api/v1/health`. It always answers 200. |
-| Root cause | Postgres is `healthy` when `DATABASE_URL` is set. Redis `ping()` returns `true`. S3 `checkHealth()` returns `Boolean(endpoint)`, which is always true. Only the `sineva-ai` probe is real. |
-| Location | `get_system_health_use_case.ts`, `RedisCacheRepository.ping`, `SeaweedStorageRepository.checkHealth` |
-| Severity | High |
-| Do not copy | A health value computed from configuration. |
-| Suggested fix | Add real probes with short timeouts: `SELECT 1`, Redis `PING`, S3 `HeadBucket`. Return a non-200 status when a required dependency is down. Add the failing tests first, with fakes. |
-
-### INF-4 Hardcoded `engine_version`
-
-| | |
-| :--- | :--- |
-| Symptom | `AiEngineHealthResult.engine_version` is always `1.0.0` or `1.0.0-standby`. The health route does not show it, so nothing is wrong on the wire today. |
-| Root cause | The gateway writes a constant instead of reading the version from the `sineva-ai` health response. |
-| Location | `InternalAiEngineGateway.checkHealth` |
-| Severity | Low |
-| Do not copy | Returning a fixed value for a measured field. |
-| Suggested fix | Read the version from the health body, or drop the field. |
-
-### INF-5 Presigned URL host is the internal Docker name
-
-| | |
-| :--- | :--- |
-| Symptom | In the compose stack `upload_url` starts with `http://seaweedfs-s3:8333`, which a browser outside the Docker network cannot resolve. Not tested end to end. |
-| Root cause | The URL is signed against `S3_ENDPOINT`, which compose sets to the internal host. There is no separate public endpoint setting. |
-| Location | `docker-compose.yml`, `s3_client.ts`, `SeaweedStorageRepository` |
-| Severity | Medium |
-| Do not copy | Returning a URL built from an internal address. |
-| Suggested fix | Add a public S3 endpoint setting for signing, and an end-to-end upload check. |
 
 ### INF-6 `AI_ENGINE_TIMEOUT_MS` is not validated
 
@@ -265,17 +192,6 @@ The cross-tenant session issue in `sineva-ai` (AI-1) is also a security item; it
 | Severity | Low |
 | Do not copy | Putting a transport concern in the domain. |
 | Suggested fix | Give errors a `code` only, and map code to status in `server/http`. Keep `ErrorDetail` out of the domain. |
-
-### DOM-2 Cache invalidation clears one key
-
-| | |
-| :--- | :--- |
-| Symptom | After `POST /api/v1/agents`, only the default list is refreshed. Other pages, filters and the home page (`per_page: 20`) show stale data for up to 30 seconds. |
-| Root cause | `registerAgent` deletes the literal key `agents:list:p_1:pp_10:cat_all`. |
-| Location | `server/application/use-cases/get_agents_use_case.ts` |
-| Severity | Low |
-| Do not copy | Invalidating a hand-written key. |
-| Suggested fix | Version or tag the list keys and clear by prefix, or drop the cache until it is real (INF-1). |
 
 ### DOM-3 New-agent defaults live in the repository
 

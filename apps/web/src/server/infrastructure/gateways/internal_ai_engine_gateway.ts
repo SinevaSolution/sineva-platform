@@ -168,18 +168,39 @@ export class InternalAiEngineGateway implements AiEngineGateway {
         },
       );
 
+      if (!response.ok) {
+        return {
+          is_reachable: false,
+          internal_url: env.ai_engine_internal_url,
+          latency_ms: Math.max(1, Date.now() - startedAt),
+          engine_version: 'standby',
+        };
+      }
+
+      let engineVersion = 'unknown';
+      try {
+        const json = await response.json();
+        if (typeof json?.data?.version === 'string') {
+          engineVersion = json.data.version;
+        } else if (typeof json?.version === 'string') {
+          engineVersion = json.version;
+        }
+      } catch {
+        // Fallback to 'unknown' if response body is non-JSON
+      }
+
       return {
-        is_reachable: response.ok,
+        is_reachable: true,
         internal_url: env.ai_engine_internal_url,
         latency_ms: Math.max(1, Date.now() - startedAt),
-        engine_version: '1.0.0',
+        engine_version: engineVersion,
       };
     } catch {
       return {
         is_reachable: false,
         internal_url: env.ai_engine_internal_url,
         latency_ms: Math.max(1, Date.now() - startedAt),
-        engine_version: '1.0.0-standby',
+        engine_version: 'standby',
       };
     } finally {
       clearTimeout(timeout);

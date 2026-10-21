@@ -62,12 +62,13 @@ export interface CreatePaginatedResponseOptions<T> {
   request_id?: string;
 }
 
-export interface CreateErrorResponseOptions {
+export interface CreateErrorResponseOptions<T = null> {
   message: string;
   status?: number;
   code?: ApiErrorCode;
   errors?: ErrorDetail[];
   request_id?: string;
+  data?: T;
 }
 
 export function generateRequestId(): string {
@@ -129,9 +130,9 @@ export function createPaginatedResponse<T>(
   };
 }
 
-export function createErrorResponse(
-  options: CreateErrorResponseOptions,
-): ApiResponse<null> {
+export function createErrorResponse<T = null>(
+  options: CreateErrorResponseOptions<T>,
+): ApiResponse<T> {
   const status = options.status ?? 500;
   const request_id = options.request_id ?? generateRequestId();
   const errors: ErrorDetail[] =
@@ -150,7 +151,7 @@ export function createErrorResponse(
     status,
     message: options.message,
     code: options.code,
-    data: null,
+    data: (options.data !== undefined ? options.data : null) as T,
     meta: {
       request_id,
       timestamp: new Date().toISOString(),

@@ -1,13 +1,16 @@
 import 'server-only';
-import { PutObjectCommand } from '@aws-sdk/client-s3';
+import { HeadBucketCommand, PutObjectCommand } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
+import { UpstreamServiceError } from '@/server/domain/errors/domain_error';
 import type {
   PresignUploadRequest,
   PresignUploadResult,
   StorageRepository,
 } from '@/server/domain/repositories/storage_repository';
 import { getEnvConfig } from '../config/env';
-import { getS3Client } from './s3_client';
+import { getS3Client, getS3SignerClient } from './s3_client';
+
+const S3_HEALTH_TIMEOUT_MS = 1500;
 
 export class SeaweedStorageRepository implements StorageRepository {
   async createPresignedUploadUrl(
@@ -28,7 +31,7 @@ export class SeaweedStorageRepository implements StorageRepository {
         ContentLength: request.file_size_bytes,
       });
 
-      const upload_url = await getSignedUrl(getS3Client(), command, {
+      const upload_url = await getSignedUrl(getS3SignerClient(), command, {
         expiresIn: expires_in_seconds,
       });
 
@@ -39,18 +42,36 @@ export class SeaweedStorageRepository implements StorageRepository {
         expires_in_seconds,
         storage_provider: 'seaweedfs_s3',
       };
-    } catch {
-      return {
-        object_key,
-        upload_url: `${env.s3_endpoint}/${env.s3_bucket_name}/${object_key}?X-Amz-Expires=${expires_in_seconds}`,
-        bucket_name: env.s3_bucket_name,
-        expires_in_seconds,
-        storage_provider: 'seaweedfs_s3',
-      };
+    } catch (error) {
+      // INF-2: Never return an unsigned URL on failure (R-26). Throw typed 502 UpstreamServiceError.
+      console.error('[storage] presigned upload url generation failed', error);
+      throw new UpstreamServiceError(
+        'Failed to generate presigned upload URL from storage service',
+      );
     }
   }
 
   async checkHealth(): Promise<boolean> {
-    return Boolean(getEnvConfig().s3_endpoint);
+    const env = getEnvConfig();
+    if (!env.s3_endpoint || !env.s3_bucket_name) {
+      return false;
+    }
+
+    try {
+      const command = new HeadBucketCommand({
+        Bucket: env.s3_bucket_name,
+      });
+      const probePromise = getS3Client().send(command);
+      const timeoutPromise = new Promise<never>((_, reject) => {
+        setTimeout(
+          () => reject(new Error('S3 health probe timed out')),
+          S3_HEALTH_TIMEOUT_MS,
+        );
+      });
+      await Promise.race([probePromise, timeoutPromise]);
+      return true;
+    } catch {
+      return false;
+    }
   }
 }

@@ -10,6 +10,7 @@ import {
 import { FakeAgentRepository } from './fakes/fake_agent_repository';
 import { FakeAiEngineGateway } from './fakes/fake_ai_engine_gateway';
 import { FakeCache } from './fakes/fake_cache';
+import { FakeDatabaseHealthProbe } from './fakes/fake_database_health_probe';
 import { FakeStorage } from './fakes/fake_storage';
 
 describe('Clean Architecture Use Cases', () => {
@@ -99,6 +100,7 @@ describe('Clean Architecture Use Cases', () => {
 
   it('reports system health for shared PostgreSQL, Redis, SeaweedFS, and internal sineva-ai', async () => {
     const useCase = new GetSystemHealthUseCase(
+      new FakeDatabaseHealthProbe(),
       new FakeCache(),
       new FakeStorage(),
       new FakeAiEngineGateway(),
@@ -106,7 +108,9 @@ describe('Clean Architecture Use Cases', () => {
     );
 
     const health = await useCase.execute();
+    expect(health.status).toBe('healthy');
     expect(health.service_name).toBe('sineva-platform');
+    expect(health.subsystems.postgresql_prisma.status).toBe('healthy');
     expect(health.subsystems.redis_cache.status).toBe('healthy');
     expect(health.subsystems.seaweedfs_s3.bucket_name).toBe('sineva-assets');
     expect(health.subsystems.sineva_ai_engine.network_mode).toBe(

@@ -14,6 +14,12 @@ import type {
 export class FakeAiEngineGateway implements AiEngineGateway {
   public readonly requests: AiEngineChatRequest[] = [];
   public failure: Error | null = null;
+  public healthResult: AiEngineHealthResult = {
+    is_reachable: true,
+    internal_url: 'http://fake-ai-engine',
+    latency_ms: 1,
+    engine_version: '1.0.0',
+  };
 
   async dispatchAgentChat(
     payload: AiEngineChatRequest,
@@ -41,11 +47,6 @@ export class FakeAiEngineGateway implements AiEngineGateway {
   }
 
   async checkHealth(): Promise<AiEngineHealthResult> {
-    return {
-      is_reachable: true,
-      internal_url: 'http://fake-ai-engine',
-      latency_ms: 1,
-      engine_version: 'fake',
-    };
+    return this.healthResult;
   }
 }

@@ -27,7 +27,7 @@ export class GetAgentsUseCase {
 
   async registerAgent(input: CreateAgentInput): Promise<AgentEntity> {
     const created = await this.agentRepository.create(input);
-    await this.cacheRepository.del('agents:list:p_1:pp_10:cat_all');
+    await this.cacheRepository.delByPrefix('agents:list:');
     return created;
   }
 }

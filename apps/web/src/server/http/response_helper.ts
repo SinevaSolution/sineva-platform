@@ -6,6 +6,7 @@ import {
   createSuccessResponse,
   generateRequestId,
   type ApiErrorCode,
+  type CreateErrorResponseOptions,
   type CreatePaginatedResponseOptions,
   type CreateSuccessResponseOptions,
 } from '@sineva/shared';
@@ -71,6 +72,23 @@ export function sendSuccessJson<T>(
 ): NextResponse {
   const requestId = options.request_id ?? generateRequestId();
   const payload = createSuccessResponse({
+    ...options,
+    request_id: requestId,
+  });
+  const res = NextResponse.json(payload, {
+    ...init,
+    status: payload.status,
+  });
+  res.headers.set('X-Request-Id', requestId);
+  return res;
+}
+
+export function sendErrorJson<T = null>(
+  options: CreateErrorResponseOptions<T>,
+  init?: ResponseInit,
+): NextResponse {
+  const requestId = options.request_id ?? generateRequestId();
+  const payload = createErrorResponse({
     ...options,
     request_id: requestId,
   });

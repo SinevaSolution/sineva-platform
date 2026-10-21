@@ -16,6 +16,7 @@ import { SendAgentMessageUseCase } from '@/server/application/use-cases/send_age
 import { FakeAgentRepository } from './fakes/fake_agent_repository';
 import { FakeAiEngineGateway } from './fakes/fake_ai_engine_gateway';
 import { FakeCache } from './fakes/fake_cache';
+import { FakeDatabaseHealthProbe } from './fakes/fake_database_health_probe';
 import { FakeStorage } from './fakes/fake_storage';
 
 // The real container wires Postgres, Redis and S3 adapters, and unit tests
@@ -46,11 +47,13 @@ describe('Next.js App Router API v1 Route Handlers', () => {
     const cache = new FakeCache();
     const storage = new FakeStorage();
     const aiEngine = new FakeAiEngineGateway();
+    const dbProbe = new FakeDatabaseHealthProbe();
     container.current = {
       getAgents: new GetAgentsUseCase(agents, cache),
       sendAgentMessage: new SendAgentMessageUseCase(agents, aiEngine),
       presignStorageUpload: new PresignStorageUploadUseCase(storage),
       systemHealth: new GetSystemHealthUseCase(
+        dbProbe,
         cache,
         storage,
         aiEngine,
@@ -66,7 +69,7 @@ describe('Next.js App Router API v1 Route Handlers', () => {
 
     expect(res.status).toBe(200);
     expect(body.success).toBe(true);
-    expect(body.data.service_name).toBe('sineva-platform');
+    expect(body.data).toEqual({ status: 'healthy' });
     expect(body.meta.request_id).toMatch(
       /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$|^req_/i,
     );

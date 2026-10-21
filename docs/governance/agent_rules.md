@@ -255,13 +255,9 @@ A change to behavior, structure, a command or a decision updates the affected do
 
 These exist today and break the rules above. Do not extend them. Details and removal status: [known issues and tech debt](../development/known_issues_and_tech_debt.md).
 
-- In-memory "Redis" cache with `ping()` always `true` (`RedisCacheRepository`). Breaks R-26.
-- Unsigned upload URL returned when presigning fails, and S3 health that only checks configuration (`SeaweedStorageRepository`). Breaks R-26.
-- Health check that reports Postgres healthy when `DATABASE_URL` is merely set, and a hardcoded `engine_version` in `InternalAiEngineGateway.checkHealth()`. Breaks R-26.
 - `user_id` and `workspace_id` taken from request bodies, with no authentication. Breaks R-27.
 - Hardcoded default secrets in `getEnvConfig()` and `docker-compose.yml`. Breaks R-28.
 - `@sineva/shared` type import in `domain/errors/domain_error.ts`, and domain errors that carry an HTTP status. Breaks R-12 (Target).
 - No `loading.tsx`, `error.tsx` or `not-found.tsx` yet. Breaks R-31.
-- Upstream 4xx response bodies are logged, truncated to 500 characters, and may contain user text (`InternalAiEngineGateway`).
 
-Removed since the first version of this list: the canned AI reply on `sineva-ai` failure (now R-41), the in-memory agent registry (Prisma repository is wired in `container.ts`), the `X-Internal-Service-Token` header, and the old `sino-*` slugs in gateway playbooks.
+Removed since the first version of this list: the canned AI reply on `sineva-ai` failure (now R-41), the in-memory agent registry (Prisma repository is wired in `container.ts`), the `X-Internal-Service-Token` header, the old `sino-*` slugs in gateway playbooks, upstream 4xx/500 masked body logging and request id propagation (WP-M0-07), and truthful infrastructure probes (Postgres SELECT 1, Redis ping, S3 HeadBucket, sineva-ai health version), typed 502 on presign failure, S3 public endpoint presigning host, and real ioredis cache repository with prefix invalidation (WP-M0-08).

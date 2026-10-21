@@ -11,6 +11,7 @@ export function getRedisClient(): Redis {
       lazyConnect: true,
       maxRetriesPerRequest: 1,
       connectTimeout: 1500,
+      enableOfflineQueue: false,
     });
   }
   return redisClientInstance;

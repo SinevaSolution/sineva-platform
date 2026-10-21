@@ -6,6 +6,7 @@ export interface AppEnvConfig {
   redis_url: string;
   redis_key_prefix: string;
   s3_endpoint: string;
+  s3_public_endpoint: string;
   s3_region: string;
   s3_access_key_id: string;
   s3_secret_access_key: string;
@@ -25,6 +26,10 @@ export function getEnvConfig(): AppEnvConfig {
     redis_url: process.env.REDIS_URL ?? 'redis://localhost:6379/0',
     redis_key_prefix: process.env.REDIS_KEY_PREFIX ?? 'sineva:platform:',
     s3_endpoint: process.env.S3_ENDPOINT ?? 'http://localhost:8333',
+    s3_public_endpoint:
+      process.env.S3_PUBLIC_ENDPOINT ??
+      process.env.S3_ENDPOINT ??
+      'http://localhost:8333',
     s3_region: process.env.S3_REGION ?? 'us-east-1',
     s3_access_key_id: process.env.S3_ACCESS_KEY_ID ?? 'sineva_s3_key',
     s3_secret_access_key:

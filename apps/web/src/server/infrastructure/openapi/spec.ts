@@ -101,6 +101,16 @@ export function getOpenApiSpec(): Record<string, unknown> {
                 },
               },
             },
+            '503': {
+              description: 'Subsystem in standby or dependency unavailable',
+              content: {
+                'application/json': {
+                  schema: {
+                    $ref: '#/components/schemas/StandardEnvelope',
+                  },
+                },
+              },
+            },
           },
         },
       },
