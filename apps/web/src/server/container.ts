@@ -2,7 +2,6 @@ import 'server-only';
 import { GetAgentsUseCase } from './application/use-cases/get_agents_use_case';
 import { GetSystemHealthUseCase } from './application/use-cases/get_system_health_use_case';
 import { PresignStorageUploadUseCase } from './application/use-cases/presign_storage_upload_use_case';
-import { SendAgentMessageUseCase } from './application/use-cases/send_agent_message_use_case';
 import type { AgentRepository } from './domain/repositories/agent_repository';
 import type { AiEngineGateway } from './domain/repositories/ai_engine_gateway';
 import type { CacheRepository } from './domain/repositories/cache_repository';
@@ -122,10 +121,6 @@ export const getJwtAuthService = memoize<JwtAuthService>(() => {
 
 export const getGetAgentsUseCase = memoize(
   () => new GetAgentsUseCase(getAgentRepository(), getCacheRepository()),
-);
-
-export const getSendAgentMessageUseCase = memoize(
-  () => new SendAgentMessageUseCase(getAgentRepository(), getAiEngineGateway()),
 );
 
 export const getPresignStorageUploadUseCase = memoize(

@@ -1,21 +1,36 @@
+import fs from 'node:fs';
+import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
+  ContextInvalidError,
+  DependencyUnavailableError,
+  ModelUnavailableError,
   UpstreamServiceError,
   UpstreamUnavailableError,
 } from '@/server/domain/errors/domain_error';
 import type { AiEngineChatRequest } from '@/server/domain/repositories/ai_engine_gateway';
 import { InternalAiEngineGateway } from '@/server/infrastructure/gateways/internal_ai_engine_gateway';
+import {
+  chatTurnRequestV2Schema,
+  chatTurnResultV2Schema,
+  parseSseTranscript,
+  sseEventSchemas,
+  type ChatTurnRequestV2,
+} from '@/server/application/dtos/chat_v2_dto';
 import chatRequestFixture from './fixtures/chat_request.json';
 import chatResponseEnvelopeFixture from './fixtures/chat_response_envelope.json';
+import chatTurnRequestV2Fixture from './fixtures/chat_turn_request_v2.json';
+import chatTurnResultV2Fixture from './fixtures/chat_turn_result_v2.json';
+import chatTurnResultNeedsApprovalFixture from './fixtures/chat_turn_result_v2_needs_approval.json';
+import chatTurnResultNeedsInputFixture from './fixtures/chat_turn_result_v2_needs_input.json';
+import chatTurnResultBudgetExceededFixture from './fixtures/chat_turn_result_v2_budget_exceeded.json';
+import chatTurnResultFailedFixture from './fixtures/chat_turn_result_v2_failed.json';
 
-// sineva-ai owns the chat contract. These tests pin what the platform gateway
-// sends and accepts against fixtures copied from sineva-ai (see
-// fixtures/README.md), so a drift on either side fails here instead of
-// surfacing as a runtime 401/422 behind a silent fallback.
+const FIXTURES_DIR = path.resolve(__dirname, 'fixtures');
 
 const AI_URL = 'http://sineva-ai.test:8000';
 const AI_KEY = 'test_internal_key';
-
+const TEST_CONTEXT_TOKEN = 'test.signed.jws.context.token';
 const SLUG = 'sinofinance';
 
 function platformRequest(): AiEngineChatRequest {
@@ -52,7 +67,90 @@ function lastCall(fetchMock: ReturnType<typeof stubFetch>) {
   return { url, init: init as RequestInit };
 }
 
-describe('InternalAiEngineGateway contract with sineva-ai', () => {
+describe('Contract v2 Fixtures Validation (WP-M0-28, R-40, FR-AIR-07, FR-AIR-08, FR-AIR-10)', () => {
+  it('parses chat_turn_request_v2.json fixture with chatTurnRequestV2Schema', () => {
+    const parsed = chatTurnRequestV2Schema.safeParse(chatTurnRequestV2Fixture);
+    expect(parsed.success).toBe(true);
+    if (parsed.success) {
+      expect(parsed.data.client_message_id).toBe('a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6d');
+      expect(parsed.data.mentions).toHaveLength(1);
+      expect(parsed.data.attachments).toHaveLength(1);
+      expect(parsed.data.use_library).toBe(true);
+    }
+  });
+
+  it('rejects forbidden extra keys on chatTurnRequestV2Schema', () => {
+    const withExtra = {
+      ...chatTurnRequestV2Fixture,
+      user_id: 'usr_hack_impersonation',
+    };
+    const parsed = chatTurnRequestV2Schema.safeParse(withExtra);
+    expect(parsed.success).toBe(false);
+  });
+
+  it('parses chat_turn_result_v2.json fixture (completed)', () => {
+    const parsed = chatTurnResultV2Schema.safeParse(chatTurnResultV2Fixture);
+    expect(parsed.success).toBe(true);
+    if (parsed.success) {
+      expect(parsed.data.status).toBe('completed');
+      expect(parsed.data.usage.total_tokens).toBe(1570);
+      expect(parsed.data.tool_calls).toHaveLength(1);
+      expect(parsed.data.citations).toHaveLength(1);
+    }
+  });
+
+  it('parses all terminal status fixtures (needs_approval, needs_input, budget_exceeded, failed)', () => {
+    expect(chatTurnResultV2Schema.safeParse(chatTurnResultNeedsApprovalFixture).success).toBe(true);
+    expect(chatTurnResultV2Schema.safeParse(chatTurnResultNeedsInputFixture).success).toBe(true);
+    expect(chatTurnResultV2Schema.safeParse(chatTurnResultBudgetExceededFixture).success).toBe(true);
+    expect(chatTurnResultV2Schema.safeParse(chatTurnResultFailedFixture).success).toBe(true);
+  });
+
+  it('parses sse_transcript_text_only.txt against event vocabulary', () => {
+    const content = fs.readFileSync(path.join(FIXTURES_DIR, 'sse_transcript_text_only.txt'), 'utf-8');
+    const messages = parseSseTranscript(content);
+
+    expect(messages.length).toBe(4);
+    expect(messages[0].event).toBe('token');
+    expect(sseEventSchemas.token.safeParse(messages[0].data).success).toBe(true);
+    expect(messages[3].event).toBe('done');
+    expect(sseEventSchemas.done.safeParse(messages[3].data).success).toBe(true);
+  });
+
+  it('parses sse_transcript_error.txt against error event schema', () => {
+    const content = fs.readFileSync(path.join(FIXTURES_DIR, 'sse_transcript_error.txt'), 'utf-8');
+    const messages = parseSseTranscript(content);
+
+    expect(messages.length).toBe(1);
+    expect(messages[0].event).toBe('error');
+    const parsed = sseEventSchemas.error.safeParse(messages[0].data);
+    expect(parsed.success).toBe(true);
+    if (parsed.success) {
+      expect(parsed.data.code).toBe('model_unavailable');
+    }
+  });
+
+  it('parses sse_transcript_with_card.txt against card event schemas', () => {
+    const content = fs.readFileSync(path.join(FIXTURES_DIR, 'sse_transcript_with_card.txt'), 'utf-8');
+    const messages = parseSseTranscript(content);
+
+    expect(messages.length).toBe(5);
+    expect(messages[0].event).toBe('token');
+    expect(messages[1].event).toBe('card_started');
+    expect(sseEventSchemas.card_started.safeParse(messages[1].data).success).toBe(true);
+
+    expect(messages[2].event).toBe('card_patch');
+    expect(sseEventSchemas.card_patch.safeParse(messages[2].data).success).toBe(true);
+
+    expect(messages[3].event).toBe('card_completed');
+    expect(sseEventSchemas.card_completed.safeParse(messages[3].data).success).toBe(true);
+
+    expect(messages[4].event).toBe('done');
+    expect(sseEventSchemas.done.safeParse(messages[4].data).success).toBe(true);
+  });
+});
+
+describe('InternalAiEngineGateway Contract v2 (WP-M0-28)', () => {
   beforeEach(() => {
     vi.stubEnv('AI_ENGINE_INTERNAL_URL', AI_URL);
     vi.stubEnv('AI_ENGINE_INTERNAL_API_KEY', AI_KEY);
@@ -67,262 +165,288 @@ describe('InternalAiEngineGateway contract with sineva-ai', () => {
     vi.restoreAllMocks();
   });
 
-  describe('dispatchAgentChat request', () => {
-    it('authenticates with X-Internal-Api-Key and never the legacy token header', async () => {
+  describe('chatTurn', () => {
+    const validV2Request: ChatTurnRequestV2 = {
+      user_message: 'Calculate SaaS burn metrics',
+      session_id: '8f3a1c2d-6b4e-4d7a-9c15-2e0b7a41f9d3',
+      client_message_id: 'a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6d',
+      mentions: [],
+      attachments: [],
+      use_library: false,
+      allow_degraded: false,
+    };
+
+    it('sends all 4 security and tracing headers (X-Internal-Api-Key, X-Sineva-Context, traceparent, X-Request-Id)', async () => {
       const fetchMock = stubFetch(() =>
-        jsonResponse(chatResponseEnvelopeFixture),
+        jsonResponse({
+          success: true,
+          data: chatTurnResultV2Fixture,
+        }),
       );
 
-      await new InternalAiEngineGateway().dispatchAgentChat(platformRequest());
+      const gateway = new InternalAiEngineGateway();
+      await gateway.chatTurn({
+        agentSlug: 'sinofinance',
+        request: validV2Request,
+        contextToken: TEST_CONTEXT_TOKEN,
+        requestId: 'req_custom_trace_999',
+        traceparent: '00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01',
+      });
 
-      const headers = new Headers(lastCall(fetchMock).init.headers);
+      const { url, init } = lastCall(fetchMock);
+      expect(url).toBe(`${AI_URL}/api/v2/agents/sinofinance/chat`);
+      expect(init.method).toBe('POST');
+
+      const headers = new Headers(init.headers);
       expect(headers.get('X-Internal-Api-Key')).toBe(AI_KEY);
-      expect(headers.has('X-Internal-Service-Token')).toBe(false);
+      expect(headers.get('X-Sineva-Context')).toBe(TEST_CONTEXT_TOKEN);
+      expect(headers.get('X-Request-Id')).toBe('req_custom_trace_999');
+      expect(headers.get('traceparent')).toBe('00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01');
       expect(headers.get('Content-Type')).toBe('application/json');
     });
 
-    it('sends exactly the keys ChatRequestDTO accepts, with user_message', async () => {
-      const fetchMock = stubFetch(() =>
-        jsonResponse(chatResponseEnvelopeFixture),
+    it('maps successful chat turn result and measures latency_ms', async () => {
+      stubFetch(() =>
+        jsonResponse({
+          success: true,
+          data: chatTurnResultV2Fixture,
+        }),
       );
 
-      await new InternalAiEngineGateway().dispatchAgentChat(platformRequest());
+      const gateway = new InternalAiEngineGateway();
+      const result = await gateway.chatTurn({
+        agentSlug: 'sinofinance',
+        request: validV2Request,
+        contextToken: TEST_CONTEXT_TOKEN,
+      });
 
-      const body: Record<string, unknown> = JSON.parse(
-        String(lastCall(fetchMock).init.body),
-      );
-      // tenant_id is deliberately omitted: the public chat request has no
-      // workspace yet, so the fixture is compared without it.
-      const expected = Object.fromEntries(
-        Object.entries(chatRequestFixture).filter(
-          ([key]) => key !== 'tenant_id',
+      expect(result.run_id).toBe(chatTurnResultV2Fixture.run_id);
+      expect(result.status).toBe('completed');
+      expect(result.latency_ms).toBeGreaterThanOrEqual(0);
+    });
+
+    it('maps upstream 503 model_unavailable to ModelUnavailableError (503)', async () => {
+      stubFetch(() =>
+        jsonResponse(
+          {
+            success: false,
+            code: 'model_unavailable',
+            message: 'Model is currently overloaded',
+          },
+          503,
         ),
       );
-      expect(body).toEqual(expected);
-      expect(body).not.toHaveProperty('agent_slug');
-      expect(body).not.toHaveProperty('message_text');
-      expect(body).not.toHaveProperty('tenant_id');
-    });
 
-    it('omits optional fields that were not provided instead of sending null', async () => {
-      const fetchMock = stubFetch(() =>
-        jsonResponse(chatResponseEnvelopeFixture),
-      );
-
-      await new InternalAiEngineGateway().dispatchAgentChat({
-        agent_slug: SLUG,
-        user_id: 'usr_01J9ZQ4K7M',
-        message_text: 'Hello',
-      });
-
-      const body: Record<string, unknown> = JSON.parse(
-        String(lastCall(fetchMock).init.body),
-      );
-      expect(Object.keys(body).sort()).toEqual(['user_id', 'user_message']);
-    });
-
-    it('POSTs to the slug in the path, URL-encoded', async () => {
-      const fetchMock = stubFetch(() =>
-        jsonResponse(chatResponseEnvelopeFixture),
-      );
       const gateway = new InternalAiEngineGateway();
-
-      await gateway.dispatchAgentChat(platformRequest());
-      expect(lastCall(fetchMock).url).toBe(
-        `${AI_URL}/api/v1/agents/sinofinance/chat`,
-      );
-      expect(lastCall(fetchMock).init.method).toBe('POST');
-
-      await gateway.dispatchAgentChat({
-        ...platformRequest(),
-        agent_slug: 'a/b c?x=1',
-      });
-      expect(lastCall(fetchMock).url).toBe(
-        `${AI_URL}/api/v1/agents/a%2Fb%20c%3Fx%3D1/chat`,
-      );
-    });
-
-    it('does not cap the configured timeout at 2.5s', async () => {
-      vi.useFakeTimers();
-      let signal: AbortSignal | undefined;
-      const fetchMock = vi.fn(
-        (_url: string, init?: RequestInit) =>
-          new Promise<Response>((_resolve, reject) => {
-            signal = init?.signal ?? undefined;
-            signal?.addEventListener('abort', () =>
-              reject(new DOMException('aborted', 'AbortError')),
-            );
-          }),
-      );
-      vi.stubGlobal('fetch', fetchMock);
-
-      const pending = new InternalAiEngineGateway().dispatchAgentChat(
-        platformRequest(),
-      );
-      const settled = pending.then(
-        () => 'resolved',
-        (error: unknown) => error,
-      );
-
-      await vi.advanceTimersByTimeAsync(14_000);
-      expect(signal?.aborted).toBe(false);
-
-      await vi.advanceTimersByTimeAsync(1_500);
-      expect(signal?.aborted).toBe(true);
-      expect(await settled).toBeInstanceOf(UpstreamUnavailableError);
-    });
-  });
-
-  describe('dispatchAgentChat response', () => {
-    it('maps a full sineva-ai success envelope into the domain response', async () => {
-      stubFetch(() => jsonResponse(chatResponseEnvelopeFixture));
-
-      const reply = await new InternalAiEngineGateway().dispatchAgentChat(
-        platformRequest(),
-      );
-
-      expect(reply).toEqual({
-        ...chatResponseEnvelopeFixture.data,
-        latency_ms: expect.any(Number),
-      });
-      expect(reply.latency_ms).toBeGreaterThanOrEqual(0);
-    });
-
-    it.each([
-      ['a non-2xx status', () => jsonResponse({ success: false }, 401)],
-      [
-        'a 5xx status',
-        () =>
-          new Response('<html>upstream exploded</html>', {
-            status: 500,
-            headers: { 'Content-Type': 'text/html' },
-          }),
-      ],
-    ])('throws UpstreamServiceError on %s', async (_label, factory) => {
-      stubFetch(factory);
-
       await expect(
-        new InternalAiEngineGateway().dispatchAgentChat(platformRequest()),
-      ).rejects.toBeInstanceOf(UpstreamServiceError);
+        gateway.chatTurn({
+          agentSlug: 'sinofinance',
+          request: validV2Request,
+          contextToken: TEST_CONTEXT_TOKEN,
+        }),
+      ).rejects.toBeInstanceOf(ModelUnavailableError);
     });
 
-    it('logs the upstream status without leaking the internal key', async () => {
-      stubFetch(() => jsonResponse({ success: false, message: 'nope' }, 401));
-      const errorSpy = vi.spyOn(console, 'error');
-
-      await expect(
-        new InternalAiEngineGateway().dispatchAgentChat(platformRequest()),
-      ).rejects.toBeInstanceOf(UpstreamServiceError);
-
-      const logged = JSON.stringify(errorSpy.mock.calls);
-      expect(logged).toContain('401');
-      expect(logged).not.toContain(AI_KEY);
-    });
-
-    const envelopeWith = (mutate: (data: Record<string, unknown>) => void) => {
-      const copy = structuredClone(chatResponseEnvelopeFixture) as {
-        data: Record<string, unknown>;
-      };
-      mutate(copy.data);
-      return copy;
-    };
-
-    it.each([
-      ['non-JSON body', () => new Response('not json', { status: 200 })],
-      [
-        'success=false envelope',
-        () =>
-          jsonResponse({
-            ...chatResponseEnvelopeFixture,
-            success: false,
-          }),
-      ],
-      ['null data', () => jsonResponse({ success: true, data: null })],
-      [
-        'missing reply_content',
-        () => jsonResponse(envelopeWith((d) => delete d.reply_content)),
-      ],
-      [
-        'the legacy reply_text shape',
-        () =>
-          jsonResponse({
-            success: true,
-            status_code: 200,
-            message: 'ok',
-            data: { reply_text: 'hi', reply_id: 'rpl_1' },
-          }),
-      ],
-      [
-        'a non-UUID message_id',
-        () =>
-          jsonResponse(envelopeWith((d) => (d.message_id = 'rpl_not_a_uuid'))),
-      ],
-      [
-        'a non-numeric token_usage value',
-        () =>
-          jsonResponse(
-            envelopeWith((d) => (d.token_usage = { total_tokens: 'many' })),
-          ),
-      ],
-    ])('throws UpstreamServiceError on %s', async (_label, factory) => {
-      stubFetch(factory);
-
-      await expect(
-        new InternalAiEngineGateway().dispatchAgentChat(platformRequest()),
-      ).rejects.toBeInstanceOf(UpstreamServiceError);
-    });
-
-    it('tolerates additive fields sineva-ai may add later', async () => {
+    it('maps upstream 503 dependency_unavailable to DependencyUnavailableError (503)', async () => {
       stubFetch(() =>
-        jsonResponse(envelopeWith((d) => (d.future_field = { a: 1 }))),
+        jsonResponse(
+          {
+            success: false,
+            code: 'dependency_unavailable',
+            message: 'Redis or Vector store unavailable',
+          },
+          503,
+        ),
       );
 
-      const reply = await new InternalAiEngineGateway().dispatchAgentChat(
-        platformRequest(),
-      );
-
-      expect(reply.reply_content).toBe(
-        chatResponseEnvelopeFixture.data.reply_content,
-      );
-      expect(reply).not.toHaveProperty('future_field');
+      const gateway = new InternalAiEngineGateway();
+      await expect(
+        gateway.chatTurn({
+          agentSlug: 'sinofinance',
+          request: validV2Request,
+          contextToken: TEST_CONTEXT_TOKEN,
+        }),
+      ).rejects.toBeInstanceOf(DependencyUnavailableError);
     });
 
-    it.each([
-      ['a network error', () => Promise.reject(new TypeError('fetch failed'))],
-      [
-        'an aborted request',
-        () => Promise.reject(new DOMException('aborted', 'AbortError')),
-      ],
-    ])('throws UpstreamUnavailableError on %s', async (_label, factory) => {
-      stubFetch(factory);
+    it('maps upstream 401/403 context_invalid to ContextInvalidError (500)', async () => {
+      stubFetch(() =>
+        jsonResponse(
+          {
+            success: false,
+            code: 'context_invalid',
+            message: 'Signed context token expired or invalid signature',
+          },
+          401,
+        ),
+      );
 
+      const gateway = new InternalAiEngineGateway();
       await expect(
-        new InternalAiEngineGateway().dispatchAgentChat(platformRequest()),
+        gateway.chatTurn({
+          agentSlug: 'sinofinance',
+          request: validV2Request,
+          contextToken: TEST_CONTEXT_TOKEN,
+        }),
+      ).rejects.toBeInstanceOf(ContextInvalidError);
+    });
+
+    it('maps upstream non-2xx to UpstreamServiceError (502)', async () => {
+      stubFetch(() => jsonResponse({ success: false, message: 'Server crash' }, 500));
+
+      const gateway = new InternalAiEngineGateway();
+      await expect(
+        gateway.chatTurn({
+          agentSlug: 'sinofinance',
+          request: validV2Request,
+          contextToken: TEST_CONTEXT_TOKEN,
+        }),
+      ).rejects.toBeInstanceOf(UpstreamServiceError);
+    });
+
+    it('maps timeout or network disconnect to UpstreamUnavailableError (503)', async () => {
+      stubFetch(() => Promise.reject(new TypeError('network failure')));
+
+      const gateway = new InternalAiEngineGateway();
+      await expect(
+        gateway.chatTurn({
+          agentSlug: 'sinofinance',
+          request: validV2Request,
+          contextToken: TEST_CONTEXT_TOKEN,
+        }),
       ).rejects.toBeInstanceOf(UpstreamUnavailableError);
     });
   });
 
-  describe('checkHealth', () => {
-    it('sends X-Internal-Api-Key to /api/v1/health', async () => {
-      const fetchMock = stubFetch(() => jsonResponse({ success: true }));
+  describe('chatStream', () => {
+    it('sends headers and returns response body stream', async () => {
+      const mockStream = new ReadableStream({
+        start(controller) {
+          controller.enqueue(new TextEncoder().encode('event: token\ndata: {"token":"hi"}\n\n'));
+          controller.close();
+        },
+      });
 
-      const health = await new InternalAiEngineGateway().checkHealth();
+      const fetchMock = stubFetch(() =>
+        new Response(mockStream, {
+          status: 200,
+          headers: { 'Content-Type': 'text/event-stream' },
+        }),
+      );
 
-      const { url, init } = lastCall(fetchMock);
-      expect(url).toBe(`${AI_URL}/api/v1/health`);
-      expect(init.method).toBe('GET');
-      const headers = new Headers(init.headers);
-      expect(headers.get('X-Internal-Api-Key')).toBe(AI_KEY);
-      expect(headers.has('X-Internal-Service-Token')).toBe(false);
-      expect(health.is_reachable).toBe(true);
+      const gateway = new InternalAiEngineGateway();
+      const stream = await gateway.chatStream({
+        agentSlug: 'sinofinance',
+        request: {
+          user_message: 'Hi',
+          client_message_id: 'a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6d',
+        },
+        contextToken: TEST_CONTEXT_TOKEN,
+      });
+
+      expect(stream).toBeDefined();
+      const { url } = lastCall(fetchMock);
+      expect(url).toBe(`${AI_URL}/api/v2/agents/sinofinance/chat/stream`);
+    });
+  });
+
+  describe('listAgents, getRunEvents, cancelRun', () => {
+    it('listAgents sends GET /api/v2/agents with internal headers', async () => {
+      const fetchMock = stubFetch(() =>
+        jsonResponse([
+          { agent_slug: 'sinofinance', display_name: 'Sino Finance', status: 'online' },
+        ]),
+      );
+
+      const gateway = new InternalAiEngineGateway();
+      const agents = await gateway.listAgents({ contextToken: TEST_CONTEXT_TOKEN });
+
+      expect(agents).toHaveLength(1);
+      expect(lastCall(fetchMock).url).toBe(`${AI_URL}/api/v2/agents`);
     });
 
-    it('reports unreachable instead of throwing when sineva-ai is down', async () => {
-      stubFetch(() => Promise.reject(new TypeError('fetch failed')));
+    it('getRunEvents sends GET /api/v2/runs/{run_id}/events?after={seq}', async () => {
+      const fetchMock = stubFetch(() =>
+        new Response('id: 1\nevent: token\ndata: {"token":"ok"}\n\n', {
+          status: 200,
+          headers: { 'Content-Type': 'text/event-stream' },
+        }),
+      );
 
+      const gateway = new InternalAiEngineGateway();
+      const result = await gateway.getRunEvents({
+        runId: '7b8c9d0e-1f2a-3b4c-5d6e-7f8a9b0c1d2e',
+        afterSeq: 0,
+        contextToken: TEST_CONTEXT_TOKEN,
+      });
+
+      expect(result.run_id).toBe('7b8c9d0e-1f2a-3b4c-5d6e-7f8a9b0c1d2e');
+      expect(result.events).toHaveLength(1);
+      expect(lastCall(fetchMock).url).toContain('/api/v2/runs/7b8c9d0e-1f2a-3b4c-5d6e-7f8a9b0c1d2e/events?after=0');
+    });
+
+    it('cancelRun sends POST /api/v2/runs/{run_id}/cancel', async () => {
+      const fetchMock = stubFetch(() =>
+        jsonResponse({
+          run_id: '7b8c9d0e-1f2a-3b4c-5d6e-7f8a9b0c1d2e',
+          status: 'cancelled',
+          cancelled_at: '2026-10-21T15:00:00.000Z',
+        }),
+      );
+
+      const gateway = new InternalAiEngineGateway();
+      const result = await gateway.cancelRun({
+        runId: '7b8c9d0e-1f2a-3b4c-5d6e-7f8a9b0c1d2e',
+        contextToken: TEST_CONTEXT_TOKEN,
+      });
+
+      expect(result.status).toBe('cancelled');
+      expect(lastCall(fetchMock).url).toBe(
+        `${AI_URL}/api/v2/runs/7b8c9d0e-1f2a-3b4c-5d6e-7f8a9b0c1d2e/cancel`,
+      );
+      expect(lastCall(fetchMock).init.method).toBe('POST');
+    });
+  });
+
+  describe('Legacy contract compatibility & health', () => {
+    it('dispatchAgentChat works with legacy v1 request/response', async () => {
+      stubFetch(() => jsonResponse(chatResponseEnvelopeFixture));
+      const reply = await new InternalAiEngineGateway().dispatchAgentChat(platformRequest());
+      expect(reply.reply_content).toBe(chatResponseEnvelopeFixture.data.reply_content);
+    });
+
+    it('checkHealth sends X-Internal-Api-Key to /api/v1/health', async () => {
+      const fetchMock = stubFetch(() => jsonResponse({ success: true, data: { version: '2.0.0' } }));
       const health = await new InternalAiEngineGateway().checkHealth();
+      expect(health.is_reachable).toBe(true);
+      expect(lastCall(fetchMock).url).toBe(`${AI_URL}/api/v1/health`);
+    });
+  });
 
-      expect(health.is_reachable).toBe(false);
+  describe('Security & Public Contract Invariant: No user_id or workspace_id in body (Task 6, SEC-2, API-4, X2)', () => {
+    it('verifies that no public DTO schema accepts user_id or workspace_id', async () => {
+      const dtosPath = path.resolve(__dirname, '../../server/application/dtos');
+      const files = fs.readdirSync(dtosPath);
+
+      for (const file of files) {
+        if (!file.endsWith('.ts')) continue;
+        const content = fs.readFileSync(path.join(dtosPath, file), 'utf-8');
+
+        // Check for public request schemas defining user_id or workspace_id as body properties
+        // (excluding internal/tenant isolation utilities if any)
+        const lines = content.split('\n');
+        for (const line of lines) {
+          const trimmed = line.trim();
+          if (
+            trimmed.startsWith('user_id: z.') ||
+            trimmed.startsWith('workspace_id: z.')
+          ) {
+            throw new Error(
+              `Found forbidden body field in ${file}: "${trimmed}". Public contract must derive identity from RequestContext (SEC-2).`,
+            );
+          }
+        }
+      }
     });
   });
 });

@@ -24,7 +24,7 @@ Source: `apps/web/src/app/api/v1/storage/presign/route.ts`, `apps/web/src/app/ap
 
 - Presigning fails fast with a typed 502 `UpstreamServiceError` (`model_unavailable`) when signing fails; it never fabricates an unsigned fallback URL (R-26, [ADR-0008](../decisions/0008-no-silent-fallbacks.md)).
 - Presigned URL host is configured by `S3_PUBLIC_ENDPOINT` (default `http://localhost:8333`), ensuring browsers outside Docker can reach the upload endpoint directly.
-- `workspace_id` currently comes from the request body. Once authentication exists (WP-M0-22), it is derived from the server session and validated as a UUID before placement into storage keys (SEC-3).
+- `workspace_id` is derived strictly from server authentication (`RequestContext`), closing SEC-2 and SEC-3. Client payloads must never include `workspace_id`.
 - Real health probes execute on every `/api/v1/health` call: Postgres (`SELECT 1`), Redis (`PING`), S3 (`HeadBucketCommand`), and `sineva-ai` (`GET /api/v1/health`).
 - When any required subsystem fails, the route responds with HTTP 503 (`code: 'dependency_unavailable'`) and status `standby`.
 - For public / unauthenticated callers, `/api/v1/health` returns status only (`{ status: "healthy" | "standby" }`), concealing internal network addresses, bucket names, and subsystems (SEC-7).
@@ -37,14 +37,14 @@ Body (`presignStorageDtoSchema`):
 
 | Field | Type | Required | Constraint |
 | :--- | :--- | :--- | :--- |
-| `workspace_id` | string | yes | 2 to 128 characters. Not checked against any workspace yet. |
 | `file_name` | string | yes | 1 to 255 characters |
 | `content_type` | string | yes | 3 to 128 characters. |
 | `file_size_bytes` | integer | yes | positive, at most 104857600 (100 MiB) |
 
+Notice: `workspace_id` is never supplied in the body; it is derived from the authenticated workspace session.
+
 ```json
 {
-  "workspace_id": "wks_sineva_hq",
   "file_name": "q3_board_deck.pdf",
   "content_type": "application/pdf",
   "file_size_bytes": 2048576

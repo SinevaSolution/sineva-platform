@@ -363,6 +363,7 @@ export class JwtAuthService {
     userAgent?: string,
     _workspaceId?: string,
   ): Promise<{ sessionId: string; token: string; fresh_until: Date; expires_at: Date }> {
+    void _workspaceId;
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
     });

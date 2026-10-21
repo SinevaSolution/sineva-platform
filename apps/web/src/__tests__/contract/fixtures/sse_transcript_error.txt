@@ -1,0 +1,3 @@
+id: 1
+event: error
+data: {"code":"model_unavailable","message":"The upstream AI model is currently overloaded. Please retry later."}

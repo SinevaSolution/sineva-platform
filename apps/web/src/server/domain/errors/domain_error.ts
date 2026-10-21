@@ -111,11 +111,15 @@ export class UnauthorizedError extends DomainError {
 // that fails contract validation. Messages are client-safe on purpose; the
 // upstream status and body are logged server-side by the adapter instead.
 export class UpstreamServiceError extends DomainError {
-  constructor(message = 'The AI engine returned an unexpected response') {
+  constructor(
+    message = 'The AI engine returned an unexpected response',
+    code = 'UPSTREAM_ERROR',
+    status = 502,
+  ) {
     super({
       message,
-      code: 'UPSTREAM_ERROR',
-      status: 502,
+      code,
+      status,
       field: null,
     });
     this.name = 'UpstreamServiceError';
@@ -124,14 +128,45 @@ export class UpstreamServiceError extends DomainError {
 
 // sineva-ai could not be reached at all: network failure, timeout or abort.
 export class UpstreamUnavailableError extends DomainError {
-  constructor(message = 'The AI engine is unavailable') {
+  constructor(
+    message = 'The AI engine is unavailable',
+    code = 'UPSTREAM_UNAVAILABLE',
+    status = 503,
+  ) {
     super({
       message,
-      code: 'UPSTREAM_UNAVAILABLE',
-      status: 503,
+      code,
+      status,
       field: null,
     });
     this.name = 'UpstreamUnavailableError';
+  }
+}
+
+// Upstream model unavailable, overloaded, or rate-limited
+export class ModelUnavailableError extends DomainError {
+  constructor(message = 'The AI model is currently overloaded or unavailable') {
+    super({
+      message,
+      code: 'model_unavailable',
+      status: 503,
+      field: null,
+    });
+    this.name = 'ModelUnavailableError';
+  }
+}
+
+// Signed context token is invalid or rejected by upstream
+// Since the platform minted the token, this is an internal server error (500)
+export class ContextInvalidError extends DomainError {
+  constructor(message = 'Signed context token or claims are invalid') {
+    super({
+      message,
+      code: 'context_invalid',
+      status: 500,
+      field: null,
+    });
+    this.name = 'ContextInvalidError';
   }
 }
 

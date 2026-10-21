@@ -2,16 +2,11 @@ import { describe, expect, it } from 'vitest';
 import { GetAgentsUseCase } from '@/server/application/use-cases/get_agents_use_case';
 import { GetSystemHealthUseCase } from '@/server/application/use-cases/get_system_health_use_case';
 import { PresignStorageUploadUseCase } from '@/server/application/use-cases/presign_storage_upload_use_case';
-import { SendAgentMessageUseCase } from '@/server/application/use-cases/send_agent_message_use_case';
-import {
-  NotFoundError,
-  UpstreamUnavailableError,
-} from '@/server/domain/errors/domain_error';
 import { FakeAgentRepository } from './fakes/fake_agent_repository';
-import { FakeAiEngineGateway } from './fakes/fake_ai_engine_gateway';
 import { FakeCache } from './fakes/fake_cache';
 import { FakeDatabaseHealthProbe } from './fakes/fake_database_health_probe';
 import { FakeStorage } from './fakes/fake_storage';
+import { FakeAiEngineGateway } from './fakes/fake_ai_engine_gateway';
 
 describe('Clean Architecture Use Cases', () => {
   it('lists all 6 default specialized companions and filters by category', async () => {
@@ -31,52 +26,6 @@ describe('Clean Architecture Use Cases', () => {
     });
     expect(financeOnly.total_items).toBe(1);
     expect(financeOnly.items[0]?.display_name).toBe('SinoFinance');
-  });
-
-  it('dispatches a chat message to an existing companion and throws NotFoundError for unknown slug', async () => {
-    const repo = new FakeAgentRepository();
-    const gateway = new FakeAiEngineGateway();
-    const useCase = new SendAgentMessageUseCase(repo, gateway);
-
-    const request = {
-      agent_slug: 'sinofinance',
-      session_id: '8f3a1c2d-6b4e-4d7a-9c15-2e0b7a41f9d3',
-      user_id: 'usr_test_01',
-      message_text: 'Reconcile Q3 ledger balances',
-    };
-    const reply = await useCase.execute(request);
-
-    expect(reply.agent_slug).toBe('sinofinance');
-    expect(reply.reply_content).toContain('Reconcile Q3 ledger balances');
-    expect(reply.session_id).toBe(request.session_id);
-    expect(gateway.requests).toEqual([request]);
-
-    await expect(
-      useCase.execute({
-        agent_slug: 'unknown-companion',
-        user_id: 'usr_test_01',
-        message_text: 'Hello',
-      }),
-    ).rejects.toThrow(NotFoundError);
-    // An unknown companion must be rejected before anything reaches the engine.
-    expect(gateway.requests).toHaveLength(1);
-  });
-
-  it('propagates gateway failures instead of masking them', async () => {
-    const gateway = new FakeAiEngineGateway();
-    gateway.failure = new UpstreamUnavailableError();
-    const useCase = new SendAgentMessageUseCase(
-      new FakeAgentRepository(),
-      gateway,
-    );
-
-    await expect(
-      useCase.execute({
-        agent_slug: 'sinofinance',
-        user_id: 'usr_test_01',
-        message_text: 'Hello',
-      }),
-    ).rejects.toBeInstanceOf(UpstreamUnavailableError);
   });
 
   it('delegates presigned upload URL generation to the storage port', async () => {

@@ -9,11 +9,11 @@ import {
 import { withAuth } from '@/server/http/with_auth';
 
 export const POST = withAuth(
-  async (request: NextRequest) => {
+  async (request: NextRequest, { requestContext }) => {
     const requestId = extractRequestId(request);
     const rawBody = await parseJsonBody(request);
     const validated = presignStorageDtoSchema.parse(rawBody);
-    const result = await getPresignStorageUploadUseCase().execute(validated);
+    const result = await getPresignStorageUploadUseCase().execute(validated, requestContext);
 
     return sendSuccessJson({
       data: result,

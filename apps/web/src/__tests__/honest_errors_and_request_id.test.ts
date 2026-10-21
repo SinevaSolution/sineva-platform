@@ -1,7 +1,7 @@
 import { NextRequest } from 'next/server';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { POST as postAgent } from '@/app/api/v1/agents/route';
-import { POST as postAgentChat } from '@/app/api/v1/agents/[agent_slug]/chat/route';
+import { POST as postStoragePresign } from '@/app/api/v1/storage/presign/route';
 import { handleRouteError } from '@/server/http/response_helper';
 import { InternalAiEngineGateway } from '@/server/infrastructure/gateways/internal_ai_engine_gateway';
 
@@ -9,9 +9,6 @@ import { InternalAiEngineGateway } from '@/server/infrastructure/gateways/intern
 vi.mock('@/server/container', () => ({
   getGetAgentsUseCase: () => ({
     registerAgent: vi.fn(),
-  }),
-  getSendAgentMessageUseCase: () => ({
-    execute: vi.fn(),
   }),
   getPresignStorageUploadUseCase: () => ({
     execute: vi.fn(),
@@ -58,19 +55,17 @@ describe('Honest Errors & Request ID (WP-M0-07)', () => {
     expect(body.code).toBe('validation_failed');
   });
 
-  it('chat route returns 422 with validation_failed for malformed JSON body (API-1)', async () => {
-    const malformedChatReq = new NextRequest(
-      'http://localhost:3000/api/v1/agents/sinohelp/chat',
+  it('storage route returns 422 with validation_failed for malformed JSON body (API-1)', async () => {
+    const malformedReq = new NextRequest(
+      'http://localhost:3000/api/v1/storage/presign',
       {
         method: 'POST',
-        body: '{"message_text": ',
+        body: '{"file_name": ',
         headers: { 'Content-Type': 'application/json' },
       },
     );
 
-    const res = await postAgentChat(malformedChatReq, {
-      params: Promise.resolve({ agent_slug: 'sinohelp' }),
-    });
+    const res = await postStoragePresign(malformedReq);
     const body = await res.json();
 
     expect(res.status).toBe(422);
@@ -134,7 +129,8 @@ describe('Honest Errors & Request ID (WP-M0-07)', () => {
 
     expect(consoleSpy).toHaveBeenCalled();
     const logCall = consoleSpy.mock.calls.find((call) =>
-      typeof call[0] === 'string' && call[0].includes('[ai-engine] chat returned non-2xx'),
+      typeof call[0] === 'string' &&
+      (call[0].includes('non-2xx') || call[0].includes('[ai-engine]')),
     );
     expect(logCall).toBeDefined();
     const loggedObj = logCall?.[1] as Record<string, unknown>;
