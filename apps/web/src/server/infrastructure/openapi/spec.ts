@@ -30,7 +30,7 @@ export function getOpenApiSpec(): Record<string, unknown> {
         'Standardized snake_case REST API for the Sineva AI Companion Platform. Bridges client workspaces to PostgreSQL (Prisma), Redis, SeaweedFS S3, and the internal sineva-ai FastAPI engine.',
       contact: {
         name: 'Sineva Platform Architecture Team',
-        url: 'https://sineva.ai',
+        url: 'https://sineva.id',
       },
     },
     servers: [
@@ -59,6 +59,10 @@ export function getOpenApiSpec(): Record<string, unknown> {
       {
         name: 'Workspaces',
         description: 'Multi-tenant workspace lifecycle, isolation, and configuration',
+      },
+      {
+        name: 'Conversations',
+        description: 'Multi-tenant conversations and messages persistence and ownership (FR-HUB-20, FR-HUB-32)',
       },
       {
         name: 'Internal',
@@ -704,6 +708,334 @@ export function getOpenApiSpec(): Record<string, unknown> {
             },
             '422': {
               description: 'Validation failed (e.g. slug already customized once)',
+              content: {
+                'application/json': {
+                  schema: { $ref: '#/components/schemas/StandardEnvelope' },
+                },
+              },
+            },
+          },
+        },
+      },
+      '/api/v1/workspaces/{workspace_id}/conversations': {
+        get: {
+          tags: ['Conversations'],
+          summary: 'List user conversations in workspace',
+          operationId: 'list_conversations',
+          parameters: [
+            {
+              name: 'workspace_id',
+              in: 'path',
+              required: true,
+              schema: { type: 'string', format: 'uuid' },
+            },
+            {
+              name: 'kind',
+              in: 'query',
+              required: false,
+              schema: { type: 'string', enum: ['hub', 'room'] },
+            },
+            {
+              name: 'agent_slug',
+              in: 'query',
+              required: false,
+              schema: { type: 'string' },
+            },
+            {
+              name: 'cursor',
+              in: 'query',
+              required: false,
+              schema: { type: 'string' },
+            },
+            {
+              name: 'limit',
+              in: 'query',
+              required: false,
+              schema: { type: 'integer', default: 50, minimum: 1, maximum: 100 },
+            },
+          ],
+          responses: {
+            '200': {
+              description: 'List of conversations',
+              content: {
+                'application/json': {
+                  schema: { $ref: '#/components/schemas/StandardEnvelope' },
+                },
+              },
+            },
+            '401': {
+              description: 'Authentication required',
+              content: {
+                'application/json': {
+                  schema: { $ref: '#/components/schemas/StandardEnvelope' },
+                },
+              },
+            },
+            '404': {
+              description: 'Workspace not found',
+              content: {
+                'application/json': {
+                  schema: { $ref: '#/components/schemas/StandardEnvelope' },
+                },
+              },
+            },
+          },
+        },
+        post: {
+          tags: ['Conversations'],
+          summary: 'Create a new conversation (hub or room)',
+          operationId: 'create_conversation',
+          parameters: [
+            {
+              name: 'workspace_id',
+              in: 'path',
+              required: true,
+              schema: { type: 'string', format: 'uuid' },
+            },
+          ],
+          requestBody: {
+            required: true,
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  required: ['kind'],
+                  properties: {
+                    kind: { type: 'string', enum: ['hub', 'room'] },
+                    agent_slug: { type: 'string', nullable: true },
+                    title: { type: 'string', maxLength: 255, nullable: true },
+                    origin_message_id: { type: 'string', format: 'uuid', nullable: true },
+                    origin_channel: { type: 'string', nullable: true },
+                  },
+                },
+              },
+            },
+          },
+          responses: {
+            '201': {
+              description: 'Conversation created successfully',
+              content: {
+                'application/json': {
+                  schema: { $ref: '#/components/schemas/StandardEnvelope' },
+                },
+              },
+            },
+            '401': {
+              description: 'Authentication required',
+              content: {
+                'application/json': {
+                  schema: { $ref: '#/components/schemas/StandardEnvelope' },
+                },
+              },
+            },
+            '403': {
+              description: 'Forbidden (e.g. viewer role lacks chat.send)',
+              content: {
+                'application/json': {
+                  schema: { $ref: '#/components/schemas/StandardEnvelope' },
+                },
+              },
+            },
+            '404': {
+              description: 'Workspace not found',
+              content: {
+                'application/json': {
+                  schema: { $ref: '#/components/schemas/StandardEnvelope' },
+                },
+              },
+            },
+            '422': {
+              description: 'Validation failed (e.g. room missing pinned agent_slug)',
+              content: {
+                'application/json': {
+                  schema: { $ref: '#/components/schemas/StandardEnvelope' },
+                },
+              },
+            },
+          },
+        },
+      },
+      '/api/v1/workspaces/{workspace_id}/conversations/{conversation_id}': {
+        get: {
+          tags: ['Conversations'],
+          summary: 'Get details for a conversation',
+          operationId: 'get_conversation',
+          parameters: [
+            {
+              name: 'workspace_id',
+              in: 'path',
+              required: true,
+              schema: { type: 'string', format: 'uuid' },
+            },
+            {
+              name: 'conversation_id',
+              in: 'path',
+              required: true,
+              schema: { type: 'string', format: 'uuid' },
+            },
+          ],
+          responses: {
+            '200': {
+              description: 'Conversation details',
+              content: {
+                'application/json': {
+                  schema: { $ref: '#/components/schemas/StandardEnvelope' },
+                },
+              },
+            },
+            '401': {
+              description: 'Authentication required',
+              content: {
+                'application/json': {
+                  schema: { $ref: '#/components/schemas/StandardEnvelope' },
+                },
+              },
+            },
+            '404': {
+              description: 'Conversation not found or not owned by caller (FR-HUB-32)',
+              content: {
+                'application/json': {
+                  schema: { $ref: '#/components/schemas/StandardEnvelope' },
+                },
+              },
+            },
+          },
+        },
+      },
+      '/api/v1/workspaces/{workspace_id}/conversations/{conversation_id}/messages': {
+        get: {
+          tags: ['Conversations'],
+          summary: 'List messages in a conversation in chronological order',
+          operationId: 'list_conversation_messages',
+          parameters: [
+            {
+              name: 'workspace_id',
+              in: 'path',
+              required: true,
+              schema: { type: 'string', format: 'uuid' },
+            },
+            {
+              name: 'conversation_id',
+              in: 'path',
+              required: true,
+              schema: { type: 'string', format: 'uuid' },
+            },
+            {
+              name: 'cursor',
+              in: 'query',
+              required: false,
+              schema: { type: 'string' },
+            },
+            {
+              name: 'limit',
+              in: 'query',
+              required: false,
+              schema: { type: 'integer', default: 50, minimum: 1, maximum: 100 },
+            },
+          ],
+          responses: {
+            '200': {
+              description: 'List of messages in chronological order',
+              content: {
+                'application/json': {
+                  schema: { $ref: '#/components/schemas/StandardEnvelope' },
+                },
+              },
+            },
+            '401': {
+              description: 'Authentication required',
+              content: {
+                'application/json': {
+                  schema: { $ref: '#/components/schemas/StandardEnvelope' },
+                },
+              },
+            },
+            '404': {
+              description: 'Conversation not found or not owned by caller (FR-HUB-32)',
+              content: {
+                'application/json': {
+                  schema: { $ref: '#/components/schemas/StandardEnvelope' },
+                },
+              },
+            },
+          },
+        },
+        post: {
+          tags: ['Conversations'],
+          summary: 'Send a message in a conversation (step 1 of run flow)',
+          operationId: 'create_conversation_message',
+          parameters: [
+            {
+              name: 'workspace_id',
+              in: 'path',
+              required: true,
+              schema: { type: 'string', format: 'uuid' },
+            },
+            {
+              name: 'conversation_id',
+              in: 'path',
+              required: true,
+              schema: { type: 'string', format: 'uuid' },
+            },
+          ],
+          requestBody: {
+            required: true,
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  required: ['content'],
+                  properties: {
+                    content: { type: 'string', minLength: 1, maxLength: 8000 },
+                    client_message_id: { type: 'string', maxLength: 255, nullable: true },
+                    mentions: {
+                      type: 'array',
+                      items: {
+                        type: 'object',
+                        properties: { agent_slug: { type: 'string' } },
+                      },
+                      nullable: true,
+                    },
+                  },
+                },
+              },
+            },
+          },
+          responses: {
+            '201': {
+              description: 'Message processed and run allocated (returns message_id and run_id handle, D-M0-3)',
+              content: {
+                'application/json': {
+                  schema: { $ref: '#/components/schemas/StandardEnvelope' },
+                },
+              },
+            },
+            '401': {
+              description: 'Authentication required',
+              content: {
+                'application/json': {
+                  schema: { $ref: '#/components/schemas/StandardEnvelope' },
+                },
+              },
+            },
+            '403': {
+              description: 'Forbidden (e.g. viewer role lacks chat.send)',
+              content: {
+                'application/json': {
+                  schema: { $ref: '#/components/schemas/StandardEnvelope' },
+                },
+              },
+            },
+            '404': {
+              description: 'Conversation not found or not owned by caller (FR-HUB-32)',
+              content: {
+                'application/json': {
+                  schema: { $ref: '#/components/schemas/StandardEnvelope' },
+                },
+              },
+            },
+            '422': {
+              description: 'Validation failed (e.g. content exceeds 8,000 chars or room specialist mismatch)',
               content: {
                 'application/json': {
                   schema: { $ref: '#/components/schemas/StandardEnvelope' },

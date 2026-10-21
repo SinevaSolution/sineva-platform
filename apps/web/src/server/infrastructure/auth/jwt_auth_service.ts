@@ -297,7 +297,7 @@ export class JwtAuthService {
     await this.loginAttemptRepo.clearAttempts(emailHash);
 
     // 4. Create session & signed JWT
-    const sessionId = 'sess_' + crypto.randomBytes(16).toString('hex');
+    const sessionId = crypto.randomUUID();
     const freshUntil = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes fresh window
     const expiresAt = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000); // 14 days
 
@@ -371,7 +371,7 @@ export class JwtAuthService {
       throw new UnauthorizedError('User not found.');
     }
 
-    const sessionId = 'sess_' + crypto.randomBytes(16).toString('hex');
+    const sessionId = crypto.randomUUID();
     const freshUntil = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes fresh window
     const expiresAt = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000); // 14 days
 

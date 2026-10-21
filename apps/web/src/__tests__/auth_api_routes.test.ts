@@ -34,8 +34,8 @@ function createJsonRequest(url: string, method: string, body?: unknown, headers:
     method,
     headers: {
       'content-type': 'application/json',
-      origin: 'https://app.sineva.ai',
-      host: 'app.sineva.ai',
+      origin: 'https://app.sineva.id',
+      host: 'app.sineva.id',
       'x-sineva-action': '1',
       ...headers,
     },
@@ -54,7 +54,7 @@ describe('Auth API Routes (/api/v1/auth/*, WP-M0-23)', () => {
         user: { id: 'usr-123', email: 'budi@example.com', name: 'Budi' },
       });
 
-      const req = createJsonRequest('https://app.sineva.ai/api/v1/auth/sign-up', 'POST', {
+      const req = createJsonRequest('https://app.sineva.id/api/v1/auth/sign-up', 'POST', {
         email: 'budi@example.com',
         password: 'validPassword12345',
         full_name: 'Budi Santoso',
@@ -72,7 +72,7 @@ describe('Auth API Routes (/api/v1/auth/*, WP-M0-23)', () => {
     });
 
     it('returns 422 when password is shorter than 12 characters', async () => {
-      const req = createJsonRequest('https://app.sineva.ai/api/v1/auth/sign-up', 'POST', {
+      const req = createJsonRequest('https://app.sineva.id/api/v1/auth/sign-up', 'POST', {
         email: 'budi@example.com',
         password: 'short',
         full_name: 'Budi Santoso',
@@ -99,7 +99,7 @@ describe('Auth API Routes (/api/v1/auth/*, WP-M0-23)', () => {
         session: { id: 'sess-123', token: 'jwt.token.value', fresh_until: freshUntil, expires_at: expiresAt },
       });
 
-      const req = createJsonRequest('https://app.sineva.ai/api/v1/auth/sign-in', 'POST', {
+      const req = createJsonRequest('https://app.sineva.id/api/v1/auth/sign-in', 'POST', {
         email: 'budi@example.com',
         password: 'validPassword123',
       });
@@ -120,7 +120,7 @@ describe('Auth API Routes (/api/v1/auth/*, WP-M0-23)', () => {
     it('returns 401 when password is invalid', async () => {
       mockAuthService.signIn.mockRejectedValue(new UnauthorizedError('Invalid email or password.'));
 
-      const req = createJsonRequest('https://app.sineva.ai/api/v1/auth/sign-in', 'POST', {
+      const req = createJsonRequest('https://app.sineva.id/api/v1/auth/sign-in', 'POST', {
         email: 'budi@example.com',
         password: 'wrongPassword',
       });
@@ -135,7 +135,7 @@ describe('Auth API Routes (/api/v1/auth/*, WP-M0-23)', () => {
     it('returns 403 when account is locked out', async () => {
       mockAuthService.signIn.mockRejectedValue(new ForbiddenError('Too many tries. You can try again in 15 minutes.'));
 
-      const req = createJsonRequest('https://app.sineva.ai/api/v1/auth/sign-in', 'POST', {
+      const req = createJsonRequest('https://app.sineva.id/api/v1/auth/sign-in', 'POST', {
         email: 'budi@example.com',
         password: 'wrongPassword',
       });
@@ -152,7 +152,7 @@ describe('Auth API Routes (/api/v1/auth/*, WP-M0-23)', () => {
     it('calls signOut and clears session cookie', async () => {
       mockAuthService.signOut.mockResolvedValue(undefined);
 
-      const req = createJsonRequest('https://app.sineva.ai/api/v1/auth/sign-out', 'POST', undefined, {
+      const req = createJsonRequest('https://app.sineva.id/api/v1/auth/sign-out', 'POST', undefined, {
         cookie: 'sineva_session=active-jwt-token',
       });
 
@@ -176,7 +176,7 @@ describe('Auth API Routes (/api/v1/auth/*, WP-M0-23)', () => {
         message: 'If this email is registered, we have sent a password reset link.',
       });
 
-      const req = createJsonRequest('https://app.sineva.ai/api/v1/auth/request-password-reset', 'POST', {
+      const req = createJsonRequest('https://app.sineva.id/api/v1/auth/request-password-reset', 'POST', {
         email: 'budi@example.com',
       });
 
@@ -195,7 +195,7 @@ describe('Auth API Routes (/api/v1/auth/*, WP-M0-23)', () => {
         user_id: 'usr-123',
       });
 
-      const req = createJsonRequest('https://app.sineva.ai/api/v1/auth/reset-password', 'POST', {
+      const req = createJsonRequest('https://app.sineva.id/api/v1/auth/reset-password', 'POST', {
         token: 'valid-reset-token',
         new_password: 'brandNewPassword123!',
       });
@@ -214,7 +214,7 @@ describe('Auth API Routes (/api/v1/auth/*, WP-M0-23)', () => {
         ]),
       );
 
-      const req = createJsonRequest('https://app.sineva.ai/api/v1/auth/reset-password', 'POST', {
+      const req = createJsonRequest('https://app.sineva.id/api/v1/auth/reset-password', 'POST', {
         token: 'expired-token',
         new_password: 'brandNewPassword123!',
       });
@@ -235,7 +235,7 @@ describe('Auth API Routes (/api/v1/auth/*, WP-M0-23)', () => {
         email: 'budi@example.com',
       });
 
-      const req = createJsonRequest('https://app.sineva.ai/api/v1/auth/verify-email', 'POST', {
+      const req = createJsonRequest('https://app.sineva.id/api/v1/auth/verify-email', 'POST', {
         token: 'valid-verify-token',
       });
 
@@ -253,7 +253,7 @@ describe('Auth API Routes (/api/v1/auth/*, WP-M0-23)', () => {
         email: 'budi@example.com',
       });
 
-      const req = new NextRequest('https://app.sineva.ai/api/v1/auth/verify-email?token=valid-query-token');
+      const req = new NextRequest('https://app.sineva.id/api/v1/auth/verify-email?token=valid-query-token');
       const res = await getVerifyEmail(req);
       const json = await res.json();
 
@@ -272,7 +272,7 @@ describe('Auth API Routes (/api/v1/auth/*, WP-M0-23)', () => {
       });
 
       const req = createJsonRequest(
-        'https://app.sineva.ai/api/v1/auth/reauthenticate',
+        'https://app.sineva.id/api/v1/auth/reauthenticate',
         'POST',
         { password: 'confirmPassword123' },
         {
@@ -293,7 +293,7 @@ describe('Auth API Routes (/api/v1/auth/*, WP-M0-23)', () => {
 
   describe('GET /api/v1/auth/session', () => {
     it('returns session information when authenticated', async () => {
-      const req = new NextRequest('https://app.sineva.ai/api/v1/auth/session', {
+      const req = new NextRequest('https://app.sineva.id/api/v1/auth/session', {
         headers: {
           'x-test-session-user-id': 'usr-abc',
           'x-test-session-role': 'admin',
@@ -311,7 +311,7 @@ describe('Auth API Routes (/api/v1/auth/*, WP-M0-23)', () => {
     });
 
     it('returns 401 when unauthenticated', async () => {
-      const req = new NextRequest('https://app.sineva.ai/api/v1/auth/session', {
+      const req = new NextRequest('https://app.sineva.id/api/v1/auth/session', {
         headers: {
           'x-test-unauthenticated': 'true',
         },

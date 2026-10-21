@@ -1,14 +1,26 @@
-import type { ChatReplyView } from '@/shared/chat_view';
+import type {
+  ChatReplyView,
+  ConversationView,
+  MessageView,
+} from '@/shared/chat_view';
 import type { AiEngineChatResponse } from '../domain/repositories/ai_engine_gateway';
+import type { ConversationEntity } from '../domain/entities/conversation';
+import type { MessageEntity } from '../domain/entities/message';
 
-// Compile-time drift guard, same idea as `agent_view_contract.ts`: the chat
-// route serialises `AiEngineChatResponse` straight into the response and the
-// client types that payload as `ChatReplyView`. If the domain response drops or
-// retypes a field the client reads, the type-check fails here instead of the
-// browser failing at runtime.
+// Compile-time drift guard: ensures domain entities are assignable to shared views
 type AssertAssignable<Sub extends Super, Super> = Sub;
 
 export type ChatReplyServedAsView = AssertAssignable<
   AiEngineChatResponse,
   ChatReplyView
+>;
+
+export type ConversationServedAsView = AssertAssignable<
+  ConversationEntity,
+  ConversationView
+>;
+
+export type MessageServedAsView = AssertAssignable<
+  MessageEntity,
+  MessageView
 >;

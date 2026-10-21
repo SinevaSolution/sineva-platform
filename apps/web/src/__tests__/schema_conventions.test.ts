@@ -121,7 +121,7 @@ describe('Prisma Schema Conventions (WP-M0-21)', () => {
       'WorkspaceMember',
       'WorkspaceMemberSpecialist',
       'WorkspaceInvitation',
-      'ChatSession',
+      'Conversation',
       'StorageObject',
     ];
 

@@ -14,7 +14,7 @@ describe('EmailSender Port & Adapters (WP-M0-24, FR-INBOX-29)', () => {
       template: 'verify_email',
       locale: 'en',
       params: {
-        url: 'https://app.sineva.ai/verify?token=123',
+        url: 'https://app.sineva.id/verify?token=123',
         recipient_name: 'Alice',
       },
     });
@@ -25,7 +25,7 @@ describe('EmailSender Port & Adapters (WP-M0-24, FR-INBOX-29)', () => {
     expect(sent[0]?.template).toBe('verify_email');
     expect(sent[0]?.locale).toBe('en');
     expect(sent[0]?.rendered.subject).toContain('Sineva');
-    expect(sent[0]?.rendered.text).toContain('https://app.sineva.ai/verify?token=123');
+    expect(sent[0]?.rendered.text).toContain('https://app.sineva.id/verify?token=123');
   });
 
   it('FakeEmailSender honors idempotency_key to prevent duplicate sends', async () => {
@@ -35,7 +35,7 @@ describe('EmailSender Port & Adapters (WP-M0-24, FR-INBOX-29)', () => {
       to: 'user@example.com',
       template: 'verify_email',
       locale: 'en',
-      params: { url: 'https://app.sineva.ai/verify?token=123' },
+      params: { url: 'https://app.sineva.id/verify?token=123' },
       idempotency_key: 'idem-key-001',
     });
 
@@ -44,7 +44,7 @@ describe('EmailSender Port & Adapters (WP-M0-24, FR-INBOX-29)', () => {
       to: 'user@example.com',
       template: 'verify_email',
       locale: 'en',
-      params: { url: 'https://app.sineva.ai/verify?token=123' },
+      params: { url: 'https://app.sineva.id/verify?token=123' },
       idempotency_key: 'idem-key-001',
     });
 
@@ -70,7 +70,7 @@ describe('EmailSender Port & Adapters (WP-M0-24, FR-INBOX-29)', () => {
     const sender = new SmtpEmailSender({
       host: '127.0.0.1',
       port: 65534, // unreachable port
-      from: 'Sineva <noreply@sineva.ai>',
+      from: 'Sineva <noreply@sineva.id>',
       connectionTimeoutMs: 100,
     });
 
@@ -79,7 +79,7 @@ describe('EmailSender Port & Adapters (WP-M0-24, FR-INBOX-29)', () => {
         to: 'user@example.com',
         template: 'reset_password',
         locale: 'en',
-        params: { url: 'https://app.sineva.ai/reset?token=999' },
+        params: { url: 'https://app.sineva.id/reset?token=999' },
       }),
     ).rejects.toThrow(DependencyUnavailableError);
   });
@@ -88,7 +88,7 @@ describe('EmailSender Port & Adapters (WP-M0-24, FR-INBOX-29)', () => {
     const sender = new SmtpEmailSender({
       host: '127.0.0.1',
       port: 65534,
-      from: 'Sineva <noreply@sineva.ai>',
+      from: 'Sineva <noreply@sineva.id>',
       connectionTimeoutMs: 100,
     });
 
@@ -97,7 +97,7 @@ describe('EmailSender Port & Adapters (WP-M0-24, FR-INBOX-29)', () => {
         to: 'user@example.com',
         template: 'reset_password',
         locale: 'en',
-        params: { url: 'https://app.sineva.ai/reset?token=999' },
+        params: { url: 'https://app.sineva.id/reset?token=999' },
       });
       expect.fail('Should have thrown DependencyUnavailableError');
     } catch (err) {

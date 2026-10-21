@@ -1,3 +1,4 @@
+import crypto from 'node:crypto';
 import { PrismaPg } from '@prisma/adapter-pg';
 import { PrismaClient } from '../src/server/infrastructure/database/generated/client';
 
@@ -159,9 +160,9 @@ const DEFAULT_SPECIALIZED_AGENTS: SeedAgent[] = [
 async function seedTenants(prisma: PrismaClient): Promise<void> {
   // Tenant 1: Sineva HQ
   const user1 = await prisma.user.upsert({
-    where: { email: 'admin@sineva.ai' },
+    where: { email: 'admin@sineva.id' },
     create: {
-      email: 'admin@sineva.ai',
+      email: 'admin@sineva.id',
       full_name: 'Alice Pratama',
       preferred_name: 'Alice',
       locale: 'id',
@@ -211,6 +212,30 @@ async function seedTenants(prisma: PrismaClient): Promise<void> {
     update: {
       role: 'owner',
       specialist_scope: 'all',
+    },
+  });
+
+  // Seed credential account for admin@sineva.ai (Password: Password123!)
+  const salt1 = crypto.randomBytes(16);
+  const derivedKey1 = crypto.scryptSync('Password123!', salt1, 64);
+  const hash1 = `scrypt:${salt1.toString('hex')}:${derivedKey1.toString('hex')}`;
+
+  await prisma.account.upsert({
+    where: {
+      provider_id_account_id: {
+        provider_id: 'credential',
+        account_id: user1.id,
+      },
+    },
+    create: {
+      user_id: user1.id,
+      provider_id: 'credential',
+      account_id: user1.id,
+      provider_email: user1.email,
+      password: hash1,
+    },
+    update: {
+      password: hash1,
     },
   });
 
@@ -268,6 +293,30 @@ async function seedTenants(prisma: PrismaClient): Promise<void> {
     update: {
       role: 'owner',
       specialist_scope: 'all',
+    },
+  });
+
+  // Seed credential account for owner@acme.com (Password: Password123!)
+  const salt2 = crypto.randomBytes(16);
+  const derivedKey2 = crypto.scryptSync('Password123!', salt2, 64);
+  const hash2 = `scrypt:${salt2.toString('hex')}:${derivedKey2.toString('hex')}`;
+
+  await prisma.account.upsert({
+    where: {
+      provider_id_account_id: {
+        provider_id: 'credential',
+        account_id: user2.id,
+      },
+    },
+    create: {
+      user_id: user2.id,
+      provider_id: 'credential',
+      account_id: user2.id,
+      provider_email: user2.email,
+      password: hash2,
+    },
+    update: {
+      password: hash2,
     },
   });
 

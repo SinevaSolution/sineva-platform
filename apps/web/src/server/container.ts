@@ -46,6 +46,15 @@ import type { OAuthAuthService } from './domain/auth/oauth_auth_service';
 import { PrismaOAuthAuthService } from './infrastructure/auth/prisma_oauth_auth_service';
 import { generateOAuthState, verifyOAuthState } from './infrastructure/security/oauth_state_service';
 import { ValidationError } from './domain/errors/domain_error';
+import type { ConversationRepository } from './domain/repositories/conversation_repository';
+import type { MessageRepository } from './domain/repositories/message_repository';
+import { PrismaConversationRepository } from './infrastructure/database/prisma_conversation_repository';
+import { PrismaMessageRepository } from './infrastructure/database/prisma_message_repository';
+import { CreateConversationUseCase } from './application/use-cases/chat/create_conversation_use_case';
+import { GetConversationUseCase } from './application/use-cases/chat/get_conversation_use_case';
+import { ListConversationsUseCase } from './application/use-cases/chat/list_conversations_use_case';
+import { ListMessagesUseCase } from './application/use-cases/chat/list_messages_use_case';
+import { CreateMessageUseCase } from './application/use-cases/chat/create_message_use_case';
 
 // Composition root: the only module that knows which concrete adapter backs
 // each port. Route handlers and pages ask for use cases here instead of
@@ -92,7 +101,7 @@ const getEmailSender = memoize<EmailSender>(() => {
       port: env.email_server_port ?? 587,
       user: env.email_server_user,
       password: env.email_server_password,
-      from: env.email_from ?? 'Sineva <noreply@sineva.ai>',
+      from: env.email_from ?? 'Sineva <noreply@sineva.id>',
     });
   }
   return new FakeEmailSender();
@@ -275,4 +284,32 @@ export const getSystemHealthUseCase = memoize(
       getAiEngineGateway(),
       getEnvConfig().s3_bucket_name,
     ),
+);
+
+export const getConversationRepository = memoize<ConversationRepository>(
+  () => new PrismaConversationRepository(getPrismaClient()),
+);
+
+export const getMessageRepository = memoize<MessageRepository>(
+  () => new PrismaMessageRepository(getPrismaClient()),
+);
+
+export const getCreateConversationUseCase = memoize(
+  () => new CreateConversationUseCase(getConversationRepository(), defaultAuditLogger),
+);
+
+export const getGetConversationUseCase = memoize(
+  () => new GetConversationUseCase(getConversationRepository()),
+);
+
+export const getListConversationsUseCase = memoize(
+  () => new ListConversationsUseCase(getConversationRepository()),
+);
+
+export const getListMessagesUseCase = memoize(
+  () => new ListMessagesUseCase(getConversationRepository(), getMessageRepository()),
+);
+
+export const getCreateMessageUseCase = memoize(
+  () => new CreateMessageUseCase(getConversationRepository(), getMessageRepository()),
 );

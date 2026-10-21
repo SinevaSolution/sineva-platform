@@ -9,7 +9,7 @@ async function truncatePlatformTables(): Promise<void> {
   // One statement: Postgres truncates the listed tables atomically, and
   // CASCADE covers any dependent table that is not listed.
   await prisma.$executeRawUnsafe(
-    'TRUNCATE TABLE "platform"."chat_messages", "platform"."chat_sessions", ' +
+    'TRUNCATE TABLE "platform"."messages", "platform"."conversations", ' +
       '"platform"."storage_objects", "platform"."agent_configs", ' +
       '"platform"."workspace_member_specialists", "platform"."workspace_members", ' +
       '"platform"."workspace_invitations", "platform"."sessions", "platform"."accounts", ' +

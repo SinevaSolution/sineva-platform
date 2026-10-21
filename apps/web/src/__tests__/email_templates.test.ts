@@ -19,12 +19,12 @@ describe('Email Templates (WP-M0-24, FR-AUTH-03, FR-AUTH-04, FR-AUTH-05, FR-UX-3
   const SAMPLE_PARAMS: Record<EmailTemplateName, Record<string, unknown>> = {
     verify_email: {
       recipient_name: 'Budi',
-      url: 'https://app.sineva.ai/verify?token=abc-123',
+      url: 'https://app.sineva.id/verify?token=abc-123',
       expires_in_minutes: 30,
     },
     reset_password: {
       recipient_name: 'Budi',
-      url: 'https://app.sineva.ai/reset?token=xyz-789',
+      url: 'https://app.sineva.id/reset?token=xyz-789',
       expires_in_minutes: 30,
     },
     lockout_notice: {
@@ -35,13 +35,13 @@ describe('Email Templates (WP-M0-24, FR-AUTH-03, FR-AUTH-04, FR-AUTH-05, FR-UX-3
     email_change_confirm: {
       recipient_name: 'Budi',
       new_email: 'budi.new@example.com',
-      url: 'https://app.sineva.ai/confirm-email?token=change-456',
+      url: 'https://app.sineva.id/confirm-email?token=change-456',
       expires_in_minutes: 30,
     },
     email_change_notice: {
       recipient_name: 'Budi',
       new_email: 'budi.new@example.com',
-      revert_url: 'https://app.sineva.ai/support',
+      revert_url: 'https://app.sineva.id/support',
     },
   };
 

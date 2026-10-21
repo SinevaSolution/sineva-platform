@@ -1,9 +1,5 @@
-// JSON contract for a chat reply as the browser sees it (the `data` of
-// `POST /api/v1/agents/{agent_slug}/chat`). Field names follow sineva-ai's chat
-// response, which owns the shape; `latency_ms` is added by the platform.
-// Client code may import this file but never `@/server/*`;
-// `server/http/chat_view_contract.ts` fails the type-check if the domain
-// response stops being assignable to this view.
+// JSON contract for chat, conversations, and messages as the browser sees it.
+// Client code may import this file but never `@/server/*`.
 
 export interface ChatToolCallView {
   tool_name: string;
@@ -33,4 +29,56 @@ export interface ChatReplyView {
   citations: ChatCitationView[];
   created_at: string;
   latency_ms: number;
+}
+
+export interface ConversationView {
+  id: string;
+  workspace_id: string;
+  user_id: string;
+  kind: 'hub' | 'room';
+  agent_slug: string | null;
+  title: string | null;
+  title_source: 'user' | 'auto' | 'first_message' | null;
+  pinned_at: string | null;
+  archived_at: string | null;
+  origin_message_id: string | null;
+  origin_channel: string | null;
+  last_message_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface MentionView {
+  agent_slug: string;
+  display_name?: string;
+  handle?: string;
+}
+
+export interface MessageView {
+  id: string;
+  conversation_id: string;
+  role: 'user' | 'assistant' | 'system';
+  agent_slug: string | null;
+  content: string;
+  mentions: MentionView[] | null;
+  status:
+    | 'pending'
+    | 'completed'
+    | 'failed'
+    | 'needs_approval'
+    | 'needs_input'
+    | 'budget_exceeded';
+  finish_reason: string | null;
+  run_id: string | null;
+  channel: string | null;
+  client_message_id: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface SendMessageResultView {
+  message_id: string;
+  run_id: string;
+  conversation_id: string;
+  status: string;
 }

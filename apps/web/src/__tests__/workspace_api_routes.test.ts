@@ -36,7 +36,7 @@ describe('Workspace API Routes (WP-M0-26, FR-AUTH-10, 11, 12, 24, 29, 30)', () =
         },
       ]);
 
-      const req = new NextRequest('https://app.sineva.ai/api/v1/workspaces', {
+      const req = new NextRequest('https://app.sineva.id/api/v1/workspaces', {
         headers: {
           'x-test-session-user-id': 'usr-1',
           'x-test-session-role': 'owner',
@@ -61,7 +61,7 @@ describe('Workspace API Routes (WP-M0-26, FR-AUTH-10, 11, 12, 24, 29, 30)', () =
         workspace_slug: 'new-ventures',
       });
 
-      const req = new NextRequest('https://app.sineva.ai/api/v1/workspaces', {
+      const req = new NextRequest('https://app.sineva.id/api/v1/workspaces', {
         method: 'POST',
         headers: {
           'content-type': 'application/json',
@@ -95,7 +95,7 @@ describe('Workspace API Routes (WP-M0-26, FR-AUTH-10, 11, 12, 24, 29, 30)', () =
         workspace_slug: 'acme-corp',
       });
 
-      const req = new NextRequest(`https://app.sineva.ai/api/v1/workspaces/${workspaceIdA}`, {
+      const req = new NextRequest(`https://app.sineva.id/api/v1/workspaces/${workspaceIdA}`, {
         headers: {
           'x-test-session-user-id': 'usr-1',
           'x-test-session-role': 'member',
@@ -113,7 +113,7 @@ describe('Workspace API Routes (WP-M0-26, FR-AUTH-10, 11, 12, 24, 29, 30)', () =
     });
 
     it('returns 404 Not Found (never 403) when user is not a member of target workspace (FR-AUTH-24)', async () => {
-      const req = new NextRequest(`https://app.sineva.ai/api/v1/workspaces/${workspaceIdB}`, {
+      const req = new NextRequest(`https://app.sineva.id/api/v1/workspaces/${workspaceIdB}`, {
         headers: {
           'x-test-session-user-id': 'usr-1',
           'x-test-session-role': 'member',
@@ -141,7 +141,7 @@ describe('Workspace API Routes (WP-M0-26, FR-AUTH-10, 11, 12, 24, 29, 30)', () =
         workspace_slug: 'acme-corp',
       });
 
-      const req = new NextRequest(`https://app.sineva.ai/api/v1/workspaces/${workspaceIdA}`, {
+      const req = new NextRequest(`https://app.sineva.id/api/v1/workspaces/${workspaceIdA}`, {
         method: 'PATCH',
         headers: {
           'content-type': 'application/json',
@@ -165,7 +165,7 @@ describe('Workspace API Routes (WP-M0-26, FR-AUTH-10, 11, 12, 24, 29, 30)', () =
     });
 
     it('returns 403 Forbidden when caller role lacks workspace.update (e.g. viewer)', async () => {
-      const req = new NextRequest(`https://app.sineva.ai/api/v1/workspaces/${workspaceIdA}`, {
+      const req = new NextRequest(`https://app.sineva.id/api/v1/workspaces/${workspaceIdA}`, {
         method: 'PATCH',
         headers: {
           'content-type': 'application/json',

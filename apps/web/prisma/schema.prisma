@@ -53,7 +53,7 @@ model Workspace {
   member_specialists      WorkspaceMemberSpecialist[]
   invitations             WorkspaceInvitation[]
   agent_configs           AgentConfig[]
-  chat_sessions           ChatSession[]
+  conversations           Conversation[]
   storage_objects         StorageObject[]
 
   @@map("workspaces")
@@ -151,7 +151,7 @@ model User {
   accounts               Account[]
   sessions               Session[]
   staff_profile          PlatformStaff?
-  chat_sessions          ChatSession[]
+  conversations          Conversation[]
 
   @@map("users")
   @@schema("platform")
@@ -290,39 +290,53 @@ model AgentConfig {
   @@schema("platform")
 }
 
-model ChatSession {
-  id            String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  workspace_id  String   @db.Uuid
-  user_id       String   @db.Uuid
-  agent_slug    String
-  session_title String
-  is_archived   Boolean  @default(false)
-  created_at    DateTime @default(now()) @db.Timestamptz(6)
-  updated_at    DateTime @default(now()) @db.Timestamptz(6)
+model Conversation {
+  id                String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  workspace_id      String    @map("workspace_id") @db.Uuid
+  user_id           String    @map("user_id") @db.Uuid
+  kind              String    @default("hub") @map("kind") // hub | room
+  agent_slug        String?   @map("agent_slug")
+  title             String?   @map("title")
+  title_source      String?   @map("title_source") // user | auto | first_message
+  pinned_at         DateTime? @map("pinned_at") @db.Timestamptz(6)
+  archived_at       DateTime? @map("archived_at") @db.Timestamptz(6)
+  origin_message_id String?   @map("origin_message_id") @db.Uuid
+  origin_channel    String?   @default("web") @map("origin_channel")
+  last_message_at   DateTime? @map("last_message_at") @db.Timestamptz(6)
+  created_at        DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updated_at        DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  workspace     Workspace     @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
-  user          User          @relation(fields: [user_id], references: [id], onDelete: Cascade)
-  chat_messages ChatMessage[]
+  workspace         Workspace @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
+  user              User      @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  messages          Message[]
 
-  @@map("chat_sessions")
+  @@index([workspace_id, user_id, last_message_at])
+  @@index([workspace_id, kind])
+  @@index([workspace_id, agent_slug])
+  @@map("conversations")
   @@schema("platform")
 }
 
-model ChatMessage {
-  id                String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  session_id        String   @db.Uuid
-  agent_slug        String
-  sender_role       String
-  message_text      String
-  reasoning_summary String?
-  suggested_actions Json     @default("[]")
-  tokens_used       Int      @default(0)
-  latency_ms        Int      @default(0)
-  created_at        DateTime @default(now()) @db.Timestamptz(6)
+model Message {
+  id                String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  conversation_id   String       @map("conversation_id") @db.Uuid
+  role              String       @map("role") // user | assistant | system
+  agent_slug        String?      @map("agent_slug")
+  content           String       @map("content") @db.Text
+  mentions          Json?        @map("mentions")
+  status            String       @default("completed") @map("status") // pending | completed | failed | needs_approval | needs_input | budget_exceeded
+  finish_reason     String?      @map("finish_reason")
+  run_id            String?      @map("run_id")
+  channel           String?      @default("web") @map("channel")
+  client_message_id String?      @map("client_message_id")
+  created_at        DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  updated_at        DateTime     @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  session           ChatSession @relation(fields: [session_id], references: [id], onDelete: Cascade)
+  conversation      Conversation @relation(fields: [conversation_id], references: [id], onDelete: Cascade)
 
-  @@map("chat_messages")
+  @@index([conversation_id, created_at])
+  @@index([conversation_id, client_message_id])
+  @@map("messages")
   @@schema("platform")
 }
 

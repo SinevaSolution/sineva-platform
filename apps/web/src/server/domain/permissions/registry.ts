@@ -19,6 +19,8 @@ export type PermissionKey =
   | 'chat.read'
   | 'chat.create'
   | 'chat.delete'
+  | 'chat.send'
+  | 'chat.view_own'
   | 'storage.upload'
   | 'storage.read'
   | 'storage.delete'
@@ -72,6 +74,8 @@ export const C2_PERMISSION_MATRIX_FIXTURE: Record<
   'chat.read': { owner: 'yes', admin: 'yes', member: 'yes', viewer: 'yes' },
   'chat.create': { owner: 'yes', admin: 'yes', member: 'yes', viewer: 'no' },
   'chat.delete': { owner: 'yes', admin: 'yes', member: 'yes', viewer: 'no' },
+  'chat.send': { owner: 'yes', admin: 'yes', member: 'yes', viewer: 'no' },
+  'chat.view_own': { owner: 'yes', admin: 'yes', member: 'yes', viewer: 'yes' },
   'storage.upload': { owner: 'yes', admin: 'yes', member: 'yes', viewer: 'no' },
   'storage.read': { owner: 'yes', admin: 'yes', member: 'yes', viewer: 'yes' },
   'storage.delete': { owner: 'yes', admin: 'yes', member: 'no', viewer: 'no' },
