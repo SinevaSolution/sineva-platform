@@ -82,7 +82,7 @@ Prisma says it needs to reset the schema, or reports drift. Never accept it on a
 
 ### Data disappeared after a restart or a "cleanup"
 
-`npm run docker:down` runs `docker compose down -v` and deletes the Postgres volume, including `sineva-ai`'s data. After it, both services need their migrations again (the platform's `migrate deploy` and `seed`, and the engine's `alembic upgrade head`). Use `docker compose down` to keep data.
+`npm run docker:reset` (`docker compose down -v`, guarded by `CONFIRM_RESET=yes`) deletes the Postgres volume, including `sineva-ai`'s data. `npm run docker:down` keeps it. After it, both services need their migrations again (the platform's `migrate deploy` and `seed`, and the engine's `alembic upgrade head`). Use `docker compose down` to keep data.
 
 ## SeaweedFS and presigned uploads
 

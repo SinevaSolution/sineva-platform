@@ -22,7 +22,7 @@ How the Sineva stack is run and released: the Docker Compose topology, how `sine
 
 | File | What it covers | Read it when |
 | :--- | :--- | :--- |
-| [docker_compose_topology.md](docker_compose_topology.md) | The nine services, published ports, volumes, startup order, `docker:down -v` danger | You run the stack or change `docker-compose.yml` |
+| [docker_compose_topology.md](docker_compose_topology.md) | The nine services, published ports, volumes, startup order, `docker:reset` (`down -v`) danger | You run the stack or change `docker-compose.yml` |
 | [internal_network_security.md](internal_network_security.md) | No host port for `sineva-ai`, `X-Internal-Api-Key`, key rotation, remaining gaps | You touch service-to-service calls or secrets |
 | [environment_variables.md](environment_variables.md) | Every variable: required or default, where it is read, secret defaults that are debt | You add, rename or debug configuration |
 | [secret_inventory.md](secret_inventory.md) | Inventory of production secrets, rotation policies, and injection methods | You deploy, rotate secrets, or configure production |

@@ -168,7 +168,7 @@ Use the helpers that wrap `createSuccessResponse`, `createPaginatedResponse` and
 ### R-25 MUST register new routes in the OpenAPI spec
 Add the path and schemas in `src/server/infrastructure/openapi/spec.ts`.
 - **Why**: `/api/openapi.json` and `/api-docs` are the API catalog.
-- **Check**: Enforced by review. No test compares the route files with the spec. Fetch `/api/openapi.json` and find the new path before you open the PR.
+- **Check**: `src/__tests__/openapi_guard.test.ts` fails when a route file or exported method has no spec entry, and when a spec path has no route file. It does not check that a schema matches its Zod DTO, so read the entry before you open the PR.
 
 ### R-40 MUST keep the sineva-ai contract fixtures in sync, byte for byte
 `sineva-ai` owns the internal chat contract (`ChatRequestDTO`, `ChatResponseDTO` and its success envelope). The platform gateway adapts to it. The files in `apps/web/src/__tests__/contract/fixtures/` are copies of `sineva-ai/tests/contract/fixtures/`. Never edit a copy. Change the fixture in `sineva-ai` first, copy it here in the same change, and open the matching change in both repos.

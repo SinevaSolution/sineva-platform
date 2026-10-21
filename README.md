@@ -194,7 +194,7 @@ To stop the stack and keep data:
 docker compose down
 ```
 
-`npm run docker:down` runs `docker compose down -v`, which also deletes the volumes, including the Postgres data shared with `sineva-ai`.
+`npm run docker:down` is a plain `docker compose down` and keeps the volumes. `npm run docker:reset` also deletes them, including the Postgres data shared with `sineva-ai`, and only runs with `CONFIRM_RESET=yes`.
 
 ---
 

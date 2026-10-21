@@ -67,12 +67,12 @@ What each workspace runs for those tasks:
 | `test` | `vitest run` | `tsc --noEmit` | `vitest run` |
 | `test:integration` | none | none | `npm run db:generate && vitest run -c vitest.integration.config.ts` |
 
-Root scripts: `dev`, `build`, `lint`, `typecheck`, `test`, `test:integration` (all through turbo), `format` and `format:check` (prettier), `docker:up` and `docker:down`.
+Root scripts: `dev`, `build`, `lint`, `typecheck`, `test`, `test:integration` (all through turbo), `format` and `format:check` (prettier), `docker:up`, `docker:down` and `docker:reset`.
 
 Gotchas:
 
 - `@sineva/shared` and `@sineva/ui` have no real lint step: their `lint` is a type check. ESLint runs only in `@sineva/web`.
-- `npm run docker:down` runs `docker compose down -v` and deletes volumes, including the shared Postgres data. Use `docker compose down` to keep data.
+- `npm run docker:down` keeps volumes. `npm run docker:reset` runs `docker compose down -v`, deletes volumes including the shared Postgres data, and refuses to run without `CONFIRM_RESET=yes`.
 - Prisma commands (`db:generate`, `db:migrate:dev`, `db:migrate:deploy`, `db:seed`) are scripts of `@sineva/web`. From the root, run them as `npm --workspace=@sineva/web run <script>`.
 - `build`, `typecheck` and `test:integration` run `prisma generate` first, and `dev` does too. The generated client is gitignored build output.
 - `format:check` is not part of CI, and the code does not pass it today. See [coding standards](../engineering/coding_standards.md).
