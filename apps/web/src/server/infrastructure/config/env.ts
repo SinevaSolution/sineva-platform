@@ -1,7 +1,11 @@
 import 'server-only';
+import crypto from 'node:crypto';
+import { z } from 'zod';
 
 export interface AppEnvConfig {
-  node_env: string;
+  node_env: 'development' | 'test' | 'production';
+  next_public_app_url: string;
+  next_public_api_base_url: string;
   database_url: string;
   redis_url: string;
   redis_key_prefix: string;
@@ -14,33 +18,171 @@ export interface AppEnvConfig {
   s3_force_path_style: boolean;
   ai_engine_internal_url: string;
   ai_engine_internal_api_key: string;
+  ai_engine_internal_api_key_next?: string;
   ai_engine_timeout_ms: number;
+  auth_secret: string;
+  internal_context_signing_key: string;
+  internal_context_kid: string;
+  email_from?: string;
+  email_server_host?: string;
+  email_server_port?: number;
+  email_server_user?: string;
+  email_server_password?: string;
 }
 
-export function getEnvConfig(): AppEnvConfig {
+// SHA-256 hashes of dev secrets from .env.example.
+// Checked in production to prevent running with known dev defaults without storing
+// plaintext credentials in code (SEC-4).
+const KNOWN_DEV_SECRET_HASHES = new Set([
+  'b771d363ab2b2a1581b2fc43b8f020176e33bbf16085842031fb84fe2c81fa94', // db password
+  '3dcc625c0078488584bc846cfc24fd1c500a83146f8fa9f57f7dc5fa14acb074', // s3 key
+  'b3a04bfe46a2f968f5c9f78305093e4c29580554f27acefca7f53f940ded8338', // s3 secret
+  'd1a6090cbd7f04748ef60551015216ad376475b10c9fbffc289cb54f7c7104f5', // internal ai token
+]);
+
+function isDevDefaultSecret(value: string | undefined): boolean {
+  if (!value) {
+    return false;
+  }
+  const hash = crypto.createHash('sha256').update(value.trim()).digest('hex');
+  if (KNOWN_DEV_SECRET_HASHES.has(hash)) {
+    return true;
+  }
+  try {
+    const parsed = new URL(value);
+    if (parsed.password) {
+      const pwHash = crypto
+        .createHash('sha256')
+        .update(parsed.password)
+        .digest('hex');
+      if (KNOWN_DEV_SECRET_HASHES.has(pwHash)) {
+        return true;
+      }
+    }
+  } catch {
+    // Not a URL
+  }
+  return false;
+}
+
+const timeoutSchema = z
+  .string()
+  .optional()
+  .default('15000')
+  .transform((val, ctx) => {
+    const num = Number(val);
+    if (Number.isNaN(num) || !Number.isInteger(num) || num < 1000 || num > 300000) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message:
+          'AI_ENGINE_TIMEOUT_MS must be an integer timeout between 1000 and 300000 ms (INF-6)',
+      });
+      return z.NEVER;
+    }
+    return num;
+  });
+
+export function validateEnvConfig(
+  raw: Record<string, string | undefined>,
+): AppEnvConfig {
+  const nodeEnv = (raw.NODE_ENV ?? 'development') as
+    | 'development'
+    | 'test'
+    | 'production';
+  const isProduction = nodeEnv === 'production';
+
+  // Parse timeout first to enforce INF-6 across all environments
+  const timeoutResult = timeoutSchema.safeParse(raw.AI_ENGINE_TIMEOUT_MS);
+  if (!timeoutResult.success) {
+    throw new Error(timeoutResult.error.issues[0]?.message);
+  }
+  const timeoutMs = timeoutResult.data;
+
+  if (isProduction) {
+    const requiredInProd = [
+      'DATABASE_URL',
+      'S3_ACCESS_KEY_ID',
+      'S3_SECRET_ACCESS_KEY',
+      'AI_ENGINE_INTERNAL_API_KEY',
+      'AUTH_SECRET',
+      'INTERNAL_CONTEXT_SIGNING_KEY',
+    ];
+
+    for (const key of requiredInProd) {
+      const val = raw[key]?.trim();
+      if (!val) {
+        throw new Error(
+          `Configuration error: ${key} is required in production environment (SEC-4)`,
+        );
+      }
+      if (isDevDefaultSecret(val)) {
+        throw new Error(
+          `Configuration error: ${key} cannot equal a known dev default in production (SEC-4)`,
+        );
+      }
+    }
+
+    if (raw.AUTH_SECRET && raw.AUTH_SECRET.length < 32) {
+      throw new Error(
+        'Configuration error: AUTH_SECRET must be at least 32 characters in production',
+      );
+    }
+  }
+
   return {
-    node_env: process.env.NODE_ENV ?? 'development',
+    node_env: nodeEnv,
+    next_public_app_url:
+      raw.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000',
+    next_public_api_base_url:
+      raw.NEXT_PUBLIC_API_BASE_URL ?? 'http://localhost:3000/api/v1',
     database_url:
-      process.env.DATABASE_URL ??
-      'postgresql://sineva_user:sineva_secret_password@localhost:5432/sineva_platform',
-    redis_url: process.env.REDIS_URL ?? 'redis://localhost:6379/0',
-    redis_key_prefix: process.env.REDIS_KEY_PREFIX ?? 'sineva:platform:',
-    s3_endpoint: process.env.S3_ENDPOINT ?? 'http://localhost:8333',
+      raw.DATABASE_URL ??
+      'postgresql://localhost:5432/sineva_platform',
+    redis_url: raw.REDIS_URL ?? 'redis://localhost:6379/0',
+    redis_key_prefix: raw.REDIS_KEY_PREFIX ?? 'sineva:platform:',
+    s3_endpoint: raw.S3_ENDPOINT ?? 'http://localhost:8333',
     s3_public_endpoint:
-      process.env.S3_PUBLIC_ENDPOINT ??
-      process.env.S3_ENDPOINT ??
-      'http://localhost:8333',
-    s3_region: process.env.S3_REGION ?? 'us-east-1',
-    s3_access_key_id: process.env.S3_ACCESS_KEY_ID ?? 'sineva_s3_key',
-    s3_secret_access_key:
-      process.env.S3_SECRET_ACCESS_KEY ?? 'sineva_s3_secret',
-    s3_bucket_name: process.env.S3_BUCKET_NAME ?? 'sineva-assets',
-    s3_force_path_style: process.env.S3_FORCE_PATH_STYLE !== 'false',
+      raw.S3_PUBLIC_ENDPOINT ?? raw.S3_ENDPOINT ?? 'http://localhost:8333',
+    s3_region: raw.S3_REGION ?? 'us-east-1',
+    s3_access_key_id: raw.S3_ACCESS_KEY_ID ?? 'dev-s3-key',
+    s3_secret_access_key: raw.S3_SECRET_ACCESS_KEY ?? 'dev-s3-secret',
+    s3_bucket_name: raw.S3_BUCKET_NAME ?? 'sineva-assets',
+    s3_force_path_style: raw.S3_FORCE_PATH_STYLE !== 'false',
     ai_engine_internal_url:
-      process.env.AI_ENGINE_INTERNAL_URL ?? 'http://sineva-ai:8000',
+      raw.AI_ENGINE_INTERNAL_URL ?? 'http://sineva-ai:8000',
     ai_engine_internal_api_key:
-      process.env.AI_ENGINE_INTERNAL_API_KEY ??
-      'sineva_internal_service_token_dev',
-    ai_engine_timeout_ms: Number(process.env.AI_ENGINE_TIMEOUT_MS ?? '15000'),
+      raw.AI_ENGINE_INTERNAL_API_KEY ?? 'dev-internal-token',
+    ai_engine_internal_api_key_next: raw.AI_ENGINE_INTERNAL_API_KEY_NEXT,
+    ai_engine_timeout_ms: timeoutMs,
+    auth_secret:
+      raw.AUTH_SECRET ?? 'dev-auth-secret-placeholder-32-chars',
+    internal_context_signing_key:
+      raw.INTERNAL_CONTEXT_SIGNING_KEY ?? 'dev-signing-key',
+    internal_context_kid: raw.INTERNAL_CONTEXT_KID ?? 'k1',
+    email_from: raw.EMAIL_FROM,
+    email_server_host: raw.EMAIL_SERVER_HOST,
+    email_server_port: raw.EMAIL_SERVER_PORT
+      ? Number(raw.EMAIL_SERVER_PORT)
+      : undefined,
+    email_server_user: raw.EMAIL_SERVER_USER,
+    email_server_password: raw.EMAIL_SERVER_PASSWORD,
   };
+}
+
+let cachedConfig: AppEnvConfig | null = null;
+
+export function getEnvConfig(): AppEnvConfig {
+  if (!cachedConfig) {
+    if (process.env.NODE_ENV !== 'production' && typeof process.loadEnvFile === 'function') {
+      for (const envFile of ['.env', '../../.env', '.env.example', '../../.env.example']) {
+        try {
+          process.loadEnvFile(envFile);
+        } catch {
+          // Fall through if file is not found
+        }
+      }
+    }
+    cachedConfig = validateEnvConfig(process.env);
+  }
+  return cachedConfig;
 }

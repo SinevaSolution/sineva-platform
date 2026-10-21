@@ -44,8 +44,6 @@ When you fix an item, delete it here in the same change (R-38) and remove its li
 | SEC-1 | No authentication or authorization | High |
 | SEC-2 | `user_id` taken from the request body | High |
 | SEC-3 | Presign takes `workspace_id` from the body | High |
-| SEC-4 | Hardcoded default secrets | High |
-| INF-6 | `AI_ENGINE_TIMEOUT_MS` is not validated | Low |
 | API-3 | A chat retry can run the turn twice | Medium |
 | API-4 | The orchestrator `sino` is unreachable; chat is per product | Medium |
 | API-6 | `swagger-ui-react` unused, "Swagger UI" labels wrong | Low |
@@ -108,31 +106,7 @@ When you fix an item, delete it here in the same change (R-38) and remove its li
 | Do not copy | Building a storage key from client input without validation. |
 | Suggested fix | Take the workspace from the authenticated context, check membership, and validate the id as a UUID before it goes into a key. |
 
-### SEC-4 Hardcoded default secrets
-
-| | |
-| :--- | :--- |
-| Symptom | A deployment that forgets an environment variable runs with known credentials and no warning. |
-| Root cause | `getEnvConfig()` uses `??` defaults for the database URL (password `sineva_secret_password`), the S3 key pair and `AI_ENGINE_INTERNAL_API_KEY` (`sineva_internal_service_token_dev`). `docker-compose.yml` repeats them as `${VAR:-default}` and literals. |
-| Location | `server/infrastructure/config/env.ts`, `docker-compose.yml` |
-| Severity | High |
-| Do not copy | A fallback value for a secret (R-28). |
-| Suggested fix | Validate required variables at startup in production and fail fast. Keep dev defaults in `.env.example` only. In compose, require secrets with the `${VAR:?message}` form. |
-
 The cross-tenant session issue in `sineva-ai` (AI-1) is also a security item; it lives in the other repository.
-
-## Infrastructure stubs and health
-
-### INF-6 `AI_ENGINE_TIMEOUT_MS` is not validated
-
-| | |
-| :--- | :--- |
-| Symptom | A non-numeric value makes every chat return 503 at once. |
-| Root cause | `Number(process.env.AI_ENGINE_TIMEOUT_MS ?? '15000')` yields `NaN`, and the abort timer fires immediately. |
-| Location | `getEnvConfig()` |
-| Severity | Low |
-| Do not copy | Casting an environment string with no check. |
-| Suggested fix | Parse with Zod at startup and fail on an invalid value. |
 
 ## API contract and errors
 

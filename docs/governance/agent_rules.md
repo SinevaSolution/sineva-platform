@@ -256,8 +256,7 @@ A change to behavior, structure, a command or a decision updates the affected do
 These exist today and break the rules above. Do not extend them. Details and removal status: [known issues and tech debt](../development/known_issues_and_tech_debt.md).
 
 - `user_id` and `workspace_id` taken from request bodies, with no authentication. Breaks R-27.
-- Hardcoded default secrets in `getEnvConfig()` and `docker-compose.yml`. Breaks R-28.
 - `@sineva/shared` type import in `domain/errors/domain_error.ts`, and domain errors that carry an HTTP status. Breaks R-12 (Target).
 - No `loading.tsx`, `error.tsx` or `not-found.tsx` yet. Breaks R-31.
 
-Removed since the first version of this list: the canned AI reply on `sineva-ai` failure (now R-41), the in-memory agent registry (Prisma repository is wired in `container.ts`), the `X-Internal-Service-Token` header, the old `sino-*` slugs in gateway playbooks, upstream 4xx/500 masked body logging and request id propagation (WP-M0-07), and truthful infrastructure probes (Postgres SELECT 1, Redis ping, S3 HeadBucket, sineva-ai health version), typed 502 on presign failure, S3 public endpoint presigning host, and real ioredis cache repository with prefix invalidation (WP-M0-08).
+Removed since the first version of this list: the canned AI reply on `sineva-ai` failure (now R-41), the in-memory agent registry (Prisma repository is wired in `container.ts`), the `X-Internal-Service-Token` header, the old `sino-*` slugs in gateway playbooks, upstream 4xx/500 masked body logging and request id propagation (WP-M0-07), truthful infrastructure probes (Postgres SELECT 1, Redis ping, S3 HeadBucket, sineva-ai health version), typed 502 on presign failure, S3 public endpoint presigning host, and real ioredis cache repository with prefix invalidation (WP-M0-08), and validated secrets without fallback defaults in production, bounded `AI_ENGINE_TIMEOUT_MS`, security headers, and CSRF protection baseline (WP-M0-09).

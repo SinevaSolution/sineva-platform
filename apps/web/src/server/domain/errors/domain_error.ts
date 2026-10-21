@@ -83,6 +83,30 @@ export class ConflictError extends DomainError {
   }
 }
 
+export class ForbiddenError extends DomainError {
+  constructor(message = 'Access forbidden') {
+    super({
+      message,
+      code: 'forbidden',
+      status: 403,
+      field: null,
+    });
+    this.name = 'ForbiddenError';
+  }
+}
+
+export class UnauthorizedError extends DomainError {
+  constructor(message = 'Authentication required') {
+    super({
+      message,
+      code: 'unauthenticated',
+      status: 401,
+      field: null,
+    });
+    this.name = 'UnauthorizedError';
+  }
+}
+
 // sineva-ai answered, but not with a usable reply: non-2xx status or a body
 // that fails contract validation. Messages are client-safe on purpose; the
 // upstream status and body are logged server-side by the adapter instead.
