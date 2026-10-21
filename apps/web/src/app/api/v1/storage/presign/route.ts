@@ -3,13 +3,13 @@ import { presignStorageDtoSchema } from '@/server/application/dtos/chat_dto';
 import { getPresignStorageUploadUseCase } from '@/server/container';
 import {
   extractRequestId,
-  handleRouteError,
   parseJsonBody,
   sendSuccessJson,
 } from '@/server/http/response_helper';
+import { withAuth } from '@/server/http/with_auth';
 
-export async function POST(request: NextRequest) {
-  try {
+export const POST = withAuth(
+  async (request: NextRequest) => {
     const requestId = extractRequestId(request);
     const rawBody = await parseJsonBody(request);
     const validated = presignStorageDtoSchema.parse(rawBody);
@@ -21,7 +21,9 @@ export async function POST(request: NextRequest) {
       status: 201,
       request_id: requestId,
     });
-  } catch (error) {
-    return handleRouteError(error, request);
-  }
-}
+  },
+  {
+    scope: 'workspace',
+    permission: 'storage.upload',
+  },
+);
