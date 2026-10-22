@@ -1,1 +1,1 @@
-export { POST } from '@/app/internal/v1/inbox/expire/route';
+export { GET, POST } from '@/app/internal/v1/inbox/expire/route';

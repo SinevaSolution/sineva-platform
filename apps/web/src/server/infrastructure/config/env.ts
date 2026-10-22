@@ -39,6 +39,13 @@ export interface AppEnvConfig {
    */
   oauth_test_idp_url?: string;
   entitlements_mode: EntitlementMode;
+  /**
+   * Shared secret Vercel Cron sends as `Authorization: Bearer <value>`. Unset
+   * on deployments with no Vercel cron (Docker), which disables that path.
+   */
+  cron_secret?: string;
+  /** Upper bound of the pg pool of one app instance (see `buildPoolConfig`). */
+  database_pool_max: number;
 }
 
 // SHA-256 hashes of dev secrets from .env.example.
@@ -195,6 +202,21 @@ export function validateEnvConfig(
     );
   }
 
+  // Vercel recommends at least 16 characters; a shorter value is rejected in
+  // every environment because a weak one would sit in front of a job route.
+  const cronSecret = raw.CRON_SECRET?.trim() || undefined;
+  if (cronSecret !== undefined && cronSecret.length < 16) {
+    throw new Error('Configuration error: CRON_SECRET must be at least 16 characters');
+  }
+
+  // One pool per app instance. 10 is the pg default and suits a long-lived
+  // container; serverless hosting sets it lower (docs/deployment/vercel.md).
+  const poolMaxRaw = raw.DATABASE_POOL_MAX?.trim();
+  const databasePoolMax = poolMaxRaw ? Number(poolMaxRaw) : 10;
+  if (!Number.isInteger(databasePoolMax) || databasePoolMax < 1 || databasePoolMax > 50) {
+    throw new Error('Configuration error: DATABASE_POOL_MAX must be an integer from 1 to 50');
+  }
+
   return {
     node_env: nodeEnv,
     next_public_app_url:
@@ -233,6 +255,8 @@ export function validateEnvConfig(
     github_client_secret: raw.GITHUB_CLIENT_SECRET,
     oauth_test_idp_url: oauthTestIdpUrl,
     entitlements_mode: entitlementsMode,
+    cron_secret: cronSecret,
+    database_pool_max: databasePoolMax,
   };
 }
 

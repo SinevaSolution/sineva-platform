@@ -36,11 +36,23 @@ const internalErrors = {
   '422': response('Body failed validation (the schema is strict: a user_id key is refused)'),
 };
 
-function internalPaths(path: string, post: Record<string, unknown>): Array<[string, unknown]> {
-  return [path, `/api${path}`].map((p) => [
-    p,
-    { post: { ...post, operationId: p.startsWith('/api') ? `${post.operationId as string}_api_alias` : post.operationId } },
-  ]);
+function internalPaths(
+  path: string,
+  post: Record<string, unknown>,
+  // A scheduler that can only issue GET (Vercel Cron) triggers the same job.
+  options: { alsoGet?: boolean } = {},
+): Array<[string, unknown]> {
+  return [path, `/api${path}`].map((p) => {
+    const operationId = (suffix: string) =>
+      p.startsWith('/api') ? `${post.operationId as string}${suffix}_api_alias` : `${post.operationId as string}${suffix}`;
+    return [
+      p,
+      {
+        post: { ...post, operationId: operationId('') },
+        ...(options.alsoGet ? { get: { ...post, operationId: operationId('_get') } } : {}),
+      },
+    ];
+  });
 }
 
 export function getInboxPaths(): Record<string, unknown> {
@@ -252,10 +264,10 @@ export function getInboxPaths(): Record<string, unknown> {
         tags: ['Internal'],
         summary: 'Run the Inbox expiry job',
         description:
-          'Guarded by X-Internal-Api-Key. Expires due approvals and input requests (never approves), resumes the runs with "expired", retries failed resumes, releases stale claims and reports approvals within 24 hours of expiry. Safe to call repeatedly.',
+          'Guarded by X-Internal-Api-Key or by Authorization: Bearer CRON_SECRET (the form Vercel Cron sends; GET exists because Vercel Cron only issues GET). Expires due approvals and input requests (never approves), resumes the runs with "expired", retries failed resumes, releases stale claims and reports approvals within 24 hours of expiry. Safe to call repeatedly.',
         operationId: 'run_inbox_expiry',
-        responses: { '200': response('Job result counts'), '401': response('Missing or invalid X-Internal-Api-Key header') },
-      }),
+        responses: { '200': response('Job result counts'), '401': response('Missing or invalid X-Internal-Api-Key header or cron bearer token') },
+      }, { alsoGet: true }),
     ]),
   };
 }
