@@ -29,10 +29,10 @@ export function OAuthButtons() {
 export function OrDivider() {
   const t = useTranslations('auth');
   return (
-    <div className="my-5 flex items-center gap-3 text-xs text-fg-tertiary" aria-hidden="true">
-      <span className="h-px flex-1 bg-line" />
+    <div className="my-5 flex items-center gap-3 text-xs text-text-tertiary" aria-hidden="true">
+      <span className="h-px flex-1 bg-border" />
       {t('oauth.or_email')}
-      <span className="h-px flex-1 bg-line" />
+      <span className="h-px flex-1 bg-border" />
     </div>
   );
 }

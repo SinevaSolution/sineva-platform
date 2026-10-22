@@ -27,7 +27,7 @@ export function SinoFigure({
     >
       <span
         aria-hidden="true"
-        className="absolute inset-x-[12%] bottom-[6%] top-[22%] rounded-full bg-[radial-gradient(closest-side,rgba(0,148,155,0.22),transparent)]"
+        className="absolute inset-x-[12%] bottom-[6%] top-[22%] rounded-full bg-(image:--gradient-glow-teal)"
       />
       <picture className="relative">
         <source srcSet={`${base}.avif`} type="image/avif" />

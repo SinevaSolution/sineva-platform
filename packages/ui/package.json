@@ -6,13 +6,16 @@
   "main": "./src/index.tsx",
   "types": "./src/index.tsx",
   "exports": {
-    ".": "./src/index.tsx"
+    ".": "./src/index.tsx",
+    "./format": "./src/lib/format.ts",
+    "./theme": "./src/lib/theme.ts"
   },
   "scripts": {
     "build": "tsc --noEmit",
     "lint": "tsc --noEmit",
     "typecheck": "tsc --noEmit",
-    "test": "tsc --noEmit"
+    "test": "vitest run",
+    "tokens:sync": "node scripts/sync_tokens.mjs"
   },
   "dependencies": {
     "@radix-ui/react-slot": "^1.2.2",
@@ -22,7 +25,12 @@
     "tailwind-merge": "^3.3.0"
   },
   "devDependencies": {
+    "@testing-library/dom": "^10.4.0",
+    "@testing-library/react": "^16.3.0",
+    "@types/node": "^24.19.2",
     "@types/react": "^19.2.18",
-    "typescript": "^5.7.3"
+    "jsdom": "^26.0.0",
+    "typescript": "^5.7.3",
+    "vitest": "^4.1.11"
   }
 }

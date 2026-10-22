@@ -93,7 +93,7 @@ export function NewChatView({
         onPendingChange={(p) => setMood(p ? 'working' : 'idle')}
         placeholder={withSlug ? t('placeholder_specialist', { name }) : t('placeholder_team')}
       />
-      <p className="mt-2 text-center text-[11px] text-white/60">
+      <p className="mt-2 text-center text-[11px] text-text-inverse/60">
         {withSlug ? t('footer_specialist', { name }) : t('footer_team')}
       </p>
     </div>
@@ -105,7 +105,7 @@ export function NewChatView({
         <div className="anim-rise flex items-end gap-2">
           <SinoFigure pose={specialistPose(withSlug ?? 'sino')} size={36} className="md:hidden" />
           <RoomBubble from="companion">
-            <span className="block text-xs font-semibold text-fg-brand">{name}</span>
+            <span className="block text-xs font-semibold text-text-brand">{name}</span>
             {t('hello', { name: firstName })}{' '}
             {current ? t('intro_specialist', { role: current.role_title }) : t('intro_team')}
           </RoomBubble>
@@ -118,7 +118,7 @@ export function NewChatView({
                 <button
                   type="button"
                   onClick={() => composer.current?.fill(text)}
-                  className="rounded-full bg-white/12 px-3 py-1.5 text-left text-[13px] text-white ring-1 ring-white/20 backdrop-blur-md transition-[background-color,transform] duration-150 hover:bg-white/20 active:scale-[0.98]"
+                  className="rounded-full bg-text-inverse/12 px-3 py-1.5 text-start text-[13px] text-text-inverse ring-1 ring-text-inverse/20 backdrop-blur-md transition-[background-color,transform] duration-150 hover:bg-text-inverse/20 active:scale-[0.98]"
                 >
                   {text}
                 </button>
@@ -152,10 +152,10 @@ function CastChip({
         aria-checked={checked}
         onClick={onSelect}
         className={cn(
-          'group flex h-11 shrink-0 items-center gap-1.5 rounded-full pl-0.5 pr-3.5 text-[13px] font-medium ring-1 backdrop-blur-md transition-[background-color,color,box-shadow] duration-200',
+          'group flex h-11 shrink-0 items-center gap-1.5 rounded-full ps-0.5 pe-3.5 text-[13px] font-medium ring-1 backdrop-blur-md transition-[background-color,color,box-shadow] duration-200',
           checked
-            ? 'bg-[color-mix(in_oklab,var(--color-surface)_94%,transparent)] text-fg ring-white/60'
-            : 'bg-white/10 text-white/85 ring-white/15 hover:bg-white/20 hover:text-white',
+            ? 'bg-surface/94 text-text ring-text-inverse/60'
+            : 'bg-text-inverse/10 text-text-inverse/85 ring-text-inverse/15 hover:bg-text-inverse/20 hover:text-text-inverse',
         )}
       >
         <SinoFigure

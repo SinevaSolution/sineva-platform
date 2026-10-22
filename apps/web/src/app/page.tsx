@@ -20,7 +20,7 @@ export default async function RootPage() {
       <main className="flex min-h-dvh items-center justify-center p-6 text-center">
         <div className="max-w-sm">
           <h1 className="text-lg font-semibold">{t('no_workspace.title')}</h1>
-          <p className="mt-2 text-sm text-fg-secondary">{t('no_workspace.body')}</p>
+          <p className="mt-2 text-sm text-text-secondary">{t('no_workspace.body')}</p>
         </div>
       </main>
     );

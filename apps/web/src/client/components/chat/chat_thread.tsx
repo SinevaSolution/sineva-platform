@@ -243,7 +243,7 @@ export function ChatThread({
     return (
       <div className="flex flex-1 flex-col items-center justify-center gap-3 p-6 text-center">
         <SinoFigure pose="confused" size={120} />
-        <p className="max-w-sm text-sm text-fg-secondary">{errorText(state.error)}</p>
+        <p className="max-w-sm text-sm text-text-secondary">{errorText(state.error)}</p>
         <Button onClick={() => setAttempt((n) => n + 1)}>{tCommon('try_again')}</Button>
       </div>
     );
@@ -270,10 +270,10 @@ export function ChatThread({
     <div className="flex items-center gap-2 px-4 pb-2 pt-3 sm:px-6">
       <SinoFigure pose={specialistPose(specialist?.agent_slug ?? 'sino')} size={34} />
       <div className="min-w-0">
-        <h1 className="truncate text-[15px] font-semibold text-white">
+        <h1 className="truncate text-[15px] font-semibold text-text-inverse">
           {conversation.title?.trim() || t('thread.title_default', { name: companionName })}
         </h1>
-        <p className="text-xs text-white/65">{isTeam ? t('thread.subtitle_team') : t('thread.subtitle_private', { name: companionName })}</p>
+        <p className="text-xs text-text-inverse/65">{isTeam ? t('thread.subtitle_team') : t('thread.subtitle_private', { name: companionName })}</p>
       </div>
     </div>
   );
@@ -323,9 +323,9 @@ export function ChatThread({
           <li className="anim-rise flex items-end gap-2" aria-live="off" aria-busy="true">
             <SinoFigure pose={specialistPose(specialist?.agent_slug ?? 'sino')} size={32} />
             <RoomBubble from="companion">
-              <span className="block text-xs font-semibold text-fg-brand">{companionName}</span>
+              <span className="block text-xs font-semibold text-text-brand">{companionName}</span>
               {/* Plain text on purpose: model output is never rendered as HTML. */}
-              {live.text || <span className="text-fg-secondary">{t('thread.working', { name: companionName })}</span>}
+              {live.text || <span className="text-text-secondary">{t('thread.working', { name: companionName })}</span>}
             </RoomBubble>
           </li>
         ) : null}
@@ -335,7 +335,7 @@ export function ChatThread({
               <div className="flex items-end gap-2">
                 <SinoFigure pose={specialistPose(specialist?.agent_slug ?? 'sino')} size={32} />
                 <RoomBubble from="companion">
-                  <span className="block text-xs font-semibold text-fg-brand">{companionName}</span>
+                  <span className="block text-xs font-semibold text-text-brand">{companionName}</span>
                   {live.text}
                 </RoomBubble>
               </div>
@@ -382,16 +382,16 @@ function MessageRow({
     <li className="anim-rise flex items-end gap-2">
       <SinoFigure pose={specialistPose(slug)} size={32} />
       <RoomBubble from="companion">
-        <span className="block text-xs font-semibold text-fg-brand">{name}</span>
+        <span className="block text-xs font-semibold text-text-brand">{name}</span>
         {/* Plain text until the sanitized markdown renderer lands (M1). */}
         {message.content}
         {message.status === 'error' ? (
-          <span className="mt-1 block text-[13px] text-fg-secondary">
+          <span className="mt-1 block text-[13px] text-text-secondary">
             {streamErrorText(tFull, message.finish_reason ?? 'upstream_interrupted', name)}
           </span>
         ) : null}
         {message.status === 'cancelled' ? (
-          <span className="mt-1 block text-[13px] text-fg-secondary">{t('thread.you_stopped')}</span>
+          <span className="mt-1 block text-[13px] text-text-secondary">{t('thread.you_stopped')}</span>
         ) : null}
       </RoomBubble>
     </li>

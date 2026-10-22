@@ -25,13 +25,13 @@ export function ComingSoon({
       <PageHeader title={title} />
       <div className="flex flex-1 flex-col items-center justify-center px-6 pb-16 text-center">
         <SinoFigure pose="laptop" size={140} className="anim-float" />
-        <p className="anim-rise mt-2 rounded-full bg-hover px-2.5 py-0.5 text-[11px] font-medium text-fg-secondary">
+        <p className="anim-rise mt-2 rounded-full bg-(--state-hover) px-2.5 py-0.5 text-[11px] font-medium text-text-secondary">
           {t('coming_soon.badge')}
         </p>
-        <h2 className="anim-rise mt-3 text-xl font-semibold tracking-[-0.02em] text-fg [--d:60ms]">
+        <h2 className="anim-rise mt-3 text-xl font-semibold tracking-[-0.02em] text-text [--d:60ms]">
           {t('coming_soon.heading', { title })}
         </h2>
-        <p className="anim-rise mt-1.5 max-w-[42ch] text-sm text-fg-secondary [--d:120ms]">{blurb}</p>
+        <p className="anim-rise mt-1.5 max-w-[42ch] text-sm text-text-secondary [--d:120ms]">{blurb}</p>
         <div className="anim-rise mt-6 flex flex-wrap justify-center gap-2 [--d:180ms]">
           {children}
           <Link href={`/w/${workspaceSlug}/new`} className={cn(buttonVariants({ variant: 'primary' }))}>

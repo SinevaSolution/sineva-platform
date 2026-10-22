@@ -67,16 +67,16 @@ export function RecentChats({
     return (
       <div aria-hidden="true" className="space-y-1 px-2 py-1">
         {[0, 1, 2].map((i) => (
-          <div key={i} className="h-3.5 w-3/4 animate-pulse rounded bg-hover" />
+          <div key={i} className="h-3.5 w-3/4 animate-pulse rounded-xs bg-(--state-hover)" />
         ))}
       </div>
     );
   }
   if (state.status === 'error') {
-    return <p className="px-2 py-1 text-xs text-fg-tertiary">{t('recent.load_failed')}</p>;
+    return <p className="px-2 py-1 text-xs text-text-tertiary">{t('recent.load_failed')}</p>;
   }
   if (state.items.length === 0) {
-    return <p className="px-2 py-1 text-xs text-fg-tertiary">{t('recent.empty')}</p>;
+    return <p className="px-2 py-1 text-xs text-text-tertiary">{t('recent.empty')}</p>;
   }
 
   return (
@@ -94,8 +94,8 @@ export function RecentChats({
               onClick={onNavigate}
               aria-current={active ? 'page' : undefined}
               className={cn(
-                'group flex h-8 items-center gap-1.5 rounded-lg pl-1 pr-2 text-[13px] text-fg-secondary hover:bg-hover hover:text-fg',
-                active && 'bg-selected font-medium text-fg',
+                'group flex h-8 items-center gap-1.5 rounded-sm ps-1 pe-2 text-[13px] text-text-secondary hover:bg-(--state-hover) hover:text-text',
+                active && 'bg-surface-tint font-medium text-text',
               )}
             >
               <SinoFigure pose={marker.pose} size={22} className="-my-1" />
@@ -104,8 +104,8 @@ export function RecentChats({
                 className={cn(
                   'shrink-0 rounded-full px-1.5 text-[10px] font-medium leading-4',
                   marker.kind === 'team'
-                    ? 'bg-[color-mix(in_oklab,var(--color-focus)_16%,transparent)] text-fg-brand'
-                    : 'bg-hover text-fg-tertiary group-hover:bg-surface',
+                    ? 'bg-[color-mix(in_oklab,var(--color-focus)_16%,transparent)] text-text-brand'
+                    : 'bg-(--state-hover) text-text-tertiary group-hover:bg-surface',
                 )}
               >
                 <span className="sr-only">{t('recent.with')} </span>

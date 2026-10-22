@@ -59,7 +59,7 @@ When you fix an item, delete it here in the same change (R-38) and remove its li
 | UI-2 | Selection is not in the URL | Low |
 | UI-3 | Server data is copied into Redux in an effect | Low |
 | UI-4 | No loading, error or not-found pages | Medium |
-| UI-5 | The `dark:` variant is not tied to `data-theme` | Medium |
+| UI-5 | The `dark:` variant is not tied to `data-theme` (resolved) | Medium |
 | UI-6 | `reply_content` Markdown is shown as plain text | Medium |
 | UI-7 | Fake dashboard stats | High |
 | UI-8 | Accessibility deviations | Medium |
@@ -290,7 +290,7 @@ The cross-tenant session issue in `sineva-ai` (AI-1) is also a security item; it
 | Location | `packages/ui/src/index.tsx` (`Badge`), `client/components/sineva_dashboard.tsx`, `app/globals.css` |
 | Severity | Medium |
 | Do not copy | A `dark:` class. Use semantic tokens. |
-| Suggested fix | See [design tokens](../design-context/design_tokens.md). Verify both themes visually. |
+| Suggested fix | Resolved by the token re-base: no component uses `dark:` (the lint rule and `design_tokens_wiring.test.ts` keep it that way) and every color is a semantic token that swaps under `data-theme`. See [design tokens](../design-context/design_tokens.md). |
 
 ### UI-6 `reply_content` Markdown is shown as plain text
 
@@ -340,7 +340,7 @@ The cross-tenant session issue in `sineva-ai` (AI-1) is also a security item; it
 
 | | |
 | :--- | :--- |
-| Symptom | `gsap`, `motion`, `recharts`, `vaul`, `react-hook-form`, `@hookform/resolvers`, `swagger-ui-react`, six Radix packages and `ioredis` are installed and unused. `--ease-out-expo`, `--color-accent-highlight` and the `accent_token` field are unused. |
+| Symptom | `gsap`, `recharts`, `vaul`, `react-hook-form`, `@hookform/resolvers`, `swagger-ui-react`, six Radix packages and `ioredis` are installed and unused. The `accent_token` field is unused. (`motion`, `next-themes`, `--color-accent-highlight` and the old platform-only tokens were removed by the token re-base; `--ease-out-expo` is kept because compro defines it and the result cards will use it.) |
 | Root cause | Packages and tokens were added ahead of use. |
 | Location | `apps/web/package.json`, `app/globals.css` |
 | Severity | Low |

@@ -1,0 +1,141 @@
+/*
+ * App density layer: tokens the platform needs that sineva-compro does not
+ * define (Design Foundations 4.3 and 4.4, marked "new" there). Everything in
+ * this file ADDS to the vendored compro tokens; it never redefines one, and a
+ * test fails if it does. Hex and rgba values are allowed here and only here
+ * (and in the other files of this folder): components read tokens.
+ *
+ * Dark values sit next to the light ones under the same selector the vendored
+ * theme-dark.css uses, so a theme swap stays a single `data-theme` attribute.
+ */
+
+/* ---- Layer 3: values read with var() or an arbitrary-value utility ----- */
+:root {
+  /*
+   * Layer stack, strictly increasing (tested). Tailwind has no z-index theme
+   * namespace, so components write `z-(--z-modal)`. Arbitrary `z-[n]` is
+   * banned by lint: a number written at the call site is how stacking bugs
+   * start. Toast sits above modal so "Saved" shows from inside a dialog.
+   */
+  --z-base: 0;
+  --z-raised: 1;
+  --z-sticky: 10;
+  --z-nav: 20;
+  --z-dropdown: 40;
+  --z-drawer: 60;
+  --z-modal: 100;
+  --z-toast: 110;
+  --z-tooltip: 120;
+  --z-skip: 130;
+
+  /* Content widths (Design Foundations 4.4). */
+  --width-form: 840px;
+  --width-reading: 720px;
+  --width-wizard: 640px;
+  --width-auth-card: 440px;
+  --width-dialog: 520px;
+  --width-drawer: 480px;
+  --width-side-panel: 360px;
+  --width-thread-list: 280px;
+  --width-inbox-list: 400px;
+  --width-settings-nav: 220px;
+  --width-content-max: 1600px;
+  --width-sidebar: 248px;
+  --width-rail: 64px;
+  --height-top-bar: 56px;
+
+  /*
+   * State overlays. A translucent layer of the text color works on any
+   * background; using canvas-alt as the hover color is invisible on pages
+   * that already sit on canvas-alt.
+   */
+  --state-hover: color-mix(in srgb, var(--color-text) 6%, transparent);
+  --state-pressed: color-mix(in srgb, var(--color-text) 10%, transparent);
+
+  /* Halo that a text field or the composer draws around itself on focus. */
+  --shadow-focus-halo: 0 0 0 4px color-mix(in srgb, var(--color-focus) 14%, transparent);
+
+  /* Glow of the small status dot on the auth showcase (the live indicator). */
+  --shadow-focus-dot: 0 0 12px 2px color-mix(in srgb, var(--color-focus) 45%, transparent);
+
+  /* Drifting color blobs behind the auth showcase: mint, sun and brand teal. */
+  --gradient-blob-mint: radial-gradient(
+    closest-side,
+    color-mix(in srgb, var(--mint-200) 55%, transparent),
+    transparent
+  );
+  --gradient-blob-sun: radial-gradient(
+    closest-side,
+    color-mix(in srgb, var(--sun-500) 20%, transparent),
+    transparent
+  );
+  --gradient-blob-teal: radial-gradient(
+    closest-side,
+    color-mix(in srgb, var(--teal-500) 16%, transparent),
+    transparent
+  );
+
+  /* Soft contact shadow under a Sino still, light and dark safe. */
+  --gradient-contact-shadow: radial-gradient(
+    closest-side,
+    color-mix(in srgb, var(--ink-950) 22%, transparent),
+    transparent
+  );
+
+  /* Alpha mask that fades the auth scene out towards the form column. */
+  --mask-fade-end: linear-gradient(90deg, #000 0%, #000 48%, transparent 100%);
+
+  /*
+   * Room scene (immersive mode). The scene is a dark photographic render in
+   * both themes, so these do not swap: text on it stays inverse (white).
+   */
+  --room-scene-base: var(--ink-950);
+  --room-scene-fallback: radial-gradient(80% 70% at 70% 40%, #1f5c63, var(--ink-950));
+  --room-scrim-side:
+    linear-gradient(90deg, rgba(6, 24, 28, 0.62) 0%, rgba(6, 24, 28, 0.38) 42%, rgba(6, 24, 28, 0.04) 70%),
+    linear-gradient(0deg, rgba(6, 24, 28, 0.4), transparent 30%);
+  --room-contact-shadow: radial-gradient(closest-side, rgba(0, 0, 0, 0.5), transparent);
+  --room-bubble-user: color-mix(in oklab, var(--color-focus) 78%, var(--ink-950));
+  --room-bubble-companion: color-mix(in oklab, var(--color-surface) 92%, transparent);
+}
+
+/* ---- Layer 2: semantic tokens mapped to Tailwind utilities ------------- */
+@theme static {
+  /*
+   * Warning (new, OQ-DS-4). Amber on sun-100 is 4.99:1 in light, the dark
+   * pair is 8.90:1. `warning` and `review` badges differ by icon and label
+   * only, never by color alone.
+   */
+  --color-warning: var(--amber-700);
+  --color-warning-surface: var(--sun-100);
+
+  /*
+   * Scrim behind modals and the mobile navigation drawer: the text color at
+   * 40%, as the Design Foundations specify, so the veil is dark in light mode.
+   */
+  --color-scrim: color-mix(in srgb, var(--color-text) 40%, transparent);
+
+  /* App type scale, one step below marketing (FR-UX-08). */
+  --text-app-title: 1.5rem;
+  --text-app-title--line-height: 2rem;
+  --text-app-title--letter-spacing: -0.03em;
+  --text-app-title--font-weight: 600;
+  --text-app-section: 1.125rem;
+  --text-app-section--line-height: 1.625rem;
+  --text-app-section--letter-spacing: -0.02em;
+  --text-app-section--font-weight: 600;
+  --text-app-card: 0.9375rem;
+  --text-app-card--line-height: 1.375rem;
+  --text-app-card--letter-spacing: 0;
+  --text-app-card--font-weight: 600;
+}
+
+:root[data-theme='dark'] {
+  --color-warning: #ffb547;
+  --color-warning-surface: #2b2215;
+  /*
+   * In dark the text color is a light tint, so a veil made of it would
+   * brighten the page behind a dialog. The dark scrim darkens instead.
+   */
+  --color-scrim: color-mix(in srgb, #000 55%, transparent);
+}

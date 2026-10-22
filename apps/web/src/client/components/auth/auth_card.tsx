@@ -56,7 +56,7 @@ export function AuthCard({
       <AuthBackdrop />
 
       <aside aria-hidden="true" className="relative hidden flex-col px-10 py-8 lg:flex">
-        <span className="text-[15px] font-semibold tracking-[-0.01em] text-fg">sineva</span>
+        <span className="text-[15px] font-semibold tracking-[-0.01em] text-text">sineva</span>
         <div className="flex flex-1 items-center justify-center py-6">
           <Scene scene={scene} />
         </div>
@@ -71,20 +71,20 @@ export function AuthCard({
       </aside>
 
       <main className="relative flex flex-col px-5 py-8 sm:px-10">
-        <Link href="/" className="text-[15px] font-semibold tracking-[-0.01em] text-fg lg:invisible">
+        <Link href="/" className="text-[15px] font-semibold tracking-[-0.01em] text-text lg:invisible">
           sineva
         </Link>
         <div className="mx-auto flex w-full max-w-[380px] flex-1 flex-col justify-center py-10">
           <div className="anim-rise">
-            <SinoFigure pose={pose} size={72} priority className="anim-float -ml-2 lg:hidden" />
-            <h1 className="mt-2 text-2xl font-semibold tracking-[-0.02em] text-fg">{title}</h1>
-            {subtitle ? <p className="mt-1.5 text-sm text-fg-secondary">{subtitle}</p> : null}
+            <SinoFigure pose={pose} size={72} priority className="anim-float -ms-2 lg:hidden" />
+            <h1 className="mt-2 text-2xl font-semibold tracking-[-0.02em] text-text">{title}</h1>
+            {subtitle ? <p className="mt-1.5 text-sm text-text-secondary">{subtitle}</p> : null}
           </div>
           <div className="anim-rise mt-7" style={delay(90)}>
             {children}
           </div>
           {footer ? (
-            <p className="anim-rise mt-6 text-sm text-fg-secondary" style={delay(160)}>
+            <p className="anim-rise mt-6 text-sm text-text-secondary" style={delay(160)}>
               {footer}
             </p>
           ) : null}
@@ -103,10 +103,10 @@ function AuthBackdrop() {
   return (
     <div aria-hidden="true" className="pointer-events-none absolute inset-0 -z-10">
       {/* Desktop: left-to-right fade. */}
-      <div className="absolute inset-y-0 left-0 hidden w-[72%] overflow-hidden bg-[color-mix(in_oklab,var(--color-focus)_10%,var(--color-surface))] [mask-image:linear-gradient(90deg,#000_0%,#000_48%,transparent_100%)] lg:block">
-        <span className="anim-drift absolute -left-[10%] -top-[15%] size-[70%] rounded-full bg-[radial-gradient(closest-side,rgba(159,245,236,0.55),transparent)] [--drift-duration:26s]" />
-        <span className="anim-drift absolute bottom-[-20%] left-[25%] size-[65%] rounded-full bg-[radial-gradient(closest-side,rgba(255,181,71,0.2),transparent)] [--d:-9s] [--drift-duration:31s]" />
-        <span className="anim-drift absolute right-[5%] top-[20%] size-[45%] rounded-full bg-[radial-gradient(closest-side,rgba(0,148,155,0.16),transparent)] [--d:-4s] [--drift-duration:23s]" />
+      <div className="absolute inset-y-0 left-0 hidden w-[72%] overflow-hidden bg-[color-mix(in_oklab,var(--color-focus)_10%,var(--color-surface))] [mask-image:var(--mask-fade-end)] lg:block">
+        <span className="anim-drift absolute -left-[10%] -top-[15%] size-[70%] rounded-full bg-(image:--gradient-blob-mint) [--drift-duration:26s]" />
+        <span className="anim-drift absolute bottom-[-20%] left-[25%] size-[65%] rounded-full bg-(image:--gradient-blob-sun) [--d:-9s] [--drift-duration:31s]" />
+        <span className="anim-drift absolute right-[5%] top-[20%] size-[45%] rounded-full bg-(image:--gradient-blob-teal) [--d:-4s] [--drift-duration:23s]" />
       </div>
       {/* Phones and tablets: the same tint, fading downward instead. */}
       <div className="absolute inset-x-0 top-0 h-72 bg-[linear-gradient(180deg,color-mix(in_oklab,var(--color-focus)_12%,var(--color-surface)),transparent)] lg:hidden" />
@@ -130,7 +130,7 @@ function Lineup() {
         {CAST.map((c, i) => (
           <li
             key={c.name}
-            className={cn('anim-rise -mx-2', i === 3 && 'ml-[min(170px,12vw)]')}
+            className={cn('anim-rise -mx-2', i === 3 && 'ms-[min(170px,12vw)]')}
             style={delay(120 + i * 110)}
           >
             <span className="anim-float block" style={delay(i * 600)}>
@@ -140,7 +140,7 @@ function Lineup() {
         ))}
       </ul>
       <div className="absolute bottom-0 left-1/2 w-[min(260px,19vw)] -translate-x-1/2">
-        <span className="absolute bottom-[4%] left-1/2 h-[7%] w-1/2 -translate-x-1/2 rounded-[50%] bg-[radial-gradient(closest-side,rgba(11,42,49,0.22),transparent)]" />
+        <span className="absolute bottom-[4%] left-1/2 h-[7%] w-1/2 -translate-x-1/2 rounded-[50%] bg-(image:--gradient-contact-shadow)" />
         <SinoLoop loop="wave" priority className="anim-rise relative [--d:700ms]" />
       </div>
     </div>
@@ -171,7 +171,7 @@ function MailFlight() {
 function SoloLoop({ loop }: { loop: 'build' | 'thumbs' }) {
   return (
     <div className="relative w-[min(380px,30vw,48vh)]">
-      <span className="absolute bottom-[5%] left-1/2 h-[7%] w-1/2 -translate-x-1/2 rounded-[50%] bg-[radial-gradient(closest-side,rgba(11,42,49,0.22),transparent)]" />
+      <span className="absolute bottom-[5%] left-1/2 h-[7%] w-1/2 -translate-x-1/2 rounded-[50%] bg-(image:--gradient-contact-shadow)" />
       <SinoLoop loop={loop} priority className="anim-rise relative" />
     </div>
   );
@@ -197,7 +197,7 @@ function Orbit() {
         {[0, 180].map((a) => (
           <span
             key={a}
-            className="absolute left-1/2 top-1/2 -ml-1 -mt-1 size-2 rounded-full bg-[var(--color-focus)] shadow-[0_0_12px_2px_color-mix(in_oklab,var(--color-focus)_45%,transparent)]"
+            className="absolute left-1/2 top-1/2 -ms-1 -mt-1 size-2 rounded-full bg-focus shadow-(--shadow-focus-dot)"
             style={{ transform: `rotate(${a}deg) translateX(calc(var(--box) * 0.24))` }}
           />
         ))}
@@ -239,7 +239,7 @@ function Orbit() {
 
 export function AuthLink({ href, children }: { href: string; children: React.ReactNode }) {
   return (
-    <Link href={href} className="font-medium text-fg-brand underline-offset-4 hover:underline">
+    <Link href={href} className="font-medium text-text-brand underline-offset-4 hover:underline">
       {children}
     </Link>
   );

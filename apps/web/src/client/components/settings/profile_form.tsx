@@ -34,7 +34,7 @@ function Badge({ tone, children }: { tone: 'positive' | 'neutral'; children: Rea
     <span
       className={cn(
         'inline-flex h-5 items-center rounded-full px-2 text-xs font-medium',
-        tone === 'positive' ? 'bg-surface-tint text-fg-brand' : 'bg-surface-alt text-fg-secondary',
+        tone === 'positive' ? 'bg-surface-tint text-text-brand' : 'bg-canvas-alt text-text-secondary',
       )}
     >
       {children}
@@ -56,14 +56,14 @@ function SelectField({
   const id = React.useId();
   return (
     <div className="space-y-1.5">
-      <label htmlFor={id} className="text-[13px] font-medium text-fg">
+      <label htmlFor={id} className="text-[13px] font-medium text-text">
         {label}
       </label>
       <select
         id={id}
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="h-11 w-full rounded-lg border border-line-strong bg-surface px-3 text-[15px] text-fg outline-none transition-colors focus:border-[var(--color-focus)]"
+        className="h-11 w-full rounded-sm border border-border-strong bg-surface px-3 text-[15px] text-text outline-none transition-colors focus:border-focus"
       >
         {children}
       </select>
@@ -74,7 +74,7 @@ function SelectField({
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <section className="space-y-4">
-      <h2 className="text-sm font-semibold text-fg">{title}</h2>
+      <h2 className="text-sm font-semibold text-text">{title}</h2>
       {children}
     </section>
   );
@@ -154,7 +154,7 @@ export function ProfileForm({
               <Badge tone="neutral">{t('profile.not_verified')}</Badge>
             )
           }
-          className="[&_input]:cursor-default [&_input]:bg-surface-alt [&_input]:text-fg-secondary"
+          className="[&_input]:cursor-default [&_input]:bg-canvas-alt [&_input]:text-text-secondary"
         />
       </Section>
 
@@ -192,12 +192,12 @@ export function ProfileForm({
       </div>
 
       <Section title={t('profile.section_sign_in')}>
-        <ul className="divide-y divide-line rounded-lg border border-line">
+        <ul className="divide-y divide-border rounded-sm border border-border">
           {SIGN_IN_PROVIDERS.map((provider) => {
             const linked = linkedProviders.includes(provider.id);
             return (
               <li key={provider.id} className="flex items-center justify-between px-3 py-2.5">
-                <span className="text-[15px] text-fg">{provider.label}</span>
+                <span className="text-[15px] text-text">{provider.label}</span>
                 <Badge tone={linked ? 'positive' : 'neutral'}>{linked ? t('profile.linked') : t('profile.not_linked')}</Badge>
               </li>
             );

@@ -28,11 +28,11 @@ export function Tooltip({
           side={side}
           sideOffset={6}
           collisionPadding={8}
-          className="anim-swap z-50 flex items-center gap-2 rounded-md bg-[var(--ink-950,#0b2a31)] px-2 py-1 text-xs font-medium text-white shadow-popover [--d:0ms]"
+          className="anim-swap z-(--z-tooltip) flex items-center gap-2 rounded-xs bg-surface-inverse px-2 py-1 text-xs font-medium text-text-inverse shadow-md [--d:0ms]"
         >
           {label}
           {shortcut ? (
-            <kbd className="rounded bg-white/15 px-1 font-sans text-[11px] text-white/80">{shortcut}</kbd>
+            <kbd className="rounded-xs bg-text-inverse/15 px-1 font-sans text-[11px] text-text-inverse/80">{shortcut}</kbd>
           ) : null}
         </TooltipPrimitive.Content>
       </TooltipPrimitive.Portal>

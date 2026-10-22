@@ -27,10 +27,10 @@ export function SceneCopy({ scene }: { scene: AuthScene }) {
   const t = useTranslations('auth');
   return (
     <>
-      <p className="anim-rise text-[clamp(28px,2vw+10px,40px)] font-semibold leading-[1.08] tracking-[-0.03em] text-fg">
+      <p className="anim-rise text-[clamp(28px,2vw+10px,40px)] font-semibold leading-[1.08] tracking-[-0.03em] text-text">
         {t(KEYS[scene].headline)}
       </p>
-      <p className="anim-rise mt-2.5 max-w-[40ch] text-[15px] text-fg-secondary" style={delay(80)}>
+      <p className="anim-rise mt-2.5 max-w-[40ch] text-[15px] text-text-secondary" style={delay(80)}>
         {t(KEYS[scene].line)}
       </p>
     </>

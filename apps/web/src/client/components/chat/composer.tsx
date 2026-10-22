@@ -204,7 +204,7 @@ export function Composer({
   }
 
   const iconButton =
-    'flex size-8 items-center justify-center rounded-full text-fg-secondary transition-[background-color,color] duration-150 hover:bg-hover hover:text-fg focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-focus)] aria-disabled:opacity-50 aria-disabled:hover:bg-transparent aria-disabled:hover:text-fg-secondary disabled:opacity-50';
+    'flex size-8 items-center justify-center rounded-full text-text-secondary transition-[background-color,color] duration-150 hover:bg-(--state-hover) hover:text-text focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-focus aria-disabled:opacity-50 aria-disabled:hover:bg-transparent aria-disabled:hover:text-text-secondary disabled:opacity-50';
 
   return (
     <form
@@ -214,14 +214,14 @@ export function Composer({
         void send();
       }}
       className={cn(
-        'relative flex flex-col rounded-[22px] border border-line-strong bg-surface px-3 pb-2 pt-2.5 shadow-[0_1px_2px_rgba(11,42,49,0.04),0_8px_24px_rgba(11,42,49,0.05)] transition-[border-color,box-shadow] duration-200 focus-within:border-[var(--color-focus)] focus-within:shadow-[0_0_0_4px_color-mix(in_oklab,var(--color-focus)_14%,transparent)]',
+        'relative flex flex-col rounded-lg border border-border-strong bg-surface px-3 pb-2 pt-2.5 shadow-md transition-[border-color,box-shadow] duration-200 focus-within:border-focus focus-within:shadow-(--shadow-focus-halo)',
         size === 'lg' && 'px-4 pb-2.5 pt-3',
       )}
     >
       {menuOpen ? (
         <div
           className={cn(
-            'absolute left-0 z-20 w-[min(360px,100%)]',
+            'absolute start-0 z-(--z-dropdown) w-[min(360px,100%)]',
             menuPlacement === 'below' ? 'top-full mt-2' : 'bottom-full mb-2',
           )}
         >
@@ -261,7 +261,7 @@ export function Composer({
         onClick={syncFromEvent}
         onKeyDown={onKeyDown}
         className={cn(
-          'min-h-9 w-full resize-none bg-transparent px-1 py-1.5 text-[15px] leading-6 text-fg outline-none placeholder:text-fg-tertiary',
+          'min-h-9 w-full resize-none bg-transparent px-1 py-1.5 text-[15px] leading-6 text-text outline-none placeholder:text-text-tertiary',
           size === 'lg' && 'min-h-11 text-base',
         )}
       />
@@ -296,7 +296,7 @@ export function Composer({
           {value.length > COUNTER_FROM ? (
             <span
               role="status"
-              className={cn('text-xs tabular-nums text-fg-tertiary', value.length >= MAX_LENGTH && 'text-danger')}
+              className={cn('text-xs tabular-nums text-text-tertiary', value.length >= MAX_LENGTH && 'text-danger')}
             >
               {t('composer.counter', { count: value.length, max: MAX_LENGTH })}
             </span>
@@ -309,7 +309,7 @@ export function Composer({
               type="submit"
               aria-disabled={!canSend}
               aria-label={sending ? t('composer.sending') : t('composer.send_message')}
-              className="flex size-9 shrink-0 items-center justify-center rounded-full bg-primary text-fg-inverse transition-[background-color,transform] duration-150 hover:bg-primary-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-focus)] active:scale-90 aria-disabled:cursor-default aria-disabled:bg-line-strong aria-disabled:text-fg-tertiary aria-disabled:active:scale-100"
+              className="flex size-9 shrink-0 items-center justify-center rounded-full bg-action-primary text-text-inverse transition-[background-color,transform] duration-150 hover:bg-action-primary-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus active:scale-90 aria-disabled:cursor-default aria-disabled:bg-border-strong aria-disabled:text-text-tertiary aria-disabled:active:scale-100"
             >
               <ArrowUp aria-hidden="true" className={cn('size-4', sending && 'animate-pulse')} strokeWidth={2.25} />
             </button>

@@ -50,22 +50,22 @@ export function HomeRecent({
     return (
       <div aria-busy="true" aria-label={t('home.recent_loading')} className="space-y-1.5">
         {[0, 1, 2].map((i) => (
-          <div key={i} className="h-14 animate-pulse rounded-xl bg-hover" />
+          <div key={i} className="h-14 animate-pulse rounded-md bg-(--state-hover)" />
         ))}
       </div>
     );
   }
   if (items === 'error') {
-    return <p className="text-sm text-fg-tertiary">{t('home.recent_failed')}</p>;
+    return <p className="text-sm text-text-tertiary">{t('home.recent_failed')}</p>;
   }
   if (items.length === 0) {
     return (
-      <div className="flex items-center gap-3 rounded-xl border border-dashed border-line-strong p-4">
+      <div className="flex items-center gap-3 rounded-md border border-dashed border-border-strong p-4">
         <SinoFigure pose="wave" size={44} />
-        <p className="text-sm text-fg-secondary">
+        <p className="text-sm text-text-secondary">
           {t.rich('home.recent_empty', {
             link: (
-              <Link href={`/w/${workspaceSlug}/new`} className="font-medium text-fg-brand hover:underline">
+              <Link href={`/w/${workspaceSlug}/new`} className="font-medium text-text-brand hover:underline">
                 {t('home.recent_empty_link')}
               </Link>
             ),
@@ -86,12 +86,12 @@ export function HomeRecent({
           <li key={c.id}>
             <Link
               href={`/w/${workspaceSlug}/chat/${c.id}`}
-              className="flex items-center gap-3 rounded-xl border border-line p-2 pr-3 transition-colors hover:border-line-strong hover:bg-hover"
+              className="flex items-center gap-3 rounded-md border border-border p-2 pe-3 transition-colors hover:border-border-strong hover:bg-(--state-hover)"
             >
               <SinoFigure pose={marker.pose} size={40} />
               <span className="min-w-0 flex-1">
-                <span className="block truncate text-sm font-medium text-fg">{c.title?.trim() || tShell('recent.untitled')}</span>
-                <span className="text-xs text-fg-tertiary">
+                <span className="block truncate text-sm font-medium text-text">{c.title?.trim() || tShell('recent.untitled')}</span>
+                <span className="text-xs text-text-tertiary">
                   {withLabel} · {formatRelativeTime(c.last_message_at ?? c.created_at, locale)}
                 </span>
               </span>

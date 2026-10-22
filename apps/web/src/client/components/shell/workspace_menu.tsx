@@ -8,7 +8,7 @@ import { useTranslations } from '@/i18n/provider';
 import type { ShellUserView, ShellWorkspaceView } from '@/shared/shell_view';
 
 const itemClass =
-  'flex h-8 cursor-default select-none items-center gap-2 rounded-md px-2 text-[13px] text-fg outline-none data-[highlighted]:bg-hover';
+  'flex h-8 cursor-default select-none items-center gap-2 rounded-xs px-2 text-[13px] text-text outline-none data-[highlighted]:bg-(--state-hover)';
 
 export function WorkspaceMenu({
   workspace,
@@ -25,10 +25,10 @@ export function WorkspaceMenu({
   return (
     <DropdownMenu.Root>
       <Tooltip label={t('workspace_menu.switch')} side={compact ? 'right' : 'bottom'}>
-      <DropdownMenu.Trigger className="flex h-8 min-w-0 items-center gap-2 rounded-lg px-1.5 text-left hover:bg-hover data-[state=open]:bg-hover">
+      <DropdownMenu.Trigger className="flex h-8 min-w-0 items-center gap-2 rounded-sm px-1.5 text-start hover:bg-(--state-hover) data-[state=open]:bg-(--state-hover)">
         <span
           aria-hidden="true"
-          className="flex size-5 shrink-0 items-center justify-center rounded-[5px] bg-primary text-[10px] font-semibold text-fg-inverse"
+          className="flex size-5 shrink-0 items-center justify-center rounded-xs bg-action-primary text-[10px] font-semibold text-text-inverse"
         >
           {workspace.name.charAt(0).toUpperCase()}
         </span>
@@ -36,8 +36,8 @@ export function WorkspaceMenu({
           <span className="sr-only">{workspace.name}</span>
         ) : (
           <>
-            <span className="truncate text-[13px] font-semibold text-fg">{workspace.name}</span>
-            <ChevronDown aria-hidden="true" className="size-3.5 shrink-0 text-fg-tertiary" />
+            <span className="truncate text-[13px] font-semibold text-text">{workspace.name}</span>
+            <ChevronDown aria-hidden="true" className="size-3.5 shrink-0 text-text-tertiary" />
           </>
         )}
       </DropdownMenu.Trigger>
@@ -46,10 +46,10 @@ export function WorkspaceMenu({
         <DropdownMenu.Content
           align="start"
           sideOffset={6}
-          className="z-50 w-64 rounded-xl border border-line bg-surface p-1 shadow-popover"
+          className="z-(--z-dropdown) w-64 rounded-md border border-border bg-surface p-1 shadow-md"
         >
-          <div className="px-2 pb-1 pt-1.5 text-xs text-fg-tertiary">{user.email}</div>
-          <DropdownMenu.Label className="px-2 pb-1 pt-2 text-[11px] font-medium text-fg-tertiary">
+          <div className="px-2 pb-1 pt-1.5 text-xs text-text-tertiary">{user.email}</div>
+          <DropdownMenu.Label className="px-2 pb-1 pt-2 text-[11px] font-medium text-text-tertiary">
             {t('workspace_menu.workspaces')}
           </DropdownMenu.Label>
           {workspaces.map((ws) => (
@@ -57,7 +57,7 @@ export function WorkspaceMenu({
               <Link href={`/w/${ws.slug}`}>
                 <span className="flex-1 truncate">{ws.name}</span>
                 {ws.id === workspace.id ? (
-                  <Check aria-label={t('workspace_menu.current')} className="size-4 text-fg-brand" />
+                  <Check aria-label={t('workspace_menu.current')} className="size-4 text-text-brand" />
                 ) : null}
               </Link>
             </DropdownMenu.Item>

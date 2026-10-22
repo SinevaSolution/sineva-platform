@@ -14,7 +14,7 @@ Browser-side UI: `components/` and the Redux store in `store/`. Rules R-08, R-14
 - Selection, filter and page belong in the URL, not Redux.
 - A new route gets `loading.tsx`, `error.tsx` and `not-found.tsx` as it needs them (R-31).
 - Do not grow `sineva_dashboard.tsx` (777 lines). Extract small components when you touch it.
-- Semantic tokens only (`var(--color-surface)`), no raw hex (R-30). Check both themes. Do not rely on Tailwind `dark:`: it is not tied to `data-theme`.
+- Semantic tokens only (`var(--color-surface)`), no raw hex (R-30). Check both themes. Never write `dark:`; semantic tokens swap under `data-theme` by themselves (lint bans it, with hex, `rgb(`, arbitrary `z-[n]` and physical-direction classes such as `ml-` or `left-`).
 - Keyboard access, visible focus, AA contrast, `prefers-reduced-motion` (R-32).
 
 ## Redux

@@ -1,0 +1,315 @@
+{
+  "compro_commit": "18d9aedb2536a15125d61412f91afa664f49d11f",
+  "files": {
+    "tokens.css": [
+      {
+        "path": ":root",
+        "declarations": {
+          "--teal-50": "#eaf6f6",
+          "--teal-100": "#d3eeee",
+          "--teal-200": "#a6dedf",
+          "--teal-300": "#6cc6c9",
+          "--teal-400": "#2fb0b5",
+          "--teal-500": "#00949b",
+          "--teal-600": "#007a80",
+          "--teal-700": "#00686d",
+          "--teal-800": "#005257",
+          "--teal-900": "#083f4c",
+          "--ink-950": "#0b2a31",
+          "--ink-700": "#3f5359",
+          "--ink-500": "#5b6f75",
+          "--ink-400": "#7c9197",
+          "--ink-200": "#d5e0e2",
+          "--ink-100": "#e7eeef",
+          "--ink-50": "#f5f8f8",
+          "--white": "#ffffff",
+          "--aqua-400": "#2fe0d8",
+          "--mint-200": "#9ff5ec",
+          "--sun-100": "#fff4e5",
+          "--sun-500": "#ffb547",
+          "--red-700": "#b42318",
+          "--red-50": "#fef3f2",
+          "--green-700": "#067647",
+          "--green-50": "#ecfdf3",
+          "--amber-700": "#b54708",
+          "--gradient-brand": "linear-gradient(135deg, #00949b 0%, #00686d 55%, #083f4c 100%)",
+          "--gradient-aurora": "radial-gradient(60% 50% at 20% 0%, rgba(47, 224, 216, 0.18), transparent 70%), radial-gradient(50% 45% at 85% 10%, rgba(0, 148, 155, 0.14), transparent 70%), radial-gradient(40% 40% at 50% 100%, rgba(255, 181, 71, 0.1), transparent 70%)",
+          "--gradient-glow-teal": "radial-gradient(closest-side, rgba(0, 148, 155, 0.22), transparent)",
+          "--gradient-text": "linear-gradient(90deg, #00686d, #00949b 60%, #2fb0b5)",
+          "--gradient-card-sheen": "linear-gradient( 180deg, rgba(255, 255, 255, 0.9), rgba(255, 255, 255, 0) 40% )",
+          "--gradient-cover-teal": "linear-gradient(160deg, #6cc6c9, #00949b 60%, #00686d)",
+          "--gradient-cover-sun": "linear-gradient(160deg, #ffe1b0, #ffb547)",
+          "--gradient-cover-mint": "linear-gradient(160deg, #eaf6f6, #9ff5ec)",
+          "--space-1": "4px",
+          "--space-2": "8px",
+          "--space-3": "12px",
+          "--space-4": "16px",
+          "--space-5": "20px",
+          "--space-6": "24px",
+          "--space-8": "32px",
+          "--space-10": "40px",
+          "--space-12": "48px",
+          "--space-16": "64px",
+          "--space-20": "80px",
+          "--space-24": "96px",
+          "--space-32": "128px",
+          "--container-max": "1240px",
+          "--container-max-wide": "1360px",
+          "--container-text": "720px",
+          "--gutter": "16px",
+          "--section-y": "clamp(4rem, 3rem + 5vw, 8rem)",
+          "--blur-nav": "saturate(180%) blur(14px)",
+          "--surface-nav": "rgba(255, 255, 255, 0.78)",
+          "--noise": "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.8' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.03'/%3E%3C/svg%3E\")",
+          "--border-hairline": "1px solid rgba(11, 42, 49, 0.08)",
+          "--dur-instant": "60ms",
+          "--dur-fast": "160ms",
+          "--dur-base": "240ms",
+          "--dur-med": "360ms",
+          "--dur-slow": "520ms",
+          "--dur-scene": "1000ms",
+          "--color-link": "var(--teal-700)",
+          "--color-wordmark": "var(--teal-900)",
+          "--surface-mint": "color-mix(in srgb, var(--mint-200) 30%, var(--white))"
+        }
+      },
+      {
+        "path": "@media (min-width: 640px) > :root",
+        "declarations": {
+          "--gutter": "24px"
+        }
+      },
+      {
+        "path": "@media (min-width: 1024px) > :root",
+        "declarations": {
+          "--gutter": "32px"
+        }
+      },
+      {
+        "path": "@theme static",
+        "declarations": {
+          "--color-canvas": "var(--white)",
+          "--color-canvas-alt": "var(--ink-50)",
+          "--color-surface": "var(--white)",
+          "--color-surface-tint": "var(--teal-50)",
+          "--color-surface-warm": "var(--sun-100)",
+          "--color-surface-inverse": "var(--ink-950)",
+          "--color-text": "var(--ink-950)",
+          "--color-text-secondary": "var(--ink-700)",
+          "--color-text-tertiary": "var(--ink-500)",
+          "--color-text-inverse": "var(--white)",
+          "--color-text-brand": "var(--teal-700)",
+          "--color-action-primary": "var(--teal-700)",
+          "--color-action-primary-hover": "var(--teal-800)",
+          "--color-action-dark": "var(--ink-950)",
+          "--color-border": "var(--ink-100)",
+          "--color-border-strong": "var(--ink-200)",
+          "--color-border-input": "var(--ink-400)",
+          "--color-focus": "var(--teal-500)",
+          "--color-danger": "var(--red-700)",
+          "--color-success": "var(--green-700)",
+          "--color-danger-surface": "var(--red-50)",
+          "--color-success-surface": "var(--green-50)",
+          "--font-sans": "var(--font-plus-jakarta-sans), ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif",
+          "--font-mono": "var(--font-geist-mono), ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace",
+          "--text-display": "clamp(2.75rem, 1.9rem + 3.8vw, 4.5rem)",
+          "--text-display--line-height": "1",
+          "--text-display--letter-spacing": "-0.035em",
+          "--text-display--font-weight": "600",
+          "--text-h1": "clamp(2.25rem, 1.7rem + 2.4vw, 3.75rem)",
+          "--text-h1--line-height": "1.05",
+          "--text-h1--letter-spacing": "-0.03em",
+          "--text-h1--font-weight": "600",
+          "--text-h2": "clamp(1.875rem, 1.5rem + 1.6vw, 3rem)",
+          "--text-h2--line-height": "1.1",
+          "--text-h2--letter-spacing": "-0.025em",
+          "--text-h2--font-weight": "600",
+          "--text-h3": "clamp(1.375rem, 1.2rem + 0.7vw, 1.75rem)",
+          "--text-h3--line-height": "1.2",
+          "--text-h3--letter-spacing": "-0.015em",
+          "--text-h3--font-weight": "600",
+          "--text-h4": "1.25rem",
+          "--text-h4--line-height": "1.3",
+          "--text-h4--letter-spacing": "-0.01em",
+          "--text-h4--font-weight": "600",
+          "--text-lead": "clamp(1.125rem, 1.05rem + 0.3vw, 1.25rem)",
+          "--text-lead--line-height": "1.6",
+          "--text-lead--letter-spacing": "0",
+          "--text-lead--font-weight": "400",
+          "--text-body": "1.0625rem",
+          "--text-body--line-height": "1.65",
+          "--text-body--letter-spacing": "0",
+          "--text-body--font-weight": "400",
+          "--text-body-sm": "0.9375rem",
+          "--text-body-sm--line-height": "1.55",
+          "--text-body-sm--letter-spacing": "0",
+          "--text-body-sm--font-weight": "400",
+          "--text-label": "0.9375rem",
+          "--text-label--line-height": "1.2",
+          "--text-label--letter-spacing": "0",
+          "--text-label--font-weight": "500",
+          "--text-eyebrow": "0.75rem",
+          "--text-eyebrow--line-height": "1.2",
+          "--text-eyebrow--letter-spacing": "0.08em",
+          "--text-eyebrow--font-weight": "500",
+          "--text-micro": "0.8125rem",
+          "--text-micro--line-height": "1.4",
+          "--text-micro--letter-spacing": "0",
+          "--text-micro--font-weight": "400",
+          "--breakpoint-sm": "40rem",
+          "--breakpoint-md": "48rem",
+          "--breakpoint-lg": "64rem",
+          "--breakpoint-xl": "80rem",
+          "--breakpoint-2xl": "90rem",
+          "--radius-xs": "6px",
+          "--radius-sm": "10px",
+          "--radius-md": "14px",
+          "--radius-lg": "20px",
+          "--radius-xl": "28px",
+          "--radius-2xl": "36px",
+          "--radius-pill": "999px",
+          "--radius-card": "var(--radius-lg)",
+          "--shadow-xs": "0 1px 2px rgba(11, 42, 49, 0.06)",
+          "--shadow-sm": "0 1px 2px rgba(11, 42, 49, 0.05), 0 2px 8px rgba(11, 42, 49, 0.06)",
+          "--shadow-md": "0 4px 12px rgba(11, 42, 49, 0.06), 0 12px 32px rgba(11, 42, 49, 0.08)",
+          "--shadow-lg": "0 12px 24px rgba(11, 42, 49, 0.08), 0 32px 64px rgba(11, 42, 49, 0.12)",
+          "--shadow-glow": "0 0 0 1px rgba(0, 148, 155, 0.12), 0 12px 40px rgba(0, 148, 155, 0.22)",
+          "--shadow-button-bevel": "inset 0 1px 0 rgba(255, 255, 255, 0.22), inset 0 -1.5px 0 rgba(0, 0, 0, 0.18), 0 1px 2px rgba(11, 42, 49, 0.18)",
+          "--shadow-button-bevel-light": "inset 0 1.5px 0 #fff, inset 0 -1.5px 0 #e3eaec, 0 0 0 1px rgba(11, 42, 49, 0.08), 0 1px 2px rgba(11, 42, 49, 0.06)",
+          "--ease-out": "cubic-bezier(0.22, 1, 0.36, 1)",
+          "--ease-out-expo": "cubic-bezier(0.16, 1, 0.3, 1)",
+          "--ease-bounce": "cubic-bezier(0.34, 1.35, 0.64, 1)",
+          "--ease-in-out": "cubic-bezier(0.65, 0, 0.35, 1)",
+          "--ease-in": "cubic-bezier(0.5, 0, 0.8, 0.4)",
+          "--ease-wipe": "cubic-bezier(0.7, 0, 0.25, 1)",
+          "--animate-dot-pulse": "dot-pulse 2s var(--ease-in-out) infinite"
+        }
+      }
+    ],
+    "theme-dark.css": [
+      {
+        "path": ":root[data-theme='dark']",
+        "declarations": {
+          "--color-canvas": "#08181c",
+          "--color-canvas-alt": "#0c2227",
+          "--color-surface": "#0f272d",
+          "--color-surface-tint": "#0e3236",
+          "--color-surface-warm": "#2b2215",
+          "--color-surface-inverse": "#123a42",
+          "--color-text": "#eef4f5",
+          "--color-text-secondary": "#bccbce",
+          "--color-text-tertiary": "#93a7ab",
+          "--color-text-inverse": "#ffffff",
+          "--color-text-brand": "#6cc6c9",
+          "--color-action-primary": "#00686d",
+          "--color-action-primary-hover": "#007a80",
+          "--color-action-dark": "#245560",
+          "--color-border": "#1c3a40",
+          "--color-border-strong": "#29494f",
+          "--color-border-input": "#5f7d83",
+          "--color-focus": "#2fb0b5",
+          "--color-danger": "#ff8a80",
+          "--color-success": "#4ad295",
+          "--color-danger-surface": "#3a1714",
+          "--color-success-surface": "#0c2e20",
+          "--color-link": "#6cc6c9",
+          "--color-wordmark": "#eaf6f6",
+          "--surface-nav": "rgba(8, 24, 28, 0.78)",
+          "--surface-mint": "color-mix(in srgb, #9ff5ec 12%, #0f272d)",
+          "--border-hairline": "1px solid rgba(238, 244, 245, 0.08)",
+          "--gradient-aurora": "radial-gradient(60% 50% at 20% 0%, rgba(47, 224, 216, 0.12), transparent 70%), radial-gradient(50% 45% at 85% 10%, rgba(0, 148, 155, 0.16), transparent 70%), radial-gradient(40% 40% at 50% 100%, rgba(255, 181, 71, 0.06), transparent 70%)",
+          "--gradient-text": "linear-gradient(90deg, #2fb0b5, #6cc6c9 60%, #9ff5ec)",
+          "--gradient-card-sheen": "linear-gradient( 180deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0) 40% )",
+          "--gradient-glow-teal": "radial-gradient(closest-side, rgba(0, 148, 155, 0.3), transparent)",
+          "--shadow-xs": "0 1px 2px rgba(0, 0, 0, 0.3)",
+          "--shadow-sm": "0 1px 2px rgba(0, 0, 0, 0.3), 0 2px 8px rgba(0, 0, 0, 0.3)",
+          "--shadow-md": "0 4px 12px rgba(0, 0, 0, 0.3), 0 12px 32px rgba(0, 0, 0, 0.35)",
+          "--shadow-lg": "0 12px 24px rgba(0, 0, 0, 0.35), 0 32px 64px rgba(0, 0, 0, 0.45)",
+          "--shadow-button-bevel-light": "inset 0 1px 0 rgba(255, 255, 255, 0.08), inset 0 -1.5px 0 rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(238, 244, 245, 0.1), 0 1px 2px rgba(0, 0, 0, 0.4)"
+        }
+      }
+    ],
+    "product-accents.css": [
+      {
+        "path": "[data-product-accent]",
+        "declarations": {
+          "--accent-surface": "var(--accent-50)",
+          "--accent-tile": "var(--accent-100)",
+          "--accent-text": "var(--accent-700)",
+          "--accent-glow": "color-mix(in srgb, var(--accent-500) 30%, transparent)",
+          "--gradient-aurora-product": "radial-gradient( 60% 50% at 20% 0%, color-mix(in srgb, var(--accent-300) 22%, transparent), transparent 70% ), radial-gradient(50% 45% at 85% 10%, rgba(0, 148, 155, 0.12), transparent 70%), radial-gradient(40% 40% at 50% 100%, rgba(255, 181, 71, 0.08), transparent 70%)"
+        }
+      },
+      {
+        "path": "[data-product-accent='people']",
+        "declarations": {
+          "--accent-50": "#fff1ee",
+          "--accent-100": "#ffdcd5",
+          "--accent-300": "#ff9f8f",
+          "--accent-500": "#f2705e",
+          "--accent-700": "#b23f2e"
+        }
+      },
+      {
+        "path": "[data-product-accent='finance']",
+        "declarations": {
+          "--accent-50": "#fff7e8",
+          "--accent-100": "#ffebc4",
+          "--accent-300": "#ffcc73",
+          "--accent-500": "#f0a429",
+          "--accent-700": "#8a5600"
+        }
+      },
+      {
+        "path": "[data-product-accent='sales']",
+        "declarations": {
+          "--accent-50": "#eff9ec",
+          "--accent-100": "#d6f0ce",
+          "--accent-300": "#93d27f",
+          "--accent-500": "#4fae3a",
+          "--accent-700": "#2d6b21"
+        }
+      },
+      {
+        "path": "[data-product-accent='social']",
+        "declarations": {
+          "--accent-50": "#fdeff6",
+          "--accent-100": "#f9d6e7",
+          "--accent-300": "#ee93be",
+          "--accent-500": "#d9478c",
+          "--accent-700": "#9c2462"
+        }
+      },
+      {
+        "path": "[data-product-accent='help']",
+        "declarations": {
+          "--accent-50": "#eaf5fc",
+          "--accent-100": "#cfe8f8",
+          "--accent-300": "#86c5ec",
+          "--accent-500": "#2f95d6",
+          "--accent-700": "#16649a"
+        }
+      },
+      {
+        "path": "[data-product-accent='insights']",
+        "declarations": {
+          "--accent-50": "#eff0fc",
+          "--accent-100": "#dadff8",
+          "--accent-300": "#a3aaee",
+          "--accent-500": "#6470dd",
+          "--accent-700": "#3e47a6"
+        }
+      },
+      {
+        "path": ":root[data-theme='dark'] [data-product-accent]",
+        "declarations": {
+          "--accent-surface": "color-mix(in oklab, var(--accent-500) 14%, var(--color-canvas))",
+          "--accent-tile": "color-mix(in oklab, var(--accent-500) 24%, var(--color-surface))",
+          "--accent-text": "var(--accent-300)",
+          "--accent-glow": "color-mix(in srgb, var(--accent-500) 30%, transparent)",
+          "--gradient-aurora-product": "radial-gradient( 60% 50% at 20% 0%, color-mix(in srgb, var(--accent-300) 16%, transparent), transparent 70% ), radial-gradient(50% 45% at 85% 10%, rgba(0, 148, 155, 0.16), transparent 70%), radial-gradient(40% 40% at 50% 100%, rgba(255, 181, 71, 0.06), transparent 70%)"
+        }
+      }
+    ]
+  }
+}

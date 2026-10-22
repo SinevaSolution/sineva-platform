@@ -25,7 +25,7 @@ Redux Toolkit and `react-redux` live in `apps/web/src/client/store/`. Read [fron
 | :--- | :--- |
 | `store.ts` | `makeStore()`, types `AppStore`, `RootState`, `AppDispatch` |
 | `hooks.ts` | `useAppDispatch`, `useAppSelector` (typed) |
-| `provider.tsx` | `AppProviders`: Redux `Provider`, `next-themes` `ThemeProvider`, sonner `Toaster` |
+| `provider.tsx` | `AppProviders`: Redux `Provider`, `ThemeFollowSystem`, tooltip provider, sonner `Toaster` |
 | `slices/agent_slice.ts` | `agentSlice`, its actions, `AgentSliceState`, `ChatTranscriptItem` |
 | `slices/workspace_slice.ts` | `workspaceSlice`, its actions, `WorkspaceSliceState` |
 
@@ -88,7 +88,7 @@ Debt: the initial values are hardcoded constants (`wks_sineva_enterprise_01`, `S
 | Selection, filter, page, anything a link should restore | URL (Target) | Selected companion, category filter. Today these are in Redux: `selected_agent_slug`, `active_category_filter` |
 | Data that came from the server | Server component props or a server fetch (Target) | The agent list. Today copied into `agents_catalog` |
 | One component's own state | `useState` | The composer text (`promptInput`), preview strings |
-| Theme | `next-themes` (`data-theme` attribute) | Light and dark |
+| Theme | `<html data-theme>` (inline script, `useTheme`) | Light and dark |
 
 Current misuse, do not copy:
 

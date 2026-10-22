@@ -25,8 +25,8 @@ Sources: `apps/web/package.json`, `packages/ui/package.json`, and a search of `a
 
 ## Gotchas first
 
-- Many packages are installed and never imported: `gsap`, `motion`, `recharts`, `vaul`, `react-hook-form`, `@hookform/resolvers`, `swagger-ui-react`, and six Radix packages. They add install size and audit surface for nothing. Do not read this list as the stack in use.
-- Motion today is CSS transitions only. There is no GSAP or `motion` code.
+- Many packages are installed and never imported: `gsap`, `recharts`, `vaul`, `react-hook-form`, `@hookform/resolvers`, `swagger-ui-react`, and six Radix packages. They add install size and audit surface for nothing. Do not read this list as the stack in use.
+- Motion today is CSS transitions and keyframes only. There is no GSAP code. The unused `motion` package was removed (FR-UX-42); GSAP is the one approved motion library and loads lazily where CSS cannot do the job.
 - `ioredis` is installed and a client factory exists (`server/infrastructure/cache/redis_client.ts`), but nothing calls it. The cache is an in-memory `Map`.
 - UI libraries use `^` ranges in `package.json`. The framework (`next`, `react`, `react-dom`, `tailwindcss`) and the three Prisma packages are pinned to exact versions.
 
@@ -40,12 +40,12 @@ Sources: `apps/web/package.json`, `packages/ui/package.json`, and a search of `a
 | Dialog | `@radix-ui/react-dialog` | command palette | Used |
 | Command menu | `cmdk` | command palette | Used |
 | Toasts | `sonner` | `Toaster` in `provider.tsx`, toasts in the dashboard | Used |
-| Theming | `next-themes` | `provider.tsx`, `theme_toggle.tsx` | Used |
+| Theming | inline script and `useTheme` (compro port, `next-themes` removed) | `theme_script.tsx`, `use_theme.ts`, `theme_toggle.tsx` | Used |
 | Icons | `lucide-react` | dashboard, palette, theme toggle, `/api-docs` | Used |
 | State | `@reduxjs/toolkit`, `react-redux` | `client/store` | Used |
 | Validation | `zod` | server DTOs and the gateway | Used (server only) |
 | Avatar, dropdown menu, scroll area, switch, tabs, tooltip | `@radix-ui/react-avatar`, `-dropdown-menu`, `-scroll-area`, `-switch`, `-tabs`, `-tooltip` | nowhere | Unused |
-| Motion | `motion`, `gsap` | nowhere | Unused |
+| Motion | `gsap` | nowhere | Unused |
 | Charts | `recharts` | nowhere | Unused |
 | Drawer | `vaul` | nowhere | Unused |
 | Forms | `react-hook-form`, `@hookform/resolvers` | nowhere | Unused |
@@ -58,7 +58,7 @@ Policy (Target): add a package when a change uses it, in the same change. Remove
 
 - Current: `Button` and `Card` use `transition-all duration-200` with `cubic-bezier(0.16, 1, 0.3, 1)` written inline. The token `--ease-out-expo` has the same curve and is unused.
 - A global `prefers-reduced-motion: reduce` rule in `globals.css` shortens durations to 0.01 ms.
-- Target: if motion is added, use it for feedback (state change, new reply), keep durations short, and keep the reduced-motion rule working. Decide `motion` or CSS before adding code, and remove the other package.
+- Target: if motion is added, use it for feedback (state change, new reply), keep durations short, and keep the reduced-motion rule working. Use CSS first and load GSAP lazily only where CSS cannot do the job.
 
 ## Command palette
 
