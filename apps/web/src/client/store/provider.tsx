@@ -36,7 +36,9 @@ export function AppProviders({
       <ThemeProvider
         attribute="data-theme"
         defaultTheme="light"
-        enableSystem={false}
+        // First visit stays light; the "System" choice in Preferences follows
+        // the operating system, which needs the system mode switched on.
+        enableSystem
         disableTransitionOnChange
         nonce={nonce}
       >

@@ -35,7 +35,11 @@
       "invalid_password": "Use between 12 and 128 characters.",
       "terms_required": "Please agree to the terms to continue.",
       "privacy_required": "Please agree to the privacy policy to continue.",
-      "generic": "Something went wrong. Try again."
+      "generic": "Something went wrong. Try again.",
+      "unsupported_image": "Use a JPG, PNG or WebP image.",
+      "image_too_large": "That photo is over 2 MB. Choose a smaller one.",
+      "invalid_image": "We couldn't read that image. Try another one.",
+      "upload_failed": "The photo didn't upload. Try again in a moment."
     }
   },
   "meta": {
@@ -155,25 +159,123 @@
     }
   },
   "account": {
+    "settings": {
+      "title": "Settings",
+      "edit_profile": "Edit your profile"
+    },
+    "tabs": {
+      "label": "Account settings",
+      "profile": "Profile",
+      "preferences": "Preferences",
+      "sign_in": "Sign-in methods"
+    },
+    "save_bar": {
+      "label": "Unsaved changes",
+      "unsaved": "You have unsaved changes",
+      "discard": "Discard",
+      "save": "Save changes",
+      "saving": "Saving..."
+    },
+    "avatar": {
+      "change": "Change photo",
+      "remove": "Remove photo",
+      "updated": "Photo updated",
+      "removed": "Photo removed"
+    },
+    "roles": {
+      "owner": "Owner",
+      "admin": "Admin",
+      "member": "Member",
+      "viewer": "Viewer"
+    },
+    "departments": {
+      "management": "Management",
+      "finance": "Finance",
+      "sales": "Sales",
+      "marketing": "Marketing",
+      "operations": "Operations",
+      "hr": "People and HR",
+      "it": "IT",
+      "customer_support": "Customer support",
+      "legal": "Legal",
+      "other": "Other"
+    },
     "profile": {
-      "title": "Profile",
-      "section_details": "Your details",
-      "full_name": "Full name",
-      "email": "Email",
+      "call_you": "Sino will call you {name}",
       "verified": "Verified",
       "not_verified": "Not verified yet",
-      "section_language": "Language and time zone",
-      "language": "Language",
-      "time_zone": "Time zone",
-      "save": "Save changes",
-      "saving": "Saving...",
-      "saved": "Profile saved",
-      "section_sign_in": "Sign-in methods",
       "linked": "Linked",
-      "not_linked": "Not linked"
+      "not_linked": "Not linked",
+      "saved": "Profile saved",
+      "section_about": "About you",
+      "full_name": "Full name",
+      "full_name_helper": "As it appears on your documents. 2 to 100 characters.",
+      "preferred_name": "Preferred name",
+      "preferred_name_helper": "What Sino should call you. Leave empty to use your first name.",
+      "salutation": "Form of address",
+      "salutation_helper": "Used with your name, for example Kak Faishal.",
+      "salutation_unset": "Not set",
+      "salutation_none": "No title",
+      "about_me": "About you",
+      "about_me_helper": "A line or two about you and your work. Sino can use it to answer better.",
+      "about_me_count": "{count} of {max}",
+      "use_context": "Let Sino use this",
+      "use_context_helper": "Share your name, form of address, language and these notes with Sino. Never your email, phone or photo.",
+      "section_contact": "Contact",
+      "email": "Email",
+      "email_helper": "Your sign-in email. It cannot be changed here yet.",
+      "phone": "Phone number",
+      "phone_helper": "Optional. We save it as +62..., for example 0812 3456 7890 becomes +6281234567890.",
+      "section_region": "Language and region",
+      "language": "Language",
+      "language_helper": "The language of the app. Sino's replies follow your messages.",
+      "time_zone": "Time zone",
+      "time_zone_helper": "Used for dates, times and schedules.",
+      "section_workspace": "In {workspace}",
+      "job_title": "Job title",
+      "job_title_helper": "Shown to the people in this workspace.",
+      "department": "Department",
+      "department_helper": "Only for this workspace.",
+      "department_unset": "Not set",
+      "errors": {
+        "name_length": "Use between 2 and 100 characters.",
+        "name_chars": "Use letters, spaces, apostrophes, periods or hyphens only.",
+        "preferred_name_length": "Use 40 characters or fewer.",
+        "phone_invalid": "Enter a valid phone number, for example 0812 3456 7890.",
+        "about_me_length": "Use 280 characters or fewer.",
+        "job_title_length": "Use 60 characters or fewer."
+      }
     },
-    "settings": {
-      "edit_profile": "Edit your profile"
+    "preferences": {
+      "section_appearance": "Appearance",
+      "theme": "Theme",
+      "theme_helper": "Saved to your account, so your other devices follow.",
+      "theme_light": "Light",
+      "theme_dark": "Dark",
+      "theme_system": "System",
+      "density": "Density",
+      "density_helper": "How much room lists and rows take.",
+      "density_comfortable": "Comfortable",
+      "density_compact": "Compact",
+      "section_motion": "Motion and Rooms",
+      "reduce_motion": "Reduce motion",
+      "reduce_motion_helper": "Less movement across the app. Your system setting is always respected.",
+      "pause_character": "Pause Sino",
+      "pause_character_helper": "Keep Sino still in Rooms.",
+      "focus_mode": "Focus mode",
+      "focus_mode_helper": "A plain background in Rooms, with no character.",
+      "room_view": "Room view in chats with Sino",
+      "room_view_helper": "Show the Room of the specialist who answered."
+    },
+    "sign_in": {
+      "section_methods": "How you sign in",
+      "google": "Google",
+      "github": "GitHub",
+      "password": "Email and password",
+      "password_set": "Set",
+      "password_not_set": "Not set",
+      "not_linked_helper": "Not linked to your account",
+      "linked_helper": "Linked to your account"
     }
   },
   "shell": {

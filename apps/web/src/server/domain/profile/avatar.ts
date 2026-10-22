@@ -1,12 +1,11 @@
 import { ValidationError } from '@/server/domain/errors/domain_error';
+import { AVATAR_CONTENT_TYPES, AVATAR_MAX_BYTES, type AvatarContentType } from '@/shared/avatar_limits';
 
 // Avatar rules in one place: limits, object keys and the magic-byte check.
 // Keys are built only from validated UUIDs so no user-supplied string can
 // shape a storage path (path traversal, key collision).
 
-export const AVATAR_MAX_BYTES = 2 * 1024 * 1024;
-export const AVATAR_CONTENT_TYPES = ['image/jpeg', 'image/png', 'image/webp'] as const;
-export type AvatarContentType = (typeof AVATAR_CONTENT_TYPES)[number];
+export { AVATAR_CONTENT_TYPES, AVATAR_MAX_BYTES, type AvatarContentType };
 export const AVATAR_SIZES = [256, 64] as const;
 export type AvatarSize = (typeof AVATAR_SIZES)[number];
 export const AVATAR_PRESIGN_SECONDS = 300;

@@ -1,8 +1,18 @@
 import { z } from 'zod';
 import { DEPARTMENTS, SALUTATIONS } from '@/server/domain/entities/user_profile';
+import {
+  ABOUT_ME_MAX,
+  charCount,
+  FULL_NAME_MAX,
+  FULL_NAME_MIN,
+  JOB_TITLE_MAX,
+  NAME_CHARS,
+  normalizePhoneNumber,
+  PREFERRED_NAME_MAX,
+} from '@/shared/profile_options';
 import { LocaleSchema } from './locale_dto';
 
-export { DEPARTMENTS, SALUTATIONS };
+export { DEPARTMENTS, normalizePhoneNumber, SALUTATIONS };
 
 // Returns the canonical zone name, or null when the runtime rejects it.
 // `Intl.DateTimeFormat` is the validator (rather than a hardcoded list) so the
@@ -22,44 +32,13 @@ function canonicalTimeZone(value: string): string | null {
   }
 }
 
-/**
- * Normalises a phone number to E.164, or returns null when it is not one.
- * Separators (space, dash, dot, parentheses) are dropped. `0` is the Indonesian
- * trunk prefix (`0812...` is `+62812...`), `00` is the international call
- * prefix, a bare `62...` is read as Indonesian. Any other number must already
- * carry its `+country` code: guessing a country for `4155552671` would store a
- * wrong number silently. E.164 allows 8 to 15 digits after `+`, first digit
- * non-zero. Verification is a separate flow; this only checks the shape.
- */
-export function normalizePhoneNumber(input: string): string | null {
-  const compact = input.trim().replace(/[\s().-]/g, '');
-  let digits: string;
-  if (compact.startsWith('+')) {
-    digits = compact.slice(1);
-  } else if (compact.startsWith('00')) {
-    digits = compact.slice(2);
-  } else if (compact.startsWith('0')) {
-    digits = `62${compact.slice(1)}`;
-  } else if (compact.startsWith('62')) {
-    digits = compact;
-  } else {
-    return null;
-  }
-  return /^[1-9]\d{7,14}$/.test(digits) ? `+${digits}` : null;
-}
-
-// Letters of any script, combining marks, space, apostrophe (straight and
-// typographic), period and hyphen. Digits and markup are refused so a name
-// never carries a number or tags into emails, audit rows or prompts.
-const NAME_CHARS = /^[\p{L}\p{M}'’. -]+$/u;
-
-const codePoints = (value: string): number => [...value].length;
+const codePoints = charCount;
 
 const FullNameSchema = z
   .string()
   .trim()
-  .min(2, 'Name must be at least 2 characters')
-  .max(100, 'Name is too long')
+  .min(FULL_NAME_MIN, 'Name must be at least 2 characters')
+  .max(FULL_NAME_MAX, 'Name is too long')
   .regex(NAME_CHARS, 'Name can only use letters, spaces, apostrophes, periods and hyphens')
   .regex(/\p{L}/u, 'Name needs at least one letter');
 
@@ -69,13 +48,13 @@ const PreferredNameSchema = z
   .string()
   .trim()
   .min(1, 'Preferred name cannot be empty')
-  .max(40, 'Preferred name is too long')
+  .max(PREFERRED_NAME_MAX, 'Preferred name is too long')
   .refine((value) => !/\p{C}/u.test(value), 'Preferred name has invalid characters');
 
 const AboutMeSchema = z
   .string()
   .trim()
-  .refine((value) => codePoints(value) <= 280, 'About me is too long (280 characters at most)');
+  .refine((value) => codePoints(value) <= ABOUT_ME_MAX, 'About me is too long (280 characters at most)');
 
 const PhoneSchema = z.string().transform((value, ctx) => {
   const normalized = normalizePhoneNumber(value);
@@ -121,7 +100,7 @@ export type UpdateProfileDto = z.infer<typeof UpdateProfileSchema>;
 // specialist access and ids are not here: they are admin operations.
 export const MemberProfileUpdateSchema = z
   .object({
-    job_title: z.string().trim().min(1).max(60, 'Job title is too long').nullable().optional(),
+    job_title: z.string().trim().min(1).max(JOB_TITLE_MAX, 'Job title is too long').nullable().optional(),
     department: z.enum(DEPARTMENTS).nullable().optional(),
   })
   .strict()

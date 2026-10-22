@@ -12,6 +12,8 @@ export class ApiError extends Error {
     readonly code?: string,
     /** Codes of the envelope's `errors[]`, e.g. `breached_password`. */
     readonly detailCodes: string[] = [],
+    /** Field name to detail code for a 422, so a form can mark the field that failed. */
+    readonly fieldCodes: Record<string, string> = {},
   ) {
     super(message);
     this.name = 'ApiError';
@@ -28,7 +30,7 @@ interface Envelope<T> {
   data?: T;
   message?: string;
   code?: string;
-  errors?: Array<{ code?: string }> | null;
+  errors?: Array<{ code?: string; field?: string | null }> | null;
 }
 
 export async function apiRequest<T>(
@@ -65,6 +67,9 @@ export async function apiRequest<T>(
       response.status,
       envelope?.code,
       (envelope?.errors ?? []).flatMap((e) => (e.code ? [e.code] : [])),
+      Object.fromEntries(
+        (envelope?.errors ?? []).flatMap((e) => (e.field && e.code ? [[e.field, e.code] as const] : [])),
+      ),
     );
   }
   return envelope.data as T;
@@ -77,6 +82,10 @@ const DETAIL_KEYS: Record<string, string> = {
   invalid_password: 'api.invalid_password',
   terms_required: 'api.terms_required',
   privacy_required: 'api.privacy_required',
+  unsupported_image: 'api.unsupported_image',
+  image_too_large: 'api.image_too_large',
+  invalid_image: 'api.invalid_image',
+  upload_failed: 'api.upload_failed',
 };
 
 const CODE_KEYS: Record<string, string> = {

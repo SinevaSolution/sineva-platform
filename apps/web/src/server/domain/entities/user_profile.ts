@@ -1,24 +1,11 @@
+import { DEPARTMENTS, SALUTATIONS } from '@/shared/profile_options';
+
 // The slice of a user that the person may see and edit on their own profile.
 // Deliberately narrower than `UserEntity`: status, 2FA state and the other
 // columns stay out of this shape so they cannot leak through the profile route.
 
-// Closed lists live in the domain so the DTO, the repository adapters and the
-// UI model read one definition.
-export const SALUTATIONS = ['none', 'pak', 'bu', 'kak', 'mas', 'mbak'] as const;
+export { DEPARTMENTS, SALUTATIONS };
 export type SalutationValue = (typeof SALUTATIONS)[number];
-
-export const DEPARTMENTS = [
-  'management',
-  'finance',
-  'sales',
-  'marketing',
-  'operations',
-  'hr',
-  'it',
-  'customer_support',
-  'legal',
-  'other',
-] as const;
 export type DepartmentValue = (typeof DEPARTMENTS)[number];
 
 export interface UserProfileEntity {
