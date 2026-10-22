@@ -61,6 +61,7 @@ Items marked "cross-service" are mirrored in `sineva-ai` (`docs/decisions/` ther
 
 | [0033](0033-library-collections-access-and-plain-language.md) | Library collections carry 'Who can use this', documents inherit or override, Squad and Workflow scopes reserved, retrieval scope equals access, plain-language statuses and banned technical words | You touch Library access, the Library page or the technical-word copy rule |
 | [0041](0041-oauth-reauthentication-and-account-linking.md) | OAuth intents (sign in, link, re-confirm) bound to the signed-in user; re-confirming through a linked provider marks the session fresh | You touch OAuth, fresh-session recovery or sign-in methods |
+| [0047](0047-hosting-on-vercel.md) | Vercel hosting rooted at `apps/web`, cron bearer auth on job routes only, migrations during the production build behind a destructive gate, serverless limits | You deploy, add a cron job or change a migration |
 
 ## Suggested reading order
 
