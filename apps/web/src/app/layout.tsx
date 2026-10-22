@@ -2,6 +2,8 @@ import type { Metadata, Viewport } from 'next';
 import { headers } from 'next/headers';
 import { Plus_Jakarta_Sans, Geist_Mono } from 'next/font/google';
 import { AppProviders } from '@/client/store/provider';
+import { I18nProvider } from '@/i18n/provider';
+import { getLocale, getMessages, getTranslations } from '@/i18n/server';
 import { NONCE_REQUEST_HEADER } from '@/server/http/csp';
 import './globals.css';
 
@@ -17,11 +19,13 @@ const geistMono = Geist_Mono({
   display: 'swap',
 });
 
-export const metadata: Metadata = {
-  title: { default: 'Sineva', template: '%s · Sineva' },
-  description:
-    'Sino and your specialists help with the work that fills your day, while you stay in charge.',
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations('meta');
+  return {
+    title: { default: 'Sineva', template: '%s · Sineva' },
+    description: t('description'),
+  };
+}
 
 export const viewport: Viewport = {
   themeColor: [
@@ -33,18 +37,22 @@ export const viewport: Viewport = {
 export default async function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
+  const locale = await getLocale();
+  const messages = await getMessages();
   // Reading the request headers makes every page render per request, which a
   // per-request nonce requires anyway.
   const nonce = (await headers()).get(NONCE_REQUEST_HEADER) ?? undefined;
 
   return (
     <html
-      lang="en"
+      lang={locale}
       suppressHydrationWarning
       className={`${plusJakartaSans.variable} ${geistMono.variable}`}
     >
       <body>
-        <AppProviders nonce={nonce}>{children}</AppProviders>
+        <I18nProvider locale={locale} messages={messages}>
+          <AppProviders nonce={nonce}>{children}</AppProviders>
+        </I18nProvider>
       </body>
     </html>
   );

@@ -1,8 +1,12 @@
 import type { Metadata } from 'next';
 import { ChatThread } from '@/client/components/chat/chat_thread';
+import { getTranslations } from '@/i18n/server';
 import { loadWorkspaceContext } from '../../workspace_context';
 
-export const metadata: Metadata = { title: 'Chat' };
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations('meta');
+  return { title: t('chat') };
+}
 
 export default async function ChatThreadPage({
   params,

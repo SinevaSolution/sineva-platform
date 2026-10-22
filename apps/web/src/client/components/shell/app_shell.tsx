@@ -5,6 +5,7 @@ import { Menu, X } from 'lucide-react';
 import { usePathname } from 'next/navigation';
 import * as React from 'react';
 import { useAppDispatch, useAppSelector } from '@/client/store/hooks';
+import { useTranslations } from '@/i18n/provider';
 import { setMobileNavOpen } from '@/client/store/slices/ui_slice';
 import { cn } from '@/client/components/ui/cn';
 import { Tooltip } from '@/client/components/ui/tooltip';
@@ -25,6 +26,7 @@ export function AppShell({
   children: React.ReactNode;
   initialCollapsed: boolean;
 }) {
+  const t = useTranslations('shell');
   const [collapsed, setCollapsed] = React.useState(initialCollapsed);
   const toggleCollapsed = React.useCallback(() => {
     setCollapsed((was) => {
@@ -72,10 +74,10 @@ export function AppShell({
         <Dialog.Portal>
           <Dialog.Overlay className="fixed inset-0 z-40 bg-black/30 lg:hidden" />
           <Dialog.Content className="fixed inset-y-0 left-0 z-50 w-[280px] max-w-[85vw] bg-sidebar shadow-popover lg:hidden">
-            <Dialog.Title className="sr-only">Navigation</Dialog.Title>
-            <Tooltip label="Close menu" side="left">
+            <Dialog.Title className="sr-only">{t('frame.nav_title')}</Dialog.Title>
+            <Tooltip label={t('frame.close_menu')} side="left">
               <Dialog.Close
-                aria-label="Close navigation"
+                aria-label={t('frame.close_nav')}
                 className="absolute right-2 top-3 flex size-8 items-center justify-center rounded-lg text-fg-secondary hover:bg-hover"
               >
                 <X aria-hidden="true" className="size-4" />
@@ -88,11 +90,11 @@ export function AppShell({
 
       <div className="flex min-w-0 flex-1 flex-col lg:py-2 lg:pr-2">
         <div className="flex h-12 shrink-0 items-center gap-2 px-3 lg:hidden">
-          <Tooltip label="Open menu" side="bottom">
+          <Tooltip label={t('frame.open_menu')} side="bottom">
             <button
               type="button"
               onClick={() => dispatch(setMobileNavOpen(true))}
-              aria-label="Open navigation"
+              aria-label={t('frame.open_nav')}
               className="flex size-9 items-center justify-center rounded-lg text-fg-secondary hover:bg-hover"
             >
               <Menu aria-hidden="true" className="size-5" />

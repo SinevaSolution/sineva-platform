@@ -33,44 +33,19 @@ export function roomLoop(slug: string | null, mood: RoomMood): SinoLoopName {
   return slug === 'sinohelp' ? 'phone' : 'wave';
 }
 
-const STARTERS: Record<string, string[]> = {
-  sino: [
-    '@SinoSales draft a follow-up for yesterday’s client meeting',
-    'Plan my week around three priorities',
-    '@SinoFinance and @SinoInsights review last month’s spending',
-  ],
-  sinopeople: [
-    'Write a job post for a part-time barista',
-    'Draft a friendly onboarding checklist for new hires',
-    'Help me prepare questions for a performance review',
-  ],
-  sinofinance: [
-    'Make a simple cash flow plan for next month',
-    'Explain this invoice and what I should check',
-    'Draft a polite payment reminder to a client',
-  ],
-  sinosales: [
-    'Write a follow-up email after a product demo',
-    'Turn my notes into a short sales proposal',
-    'Suggest three ways to reach new local customers',
-  ],
-  sinosocial: [
-    'Plan five Instagram posts for this week',
-    'Write a caption for our new menu item',
-    'Turn this announcement into a LinkedIn post',
-  ],
-  sinohelp: [
-    'Draft a reply to a customer asking for a refund',
-    'Write answers for our five most common questions',
-    'Make a calm reply to an unhappy review',
-  ],
-  sinoinsights: [
-    'What should I look at in my monthly sales numbers?',
-    'Compare this month and last month and tell me what changed',
-    'Suggest three numbers I should track every week',
-  ],
+// Message keys in the `room` namespace. The prompts themselves live in the
+// catalogs (EN and ID), where mentions keep the `@SinoX request` form.
+const STARTER_KEYS: Record<string, [string, string, string]> = {
+  sino: ['starters.sino.a', 'starters.sino.b', 'starters.sino.c'],
+  sinopeople: ['starters.sinopeople.a', 'starters.sinopeople.b', 'starters.sinopeople.c'],
+  sinofinance: ['starters.sinofinance.a', 'starters.sinofinance.b', 'starters.sinofinance.c'],
+  sinosales: ['starters.sinosales.a', 'starters.sinosales.b', 'starters.sinosales.c'],
+  sinosocial: ['starters.sinosocial.a', 'starters.sinosocial.b', 'starters.sinosocial.c'],
+  sinohelp: ['starters.sinohelp.a', 'starters.sinohelp.b', 'starters.sinohelp.c'],
+  sinoinsights: ['starters.sinoinsights.a', 'starters.sinoinsights.b', 'starters.sinoinsights.c'],
 };
 
-export function startersFor(slug: string | null): string[] {
-  return STARTERS[slug && STARTERS[slug] ? slug : 'sino'];
+/** Keys of the three starter prompts for a room (Sino's team chat when the slug is unknown). */
+export function startersFor(slug: string | null): [string, string, string] {
+  return STARTER_KEYS[slug && STARTER_KEYS[slug] ? slug : 'sino']!;
 }

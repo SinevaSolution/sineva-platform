@@ -3,7 +3,9 @@
 import * as React from 'react';
 import { Button } from '@/client/components/ui/button';
 import { Field, FormAlert } from '@/client/components/ui/field';
-import { ApiError, apiRequest } from '@/client/lib/api';
+import { apiRequest } from '@/client/lib/api';
+import { useApiErrorText } from '@/client/lib/use_api_error';
+import { useTranslations } from '@/i18n/provider';
 
 // Placeholder versions until Legal publishes the terms (decision D-M0-4).
 const TERMS_VERSION = '2026-10-draft';
@@ -11,6 +13,8 @@ const PRIVACY_VERSION = '2026-10-draft';
 const MIN_PASSWORD = 12;
 
 export function SignUpForm() {
+  const t = useTranslations('auth');
+  const errorText = useApiErrorText();
   const [pending, setPending] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
   const [passwordError, setPasswordError] = React.useState<string | null>(null);
@@ -21,11 +25,11 @@ export function SignUpForm() {
     const form = new FormData(e.currentTarget);
     const password = String(form.get('password') ?? '');
     if (password.length < MIN_PASSWORD) {
-      setPasswordError(`Use at least ${MIN_PASSWORD} characters.`);
+      setPasswordError(t('sign_up.password_too_short', { min: MIN_PASSWORD }));
       return;
     }
     if (!form.get('consent')) {
-      setError('Please agree to the terms to continue.');
+      setError(t('sign_up.consent_required'));
       return;
     }
     setPasswordError(null);
@@ -48,7 +52,7 @@ export function SignUpForm() {
       });
       setSentTo(email);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Something went wrong. Try again.');
+      setError(errorText(err));
     } finally {
       setPending(false);
     }
@@ -57,38 +61,37 @@ export function SignUpForm() {
   if (sentTo) {
     return (
       <FormAlert tone="success">
-        We sent a link to <strong className="font-semibold">{sentTo}</strong>. Open it to verify your email, then
-        sign in.
+        {t.rich('sign_up.sent', { email: <strong className="font-semibold">{sentTo}</strong> })}
       </FormAlert>
     );
   }
 
   return (
     <form onSubmit={onSubmit} className="space-y-4" noValidate>
-      <Field label="Full name" name="full_name" autoComplete="name" required autoFocus maxLength={100} />
-      <Field label="Work email" name="email" type="email" autoComplete="email" required />
+      <Field label={t('fields.full_name')} name="full_name" autoComplete="name" required autoFocus maxLength={100} />
+      <Field label={t('fields.work_email')} name="email" type="email" autoComplete="email" required />
       <Field
-        label="Password"
+        label={t('fields.password')}
         name="password"
         type="password"
         autoComplete="new-password"
         required
-        hint={`At least ${MIN_PASSWORD} characters.`}
+        hint={t('sign_up.password_hint', { min: MIN_PASSWORD })}
         error={passwordError}
       />
       <div className="space-y-2.5 pt-1 text-[13px] text-fg-secondary">
         <label className="flex items-start gap-2.5">
           <input type="checkbox" name="consent" required className="mt-0.5 size-4 accent-[var(--color-action-primary)]" />
-          <span>I agree to the Terms of Service and the Privacy Policy.</span>
+          <span>{t('sign_up.consent')}</span>
         </label>
         <label className="flex items-start gap-2.5">
           <input type="checkbox" name="marketing" className="mt-0.5 size-4 accent-[var(--color-action-primary)]" />
-          <span>Send me product news now and then. You can stop any time.</span>
+          <span>{t('sign_up.marketing')}</span>
         </label>
       </div>
       {error ? <FormAlert>{error}</FormAlert> : null}
       <Button type="submit" variant="primary" size="lg" className="w-full" disabled={pending}>
-        {pending ? 'Creating your account...' : 'Create account'}
+        {pending ? t('sign_up.submitting') : t('sign_up.submit')}
       </Button>
     </form>
   );

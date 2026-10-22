@@ -7,6 +7,7 @@ import * as React from 'react';
 import { cn } from '@/client/components/ui/cn';
 import { Tooltip } from '@/client/components/ui/tooltip';
 import { useAppDispatch, useAppSelector } from '@/client/store/hooks';
+import { useTranslations } from '@/i18n/provider';
 import { toggleSidebarSection } from '@/client/store/slices/ui_slice';
 import type { ShellSpecialistView, ShellUserView, ShellWorkspaceView } from '@/shared/shell_view';
 import { NavIcon } from './nav_icon';
@@ -44,6 +45,7 @@ export function Sidebar({
   onNavigate,
 }: SidebarProps) {
   const pathname = usePathname();
+  const t = useTranslations('shell');
   const dispatch = useAppDispatch();
   const closedSections = useAppSelector((s) => s.ui.collapsed_sections);
   const sections = React.useMemo(() => buildNavSections(workspace.slug), [workspace.slug]);
@@ -53,7 +55,7 @@ export function Sidebar({
   );
   const settings: NavItem = {
     id: 'settings',
-    label: FEATURES.settings.label,
+    labelKey: FEATURES.settings.labelKey,
     href: `/w/${workspace.slug}/settings`,
     icon: 'settings',
     exact: false,
@@ -71,15 +73,15 @@ export function Sidebar({
   );
 
   return (
-    <nav aria-label="Main" className={cn('flex h-full flex-col pb-2 pt-3', collapsed ? 'items-center px-2' : 'px-3')}>
+    <nav aria-label={t('sidebar.main_label')} className={cn('flex h-full flex-col pb-2 pt-3', collapsed ? 'items-center px-2' : 'px-3')}>
       <div className={cn('flex items-center gap-1', collapsed ? 'flex-col' : 'justify-between')}>
         <WorkspaceMenu workspace={workspace} workspaces={workspaces} user={user} compact={collapsed} />
         {onToggleCollapsed ? (
-          <Tooltip label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'} shortcut="[" side={collapsed ? 'right' : 'bottom'}>
+          <Tooltip label={collapsed ? t('sidebar.expand') : t('sidebar.collapse')} shortcut="[" side={collapsed ? 'right' : 'bottom'}>
             <button
               type="button"
               onClick={onToggleCollapsed}
-              aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+              aria-label={collapsed ? t('sidebar.expand') : t('sidebar.collapse')}
               className="flex size-7 shrink-0 items-center justify-center rounded-lg text-fg-tertiary hover:bg-hover hover:text-fg"
             >
               {collapsed ? (
@@ -94,13 +96,13 @@ export function Sidebar({
 
       <div className={cn('mt-3 flex min-h-0 w-full flex-1 flex-col overflow-y-auto', collapsed ? 'gap-3' : '-mx-1 gap-4 px-1')}>
         {sections.map((section) => {
-          const isClosed = !collapsed && section.label !== null && closedSections.includes(section.id);
+          const isClosed = !collapsed && section.labelKey !== null && closedSections.includes(section.id);
           const listId = `sidebar-section-${section.id}`;
           return (
-            <div key={section.id} className={cn(collapsed && section.label && 'border-t border-line pt-3')}>
-              {section.label && !collapsed ? (
+            <div key={section.id} className={cn(collapsed && section.labelKey && 'border-t border-line pt-3')}>
+              {section.labelKey && !collapsed ? (
                 <SectionHeader
-                  label={section.label}
+                  label={t(section.labelKey)}
                   closed={isClosed}
                   controls={listId}
                   onToggle={() => dispatch(toggleSidebarSection(section.id))}
@@ -118,7 +120,7 @@ export function Sidebar({
         {!collapsed ? (
           <div>
             <SectionHeader
-              label="Recent chats"
+              label={t('sections.recent')}
               closed={closedSections.includes('recent')}
               controls="sidebar-section-recent"
               onToggle={() => dispatch(toggleSidebarSection('recent'))}
@@ -158,7 +160,9 @@ function NavRow({
   compact: boolean;
   onNavigate?: () => void;
 }) {
-  const hint = item.soon ? `${item.label} (coming soon)` : item.label;
+  const t = useTranslations('shell');
+  const label = t(item.labelKey);
+  const hint = item.soon ? t('sidebar.hint_soon', { label }) : label;
   const link = (
     <Link
       href={item.href}
@@ -174,9 +178,9 @@ function NavRow({
       <NavIcon name={item.icon} />
       {!compact ? (
         <>
-          <span className="min-w-0 flex-1 truncate">{item.label}</span>
+          <span className="min-w-0 flex-1 truncate">{label}</span>
           {item.soon ? (
-            <span className="rounded-full bg-hover px-1.5 text-[10px] font-medium leading-4 text-fg-tertiary">Soon</span>
+            <span className="rounded-full bg-hover px-1.5 text-[10px] font-medium leading-4 text-fg-tertiary">{t('sidebar.soon_tag')}</span>
           ) : null}
         </>
       ) : null}
@@ -187,7 +191,7 @@ function NavRow({
       {/* Expanded rows show their label, so only "soon" rows need a tooltip
           there; in the rail every icon gets one. */}
       {compact || item.soon ? (
-        <Tooltip label={item.soon ? `${item.label}: coming soon` : item.label} side="right">
+        <Tooltip label={item.soon ? t('sidebar.tooltip_soon', { label }) : label} side="right">
           {link}
         </Tooltip>
       ) : (

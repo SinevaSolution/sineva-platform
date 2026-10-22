@@ -1,0 +1,395 @@
+{
+  "common": {
+    "loading": "Memuat",
+    "try_again": "Coba lagi",
+    "theme": {
+      "toggle": "Ganti tema warna",
+      "aria_to_light": "Ganti ke tema terang",
+      "aria_to_dark": "Ganti ke tema gelap",
+      "title_to_light": "Ganti ke mode terang",
+      "title_to_dark": "Ganti ke mode gelap"
+    }
+  },
+  "errors": {
+    "not_found": {
+      "title": "Sino tidak menemukan halaman ini",
+      "body": "Mungkin halamannya sudah dipindah, atau kamu tidak punya akses ke sana.",
+      "cta": "Ke Beranda"
+    },
+    "workspace_error": {
+      "title": "Ada masalah di pihak kami",
+      "body": "Ini bukan kesalahanmu. Coba lagi sebentar lagi."
+    },
+    "api": {
+      "network": "Kami tidak bisa terhubung ke server. Cek koneksimu, lalu coba lagi.",
+      "unauthenticated": "Sesi kamu berakhir. Masuk lagi untuk melanjutkan.",
+      "forbidden": "Kamu belum punya akses ke sini. Hubungi admin.",
+      "not_found": "Kami tidak menemukannya. Mungkin sudah dihapus.",
+      "conflict": "Itu bentrok dengan data yang sudah ada. Periksa lagi, lalu coba lagi.",
+      "validation_failed": "Ada isian yang belum valid. Periksa lagi, lalu coba lagi.",
+      "rate_limited": "Terlalu banyak percobaan. Tunggu sebentar, lalu coba lagi.",
+      "internal_error": "Ada masalah di pihak kami. Coba lagi sebentar lagi.",
+      "model_unavailable": "Sino belum bisa menyelesaikan permintaan itu. Coba lagi sebentar lagi.",
+      "dependency_unavailable": "Sino belum bisa menjawab sekarang. Coba lagi sebentar lagi.",
+      "breached_password": "Kata sandi itu pernah muncul di kebocoran data. Pilih yang lain.",
+      "invalid_password": "Pakai 12 sampai 128 karakter.",
+      "terms_required": "Setujui ketentuan untuk melanjutkan.",
+      "privacy_required": "Setujui kebijakan privasi untuk melanjutkan.",
+      "generic": "Ada yang tidak beres. Coba lagi."
+    }
+  },
+  "meta": {
+    "description": "Sino dan para spesialis membantu pekerjaan yang memenuhi harimu, sementara kamu tetap memegang kendali.",
+    "sign_in": "Masuk",
+    "sign_up": "Buat akunmu",
+    "forgot_password": "Atur ulang kata sandi",
+    "reset_password": "Buat kata sandi baru",
+    "verify_email": "Verifikasi emailmu",
+    "home": "Beranda",
+    "new_chat": "Obrolan baru",
+    "chat": "Obrolan",
+    "not_found": "Tidak ditemukan"
+  },
+  "auth": {
+    "sign_in": {
+      "title": "Selamat datang kembali",
+      "subtitle": "Masuk untuk lanjut dari terakhir kali kamu bersama Sino.",
+      "footer": "Baru di Sineva? {link}",
+      "footer_link": "Buat akun",
+      "forgot_link": "Lupa kata sandi?",
+      "submit": "Masuk",
+      "submitting": "Sedang masuk...",
+      "bad_credentials": "Email dan kata sandi itu tidak cocok. Coba lagi."
+    },
+    "sign_up": {
+      "title": "Kenalan dengan Sino",
+      "subtitle": "Buat akunmu. Sino dan para spesialis siap kapan pun kamu siap.",
+      "footer": "Sudah punya akun? {link}",
+      "footer_link": "Masuk",
+      "password_hint": "Minimal {min} karakter.",
+      "password_too_short": "Pakai minimal {min} karakter.",
+      "consent": "Aku setuju dengan Ketentuan Layanan dan Kebijakan Privasi.",
+      "consent_required": "Setujui ketentuan untuk melanjutkan.",
+      "marketing": "Kirimi aku kabar produk sesekali. Kamu bisa berhenti kapan saja.",
+      "submit": "Buat akun",
+      "submitting": "Membuat akunmu...",
+      "sent": "Kami mengirim tautan ke {email}. Buka tautan itu untuk memverifikasi emailmu, lalu masuk."
+    },
+    "forgot_password": {
+      "title": "Lupa kata sandi?",
+      "subtitle": "Masukkan emailmu dan kami kirim tautan untuk membuat kata sandi baru.",
+      "footer": "Sudah ingat? {link}",
+      "footer_link": "Kembali ke halaman masuk",
+      "sent": "Kalau email itu punya akun, tautan atur ulang sedang dikirim. Berlaku 30 menit.",
+      "submit": "Kirim tautan atur ulang",
+      "submitting": "Mengirim..."
+    },
+    "reset_password": {
+      "title": "Buat kata sandi baru",
+      "subtitle": "Pilih yang tidak kamu pakai di tempat lain.",
+      "footer_link": "Minta tautan baru",
+      "incomplete": "Tautan atur ulang ini tidak lengkap. Minta yang baru.",
+      "mismatch": "Kedua kata sandi tidak sama.",
+      "expired": "Tautan ini sudah kedaluwarsa atau sudah dipakai. Minta yang baru.",
+      "done": "Kata sandimu sudah diubah. Perangkat lain sudah dikeluarkan.",
+      "go_sign_in": "Masuk",
+      "submit": "Simpan kata sandi baru",
+      "submitting": "Menyimpan..."
+    },
+    "verify_email": {
+      "title": "Verifikasi emailmu",
+      "footer_link": "Kembali ke halaman masuk",
+      "checking": "Memeriksa tautanmu...",
+      "verified": "Emailmu sudah terverifikasi. Semuanya siap.",
+      "continue": "Lanjut ke halaman masuk",
+      "failed": "Tautan ini sudah kedaluwarsa atau sudah dipakai. Masuk dan kami kirim yang baru."
+    },
+    "fields": {
+      "email": "Email",
+      "work_email": "Email kerja",
+      "password": "Kata sandi",
+      "new_password": "Kata sandi baru",
+      "confirm_password": "Konfirmasi kata sandi baru",
+      "full_name": "Nama lengkap"
+    },
+    "oauth": {
+      "google": "Lanjut dengan Google",
+      "github": "Lanjut dengan GitHub",
+      "or_email": "atau pakai email"
+    },
+    "oauth_errors": {
+      "access_denied": "Proses masuk dibatalkan. Coba lagi, atau pakai emailmu.",
+      "link_expired": "Tautan masuk itu sudah kedaluwarsa. Coba lagi.",
+      "email_not_verified": "Akunmu di penyedia itu belum punya email terverifikasi. Verifikasi di sana, atau daftar dengan email.",
+      "generic": "Kami tidak bisa memasukkanmu dengan akun itu. Coba lagi, atau pakai emailmu."
+    },
+    "scene": {
+      "orbit": {
+        "headline": "Timmu sudah bekerja.",
+        "line": "Sino dan enam spesialis mengurus pekerjaan rutin. Kamu tetap yang memutuskan apa yang dikirim."
+      },
+      "lineup": {
+        "headline": "Kenalan dengan timmu.",
+        "line": "Enam spesialis, satu teman kerja. Buat akunmu dan mereka mulai hari ini."
+      },
+      "mail": {
+        "headline": "Tautan atur ulang sedang dikirim.",
+        "line": "Sino mengantarnya ke kotak masuk emailmu. Berlaku 30 menit."
+      },
+      "build": {
+        "headline": "Hampir masuk lagi.",
+        "line": "Pilih kata sandi baru dan Sino akan mengeluarkanmu dari perangkat lain demi keamanan."
+      },
+      "thumbs": {
+        "headline": "Sekali ketuk, kamu masuk.",
+        "line": "Verifikasi email menjaga workspace-mu tetap milikmu."
+      }
+    },
+    "ticker": {
+      "sinofinance": "mencocokkan invoice dengan mutasi rekening kamu",
+      "sinosales": "menyusun draf tindak lanjut setelah telepon dengan klien",
+      "sinosocial": "merencanakan unggahan minggu depan dengan gaya bahasa brand kamu",
+      "sinohelp": "menjawab pertanyaan yang sering diulang pelanggan",
+      "sinopeople": "mengubah brief lowongan jadi iklan yang siap tayang",
+      "sinoinsights": "melihat apa yang berubah di angka bulan ini"
+    }
+  },
+  "account": {
+    "profile": {
+      "title": "Profil",
+      "section_details": "Detailmu",
+      "full_name": "Nama lengkap",
+      "email": "Email",
+      "verified": "Terverifikasi",
+      "not_verified": "Belum terverifikasi",
+      "section_language": "Bahasa dan zona waktu",
+      "language": "Bahasa",
+      "time_zone": "Zona waktu",
+      "save": "Simpan perubahan",
+      "saving": "Menyimpan...",
+      "saved": "Profil disimpan",
+      "section_sign_in": "Cara masuk",
+      "linked": "Tertaut",
+      "not_linked": "Belum tertaut"
+    },
+    "settings": {
+      "edit_profile": "Ubah profilmu"
+    }
+  },
+  "shell": {
+    "features": {
+      "inbox": {
+        "label": "Inbox",
+        "blurb": "Draf yang menunggu persetujuanmu dan kabar dari para spesialis, di satu tempat."
+      },
+      "squads": {
+        "label": "Squads",
+        "blurb": "Gabungkan beberapa spesialis jadi satu squad untuk satu tujuan."
+      },
+      "library": {
+        "label": "Sino Library",
+        "blurb": "Berkas dan catatanmu, supaya Sino menjawab dengan apa yang sudah diketahui bisnismu."
+      },
+      "tools": {
+        "label": "Aplikasi terhubung",
+        "blurb": "Hubungkan aplikasi yang sudah kamu pakai supaya spesialis bisa bekerja di dalamnya."
+      },
+      "workflows": {
+        "label": "Workflows",
+        "blurb": "Rangkai langkah antar spesialis dan aplikasi, dengan persetujuanmu di bagian yang penting."
+      },
+      "routines": {
+        "label": "Routines",
+        "blurb": "Tugas yang jalan sesuai jadwal, seperti rekap penjualan tiap Senin."
+      },
+      "skills": {
+        "label": "Skills",
+        "blurb": "Ajari spesialis cara bisnismu mengerjakan suatu tugas, cukup sekali."
+      },
+      "settings": {
+        "label": "Pengaturan",
+        "blurb": "Workspace, anggota, model, dan tagihan."
+      }
+    },
+    "nav": {
+      "home": "Beranda",
+      "new_chat": "Obrolan baru"
+    },
+    "sections": {
+      "workspace": "Workspace",
+      "automate": "Otomasi",
+      "recent": "Obrolan terbaru"
+    },
+    "sidebar": {
+      "main_label": "Utama",
+      "expand": "Buka sidebar",
+      "collapse": "Ciutkan sidebar",
+      "soon_tag": "Segera",
+      "hint_soon": "{label} (segera hadir)",
+      "tooltip_soon": "{label}: segera hadir"
+    },
+    "frame": {
+      "nav_title": "Navigasi",
+      "close_menu": "Tutup menu",
+      "close_nav": "Tutup navigasi",
+      "open_menu": "Buka menu",
+      "open_nav": "Buka navigasi"
+    },
+    "user_menu": {
+      "tooltip": "Profil dan keluar akun",
+      "profile": "Profil",
+      "light_mode": "Mode terang",
+      "dark_mode": "Mode gelap",
+      "sign_out": "Keluar"
+    },
+    "workspace_menu": {
+      "switch": "Ganti workspace",
+      "workspaces": "Workspace",
+      "current": "Workspace saat ini"
+    },
+    "recent": {
+      "load_failed": "Obrolanmu tidak bisa dimuat.",
+      "empty": "Obrolanmu akan muncul di sini.",
+      "untitled": "Obrolan baru",
+      "with": "dengan"
+    },
+    "coming_soon": {
+      "badge": "Segera hadir",
+      "heading": "Sino masih membangun {title}",
+      "cta": "Mulai obrolan saja"
+    }
+  },
+  "specialists": {
+    "marker": {
+      "team": "Tim",
+      "specialist": "Spesialis"
+    }
+  },
+  "workspace": {
+    "no_workspace": {
+      "title": "Kamu belum masuk ke workspace mana pun",
+      "body": "Minta pemilik workspace bisnismu untuk mengundangmu, lalu masuk lagi."
+    },
+    "fallback_name": "kamu",
+    "home": {
+      "greeting_morning": "Selamat pagi, {name}.",
+      "greeting_afternoon": "Selamat siang, {name}.",
+      "greeting_evening": "Selamat sore, {name}.",
+      "greeting_night": "Hai, {name}.",
+      "subtitle": "Timmu sudah siap. Kamu butuh siapa hari ini?",
+      "team_heading": "Timmu",
+      "team_role": "Sino bersama semua spesialis",
+      "team_hint": "Ngobrol dengan Sino. Panggil spesialis mana pun dengan @",
+      "private_hint": "Buka obrolan pribadi dengan {name}",
+      "launch": "Tanya Sino apa saja…",
+      "recent_heading": "Lanjutkan dari terakhir kali",
+      "ideas_heading": "Ide untuk hari ini",
+      "coming_heading": "Segera di workspace-mu",
+      "recent_loading": "Memuat obrolan",
+      "recent_failed": "Obrolanmu tidak bisa dimuat. Muat ulang untuk mencoba lagi.",
+      "recent_empty": "Belum ada obrolan. Pilih seseorang dari timmu di atas, atau {link}.",
+      "recent_empty_link": "tanya Sino",
+      "chat_team": "Obrolan tim",
+      "chat_with": "Dengan {name}"
+    }
+  },
+  "room": {
+    "picker_label": "Kamu mau bekerja dengan siapa?",
+    "team_hint": "Sino dan semua spesialis. Ketik @ untuk memanggil seseorang.",
+    "specialist_hint": "Obrolan pribadi dengan {name} ({role})",
+    "placeholder_team": "Tanya Sino apa saja. Ketik @ untuk memanggil spesialis",
+    "placeholder_specialist": "Kirim pesan ke {name}",
+    "footer_team": "Sino membuat draf, kamu yang memutuskan apa yang dikirim.",
+    "footer_specialist": "Hanya untukmu. {name} membuat draf, kamu yang memutuskan apa yang dikirim.",
+    "stage_team": "Sino · Tim",
+    "hello": "Hai {name}!",
+    "intro_specialist": "Aku {role} kamu. Mau kita kerjakan apa?",
+    "intro_team": "Hari ini kita mengerjakan apa? Ketik @ untuk memanggil spesialis ke obrolan ini.",
+    "starters_label": "Ide untuk memulai",
+    "starters": {
+      "sino": {
+        "a": "@SinoSales buatkan draf tindak lanjut untuk pertemuan klien kemarin",
+        "b": "Susun rencana minggu ini dengan tiga prioritas",
+        "c": "@SinoFinance dan @SinoInsights tinjau pengeluaran bulan lalu"
+      },
+      "sinopeople": {
+        "a": "Tulis iklan lowongan untuk barista paruh waktu",
+        "b": "Buat draf daftar periksa onboarding yang ramah untuk karyawan baru",
+        "c": "Bantu aku menyiapkan pertanyaan untuk evaluasi kinerja"
+      },
+      "sinofinance": {
+        "a": "Buat rencana arus kas sederhana untuk bulan depan",
+        "b": "Jelaskan invoice ini dan apa yang perlu aku periksa",
+        "c": "Buat draf pengingat pembayaran yang sopan untuk klien"
+      },
+      "sinosales": {
+        "a": "Tulis email tindak lanjut setelah demo produk",
+        "b": "Ubah catatanku jadi proposal penjualan singkat",
+        "c": "Sarankan tiga cara menjangkau pelanggan lokal baru"
+      },
+      "sinosocial": {
+        "a": "Rencanakan lima unggahan Instagram untuk minggu ini",
+        "b": "Tulis caption untuk menu baru kami",
+        "c": "Ubah pengumuman ini jadi unggahan LinkedIn"
+      },
+      "sinohelp": {
+        "a": "Buat draf balasan untuk pelanggan yang minta pengembalian dana",
+        "b": "Tulis jawaban untuk lima pertanyaan yang paling sering muncul",
+        "c": "Buat balasan yang tenang untuk ulasan yang kurang puas"
+      },
+      "sinoinsights": {
+        "a": "Apa yang perlu aku lihat di angka penjualan bulananku?",
+        "b": "Bandingkan bulan ini dan bulan lalu, lalu kasih tahu apa yang berubah",
+        "c": "Sarankan tiga angka yang perlu aku pantau tiap minggu"
+      }
+    }
+  },
+  "chat": {
+    "composer": {
+      "message_label": "Pesan",
+      "mention_tooltip": "Panggil spesialis",
+      "attach_label": "Lampirkan berkas (segera hadir)",
+      "attach_toast": "Lampiran segera hadir",
+      "counter": "{count} / {max}",
+      "send_tooltip": "Kirim",
+      "send_disabled": "Ketik pesan untuk mengirim",
+      "sending": "Mengirim",
+      "send_message": "Kirim pesan"
+    },
+    "mention_menu": {
+      "heading": "Panggil spesialis",
+      "list_label": "Spesialis",
+      "empty": "Tidak ada spesialis yang cocok dengan “{query}”"
+    },
+    "thread": {
+      "loading": "Memuat obrolan",
+      "title_default": "Obrolan dengan {name}",
+      "subtitle_team": "Obrolan tim dengan Sino",
+      "subtitle_private": "Obrolan pribadi dengan {name}",
+      "placeholder_team": "Kirim pesan ke Sino. Ketik @ untuk memanggil spesialis",
+      "placeholder_specialist": "Kirim pesan ke {name}",
+      "messages_label": "Pesan",
+      "stage_team": "Sino · Tim",
+      "stop_tooltip": "Hentikan balasan",
+      "stop": "Hentikan",
+      "stopping": "Menghentikan",
+      "stop_failed": "Balasan tidak bisa dihentikan. Coba lagi.",
+      "still_replying": "{name} masih membalas. Tekan Hentikan untuk mengirim yang baru.",
+      "announce_replied": "{name} sudah membalas.",
+      "announce_stopped": "Balasan dihentikan.",
+      "working": "{name} sedang mengerjakannya",
+      "you_stopped": "Kamu menghentikan balasan ini."
+    },
+    "error": {
+      "unavailable": "{name} belum bisa membalas sekarang. Pesanmu tersimpan, jadi kamu bisa coba lagi sebentar lagi.",
+      "interrupted": "Balasan {name} terputus. Pesanmu tersimpan, jadi kamu bisa mengirimnya lagi.",
+      "connection_lost": "Koneksi terputus sebelum balasan selesai. Cek koneksimu, lalu coba lagi.",
+      "signed_out": "Sesi kamu berakhir. Masuk lagi untuk melanjutkan.",
+      "forbidden": "Kamu belum punya akses ke sini. Hubungi admin.",
+      "not_found": "Balasan ini tidak ditemukan. Muat ulang obrolan untuk melihat kondisi terakhirnya.",
+      "rate_limited": "Terlalu banyak percobaan. Tunggu sebentar, lalu coba lagi.",
+      "generic": "Ada yang tidak beres saat {name} membalas. Coba lagi."
+    }
+  },
+  "mcp": {}
+}

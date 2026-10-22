@@ -1,6 +1,5 @@
 import { z } from 'zod';
-
-export const SUPPORTED_LOCALES = ['en', 'id'] as const;
+import { LocaleSchema } from './locale_dto';
 
 // Returns the canonical zone name, or null when the runtime rejects it.
 // `Intl.DateTimeFormat` is the validator (rather than a hardcoded list) so the
@@ -25,7 +24,7 @@ function canonicalTimeZone(value: string): string | null {
 export const UpdateProfileSchema = z
   .object({
     full_name: z.string().trim().min(1, 'Name cannot be empty').max(100, 'Name is too long').optional(),
-    locale: z.enum(SUPPORTED_LOCALES).optional(),
+    locale: LocaleSchema.optional(),
     timezone: z
       .string()
       .transform((value, ctx) => {

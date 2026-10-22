@@ -6,7 +6,10 @@ import { toast } from 'sonner';
 import { Button } from '@/client/components/ui/button';
 import { cn } from '@/client/components/ui/cn';
 import { Field, FormAlert } from '@/client/components/ui/field';
-import { ApiError, apiRequest } from '@/client/lib/api';
+import { apiRequest } from '@/client/lib/api';
+import { useApiErrorText } from '@/client/lib/use_api_error';
+import { useTranslations } from '@/i18n/provider';
+import { LOCALE_COOKIE } from '@sineva/i18n';
 import type { ProfileView } from '@/shared/profile_view';
 import {
   buildProfilePatch,
@@ -88,6 +91,8 @@ export function ProfileForm({
   linkedProviders: string[];
 }) {
   const router = useRouter();
+  const t = useTranslations('account');
+  const errorText = useApiErrorText();
   const [saved, setSaved] = React.useState<ProfileDraft>(() => toDraft(profile));
   const [draft, setDraft] = React.useState<ProfileDraft>(saved);
   const [pending, setPending] = React.useState(false);
@@ -112,11 +117,14 @@ export function ProfileForm({
       const next = toDraft(updated);
       setSaved(next);
       setDraft(next);
-      toast.success('Profile saved');
+      // Signed-out pages (sign-in after a sign-out) read the language from
+      // this cookie, since the profile is only known while signed in.
+      document.cookie = `${LOCALE_COOKIE}=${updated.locale}; path=/; max-age=31536000; samesite=lax`;
+      toast.success(t('profile.saved'));
       // The shell reads the name from the session on the server.
       router.refresh();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Something went wrong. Try again.');
+      setError(errorText(err));
     } finally {
       setPending(false);
     }
@@ -124,9 +132,9 @@ export function ProfileForm({
 
   return (
     <form onSubmit={onSubmit} className="space-y-8" noValidate>
-      <Section title="Your details">
+      <Section title={t('profile.section_details')}>
         <Field
-          label="Full name"
+          label={t('profile.full_name')}
           name="full_name"
           autoComplete="name"
           maxLength={FULL_NAME_MAX}
@@ -134,25 +142,25 @@ export function ProfileForm({
           onChange={(e) => setDraft((d) => ({ ...d, full_name: e.target.value }))}
         />
         <Field
-          label="Email"
+          label={t('profile.email')}
           name="email"
           type="email"
           value={profile.email}
           readOnly
           trailing={
             profile.email_verified ? (
-              <Badge tone="positive">Verified</Badge>
+              <Badge tone="positive">{t('profile.verified')}</Badge>
             ) : (
-              <Badge tone="neutral">Not verified yet</Badge>
+              <Badge tone="neutral">{t('profile.not_verified')}</Badge>
             )
           }
           className="[&_input]:cursor-default [&_input]:bg-surface-alt [&_input]:text-fg-secondary"
         />
       </Section>
 
-      <Section title="Language and time zone">
+      <Section title={t('profile.section_language')}>
         <SelectField
-          label="Language"
+          label={t('profile.language')}
           value={draft.locale}
           onChange={(locale) => setDraft((d) => ({ ...d, locale }))}
         >
@@ -163,7 +171,7 @@ export function ProfileForm({
           ))}
         </SelectField>
         <SelectField
-          label="Time zone"
+          label={t('profile.time_zone')}
           value={draft.timezone}
           onChange={(timezone) => setDraft((d) => ({ ...d, timezone }))}
         >
@@ -179,18 +187,18 @@ export function ProfileForm({
 
       <div>
         <Button type="submit" variant="primary" size="lg" disabled={!canSave}>
-          {pending ? 'Saving...' : 'Save changes'}
+          {pending ? t('profile.saving') : t('profile.save')}
         </Button>
       </div>
 
-      <Section title="Sign-in methods">
+      <Section title={t('profile.section_sign_in')}>
         <ul className="divide-y divide-line rounded-lg border border-line">
           {SIGN_IN_PROVIDERS.map((provider) => {
             const linked = linkedProviders.includes(provider.id);
             return (
               <li key={provider.id} className="flex items-center justify-between px-3 py-2.5">
                 <span className="text-[15px] text-fg">{provider.label}</span>
-                <Badge tone={linked ? 'positive' : 'neutral'}>{linked ? 'Linked' : 'Not linked'}</Badge>
+                <Badge tone={linked ? 'positive' : 'neutral'}>{linked ? t('profile.linked') : t('profile.not_linked')}</Badge>
               </li>
             );
           })}

@@ -1,7 +1,7 @@
 // Error copy for the chat stream. Copy always maps from the machine `code`,
 // never from the server's `message` (FR-UX-31): the server text is for logs
-// and may change; the codes are the contract. The keys are next-intl ready;
-// until the message catalogs land (WP-M0-42) the English copy lives here.
+// and may change; the codes are the contract. The keys are paths in the `chat`
+// namespace of messages/en.json and id.json.
 
 export type StreamErrorKey =
   | 'chat.error.unavailable'
@@ -31,20 +31,14 @@ export function streamErrorMessageKey(code: string): StreamErrorKey {
   return KEY_BY_CODE[code] ?? 'chat.error.generic';
 }
 
-const COPY: Record<StreamErrorKey, (name: string) => string> = {
-  'chat.error.unavailable': (name) =>
-    `${name} can't reply right now. Your message is saved, so you can try again in a moment.`,
-  'chat.error.interrupted': (name) =>
-    `${name}'s reply was cut short. Your message is saved, so you can send it again.`,
-  'chat.error.connection_lost': () =>
-    'The connection dropped before the reply finished. Check your connection and try again.',
-  'chat.error.signed_out': () => 'Your session ended. Sign in again to continue.',
-  'chat.error.forbidden': () => "You don't have access to this yet. Ask an admin.",
-  'chat.error.not_found': () => "This reply couldn't be found. Reload the chat to see where things stand.",
-  'chat.error.rate_limited': () => 'Too many tries. Wait a moment, then try again.',
-  'chat.error.generic': (name) => `Something went wrong while ${name} was replying. Try again.`,
-};
-
-export function streamErrorMessage(code: string, companionName = 'Sino'): string {
-  return COPY[streamErrorMessageKey(code)](companionName);
+/**
+ * Text for a stream error code, in the active language. `t` is a translator
+ * with an empty namespace so the keys above resolve as full catalog paths.
+ */
+export function streamErrorText(
+  t: (key: string, params?: Record<string, string | number>) => string,
+  code: string,
+  companionName = 'Sino',
+): string {
+  return t(streamErrorMessageKey(code), { name: companionName });
 }

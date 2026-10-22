@@ -3,6 +3,7 @@ import type { ShellSpecialistView } from '@/shared/shell_view';
 import { cn } from '@/client/components/ui/cn';
 import { SinoFigure } from '@/client/components/ui/sino_figure';
 import { specialistPose } from '@/client/components/ui/specialist_accent';
+import { useTranslations } from '@/i18n/provider';
 
 /**
  * Suggestion list shown above the composer while the user types an @mention.
@@ -26,6 +27,7 @@ export function MentionMenu({
   onSelect: (item: ShellSpecialistView) => void;
   onHover: (index: number) => void;
 }) {
+  const t = useTranslations('chat');
   const shell = 'anim-swap rounded-xl bg-surface p-1 shadow-popover ring-1 ring-line';
   const listRef = React.useRef<HTMLUListElement>(null);
 
@@ -41,21 +43,21 @@ export function MentionMenu({
   if (items.length === 0) {
     return (
       <div id={id} role="status" className={cn(shell, 'px-3 py-2.5 text-sm text-fg-tertiary')}>
-        No specialist matches “{query}”
+        {t('mention_menu.empty', { query })}
       </div>
     );
   }
 
   return (
     <div className={shell}>
-      <p className="px-2.5 pb-1 pt-1.5 text-xs text-fg-tertiary">Bring in a specialist</p>
+      <p className="px-2.5 pb-1 pt-1.5 text-xs text-fg-tertiary">{t('mention_menu.heading')}</p>
       {/* Header stays put; only the options scroll, and the scroll never
           chains to the page behind. */}
       <ul
         ref={listRef}
         id={id}
         role="listbox"
-        aria-label="Specialists"
+        aria-label={t('mention_menu.list_label')}
         className="max-h-64 overflow-y-auto overscroll-contain"
       >
         {items.map((item, i) => (

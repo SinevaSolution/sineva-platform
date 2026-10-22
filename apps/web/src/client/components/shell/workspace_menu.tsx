@@ -4,6 +4,7 @@ import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
 import { Check, ChevronDown } from 'lucide-react';
 import Link from 'next/link';
 import { Tooltip } from '@/client/components/ui/tooltip';
+import { useTranslations } from '@/i18n/provider';
 import type { ShellUserView, ShellWorkspaceView } from '@/shared/shell_view';
 
 const itemClass =
@@ -20,9 +21,10 @@ export function WorkspaceMenu({
   user: ShellUserView;
   compact?: boolean;
 }) {
+  const t = useTranslations('shell');
   return (
     <DropdownMenu.Root>
-      <Tooltip label="Switch workspace" side={compact ? 'right' : 'bottom'}>
+      <Tooltip label={t('workspace_menu.switch')} side={compact ? 'right' : 'bottom'}>
       <DropdownMenu.Trigger className="flex h-8 min-w-0 items-center gap-2 rounded-lg px-1.5 text-left hover:bg-hover data-[state=open]:bg-hover">
         <span
           aria-hidden="true"
@@ -48,14 +50,14 @@ export function WorkspaceMenu({
         >
           <div className="px-2 pb-1 pt-1.5 text-xs text-fg-tertiary">{user.email}</div>
           <DropdownMenu.Label className="px-2 pb-1 pt-2 text-[11px] font-medium text-fg-tertiary">
-            Workspaces
+            {t('workspace_menu.workspaces')}
           </DropdownMenu.Label>
           {workspaces.map((ws) => (
             <DropdownMenu.Item key={ws.id} asChild className={itemClass}>
               <Link href={`/w/${ws.slug}`}>
                 <span className="flex-1 truncate">{ws.name}</span>
                 {ws.id === workspace.id ? (
-                  <Check aria-label="Current workspace" className="size-4 text-fg-brand" />
+                  <Check aria-label={t('workspace_menu.current')} className="size-4 text-fg-brand" />
                 ) : null}
               </Link>
             </DropdownMenu.Item>

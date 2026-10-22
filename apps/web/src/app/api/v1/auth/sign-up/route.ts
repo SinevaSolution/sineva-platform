@@ -1,5 +1,6 @@
 import type { NextRequest } from 'next/server';
 import { z } from 'zod';
+import { LocaleSchema } from '@/server/application/dtos/locale_dto';
 import { getJwtAuthService } from '@/server/container';
 import {
   extractRequestId,
@@ -20,7 +21,7 @@ const SignUpSchema = z.object({
   terms_accepted_version: z.string().min(1, 'Terms acceptance is required'),
   privacy_accepted_version: z.string().min(1, 'Privacy policy acceptance is required'),
   marketing_opt_in: z.boolean().optional(),
-  locale: z.string().optional(),
+  locale: LocaleSchema.optional(),
   timezone: z.string().optional(),
 });
 

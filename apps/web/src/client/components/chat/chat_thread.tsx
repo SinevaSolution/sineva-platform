@@ -8,9 +8,11 @@ import { SinoFigure } from '@/client/components/ui/sino_figure';
 import { specialistPose } from '@/client/components/ui/specialist_accent';
 import { Button } from '@/client/components/ui/button';
 import { Tooltip } from '@/client/components/ui/tooltip';
-import { ApiError, apiRequest } from '@/client/lib/api';
+import { apiRequest } from '@/client/lib/api';
 import { openRunStream, type RunDoneResult, type RunStreamEvent, type RunStreamHandle } from '@/client/lib/event_stream';
-import { streamErrorMessage } from '@/client/lib/stream_errors';
+import { streamErrorText } from '@/client/lib/stream_errors';
+import { useApiErrorText } from '@/client/lib/use_api_error';
+import { useTranslations } from '@/i18n/provider';
 import type { ConversationView, MessageView, SendMessageResultView } from '@/shared/chat_view';
 import type { ShellSpecialistView } from '@/shared/shell_view';
 import { Composer } from './composer';
@@ -50,9 +52,12 @@ function assistantFromDone(result: RunDoneResult, runId: string, conversationId:
   };
 }
 
+// The product name is a name, not copy: it is never translated.
+const SINO_NAME = 'Sino';
+
 type ThreadState =
   | { status: 'loading' }
-  | { status: 'error'; message: string }
+  | { status: 'error'; error: unknown }
   | { status: 'ready'; conversation: ConversationView; messages: MessageView[] };
 
 export function ChatThread({
@@ -64,6 +69,11 @@ export function ChatThread({
   conversationId: string;
   specialists: ShellSpecialistView[];
 }) {
+  const t = useTranslations('chat');
+  const tCommon = useTranslations('common');
+  // Empty namespace: stream error keys are full catalog paths (`chat.error.*`).
+  const tFull = useTranslations('');
+  const errorText = useApiErrorText();
   const [state, setState] = React.useState<ThreadState>({ status: 'loading' });
   const [attempt, setAttempt] = React.useState(0);
   const [sendFailed, setSendFailed] = React.useState(false);
@@ -137,10 +147,7 @@ export function ChatThread({
       })
       .catch((error: unknown) => {
         if (cancelled) return;
-        setState({
-          status: 'error',
-          message: error instanceof ApiError ? error.message : 'This chat could not be loaded.',
-        });
+        setState({ status: 'error', error });
       });
     return () => {
       cancelled = true;
@@ -159,9 +166,9 @@ export function ChatThread({
     try {
       // The stream then ends with the partial text kept (done, cancelled).
       await apiRequest(`/api/v1/workspaces/${workspaceId}/runs/${live.run_id}/cancel`, { method: 'POST' });
-    } catch (error) {
+    } catch {
       dispatchLive({ type: 'stop_failed' });
-      toast.error(error instanceof ApiError ? error.message : "Couldn't stop the reply. Try again.");
+      toast.error(t('thread.stop_failed'));
     }
   }
 
@@ -180,7 +187,7 @@ export function ChatThread({
 
   async function send(text: string): Promise<boolean> {
     if (live.phase === 'streaming') {
-      toast.info(`${companionName} is still replying. Press Stop to send something new.`);
+      toast.info(t('thread.still_replying', { name: companionName }));
       return false;
     }
     setSendFailed(false);
@@ -219,15 +226,15 @@ export function ChatThread({
       return true;
     } catch (error) {
       setSendFailed(true);
-      toast.error(error instanceof ApiError ? error.message : 'Your message was not sent. Try again.');
+      toast.error(errorText(error));
       return false;
     }
   }
 
   if (state.status === 'loading') {
     return (
-      <RoomStage slug={null} mood="idle" label="Sino">
-        <div className="flex-1" aria-busy="true" aria-label="Loading chat" />
+      <RoomStage slug={null} mood="idle" label={SINO_NAME}>
+        <div className="flex-1" aria-busy="true" aria-label={t('thread.loading')} />
       </RoomStage>
     );
   }
@@ -236,8 +243,8 @@ export function ChatThread({
     return (
       <div className="flex flex-1 flex-col items-center justify-center gap-3 p-6 text-center">
         <SinoFigure pose="confused" size={120} />
-        <p className="max-w-sm text-sm text-fg-secondary">{state.message}</p>
-        <Button onClick={() => setAttempt((n) => n + 1)}>Try again</Button>
+        <p className="max-w-sm text-sm text-fg-secondary">{errorText(state.error)}</p>
+        <Button onClick={() => setAttempt((n) => n + 1)}>{tCommon('try_again')}</Button>
       </div>
     );
   }
@@ -252,11 +259,11 @@ export function ChatThread({
   const mood = moodForLive(live, sendFailed);
   const announcement =
     live.phase === 'done'
-      ? `${companionName} replied.`
+      ? t('thread.announce_replied', { name: companionName })
       : live.phase === 'stopped'
-        ? 'Reply stopped.'
+        ? t('thread.announce_stopped')
         : live.phase === 'error'
-          ? streamErrorMessage(live.code, companionName)
+          ? streamErrorText(tFull, live.code, companionName)
           : '';
 
   const header = (
@@ -264,9 +271,9 @@ export function ChatThread({
       <SinoFigure pose={specialistPose(specialist?.agent_slug ?? 'sino')} size={34} />
       <div className="min-w-0">
         <h1 className="truncate text-[15px] font-semibold text-white">
-          {conversation.title?.trim() || `Chat with ${companionName}`}
+          {conversation.title?.trim() || t('thread.title_default', { name: companionName })}
         </h1>
-        <p className="text-xs text-white/65">{isTeam ? 'Team chat with Sino' : `Private chat with ${companionName}`}</p>
+        <p className="text-xs text-white/65">{isTeam ? t('thread.subtitle_team') : t('thread.subtitle_private', { name: companionName })}</p>
       </div>
     </div>
   );
@@ -275,23 +282,23 @@ export function ChatThread({
     <div className="px-4 pb-4 pt-2 sm:px-6">
       {live.phase === 'streaming' ? (
         <div className="mb-2 flex justify-center">
-          <Tooltip label="Stop the reply" side="top">
+          <Tooltip label={t('thread.stop_tooltip')} side="top">
             <Button
               size="lg"
               onClick={() => void stop()}
               aria-disabled={live.stopping}
-              aria-label="Stop reply"
+              aria-label={t('thread.stop_tooltip')}
               className="bg-surface/90 backdrop-blur-md"
             >
               <Square aria-hidden="true" fill="currentColor" />
-              {live.stopping ? 'Stopping' : 'Stop'}
+              {live.stopping ? t('thread.stopping') : t('thread.stop')}
             </Button>
           </Tooltip>
         </div>
       ) : null}
       <Composer
         onSubmit={send}
-        placeholder={isTeam ? 'Message Sino. Type @ to bring in a specialist' : `Message ${companionName}`}
+        placeholder={isTeam ? t('thread.placeholder_team') : t('thread.placeholder_specialist', { name: companionName })}
         specialists={isTeam ? specialists : undefined}
       />
     </div>
@@ -301,11 +308,11 @@ export function ChatThread({
     <RoomStage
       slug={specialist?.agent_slug ?? null}
       mood={mood}
-      label={isTeam ? 'Sino · Team' : companionName}
+      label={isTeam ? t('thread.stage_team') : companionName}
       header={header}
       footer={footer}
     >
-      <ol className="flex min-h-full flex-col justify-end gap-3 px-4 py-6 sm:px-6" aria-label="Messages" role="log">
+      <ol className="flex min-h-full flex-col justify-end gap-3 px-4 py-6 sm:px-6" aria-label={t('thread.messages_label')} role="log">
         {messages.map((m) => (
           <MessageRow key={m.id} message={m} specialists={specialists} fallbackSlug={specialist?.agent_slug} />
         ))}
@@ -318,7 +325,7 @@ export function ChatThread({
             <RoomBubble from="companion">
               <span className="block text-xs font-semibold text-fg-brand">{companionName}</span>
               {/* Plain text on purpose: model output is never rendered as HTML. */}
-              {live.text || <span className="text-fg-secondary">{companionName} is working on it</span>}
+              {live.text || <span className="text-fg-secondary">{t('thread.working', { name: companionName })}</span>}
             </RoomBubble>
           </li>
         ) : null}
@@ -334,9 +341,9 @@ export function ChatThread({
               </div>
             ) : null}
             <RoomBubble from="companion">
-              <span className="block">{streamErrorMessage(live.code, companionName)}</span>
+              <span className="block">{streamErrorText(tFull, live.code, companionName)}</span>
               <Button size="md" variant="primary" onClick={retry} className="mt-2">
-                Try again
+                {tCommon('try_again')}
               </Button>
             </RoomBubble>
           </li>
@@ -359,6 +366,9 @@ function MessageRow({
   specialists: ShellSpecialistView[];
   fallbackSlug?: string;
 }) {
+  const t = useTranslations('chat');
+  // Empty namespace: stream error keys are full catalog paths (`chat.error.*`).
+  const tFull = useTranslations('');
   if (message.role === 'user') {
     return (
       <li className="anim-rise flex">
@@ -377,11 +387,11 @@ function MessageRow({
         {message.content}
         {message.status === 'error' ? (
           <span className="mt-1 block text-[13px] text-fg-secondary">
-            {streamErrorMessage(message.finish_reason ?? 'upstream_interrupted', name)}
+            {streamErrorText(tFull, message.finish_reason ?? 'upstream_interrupted', name)}
           </span>
         ) : null}
         {message.status === 'cancelled' ? (
-          <span className="mt-1 block text-[13px] text-fg-secondary">You stopped this reply.</span>
+          <span className="mt-1 block text-[13px] text-fg-secondary">{t('thread.you_stopped')}</span>
         ) : null}
       </RoomBubble>
     </li>

@@ -1,3 +1,5 @@
+import { LOCALES } from '@sineva/i18n';
+
 // Pure helpers for the profile form, kept out of the component so the
 // change-detection and option rules can be unit-tested without a DOM.
 
@@ -9,10 +11,12 @@ export interface ProfileDraft {
 
 export const FULL_NAME_MAX = 100;
 
-export const LOCALE_OPTIONS = [
-  { value: 'en', label: 'English' },
-  { value: 'id', label: 'Bahasa Indonesia' },
-] as const;
+// From the locale registry, so a newly enabled language shows up here without
+// touching the form. Labels are native names and are never translated.
+export const LOCALE_OPTIONS = LOCALES.filter((l) => l.enabled).map((l) => ({
+  value: l.code as string,
+  label: l.native_name as string,
+}));
 
 /** Fields that differ from the saved profile; the name is compared and sent trimmed. */
 export function buildProfilePatch(saved: ProfileDraft, draft: ProfileDraft): Partial<ProfileDraft> {

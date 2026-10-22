@@ -224,7 +224,7 @@ Keyboard access, visible focus, AA contrast, and `prefers-reduced-motion` suppor
 ### R-33 MUST follow the wording rules in user-facing copy
 Sino is a "companion" (ID: "teman kerja", "teman AI"). Never "chatbot", "assistant", "asisten" or "agent" in copy a customer reads. Code identifiers and `/api/v1/agents` keep "agent".
 - **Why**: Consistent positioning. ([ADR-0011](../decisions/0011-user-facing-wording.md))
-- **Check**: `grep -rniE "chatbot|assistant|asisten" apps/web/src/client apps/web/src/app` and read each hit that is user-visible.
+- **Check**: `npm run test` runs the copy lint over both message catalogs and the email templates (banned words, dashes, mention comma, protected names, parity), and `npm run lint` rejects hardcoded UI text. Strings in `apps/web/messages/*.json` are the user-visible copy.
 
 ### R-34 MUST respect product guardrails
 SinoPeople never hires or rejects. SinoSales proposals and SinoSocial posts stay drafts until a person approves. SinoFinance never moves money. SinoInsights is read-only. SinoHelp auto-replies to routine questions within user-set rules and escalates new, sensitive or uncertain ones to a person.

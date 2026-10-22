@@ -46,6 +46,7 @@ Items marked "cross-service" are mirrored in `sineva-ai` (`docs/decisions/` ther
 | [0020](0020-multi-tenancy-isolation-and-lifecycle.md) | Seven isolation layers, seven workspace lifecycle states | You implement tenancy, isolation or limits |
 | [0021](0021-signed-internal-context.md) | EdDSA compact JWS internal context token (cross-service) | You call or verify sineva-ai internal requests |
 | [0022](0022-run-handle-and-sse-relay.md) | Run handle, `chat_runs`, SSE relay with resume and cancel (cross-service) | You touch streaming, run ids or the stream routes |
+| [0023](0023-locale-preference-and-i18n-architecture.md) | Locale from profile, cookie, Accept-Language; one registry; catalogs; copy lint | You add or change user-facing text or a language |
 
 ## Suggested reading order
 

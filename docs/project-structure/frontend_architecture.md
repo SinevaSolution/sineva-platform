@@ -75,6 +75,13 @@ Frontend code is `src/client` (components, store), the routing files in `src/app
 9. A failed call renders an error state. It never renders invented content.
 10. Keep new components small and single-purpose. Do not grow `sineva_dashboard.tsx`.
 
+## 4a. Language (i18n)
+
+- Locale: profile `locale`, then the `sineva_locale` cookie, then `Accept-Language`, then `en`. No URL prefix. Resolved once per request in `src/i18n/server.ts` and handed to client components by `I18nProvider` in the root layout ([ADR-0023](../decisions/0023-locale-preference-and-i18n-architecture.md)).
+- Code: `packages/i18n/` (registry, resolution, ICU-subset formatter, copy lint, key-usage check, pseudo-locale), `apps/web/src/i18n/` (provider, server helpers, catalog loader), `apps/web/messages/` (catalogs), `apps/web/eslint-rules/` (hardcoded-string rule).
+- `packages/i18n` is consumed through the `@sineva/i18n` path alias (tsconfig and vitest), not a workspace link, so it needs no `npm install`.
+- Specialist names, role titles and descriptions are data from the specialist registry and are not translated here yet.
+
 ## 5. Chat UI and upstream failures
 
 `sendToCompanion` in `sineva_dashboard.tsx` posts to `/api/v1/agents/{slug}/chat`.

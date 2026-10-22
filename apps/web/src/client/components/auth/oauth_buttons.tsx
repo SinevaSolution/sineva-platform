@@ -1,32 +1,37 @@
+'use client';
+
 import { buttonVariants } from '@/client/components/ui/button';
+import { useTranslations } from '@/i18n/provider';
 import { cn } from '@/client/components/ui/cn';
 
 // Plain links on purpose: the OAuth start URL is a route handler that answers
 // with a redirect to the provider. <Link> would prefetch it and try a client
 // transition, which breaks the cross-origin redirect. A full page load is right.
 export function OAuthButtons() {
+  const t = useTranslations('auth');
   const cls = cn(buttonVariants({ variant: 'secondary', size: 'lg' }), 'w-full');
   return (
     <div className="space-y-2">
       {/* eslint-disable-next-line @next/next/no-html-link-for-pages -- route handler redirect, see above */}
       <a href="/api/v1/auth/oauth/google" className={cls}>
         <GoogleMark />
-        Continue with Google
+        {t('oauth.google')}
       </a>
       {/* eslint-disable-next-line @next/next/no-html-link-for-pages -- route handler redirect, see above */}
       <a href="/api/v1/auth/oauth/github" className={cls}>
         <GitHubMark />
-        Continue with GitHub
+        {t('oauth.github')}
       </a>
     </div>
   );
 }
 
 export function OrDivider() {
+  const t = useTranslations('auth');
   return (
     <div className="my-5 flex items-center gap-3 text-xs text-fg-tertiary" aria-hidden="true">
       <span className="h-px flex-1 bg-line" />
-      or use email
+      {t('oauth.or_email')}
       <span className="h-px flex-1 bg-line" />
     </div>
   );

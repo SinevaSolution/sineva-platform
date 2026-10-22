@@ -2,7 +2,9 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { describe, expect, it, vi } from 'vitest';
 import { openRunStream, type RunStreamEvent } from '@/client/lib/event_stream';
-import { streamErrorMessage, streamErrorMessageKey } from '@/client/lib/stream_errors';
+import { streamErrorMessageKey, streamErrorText } from '@/client/lib/stream_errors';
+import { CATALOGS } from '@/i18n/catalogs';
+import { createTranslator } from '@sineva/i18n';
 
 const FIXTURES = resolve(import.meta.dirname, 'contract/fixtures');
 const fixture = (name: string) => readFileSync(resolve(FIXTURES, name), 'utf8');
@@ -211,18 +213,30 @@ describe('stream error copy (FR-UX-31: copy maps from the code, never from the s
     expect(streamErrorMessageKey('something_new')).toBe('chat.error.generic');
   });
 
-  it('has friendly English copy without banned words or dashes', () => {
-    for (const code of [
-      'upstream_unavailable',
-      'model_unavailable',
-      'upstream_interrupted',
-      'connection_lost',
-      'not_found',
-      'something_new',
-    ]) {
-      const text = streamErrorMessage(code);
-      expect(text.length).toBeGreaterThan(10);
-      expect(text).not.toMatch(/—|–|assistant|chatbot|\bagent\b|\bbot\b|BFF|upstream|gateway|502|503/i);
+  it('has a message in both languages for every code, with the companion name filled in', () => {
+    for (const [locale, intl] of [
+      ['en', 'en-US'],
+      ['id', 'id-ID'],
+    ] as const) {
+      const t = createTranslator(CATALOGS[locale], '', intl, (path) => {
+        throw new Error(`missing ${path}`);
+      });
+      for (const code of [
+        'upstream_unavailable',
+        'model_unavailable',
+        'upstream_interrupted',
+        'connection_lost',
+        'unauthenticated',
+        'forbidden',
+        'not_found',
+        'rate_limited',
+        'something_new',
+      ]) {
+        const text = streamErrorText(t, code, 'SinoHelp');
+        expect(text.length).toBeGreaterThan(10);
+        expect(text).not.toContain('{');
+      }
+      expect(streamErrorText(t, 'upstream_unavailable', 'SinoHelp')).toContain('SinoHelp');
     }
   });
 });

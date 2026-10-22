@@ -25,9 +25,9 @@ This document covers voice and microcopy. The product roster, slugs, guardrails,
 
 ## Gotchas first
 
-- Every string is hardcoded English in the components. There is no message catalog and no Indonesian.
+- Every UI string is a message key in `apps/web/messages/en.json` and `id.json` ([ADR-0023](../decisions/0023-locale-preference-and-i18n-architecture.md)). A hardcoded string in `src/client` or `src/app` fails `npm run lint`, and a missing, unused or untranslated key, a banned word or a translated product name fails `npm run test`. Add both languages in the same change.
 - A failed call must show no reply. Never show a canned, cached or simulated answer, and never label anything a "fallback" reply ([ADR-0008](../decisions/0008-no-silent-fallbacks.md), [ADR-0016](../decisions/0016-upstream-failures-return-502-503.md)). An earlier version of this document recommended showing a "cached local simulation response" when the AI engine was down. That behavior was removed from the code and the advice is withdrawn.
-- Current: error toasts print the API `message` as is. For 502 and 503 that is engine vocabulary ("The AI engine is unavailable"). For 500 it is the raw error text, which can contain internals. Map status to the copy below instead.
+- Error copy maps from the machine code (`apiErrorKey` in `client/lib/api.ts`, catalog namespace `errors.api`), never from the API `message`. The table below is the English source; the Indonesian is in `id.json`.
 - The voice and style rules below come from the public site guide, `sineva-compro/docs/design/copywriting.md`. They are not repeated in an ADR here. Where this repository has no decision, follow that guide.
 
 ## Voice
@@ -98,7 +98,7 @@ Company and product names, the six products, handles and guardrails are in the [
 
 ## Indonesian
 
-Not present in the UI today. When added: "teman kerja" or "teman AI" for Sino, formal "Anda", sentence case, and the same rules as above. Use the Indonesian copy in `sineva-compro` as the reference; do not translate word for word.
+Shipped in `apps/web/messages/id.json`. Founder decisions: "kamu" and "-mu" everywhere in the app (not "Anda"; this differs from the marketing site on purpose), Sino says "aku", Sino is "teman kerja" or "teman AI" (never "asisten"). These names stay in English: Sino, every SinoX name, Sino Library, Room, Squad, Workflow, Routine, Skill, Inbox. "Specialist" is "Spesialis" and "Connected tools" is "Aplikasi terhubung". Sentence case, no emoji, and the same rules as above. Do not translate word for word. Native-speaker review is a release gate before beta.
 
 ## Related
 

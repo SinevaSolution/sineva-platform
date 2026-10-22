@@ -4,11 +4,15 @@ import { PageHeader } from '@/client/components/shell/page_header';
 import { ProfileForm } from '@/client/components/settings/profile_form';
 import { getGetProfileUseCase, getListUserAccountsUseCase } from '@/server/container';
 import { NotFoundError } from '@/server/domain/errors/domain_error';
+import { getTranslations } from '@/i18n/server';
 import { getPageSession } from '@/server/http/page_session';
 import type { ProfileView } from '@/shared/profile_view';
 import { loadWorkspaceContext } from '../../workspace_context';
 
-export const metadata: Metadata = { title: 'Profile' };
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations('account');
+  return { title: t('profile.title') };
+}
 
 export default async function ProfilePage({
   params,
@@ -16,6 +20,7 @@ export default async function ProfilePage({
   params: Promise<{ workspace_slug: string }>;
 }) {
   const { workspace_slug } = await params;
+  const t = await getTranslations('account');
   // Redirects to sign-in or 404s for a foreign workspace before anything else loads.
   await loadWorkspaceContext(workspace_slug);
   const session = await getPageSession();
@@ -36,7 +41,7 @@ export default async function ProfilePage({
 
   return (
     <>
-      <PageHeader title="Profile" />
+      <PageHeader title={t('profile.title')} />
       <div className="min-h-0 flex-1 overflow-y-auto px-4 py-8">
         <div className="max-w-[640px]">
           <ProfileForm

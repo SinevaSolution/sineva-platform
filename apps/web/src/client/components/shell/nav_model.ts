@@ -26,66 +26,67 @@ export const FEATURES = {
   inbox: {
     id: 'inbox',
     segment: 'inbox',
-    label: 'Inbox',
+    labelKey: 'features.inbox.label',
     icon: 'inbox',
-    blurb: 'Drafts waiting for your OK, and updates from your specialists, in one place.',
+    blurbKey: 'features.inbox.blurb',
   },
   squads: {
     id: 'squads',
     segment: 'squads',
-    label: 'Squads',
+    labelKey: 'features.squads.label',
     icon: 'squads',
-    blurb: 'Put specialists together as a squad that works on one goal.',
+    blurbKey: 'features.squads.blurb',
   },
   library: {
     id: 'library',
     segment: 'library',
-    label: 'Sino Library',
+    labelKey: 'features.library.label',
     icon: 'library',
-    blurb: 'Your files and notes, so Sino answers with what your business already knows.',
+    blurbKey: 'features.library.blurb',
   },
   tools: {
     id: 'tools',
     segment: 'tools',
-    label: 'Connected tools',
+    labelKey: 'features.tools.label',
     icon: 'tools',
-    blurb: 'Connect the tools you already use so specialists can work inside them.',
+    blurbKey: 'features.tools.blurb',
   },
   workflows: {
     id: 'workflows',
     segment: 'workflows',
-    label: 'Workflows',
+    labelKey: 'features.workflows.label',
     icon: 'workflows',
-    blurb: 'Chain steps across specialists and tools, with your approval where it matters.',
+    blurbKey: 'features.workflows.blurb',
   },
   routines: {
     id: 'routines',
     segment: 'routines',
-    label: 'Routines',
+    labelKey: 'features.routines.label',
     icon: 'routines',
-    blurb: 'Jobs that run on a schedule, like a Monday sales recap.',
+    blurbKey: 'features.routines.blurb',
   },
   skills: {
     id: 'skills',
     segment: 'skills',
-    label: 'Skills',
+    labelKey: 'features.skills.label',
     icon: 'skills',
-    blurb: 'Teach a specialist how your business does a task, once.',
+    blurbKey: 'features.skills.blurb',
   },
   settings: {
     id: 'settings',
     segment: 'settings',
-    label: 'Settings',
+    labelKey: 'features.settings.label',
     icon: 'settings',
-    blurb: 'Workspace, members, models and billing.',
+    blurbKey: 'features.settings.blurb',
   },
-} as const satisfies Record<string, { id: string; segment: string; label: string; icon: NavIcon; blurb: string }>;
+} as const satisfies Record<string, { id: string; segment: string; labelKey: string; icon: NavIcon; blurbKey: string }>;
 
 export type FeatureId = keyof typeof FEATURES;
 
 export interface NavItem {
   id: string;
-  label: string;
+  /** Key in the `shell` namespace. */
+  labelKey: string;
   href: string;
   icon: NavIcon;
   /** Home matches only its own path; everything else matches nested paths. */
@@ -96,7 +97,8 @@ export interface NavItem {
 
 export interface NavSection {
   id: 'primary' | 'workspace' | 'automate';
-  label: string | null;
+  /** Key in the `shell` namespace; null for the unlabelled first group. */
+  labelKey: string | null;
   items: NavItem[];
 }
 
@@ -108,7 +110,7 @@ export function buildNavSections(workspaceSlug: string): NavSection[] {
   const base = `/w/${workspaceSlug}`;
   const feature = (id: FeatureId): NavItem => ({
     id,
-    label: FEATURES[id].label,
+    labelKey: FEATURES[id].labelKey,
     href: `${base}/${FEATURES[id].segment}`,
     icon: FEATURES[id].icon,
     exact: false,
@@ -117,15 +119,15 @@ export function buildNavSections(workspaceSlug: string): NavSection[] {
   return [
     {
       id: 'primary',
-      label: null,
+      labelKey: null,
       items: [
-        { id: 'home', label: 'Home', href: base, icon: 'home', exact: true, soon: false },
-        { id: 'new', label: 'New chat', href: `${base}/new`, icon: 'new-chat', exact: false, soon: false },
+        { id: 'home', labelKey: 'nav.home', href: base, icon: 'home', exact: true, soon: false },
+        { id: 'new', labelKey: 'nav.new_chat', href: `${base}/new`, icon: 'new-chat', exact: false, soon: false },
         feature('inbox'),
       ],
     },
-    { id: 'workspace', label: 'Workspace', items: [feature('squads'), feature('library'), feature('tools')] },
-    { id: 'automate', label: 'Automate', items: [feature('workflows'), feature('routines'), feature('skills')] },
+    { id: 'workspace', labelKey: 'sections.workspace', items: [feature('squads'), feature('library'), feature('tools')] },
+    { id: 'automate', labelKey: 'sections.automate', items: [feature('workflows'), feature('routines'), feature('skills')] },
   ];
 }
 
@@ -135,13 +137,17 @@ export function isNavItemActive(pathname: string, href: string, exact: boolean):
   return pathname.startsWith(`${href}/`);
 }
 
-/** Who a recent chat is with: the whole team (Sino hub) or one specialist. */
+/**
+ * Who a recent chat is with: the whole team (Sino hub) or one specialist.
+ * `name` is the specialist's display name, or null when the label is the
+ * generic "Team" or "Specialist" text, which the caller translates.
+ */
 export function chatMarker(
   chat: { kind: string; agent_slug: string | null },
   names: Record<string, string>,
-): { label: string; pose: SinoPose } {
-  if (chat.kind !== 'room' || !chat.agent_slug) return { label: 'Team', pose: 'wave' };
-  return { label: names[chat.agent_slug] ?? 'Specialist', pose: specialistPose(chat.agent_slug) };
+): { kind: 'team' | 'specialist'; name: string | null; pose: SinoPose } {
+  if (chat.kind !== 'room' || !chat.agent_slug) return { kind: 'team', name: null, pose: 'wave' };
+  return { kind: 'specialist', name: names[chat.agent_slug] ?? null, pose: specialistPose(chat.agent_slug) };
 }
 
 export const SIDEBAR_COOKIE = 'sineva_sidebar';

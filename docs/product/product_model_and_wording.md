@@ -28,7 +28,7 @@ related_docs:
 - "Agent" stays in code, route paths, JSON keys, OpenAPI and developer docs. It never appears in text a customer reads.
 - The guardrails are product limits, not UI hints. The platform proxies chat and has no write tools, so it does not enforce them today. Whether `sineva-ai` enforces them was not verified.
 - The R-36 check (`@Sino[A-Za-z]+,`) also matches comma-separated lists of handles. Read each hit before calling it a violation.
-- The platform UI is English only today. No Indonesian strings exist in this repository; the Indonesian terms below are the rule for when they do.
+- The platform UI ships in English and Indonesian from message catalogs (`apps/web/messages`, [ADR-0023](../decisions/0023-locale-preference-and-i18n-architecture.md)). The wording rules in this file are enforced by a copy lint in `npm run test`.
 
 ## One chat
 
@@ -94,10 +94,10 @@ User-facing text means anything a customer reads: UI text, marketing pages, emai
 | Finance product | SinoFinance | SinoFinance | SinoMoney |
 | Calling a product | `@SinoHelp reply to this customer` | `@SinoHelp balas pelanggan ini` | `SinoHelp, reply...`, `@SinoHelp, reply...` |
 | Product actions | drafts, prepares, suggests, flags, summarizes | membuat draf, menyiapkan, menyarankan, menandai, merangkum | hires, rejects, pays, transfers, publishes on its own |
-| Integrations | the tools you already use | alat yang sudah Anda pakai | a named platform, unless a real, shipped integration exists and the Founder approved the claim |
+| Integrations | the tools you already use | aplikasi yang sudah kamu pakai | a named platform, unless a real, shipped integration exists and the Founder approved the claim |
 | Where "agent" is fine | code, `/api/v1/agents`, `agent_slug`, OpenAPI, developer docs | same | customer text |
 
-The Indonesian terms for Sino are fixed by the Founder. Other Indonesian phrasing follows `sineva-compro` (formal "Anda"); check there before inventing a sentence. The "pembantu" and "never call Sino a mascot" rules come from `sineva-compro/docs/design/copywriting.md`.
+The Indonesian terms for Sino are fixed by the Founder. In the app, Indonesian uses "kamu" and "-mu" and Sino says "aku" (Founder decision; the marketing site `sineva-compro` stays formal "Anda" on purpose). Check `sineva-compro` for vocabulary before inventing a sentence, then write it in the app voice. The "pembantu" and "never call Sino a mascot" rules come from `sineva-compro/docs/design/copywriting.md`.
 
 Generic integrations (R-35): write "the tools you already use". A platform name in copy promises an integration that may not exist. This applies to customer tools (social networks, CRMs, chat apps). Internal infrastructure names are a separate problem: they are jargon for a customer, see the violations below.
 
@@ -158,7 +158,7 @@ Metadata (`app/layout.tsx`):
 
 - The title contains an em dash and "BFF". The description's comma-separated handle list is fine, but R-36's regex flags it.
 
-Language: English only; no Indonesian strings.
+Language: none known; both catalogs pass the copy lint.
 
 ## Related
 

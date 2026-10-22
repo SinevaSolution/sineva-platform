@@ -5,6 +5,7 @@ import * as React from 'react';
 import { toast } from 'sonner';
 import { cn } from '@/client/components/ui/cn';
 import { Tooltip } from '@/client/components/ui/tooltip';
+import { useTranslations } from '@/i18n/provider';
 import type { ShellSpecialistView } from '@/shared/shell_view';
 import { insertMention } from './mention_insert';
 import { MentionMenu } from './mention_menu';
@@ -47,6 +48,7 @@ export function Composer({
   size?: 'md' | 'lg';
   specialists?: ShellSpecialistView[];
 }) {
+  const t = useTranslations('chat');
   const [value, setValue] = React.useState('');
   const [sending, setSending] = React.useState(false);
   const [mention, setMention] = React.useState<Mention | null>(null);
@@ -234,7 +236,7 @@ export function Composer({
         </div>
       ) : null}
       <label className="sr-only" htmlFor="composer-input">
-        Message
+        {t('composer.message_label')}
       </label>
       <textarea
         id="composer-input"
@@ -266,11 +268,11 @@ export function Composer({
       <div className="mt-1 flex items-center justify-between gap-2">
         <div className="flex items-center gap-1">
           {specialists.length > 0 ? (
-            <Tooltip label="Mention a specialist" shortcut="@">
+            <Tooltip label={t('composer.mention_tooltip')} shortcut="@">
               <button
                 type="button"
                 disabled={disabled}
-                aria-label="Mention a specialist"
+                aria-label={t('composer.mention_tooltip')}
                 onClick={openMentionMenu}
                 className={iconButton}
               >
@@ -278,12 +280,12 @@ export function Composer({
               </button>
             </Tooltip>
           ) : null}
-          <Tooltip label="Attach files (coming soon)">
+          <Tooltip label={t('composer.attach_label')}>
             <button
               type="button"
               aria-disabled="true"
-              aria-label="Attach files (coming soon)"
-              onClick={() => toast.info('Attachments are coming soon')}
+              aria-label={t('composer.attach_label')}
+              onClick={() => toast.info(t('composer.attach_toast'))}
               className={iconButton}
             >
               <Plus aria-hidden="true" className="size-[18px]" strokeWidth={2} />
@@ -296,17 +298,17 @@ export function Composer({
               role="status"
               className={cn('text-xs tabular-nums text-fg-tertiary', value.length >= MAX_LENGTH && 'text-danger')}
             >
-              {value.length.toLocaleString('en-US')} / {MAX_LENGTH.toLocaleString('en-US')}
+              {t('composer.counter', { count: value.length, max: MAX_LENGTH })}
             </span>
           ) : null}
           {/* aria-disabled, not disabled: a disabled button gets no pointer
               events, so its tooltip could never explain why it is off.
               send() already ignores the click while !canSend. */}
-          <Tooltip label={canSend ? 'Send' : 'Type a message to send'} shortcut={canSend ? 'Enter' : undefined}>
+          <Tooltip label={canSend ? t('composer.send_tooltip') : t('composer.send_disabled')} shortcut={canSend ? 'Enter' : undefined}>
             <button
               type="submit"
               aria-disabled={!canSend}
-              aria-label={sending ? 'Sending' : 'Send message'}
+              aria-label={sending ? t('composer.sending') : t('composer.send_message')}
               className="flex size-9 shrink-0 items-center justify-center rounded-full bg-primary text-fg-inverse transition-[background-color,transform] duration-150 hover:bg-primary-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-focus)] active:scale-90 aria-disabled:cursor-default aria-disabled:bg-line-strong aria-disabled:text-fg-tertiary aria-disabled:active:scale-100"
             >
               <ArrowUp aria-hidden="true" className={cn('size-4', sending && 'animate-pulse')} strokeWidth={2.25} />

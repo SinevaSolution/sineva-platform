@@ -6,6 +6,8 @@ import * as React from 'react';
 import { Button } from '@/client/components/ui/button';
 import { Field, FormAlert } from '@/client/components/ui/field';
 import { ApiError, apiRequest } from '@/client/lib/api';
+import { useApiErrorText } from '@/client/lib/use_api_error';
+import { useTranslations } from '@/i18n/provider';
 
 export function SignInForm({
   initialError,
@@ -15,6 +17,8 @@ export function SignInForm({
   redirectTo?: string;
 }) {
   const router = useRouter();
+  const t = useTranslations('auth');
+  const errorText = useApiErrorText();
   const [pending, setPending] = React.useState(false);
   const [error, setError] = React.useState<string | null>(initialError ?? null);
 
@@ -34,29 +38,29 @@ export function SignInForm({
       // One message for unknown email and wrong password, so the form never
       // reveals which accounts exist.
       const passthrough = err instanceof ApiError && (err.status === 429 || err.status === 0);
-      setError(passthrough ? err.message : "That email and password don't match. Try again.");
+      setError(passthrough ? errorText(err) : t('sign_in.bad_credentials'));
       setPending(false);
     }
   }
 
   return (
     <form onSubmit={onSubmit} className="space-y-4" noValidate>
-      <Field label="Email" name="email" type="email" autoComplete="email" required autoFocus />
+      <Field label={t('fields.email')} name="email" type="email" autoComplete="email" required autoFocus />
       <Field
-        label="Password"
+        label={t('fields.password')}
         name="password"
         type="password"
         autoComplete="current-password"
         required
         trailing={
           <Link href="/forgot-password" className="text-[13px] text-fg-brand underline-offset-4 hover:underline">
-            Forgot password?
+            {t('sign_in.forgot_link')}
           </Link>
         }
       />
       {error ? <FormAlert>{error}</FormAlert> : null}
       <Button type="submit" variant="primary" size="lg" className="w-full" disabled={pending}>
-        {pending ? 'Signing in...' : 'Sign in'}
+        {pending ? t('sign_in.submitting') : t('sign_in.submit')}
       </Button>
     </form>
   );

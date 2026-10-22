@@ -1,5 +1,6 @@
 import type { NextRequest } from 'next/server';
 import { z } from 'zod';
+import { LocaleSchema } from '@/server/application/dtos/locale_dto';
 import {
   getGetWorkspaceUseCase,
   getUpdateWorkspaceUseCase,
@@ -15,7 +16,7 @@ const UpdateWorkspaceSchema = z.object({
   workspace_name: z.string().min(1).max(100).optional(),
   workspace_slug: z.string().min(2).max(48).optional(),
   logo_url: z.string().url().nullable().optional(),
-  default_locale: z.string().optional(),
+  default_locale: LocaleSchema.optional(),
   timezone: z.string().optional(),
 });
 

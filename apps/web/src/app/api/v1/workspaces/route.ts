@@ -1,5 +1,6 @@
 import type { NextRequest } from 'next/server';
 import { z } from 'zod';
+import { LocaleSchema } from '@/server/application/dtos/locale_dto';
 import {
   getCreateWorkspaceUseCase,
   getListUserWorkspacesUseCase,
@@ -14,7 +15,7 @@ import { withAuth } from '@/server/http/with_auth';
 const CreateWorkspaceSchema = z.object({
   workspace_name: z.string().min(1, 'Workspace name is required').max(100),
   workspace_slug: z.string().min(2).max(48).optional(),
-  default_locale: z.string().optional(),
+  default_locale: LocaleSchema.optional(),
   timezone: z.string().optional(),
   logo_url: z.string().url().nullable().optional(),
 });

@@ -77,6 +77,7 @@ apps/web/
     __tests__/             unit tests, fakes/, contract/ (+ fixtures/), integration/, stubs/, architecture.test.ts
 packages/shared/           @sineva/shared: response envelope, snake_case helpers, pii/ (identifier detectors and mask)
 packages/ui/               @sineva/ui
+packages/i18n/             locale registry, message formatter, copy lint (path alias @sineva/i18n, not a workspace link)
 docs/                      see docs/README.md
 ```
 

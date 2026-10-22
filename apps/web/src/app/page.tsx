@@ -1,5 +1,6 @@
 import { redirect } from 'next/navigation';
 import { getListUserWorkspacesUseCase } from '@/server/container';
+import { getTranslations } from '@/i18n/server';
 import { getPageSession } from '@/server/http/page_session';
 
 export const dynamic = 'force-dynamic';
@@ -14,13 +15,12 @@ export default async function RootPage() {
   const memberships = await getListUserWorkspacesUseCase().execute({ user_id: session.user_id });
   const first = memberships[0];
   if (!first) {
+    const t = await getTranslations('workspace');
     return (
       <main className="flex min-h-dvh items-center justify-center p-6 text-center">
         <div className="max-w-sm">
-          <h1 className="text-lg font-semibold">You&apos;re not in a workspace yet</h1>
-          <p className="mt-2 text-sm text-fg-secondary">
-            Ask the owner of your business workspace to invite you, then sign in again.
-          </p>
+          <h1 className="text-lg font-semibold">{t('no_workspace.title')}</h1>
+          <p className="mt-2 text-sm text-fg-secondary">{t('no_workspace.body')}</p>
         </div>
       </main>
     );

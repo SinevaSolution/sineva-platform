@@ -2,6 +2,8 @@ import * as React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 import { MentionMenu } from '@/client/components/chat/mention_menu';
+import { I18nProvider } from '@/i18n/provider';
+import { CATALOGS } from '@/i18n/catalogs';
 
 const items = [
   { agent_slug: 'sinofinance', display_name: 'SinoFinance', role_title: 'Spend and invoices', short_description: '' },
@@ -10,9 +12,17 @@ const items = [
 
 const noop = () => {};
 
+const inLocale = (locale: 'en' | 'id', node: React.ReactNode) =>
+  renderToStaticMarkup(
+    <I18nProvider locale={locale} messages={CATALOGS[locale]}>
+      {node}
+    </I18nProvider>,
+  );
+
 describe('MentionMenu', () => {
   it('renders a listbox of options with stable ids and the active one selected', () => {
-    const html = renderToStaticMarkup(
+    const html = inLocale(
+      'en',
       <MentionMenu id="m" items={items} activeIndex={1} query="" onSelect={noop} onHover={noop} />,
     );
     expect(html).toContain('role="listbox"');
@@ -25,11 +35,21 @@ describe('MentionMenu', () => {
   });
 
   it('shows an empty state with the query when nothing matches', () => {
-    const html = renderToStaticMarkup(
+    const html = inLocale(
+      'en',
       <MentionMenu id="m" items={[]} activeIndex={0} query="zzz" onSelect={noop} onHover={noop} />,
     );
     expect(html).toContain('No specialist matches');
     expect(html).toContain('zzz');
     expect(html).not.toContain('role="option"');
+  });
+
+  it('speaks Indonesian when the locale is id', () => {
+    const html = inLocale(
+      'id',
+      <MentionMenu id="m" items={items} activeIndex={0} query="" onSelect={noop} onHover={noop} />,
+    );
+    expect(html).toContain('Panggil spesialis');
+    expect(html).not.toContain('Bring in a specialist');
   });
 });
