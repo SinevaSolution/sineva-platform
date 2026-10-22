@@ -32,7 +32,11 @@ export type PermissionKey =
   | 'preferences.manage_own'
   | 'model.view'
   | 'model.manage'
-  | 'model.manage_keys';
+  | 'model.manage_keys'
+  | 'inbox.view'
+  | 'approval.decide_own'
+  | 'approval.decide_any'
+  | 'inbox.answer';
 
 export type PermissionAccess = 'yes' | 'no' | 'limited';
 
@@ -47,7 +51,8 @@ export interface PermissionDefinition {
     | 'audit'
     | 'billing'
     | 'profile'
-    | 'model';
+    | 'model'
+    | 'inbox';
   description: string;
   roles: Record<UserRole, PermissionAccess>;
 }
@@ -88,6 +93,12 @@ export const C2_PERMISSION_MATRIX_FIXTURE: Record<
   'model.view': { owner: 'yes', admin: 'yes', member: 'no', viewer: 'no' },
   'model.manage': { owner: 'yes', admin: 'yes', member: 'no', viewer: 'no' },
   'model.manage_keys': { owner: 'yes', admin: 'no', member: 'no', viewer: 'no' },
+  // Viewer opens the Inbox but the use cases show only Done summaries without draft bodies.
+  'inbox.view': { owner: 'yes', admin: 'yes', member: 'yes', viewer: 'yes' },
+  // Member decides only items addressed to them; the use case checks the recipient.
+  'approval.decide_own': { owner: 'yes', admin: 'yes', member: 'yes', viewer: 'no' },
+  'approval.decide_any': { owner: 'yes', admin: 'yes', member: 'no', viewer: 'no' },
+  'inbox.answer': { owner: 'yes', admin: 'yes', member: 'yes', viewer: 'no' },
 };
 
 export const CANONICAL_PERMISSION_KEYS = Object.keys(
