@@ -14,6 +14,33 @@ import type { AuditEventRepository } from './domain/repositories/audit_event_rep
 import type { TransactionRunner } from './domain/transactions/transaction_runner';
 import type { EntitlementService } from './domain/entitlements/entitlements';
 import { logger } from './infrastructure/logging/logger';
+import { renderEmailTemplate } from './application/email/templates';
+import type { InvitationRepository } from './domain/repositories/invitation_repository';
+import type { OwnershipTransferRepository } from './domain/repositories/ownership_transfer_repository';
+import type { LinkTokenService, McpGrantRevoker, MemberAccountLookup, MemberSessionRevoker } from './domain/members/member_ports';
+import { PrismaInvitationRepository } from './infrastructure/database/prisma_invitation_repository';
+import { PrismaOwnershipTransferRepository } from './infrastructure/database/prisma_ownership_transfer_repository';
+import { PrismaMemberAccountLookup } from './infrastructure/database/prisma_member_account_lookup';
+import { PrismaMemberSessionRevoker } from './infrastructure/database/prisma_member_session_revoker';
+import { Sha256LinkTokenService } from './infrastructure/security/sha256_link_token_service';
+import { NoopMcpGrantRevoker } from './infrastructure/security/noop_mcp_grant_revoker';
+import { InviteMemberUseCase } from './application/use-cases/members/invite_member_use_case';
+import { ListInvitationsUseCase } from './application/use-cases/members/list_invitations_use_case';
+import { ResendInvitationUseCase } from './application/use-cases/members/resend_invitation_use_case';
+import { RevokeInvitationUseCase } from './application/use-cases/members/revoke_invitation_use_case';
+import { PreviewInvitationUseCase } from './application/use-cases/members/preview_invitation_use_case';
+import { AcceptInvitationUseCase } from './application/use-cases/members/accept_invitation_use_case';
+import { ListMembersUseCase } from './application/use-cases/members/list_members_use_case';
+import { GetMemberUseCase } from './application/use-cases/members/get_member_use_case';
+import { UpdateMemberUseCase } from './application/use-cases/members/update_member_use_case';
+import { SetMemberSpecialistsUseCase } from './application/use-cases/members/set_member_specialists_use_case';
+import { RemoveMemberUseCase } from './application/use-cases/members/remove_member_use_case';
+import { LeaveWorkspaceUseCase } from './application/use-cases/members/leave_workspace_use_case';
+import { RequestOwnershipTransferUseCase } from './application/use-cases/members/request_ownership_transfer_use_case';
+import { GetOwnershipTransferUseCase } from './application/use-cases/members/get_ownership_transfer_use_case';
+import { CancelOwnershipTransferUseCase } from './application/use-cases/members/cancel_ownership_transfer_use_case';
+import { PreviewOwnershipTransferUseCase } from './application/use-cases/members/preview_ownership_transfer_use_case';
+import { AcceptOwnershipTransferUseCase } from './application/use-cases/members/accept_ownership_transfer_use_case';
 import { PrismaAuditRepository } from './infrastructure/database/prisma_audit_repository';
 import { PrismaTransactionRunner } from './infrastructure/database/prisma_transaction_runner';
 import { RepositoryAuditLogger } from './application/audit/repository_audit_logger';
@@ -178,6 +205,9 @@ const getEmailSender = memoize<EmailSender>(() => {
       user: env.email_server_user,
       password: env.email_server_password,
       from: env.email_from ?? 'Sineva <noreply@sineva.id>',
+      // Without a renderer the sender falls back to a one-line placeholder body,
+      // so a real invitation would arrive with no link in it.
+      renderer: renderEmailTemplate,
     });
   }
   return new FakeEmailSender();
@@ -547,4 +577,190 @@ export const getIngestAuditEventUseCase = memoize(
 
 export const getRotateSigningKeyUseCase = memoize(
   () => new RotateSigningKeyUseCase(getSigningKeyRepository(), getAuditLogger(), getTransactionRunner()),
+);
+
+// Members, invitations and ownership transfer (ADR-0029).
+const getInvitationRepository = memoize<InvitationRepository>(
+  () => new PrismaInvitationRepository(getPrismaClient()),
+);
+const getOwnershipTransferRepository = memoize<OwnershipTransferRepository>(
+  () => new PrismaOwnershipTransferRepository(getPrismaClient()),
+);
+const getMemberAccountLookup = memoize<MemberAccountLookup>(
+  () => new PrismaMemberAccountLookup(getPrismaClient()),
+);
+const getMemberSessionRevoker = memoize<MemberSessionRevoker>(
+  () => new PrismaMemberSessionRevoker(getPrismaClient()),
+);
+// Replaced by the real revoker when the MCP server ships (M3).
+const getMcpGrantRevoker = memoize<McpGrantRevoker>(() => new NoopMcpGrantRevoker());
+const getLinkTokenService = memoize<LinkTokenService>(() => new Sha256LinkTokenService());
+const systemClock = (): Date => new Date();
+// The platform's view of which specialists exist (ADR-0024); the allowlist is
+// validated against it, so it works while sineva-ai is down.
+const knownSpecialistSlugs = (): readonly string[] => SPECIALIST_MANIFEST.map((entry) => entry.agent_slug);
+
+export const getInviteMemberUseCase = memoize(
+  () =>
+    new InviteMemberUseCase({
+      members: getWorkspaceMemberRepository(),
+      invitations: getInvitationRepository(),
+      accounts: getMemberAccountLookup(),
+      workspaces: getWorkspaceRepository(),
+      tokens: getLinkTokenService(),
+      email: getEmailSender(),
+      audit: getAuditLogger(),
+      entitlements: getEntitlementService(),
+      transactions: getTransactionRunner(),
+      clock: systemClock,
+      appUrl: getEnvConfig().next_public_app_url,
+      knownSpecialistSlugs: knownSpecialistSlugs(),
+    }),
+);
+export const getListInvitationsUseCase = memoize(
+  () => new ListInvitationsUseCase({ invitations: getInvitationRepository(), clock: systemClock }),
+);
+export const getResendInvitationUseCase = memoize(
+  () =>
+    new ResendInvitationUseCase({
+      invitations: getInvitationRepository(),
+      accounts: getMemberAccountLookup(),
+      workspaces: getWorkspaceRepository(),
+      tokens: getLinkTokenService(),
+      email: getEmailSender(),
+      audit: getAuditLogger(),
+      transactions: getTransactionRunner(),
+      clock: systemClock,
+      appUrl: getEnvConfig().next_public_app_url,
+    }),
+);
+export const getRevokeInvitationUseCase = memoize(
+  () =>
+    new RevokeInvitationUseCase({
+      invitations: getInvitationRepository(),
+      audit: getAuditLogger(),
+      transactions: getTransactionRunner(),
+      clock: systemClock,
+    }),
+);
+export const getPreviewInvitationUseCase = memoize(
+  () =>
+    new PreviewInvitationUseCase({
+      invitations: getInvitationRepository(),
+      accounts: getMemberAccountLookup(),
+      workspaces: getWorkspaceRepository(),
+      tokens: getLinkTokenService(),
+      clock: systemClock,
+    }),
+);
+export const getAcceptInvitationUseCase = memoize(
+  () =>
+    new AcceptInvitationUseCase({
+      members: getWorkspaceMemberRepository(),
+      invitations: getInvitationRepository(),
+      accounts: getMemberAccountLookup(),
+      workspaces: getWorkspaceRepository(),
+      tokens: getLinkTokenService(),
+      audit: getAuditLogger(),
+      entitlements: getEntitlementService(),
+      transactions: getTransactionRunner(),
+      clock: systemClock,
+    }),
+);
+export const getListMembersUseCase = memoize(
+  () => new ListMembersUseCase({ members: getWorkspaceMemberRepository() }),
+);
+export const getGetMemberUseCase = memoize(
+  () => new GetMemberUseCase({ members: getWorkspaceMemberRepository() }),
+);
+export const getUpdateMemberUseCase = memoize(
+  () =>
+    new UpdateMemberUseCase({
+      members: getWorkspaceMemberRepository(),
+      audit: getAuditLogger(),
+      transactions: getTransactionRunner(),
+      mcp: getMcpGrantRevoker(),
+      knownSpecialistSlugs: knownSpecialistSlugs(),
+    }),
+);
+export const getSetMemberSpecialistsUseCase = memoize(
+  () => new SetMemberSpecialistsUseCase(getUpdateMemberUseCase()),
+);
+export const getRemoveMemberUseCase = memoize(
+  () =>
+    new RemoveMemberUseCase({
+      members: getWorkspaceMemberRepository(),
+      audit: getAuditLogger(),
+      transactions: getTransactionRunner(),
+      sessions: getMemberSessionRevoker(),
+      mcp: getMcpGrantRevoker(),
+    }),
+);
+export const getLeaveWorkspaceUseCase = memoize(
+  () =>
+    new LeaveWorkspaceUseCase({
+      members: getWorkspaceMemberRepository(),
+      audit: getAuditLogger(),
+      transactions: getTransactionRunner(),
+      sessions: getMemberSessionRevoker(),
+      mcp: getMcpGrantRevoker(),
+    }),
+);
+export const getRequestOwnershipTransferUseCase = memoize(
+  () =>
+    new RequestOwnershipTransferUseCase({
+      members: getWorkspaceMemberRepository(),
+      transfers: getOwnershipTransferRepository(),
+      accounts: getMemberAccountLookup(),
+      workspaces: getWorkspaceRepository(),
+      tokens: getLinkTokenService(),
+      email: getEmailSender(),
+      audit: getAuditLogger(),
+      transactions: getTransactionRunner(),
+      clock: systemClock,
+      appUrl: getEnvConfig().next_public_app_url,
+    }),
+);
+export const getGetOwnershipTransferUseCase = memoize(
+  () =>
+    new GetOwnershipTransferUseCase({
+      members: getWorkspaceMemberRepository(),
+      transfers: getOwnershipTransferRepository(),
+      accounts: getMemberAccountLookup(),
+      clock: systemClock,
+    }),
+);
+export const getCancelOwnershipTransferUseCase = memoize(
+  () =>
+    new CancelOwnershipTransferUseCase({
+      members: getWorkspaceMemberRepository(),
+      transfers: getOwnershipTransferRepository(),
+      audit: getAuditLogger(),
+      transactions: getTransactionRunner(),
+      clock: systemClock,
+    }),
+);
+export const getPreviewOwnershipTransferUseCase = memoize(
+  () =>
+    new PreviewOwnershipTransferUseCase({
+      transfers: getOwnershipTransferRepository(),
+      accounts: getMemberAccountLookup(),
+      workspaces: getWorkspaceRepository(),
+      tokens: getLinkTokenService(),
+      clock: systemClock,
+    }),
+);
+export const getAcceptOwnershipTransferUseCase = memoize(
+  () =>
+    new AcceptOwnershipTransferUseCase({
+      members: getWorkspaceMemberRepository(),
+      transfers: getOwnershipTransferRepository(),
+      accounts: getMemberAccountLookup(),
+      workspaces: getWorkspaceRepository(),
+      tokens: getLinkTokenService(),
+      email: getEmailSender(),
+      audit: getAuditLogger(),
+      transactions: getTransactionRunner(),
+      clock: systemClock,
+    }),
 );
