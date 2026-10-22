@@ -465,7 +465,7 @@ model BusinessProfile {
   confirmed_at   DateTime? @db.Timestamptz(6)
   updated_by     String?   @db.Uuid
   created_at     DateTime  @default(now()) @db.Timestamptz(6)
-  updated_at     DateTime  @default(now()) @db.Timestamptz(6)
+  updated_at     DateTime  @default(now()) @updatedAt @db.Timestamptz(6)
 
   workspace Workspace @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
 
@@ -487,7 +487,7 @@ model BusinessOffering {
   source         String    @default("user") // user | scan
   confirmed_at   DateTime? @db.Timestamptz(6)
   created_at     DateTime  @default(now()) @db.Timestamptz(6)
-  updated_at     DateTime  @default(now()) @db.Timestamptz(6)
+  updated_at     DateTime  @default(now()) @updatedAt @db.Timestamptz(6)
 
   workspace Workspace @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
 
@@ -506,7 +506,7 @@ model BusinessPolicy {
   confirmed_at DateTime? @db.Timestamptz(6)
   updated_by   String?   @db.Uuid
   created_at   DateTime  @default(now()) @db.Timestamptz(6)
-  updated_at   DateTime  @default(now()) @db.Timestamptz(6)
+  updated_at   DateTime  @default(now()) @updatedAt @db.Timestamptz(6)
 
   workspace Workspace @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
 
@@ -549,7 +549,7 @@ model OnboardingState {
   started_at      DateTime  @default(now()) @db.Timestamptz(6)
   completed_at    DateTime? @db.Timestamptz(6)
   created_at      DateTime  @default(now()) @db.Timestamptz(6)
-  updated_at      DateTime  @default(now()) @db.Timestamptz(6)
+  updated_at      DateTime  @default(now()) @updatedAt @db.Timestamptz(6)
 
   workspace Workspace @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
   user      User      @relation(fields: [user_id], references: [id], onDelete: Cascade)
@@ -574,7 +574,7 @@ model ProfileScan {
   error_code   String?
   deleted_at   DateTime? @db.Timestamptz(6)
   created_at   DateTime  @default(now()) @db.Timestamptz(6)
-  updated_at   DateTime  @default(now()) @db.Timestamptz(6)
+  updated_at   DateTime  @default(now()) @updatedAt @db.Timestamptz(6)
   expires_at   DateTime  @db.Timestamptz(6)
 
   workspace Workspace @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
@@ -592,7 +592,7 @@ model WorkspaceChecklistState {
   source       String
   completed_at DateTime @default(now()) @db.Timestamptz(6)
   created_at   DateTime @default(now()) @db.Timestamptz(6)
-  updated_at   DateTime @default(now()) @db.Timestamptz(6)
+  updated_at   DateTime @default(now()) @updatedAt @db.Timestamptz(6)
 
   workspace Workspace @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
 

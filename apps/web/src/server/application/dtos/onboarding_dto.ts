@@ -124,3 +124,6 @@ export const ScanRequestSchema = z
 export type ScanRequestDto = z.infer<typeof ScanRequestSchema>;
 
 export const FirstTasksQuerySchema = z.object({ locale: z.enum(['id', 'en']).optional() }).strict();
+
+export const UuidParamSchema = z.string().uuid();
+export const TaskIdParamSchema = z.string().regex(/^[a-z0-9_]{1,64}$/);

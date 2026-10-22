@@ -1,0 +1,17 @@
+{
+  "success": true,
+  "status_code": 200,
+  "message": "Website scan finished without readable content.",
+  "data": {
+    "scan_id": "5b0f9a3e-2c4d-4e1a-8f6b-7d3c1a9e0b42",
+    "status": "failed",
+    "source_url": "https://tokokopinusantara.example/",
+    "final_url": null,
+    "fetched_pages": 0,
+    "site_language": null,
+    "fields": {},
+    "offers": [],
+    "policies": [],
+    "error_code": "login_required"
+  }
+}
