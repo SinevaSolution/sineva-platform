@@ -18,6 +18,7 @@ import {
   verifyOAuthState,
 } from '@/server/infrastructure/security/oauth_state_service';
 import { CountingAuditLogger } from '@/server/domain/audit/audit_logger';
+import * as envModule from '@/server/infrastructure/config/env';
 import { validateEnvConfig } from '@/server/infrastructure/config/env';
 import { sanitizeNextRedirect } from '@/server/domain/auth/safe_redirect';
 import { LinkAccountUseCase } from '@/server/application/use-cases/auth/link_account_use_case';
@@ -493,5 +494,31 @@ describe('redirect sanitizer', () => {
   );
   it('keeps a normal same-origin path with its query', () => {
     expect(sanitizeNextRedirect('/w/acme/settings/members?x=1', '/')).toBe('/w/acme/settings/members?x=1');
+  });
+});
+
+describe('redirects stay on the configured app address', () => {
+  // `next start` reports request.url with the host `localhost` even when the app
+  // is opened at 127.0.0.1. A redirect built from it leaves the host the session
+  // cookie was set for, so a successful provider sign-in looked signed out.
+  it('sends the person back to the app URL, not to the host the request reported', async () => {
+    vi.restoreAllMocks();
+    installHeaderSessionResolver();
+    const real = envModule.getEnvConfig();
+    vi.spyOn(envModule, 'getEnvConfig').mockReturnValue({
+      ...real,
+      next_public_app_url: 'http://127.0.0.1:3001',
+    });
+    vi.spyOn(container, 'handleOAuthCallback').mockResolvedValue({
+      sessionToken: 'tok',
+      targetPath: '/w/acme',
+    });
+    const res = await getOAuthCallback(
+      new NextRequest('http://localhost:3001/api/v1/auth/oauth/google/callback?code=c&state=s', {
+        headers: { cookie: 'sineva_oauth_state=x' },
+      }),
+      { params: Promise.resolve({ provider: 'google' }) },
+    );
+    expect(res.headers.get('location')).toBe('http://127.0.0.1:3001/w/acme');
   });
 });

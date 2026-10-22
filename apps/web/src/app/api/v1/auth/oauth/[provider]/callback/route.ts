@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { describeOAuthFailureTarget, handleOAuthCallback } from '@/server/container';
 import { setSessionCookie } from '@/server/http/auth_cookie_helper';
+import { appRedirectUrl } from '@/server/http/app_redirect';
 import { extractRequestId, handleRouteError } from '@/server/http/response_helper';
 import { resolveSession, withAuth } from '@/server/http/with_auth';
 import { sanitizeNextRedirect } from '@/proxy';
@@ -21,7 +22,7 @@ export const GET = withAuth(
       const resolvedParams = await Promise.resolve(params);
       const provider = resolvedParams?.provider?.toLowerCase();
       if (!provider) {
-        return NextResponse.redirect(new URL('/sign-in?error=missing_provider', request.url));
+        return NextResponse.redirect(appRedirectUrl('/sign-in?error=missing_provider'));
       }
 
       const searchParams = request.nextUrl.searchParams;
@@ -36,8 +37,8 @@ export const GET = withAuth(
         });
         const response = NextResponse.redirect(
           back
-            ? new URL(sanitizeNextRedirect(back, '/'), request.url)
-            : new URL(`/sign-in?error=${encodeURIComponent(errorParam)}`, request.url),
+            ? appRedirectUrl(sanitizeNextRedirect(back, '/'))
+            : appRedirectUrl(`/sign-in?error=${encodeURIComponent(errorParam)}`),
         );
         if (back) clearStateCookie(response);
         return response;
@@ -48,7 +49,7 @@ export const GET = withAuth(
 
       if (!code || !state) {
         return NextResponse.redirect(
-          new URL('/sign-in?error=missing_code_or_state', request.url),
+          appRedirectUrl('/sign-in?error=missing_code_or_state'),
         );
       }
 
@@ -74,7 +75,7 @@ export const GET = withAuth(
       });
 
       const safeRedirect = sanitizeNextRedirect(targetPath, '/');
-      const response = NextResponse.redirect(new URL(safeRedirect, request.url));
+      const response = NextResponse.redirect(appRedirectUrl(safeRedirect));
 
       // Link keeps the current session; sign-in and re-confirm hand back a token.
       if (sessionToken) setSessionCookie(response, sessionToken);
