@@ -4,6 +4,8 @@ import { Square } from 'lucide-react';
 import * as React from 'react';
 import { SNButton, snToast, SNTooltip } from '@sineva/ui';
 import { LibraryKnowsChip } from '@/client/components/library/library_knows_chip';
+import { RoomReconnectBanner } from '@/client/components/connections/connections_attention';
+import { SpecialistToolsButton } from '@/client/components/connections/specialist_tools';
 import { ConversationActions } from '@/client/components/conversation/conversation_actions';
 import { InlineTitleEdit } from '@/client/components/conversation/inline_title_edit';
 import { useConversationActions } from '@/client/components/conversation/use_conversation_actions';
@@ -331,6 +333,7 @@ export function ChatThread({
     );
 
   const header = (
+    <>
     <div className="flex items-center gap-2 px-4 pb-2 pt-3 sm:px-6">
       <SNSinoFigure pose={specialistPose(specialist?.agent_slug ?? 'sino')} size={34} />
       <div className="min-w-0">
@@ -353,13 +356,23 @@ export function ChatThread({
         )}
         <p className="text-xs text-text-inverse/65">{isTeam ? t('thread.subtitle_team') : t('thread.subtitle_private', { name: companionName })}</p>
       </div>
-      <div className="ms-auto hidden sm:block">
+      <div className="ms-auto flex items-center gap-2">
+        <div className="hidden sm:block">
         <LibraryKnowsChip
           workspaceSlug={workspaceSlug}
           knowledge={knowledge}
           agentSlug={isTeam ? null : (specialist?.agent_slug ?? null)}
           name={companionName}
         />
+        </div>
+        {specialist ? (
+          <SpecialistToolsButton
+            agentSlug={specialist.agent_slug}
+            specialistName={specialist.display_name}
+            workspaceId={workspaceId}
+            workspaceSlug={workspaceSlug}
+          />
+        ) : null}
       </div>
       {renaming ? null : (
         <ConversationActions
@@ -370,6 +383,8 @@ export function ChatThread({
         />
       )}
     </div>
+    <RoomReconnectBanner agentSlug={specialist?.agent_slug ?? null} workspaceSlug={workspaceSlug} />
+    </>
   );
 
   const footer = (

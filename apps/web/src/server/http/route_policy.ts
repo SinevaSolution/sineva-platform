@@ -332,6 +332,77 @@ export const MUTATING_ROUTE_POLICY: Record<string, MutatingRoutePolicy> = {
     effect: 'ingest',
     audit: ['approval.expired', 'input.expired'],
   },
+  'POST /api/v1/workspaces/{workspace_id}/connections/oauth/start': {
+    effect: 'change',
+    audit: ['connection.oauth_started'],
+    entitlement: ENTITLEMENT_KEYS.CONNECTIONS,
+  },
+  'GET /api/v1/connections/oauth/callback': {
+    effect: 'create',
+    audit: ['connection.created', 'connection.reconnected', 'connection.scope_downgraded'],
+    entitlement: 'none',
+    reason:
+      'The connection limit is checked when the flow starts; the callback only completes a flow that already passed that check.',
+  },
+  'POST /internal/v1/jobs/tick': {
+    effect: 'ingest',
+    audit: ['connection.token_refreshed', 'connection.refresh_failed', 'connection.needs_reconnect'],
+  },
+  'POST /api/internal/v1/jobs/tick': {
+    effect: 'ingest',
+    audit: ['connection.token_refreshed', 'connection.refresh_failed', 'connection.needs_reconnect'],
+  },
+  'POST /api/v1/workspaces/{workspace_id}/connections/secret': {
+    effect: 'create',
+    audit: ['connection.created', 'connection.secret_rotated'],
+    entitlement: ENTITLEMENT_KEYS.CONNECTIONS,
+  },
+  'POST /api/v1/workspaces/{workspace_id}/connections/{connection_id}/reconnect': {
+    effect: 'change',
+    audit: ['connection.oauth_started'],
+  },
+  'POST /api/v1/workspaces/{workspace_id}/connections/{connection_id}/test': {
+    effect: 'change',
+    audit: ['connection.needs_reconnect'],
+  },
+  'PUT /api/v1/workspaces/{workspace_id}/connections/{connection_id}/grants': {
+    effect: 'change',
+    audit: ['connection.grant_changed'],
+  },
+  'DELETE /api/v1/workspaces/{workspace_id}/connections/{connection_id}': {
+    effect: 'delete',
+    audit: ['connection.revoked'],
+  },
+  'POST /internal/v1/connections/mass-revoke': {
+    effect: 'ingest',
+    audit: ['connection.revoked'],
+  },
+  'POST /api/internal/v1/connections/mass-revoke': {
+    effect: 'ingest',
+    audit: ['connection.revoked'],
+  },
+  'POST /internal/v1/vault/rotate-keys': {
+    effect: 'ingest',
+    audit: 'none',
+    reason:
+      'Rewraps data keys under the current key and returns counts only; no workspace data changes, and the operator command is itself an infrastructure runbook step.',
+  },
+  'POST /api/internal/v1/vault/rotate-keys': {
+    effect: 'ingest',
+    audit: 'none',
+    reason: 'Alias of POST /internal/v1/vault/rotate-keys.',
+  },
+  'POST /internal/v1/connections/reconcile': {
+    effect: 'ingest',
+    audit: 'none',
+    reason:
+      'Only queues a sweep; the health jobs it creates write connection.needs_reconnect for every connection they mark.',
+  },
+  'POST /api/internal/v1/connections/reconcile': {
+    effect: 'ingest',
+    audit: 'none',
+    reason: 'Alias of POST /internal/v1/connections/reconcile.',
+  },
   'POST /api/v1/workspaces/{workspace_id}/library/uploads': {
     effect: 'create',
     audit: 'none',

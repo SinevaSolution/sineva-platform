@@ -18,6 +18,7 @@ export default defineConfig({
       // link to the main checkout. Pointing at the source keeps tests on the
       // code under review.
       '@sineva/i18n': resolve(import.meta.dirname, '../../packages/i18n/index.ts'),
+      '@sineva/shared': resolve(import.meta.dirname, '../../packages/shared/src/index.ts'),
       '@sineva/card-schemas': resolve(import.meta.dirname, '../../packages/card-schemas/src/index.ts'),
       '@sineva/ui/gallery': resolve(import.meta.dirname, '../../packages/ui/src/gallery.ts'),
       '@sineva/ui/cards': resolve(import.meta.dirname, '../../packages/ui/src/cards/index.ts'),

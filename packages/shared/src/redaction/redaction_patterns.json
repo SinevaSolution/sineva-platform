@@ -1,0 +1,212 @@
+{
+  "version": 1,
+  "description": "Credential shapes that must never reach a log, trace, error body, job log or a model reply (FR-CONN-17, FR-CONN-30, FR-SEC-10, FR-SEC-39). Data, not code: a change here needs a positive and a negative row in the same entry, and the tests walk every entry. Patterns are JavaScript regular expression sources; the flag g is always added. A positive row names the whole text and the credential inside it: masking must replace exactly that credential with the secret placeholder. Provenance: documented means the prefix or layout is in the provider's public documentation; recalled means it comes from memory and must be verified before it is relied on (OQ-CONN-8, OQ-MDL-10). The pattern list that the sineva-ai log writers use must be copied from this file byte for byte.",
+  "patterns": [
+    {
+      "id": "authorization_basic",
+      "description": "HTTP Basic credentials. Xendit and Midtrans send the API key as the Basic user name, so the header carries the key.",
+      "provenance": "documented",
+      "pattern": "\\bBasic\\s+[A-Za-z0-9+/]{16,}={0,2}",
+      "flags": "",
+      "positive": [
+        { "text": "Authorization: Basic eG5kX2RldmVsb3BtZW50X2NhbmFyeTo= end", "secret": "Basic eG5kX2RldmVsb3BtZW50X2NhbmFyeTo=" },
+        { "text": "headers={'Authorization': 'Basic U0ItTWlkLXNlcnZlci1jYW5hcnk6'}", "secret": "Basic U0ItTWlkLXNlcnZlci1jYW5hcnk6" }
+      ],
+      "negative": [
+        "Basic plan costs Rp 100.000 per bulan",
+        "Basic information about the shop",
+        "Paket Basic untuk toko kecil"
+      ]
+    },
+    {
+      "id": "telegram_token_in_url",
+      "description": "Telegram puts the access token in the URL path, so every access log and error that quotes a URL leaks it.",
+      "provenance": "documented",
+      "pattern": "(?<=/bot)\\d{6,12}:[A-Za-z0-9_-]{30,}",
+      "flags": "",
+      "positive": [
+        { "text": "POST https://api.telegram.org/bot123456789:AAHdqTcvCH1vGWJxfSeofSAs0K5PALDsaw/sendMessage", "secret": "123456789:AAHdqTcvCH1vGWJxfSeofSAs0K5PALDsaw" }
+      ],
+      "negative": [
+        "https://api.telegram.org/botfather",
+        "https://example.test/bots/123456789"
+      ]
+    },
+    {
+      "id": "oauth_code_param",
+      "description": "OAuth authorization code in a callback query string. Single use, but valid until used.",
+      "provenance": "documented",
+      "pattern": "(?<=[?&]code=)[A-Za-z0-9._~%/+-]{8,}",
+      "flags": "",
+      "positive": [
+        { "text": "GET /api/v1/connections/oauth/callback?code=4/0AX4XfWhCANARYcode123&state=short", "secret": "4/0AX4XfWhCANARYcode123" },
+        { "text": "redirect https://app.test/cb?x=1&code=abcdEFGH12345678", "secret": "abcdEFGH12345678" }
+      ],
+      "negative": [
+        "/callback?code=ID",
+        "https://shop.test/checkout?zipcode=12345678",
+        "kode pos 40115"
+      ]
+    },
+    {
+      "id": "oauth_state_param",
+      "description": "OAuth state value in a callback query string. It binds the flow to the browser, so it is credential-like.",
+      "provenance": "documented",
+      "pattern": "(?<=[?&]state=)[A-Za-z0-9._~%-]{12,}",
+      "flags": "",
+      "positive": [
+        { "text": "/callback?code=x&state=Zk3pQ9vLmN2xRt7WbYc4Hd8", "secret": "Zk3pQ9vLmN2xRt7WbYc4Hd8" }
+      ],
+      "negative": [
+        "/page?state=open",
+        "state of the art",
+        "?filter=state"
+      ]
+    },
+    {
+      "id": "token_field_value",
+      "description": "Token endpoint bodies and config dumps: the value after refresh_token, access_token, id_token, client_secret, code_verifier, api_key and similar names, in JSON, form or key=value text.",
+      "provenance": "documented",
+      "pattern": "(?<=\\b(?:refresh_token|access_token|id_token|client_secret|code_verifier|api_key|apikey|secret_key|private_key)[\"']?\\s*[:=]\\s*[\"']?)[A-Za-z0-9._~+/=-]{8,}",
+      "flags": "i",
+      "positive": [
+        { "text": "{\"refresh_token\":\"rt-CANARY-abcdef123456\",\"expires_in\":3600}", "secret": "rt-CANARY-abcdef123456" },
+        { "text": "grant_type=refresh_token&refresh_token=abc12345xyz&client_id=x", "secret": "abc12345xyz" },
+        { "text": "client_secret = 'GOCSPX-canarycanary'", "secret": "GOCSPX-canarycanary" },
+        { "text": "code_verifier: dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk", "secret": "dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk" }
+      ],
+      "negative": [
+        "{\"refresh_token\": null}",
+        "access_token_ttl=3600",
+        "the access_token field is required",
+        "api_key: short"
+      ]
+    },
+    {
+      "id": "google_access_token",
+      "description": "Google OAuth access token.",
+      "provenance": "documented",
+      "pattern": "\\bya29\\.[A-Za-z0-9_-]{20,}",
+      "flags": "",
+      "positive": [
+        { "text": "token ya29.a0AfH6SMBCANARYcanaryCANARY0123456789 ok", "secret": "ya29.a0AfH6SMBCANARYcanaryCANARY0123456789" }
+      ],
+      "negative": [
+        "version ya29.1 of the spec",
+        "ya29"
+      ]
+    },
+    {
+      "id": "google_refresh_token",
+      "description": "Google OAuth refresh token.",
+      "provenance": "recalled",
+      "pattern": "\\b1//0[A-Za-z0-9_-]{30,}",
+      "flags": "",
+      "positive": [
+        { "text": "stored 1//0gCANARYcanaryCANARY0123456789abcdef today", "secret": "1//0gCANARYcanaryCANARY0123456789abcdef" }
+      ],
+      "negative": [
+        "ratio 1//0 undefined",
+        "path 1//02/03"
+      ]
+    },
+    {
+      "id": "notion_token",
+      "description": "Notion integration and OAuth access tokens (legacy secret_ and current ntn_ prefixes).",
+      "provenance": "recalled",
+      "pattern": "\\b(?:secret|ntn)_[A-Za-z0-9]{30,}",
+      "flags": "",
+      "positive": [
+        { "text": "Notion-Version header and secret_CANARYcanaryCANARYcanaryCANARY0123456789ab", "secret": "secret_CANARYcanaryCANARYcanaryCANARY0123456789ab" },
+        { "text": "token=ntn_CANARYcanaryCANARYcanaryCANARY0123456789ab", "secret": "ntn_CANARYcanaryCANARYcanaryCANARY0123456789ab" }
+      ],
+      "negative": [
+        "secret_key_name",
+        "the secret_sauce recipe",
+        "ntn_short"
+      ]
+    },
+    {
+      "id": "xendit_secret_key",
+      "description": "Xendit secret API key.",
+      "provenance": "recalled",
+      "pattern": "\\bxnd_(?:development|production)_[A-Za-z0-9]{20,}",
+      "flags": "",
+      "positive": [
+        { "text": "key xnd_development_CANARYcanaryCANARY0123456789 saved", "secret": "xnd_development_CANARYcanaryCANARY0123456789" },
+        { "text": "XENDIT=xnd_production_CANARYcanaryCANARY0123456789", "secret": "xnd_production_CANARYcanaryCANARY0123456789" }
+      ],
+      "negative": [
+        "xnd_development_short",
+        "xnd_staging_CANARYcanaryCANARY0123456789"
+      ]
+    },
+    {
+      "id": "midtrans_server_key",
+      "description": "Midtrans server or client key (sandbox keys start with SB-).",
+      "provenance": "recalled",
+      "pattern": "\\b(?:SB-)?Mid-(?:server|client)-[A-Za-z0-9_-]{16,}",
+      "flags": "",
+      "positive": [
+        { "text": "server key SB-Mid-server-CANARYcanary0123456789ab", "secret": "SB-Mid-server-CANARYcanary0123456789ab" },
+        { "text": "Mid-client-CANARYcanary0123456789ab", "secret": "Mid-client-CANARYcanary0123456789ab" }
+      ],
+      "negative": [
+        "Mid-server-short",
+        "Mid-year review"
+      ]
+    },
+    {
+      "id": "groq_key",
+      "description": "Groq API key.",
+      "provenance": "recalled",
+      "pattern": "\\bgsk_[A-Za-z0-9]{20,}",
+      "flags": "",
+      "positive": [{ "text": "GROQ_API=gsk_CANARYcanaryCANARY0123456789", "secret": "gsk_CANARYcanaryCANARY0123456789" }],
+      "negative": ["gsk_short", "the gsk_ prefix"]
+    },
+    {
+      "id": "xai_key",
+      "description": "xAI API key.",
+      "provenance": "recalled",
+      "pattern": "\\bxai-[A-Za-z0-9]{20,}",
+      "flags": "",
+      "positive": [{ "text": "key=xai-CANARYcanaryCANARY0123456789", "secret": "xai-CANARYcanaryCANARY0123456789" }],
+      "negative": ["xai-short", "the xai-team"]
+    },
+    {
+      "id": "huggingface_token",
+      "description": "Hugging Face access token.",
+      "provenance": "recalled",
+      "pattern": "\\bhf_[A-Za-z0-9]{30,}",
+      "flags": "",
+      "positive": [{ "text": "HF=hf_CANARYcanaryCANARYcanaryCANARY0123", "secret": "hf_CANARYcanaryCANARYcanaryCANARY0123" }],
+      "negative": ["hf_short", "file hf_config.json"]
+    },
+    {
+      "id": "perplexity_key",
+      "description": "Perplexity API key.",
+      "provenance": "recalled",
+      "pattern": "\\bpplx-[A-Za-z0-9]{30,}",
+      "flags": "",
+      "positive": [{ "text": "PPLX=pplx-CANARYcanaryCANARYcanaryCANARY0123", "secret": "pplx-CANARYcanaryCANARYcanaryCANARY0123" }],
+      "negative": ["pplx-short", "pplx-team"]
+    },
+    {
+      "id": "webhook_signature_value",
+      "description": "HMAC signatures on webhook requests: the hex value after a signature header or field name, with or without the sha256= prefix.",
+      "provenance": "documented",
+      "pattern": "(?<=\\b(?:x-hub-signature-256|x-hub-signature|x-xendit-signature|x-callback-token|x-signature|signature)[\"']?\\s*[:=]\\s*[\"']?(?:sha256=)?)[A-Fa-f0-9]{32,}",
+      "flags": "i",
+      "positive": [
+        { "text": "X-Hub-Signature-256: sha256=0a1b2c3d4e5f60718293a4b5c6d7e8f90a1b2c3d4e5f60718293a4b5c6d7e8f9", "secret": "0a1b2c3d4e5f60718293a4b5c6d7e8f90a1b2c3d4e5f60718293a4b5c6d7e8f9" },
+        { "text": "{\"signature\":\"0a1b2c3d4e5f60718293a4b5c6d7e8f9\"}", "secret": "0a1b2c3d4e5f60718293a4b5c6d7e8f9" }
+      ],
+      "negative": [
+        "signature: pending",
+        "x-signature missing from request",
+        "tanda tangan: lihat dokumen"
+      ]
+    }
+  ]
+}

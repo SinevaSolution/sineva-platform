@@ -45,7 +45,7 @@ describe('SettingsHub', () => {
     expect(html).toContain('42% complete');
     expect(html).toContain('Email verified');
     expect(html).toContain('Usage &amp; plan');
-    expect((html.match(/>Soon</g) ?? []).length).toBe(5);
+    expect((html.match(/>Soon</g) ?? []).length).toBe(4); // usage, models, billing, security; Connected tools is live
     expect(html).not.toContain('/settings/usage');
     expect(html).not.toContain('Resume setup');
   });

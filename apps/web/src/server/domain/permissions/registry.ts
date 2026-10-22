@@ -50,7 +50,13 @@ export type PermissionKey =
   | 'inbox.view'
   | 'approval.decide_own'
   | 'approval.decide_any'
-  | 'inbox.answer';
+  | 'inbox.answer'
+  | 'connection.view'
+  | 'connection.connect_workspace'
+  | 'connection.connect_personal'
+  | 'connection.grant'
+  | 'connection.disconnect'
+  | 'connection.view_activity';
 
 export type PermissionAccess = 'yes' | 'no' | 'limited';
 
@@ -69,7 +75,8 @@ export interface PermissionDefinition {
     | 'business_profile'
     | 'onboarding'
     | 'model'
-    | 'inbox';
+    | 'inbox'
+    | 'connection';
   description: string;
   roles: Record<UserRole, PermissionAccess>;
 }
@@ -127,6 +134,14 @@ export const C2_PERMISSION_MATRIX_FIXTURE: Record<
   'approval.decide_own': { owner: 'yes', admin: 'yes', member: 'yes', viewer: 'no' },
   'approval.decide_any': { owner: 'yes', admin: 'yes', member: 'no', viewer: 'no' },
   'inbox.answer': { owner: 'yes', admin: 'yes', member: 'yes', viewer: 'no' },
+  // Connections (ADR-0039, PRD 08). `disconnect` is limited for a member: only their
+  // own personal connection, which the use case checks (`canManageConnection`).
+  'connection.view': { owner: 'yes', admin: 'yes', member: 'yes', viewer: 'yes' },
+  'connection.connect_workspace': { owner: 'yes', admin: 'yes', member: 'no', viewer: 'no' },
+  'connection.connect_personal': { owner: 'yes', admin: 'yes', member: 'yes', viewer: 'no' },
+  'connection.grant': { owner: 'yes', admin: 'yes', member: 'no', viewer: 'no' },
+  'connection.disconnect': { owner: 'yes', admin: 'yes', member: 'limited', viewer: 'no' },
+  'connection.view_activity': { owner: 'yes', admin: 'yes', member: 'no', viewer: 'no' },
 };
 
 export const CANONICAL_PERMISSION_KEYS = Object.keys(

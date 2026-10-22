@@ -1,5 +1,55 @@
 import 'server-only';
 import { randomBytes } from 'node:crypto';
+import type { JobQueue } from './domain/jobs/job_queue';
+import { PrismaJobQueue } from './infrastructure/database/prisma_job_queue';
+import { LoggerJobLog } from './infrastructure/logging/log_job_log';
+import { JobRunner } from './application/jobs/job_runner';
+import { TickJobsUseCase, type JobPlanner } from './application/jobs/tick_jobs_use_case';
+import { CredentialResolver } from './application/connections/credential_resolver';
+import { ConnectorRegistry } from './application/connections/connector_registry';
+import { ConnectionHealthService } from './application/connections/refresh/connection_health_service';
+import { ConnectionIncidentNotifier } from './application/connections/refresh/connection_incident_notifier';
+import { ConnectionStateService } from './application/connections/refresh/connection_state_service';
+import { HealthPlanner, RefreshPlanner, RotationReminderPlanner, registerConnectionJobs } from './application/connections/refresh/connection_jobs';
+import { ReconcileConnectionsUseCase } from './application/connections/refresh/reconcile_connections_use_case';
+import { EnqueueConnectionReconcileUseCase } from './application/connections/refresh/enqueue_connection_reconcile_use_case';
+import { RefreshConnectionTokenUseCase } from './application/connections/refresh/refresh_connection_token_use_case';
+import { ConnectionViewBuilder } from './application/connections/connection_view_builder';
+import {
+  GetConnectionUseCase,
+  ListConnectionActivityUseCase,
+  ListConnectionsUseCase,
+  ListProvidersUseCase,
+} from './application/connections/connection_queries';
+import { ReconnectConnectionUseCase, TestConnectionUseCase } from './application/connections/connection_actions';
+import {
+  ConnectionRevoker,
+  DisconnectConnectionUseCase,
+  MassRevokeConnectionsUseCase,
+} from './application/connections/disconnect_connection_use_case';
+import { SaveApiKeyConnectionUseCase } from './application/connections/save_api_key_connection_use_case';
+import { UpdateConnectionGrantsUseCase } from './application/connections/update_connection_grants_use_case';
+import { ApiKeyDriver } from './infrastructure/connectors/api_key_driver';
+import { StartOAuthFlowUseCase } from './application/connections/oauth/start_oauth_flow_use_case';
+import { HandleOAuthCallbackUseCase } from './application/connections/oauth/handle_oauth_callback_use_case';
+import type { ConnectionLog } from './domain/connections/connection_errors';
+import type { ConnectorDriverResolver } from './domain/connections/driver_resolver';
+import type { ConnectionGrantRepository } from './domain/repositories/connection_grant_repository';
+import type { OAuthFlowRepository } from './domain/repositories/oauth_flow_repository';
+import { EgressHttpClient } from './infrastructure/connectors/egress_http_client';
+import { ManifestDriverResolver } from './infrastructure/connectors/manifest_driver_resolver';
+import { PrismaConnectionGrantRepository } from './infrastructure/database/prisma_connection_grant_repository';
+import { PrismaOAuthFlowRepository } from './infrastructure/database/prisma_oauth_flow_repository';
+import { LoggerConnectionLog } from './infrastructure/logging/log_connection_log';
+import { PROVIDER_MANIFESTS } from './application/connections/manifests';
+import { specialistsDeclaring } from '@/shared/specialists/connection_providers';
+import type { ConnectionRepository } from './domain/repositories/connection_repository';
+import { VaultUnavailableError, type KmsPort, type SecretWriter } from './domain/vault/vault';
+import { PrismaConnectionRepository } from './infrastructure/database/prisma_connection_repository';
+import { PrismaVaultSecretRepository } from './infrastructure/database/prisma_vault_secret_repository';
+import { getVaultPrismaClient } from './infrastructure/database/prisma_client';
+import { CloudKmsStub, LocalKms } from './infrastructure/vault/local_kms';
+import { VaultService } from './infrastructure/vault/vault_service';
 import type { BusinessProfileRepository } from './domain/repositories/business_profile_repository';
 import type {
   ChecklistRepository,
@@ -1178,4 +1228,300 @@ export const getDismissFirstTaskUseCase = memoize(
 // an accepted invitation); no route exposes it.
 export const getRecordChecklistEventUseCase = memoize(
   () => new RecordChecklistEventUseCase({ checklist: getChecklistRepository() }),
+);
+
+// ---------------------------------------------------------------------------
+// Connections and the credential vault (ADR-0036, ADR-0037, ADR-0039)
+// ---------------------------------------------------------------------------
+
+export const getConnectionRepository = memoize<ConnectionRepository>(
+  () => new PrismaConnectionRepository(getPrismaClient()),
+);
+
+// The provider catalog: manifests are code, availability is the environment. A
+// provider that signs in with OAuth is available only when both of its app
+// credentials are set; an API-key provider needs none (the key is pasted).
+export const getConnectorRegistry = memoize(
+  () =>
+    new ConnectorRegistry(PROVIDER_MANIFESTS, {
+      credentialsAvailable: (manifest) => {
+        if (!manifest.oauth) return true;
+        const env = getEnvConfig() as unknown as Record<string, string | undefined>;
+        return Boolean(env[manifest.oauth.credential_keys.client_id] && env[manifest.oauth.credential_keys.client_secret]);
+      },
+      specialistsFor: specialistsDeclaring,
+    }),
+);
+
+const envValue = (key: string): string | undefined =>
+  (getEnvConfig() as unknown as Record<string, string | undefined>)[key];
+
+// Every provider call goes through this client: allowlist, no redirects, time and size caps.
+const getConnectorHttpClient = memoize(
+  () => new EgressHttpClient({ isAllowed: (providerId, url) => getConnectorRegistry().isEgressAllowed(providerId, url) }),
+);
+
+export const getConnectorDriverResolver = memoize<ConnectorDriverResolver>(
+  () =>
+    new ManifestDriverResolver({
+      manifests: PROVIDER_MANIFESTS,
+      http: getConnectorHttpClient(),
+      oauthCredentials: (manifest) => {
+        const keys = manifest.oauth?.credential_keys;
+        const client_id = keys && envValue(keys.client_id);
+        const client_secret = keys && envValue(keys.client_secret);
+        return client_id && client_secret ? { client_id, client_secret } : null;
+      },
+      apiKeyDriver: (manifest, http) => new ApiKeyDriver(manifest, http),
+    }),
+);
+
+export const getConnectionLog = memoize<ConnectionLog>(() => new LoggerConnectionLog());
+export const getOAuthFlowRepository = memoize<OAuthFlowRepository>(() => new PrismaOAuthFlowRepository(getPrismaClient()));
+export const getConnectionGrantRepository = memoize<ConnectionGrantRepository>(
+  () => new PrismaConnectionGrantRepository(getPrismaClient()),
+);
+
+// The exact redirect URI registered with every provider in this environment (no wildcards).
+const oauthRedirectUri = () => `${getEnvConfig().next_public_app_url.replace(/\/+$/, '')}/api/v1/connections/oauth/callback`;
+
+export const getStartOAuthFlowUseCase = memoize(
+  () =>
+    new StartOAuthFlowUseCase({
+      registry: getConnectorRegistry(),
+      drivers: getConnectorDriverResolver(),
+      flows: getOAuthFlowRepository(),
+      connections: getConnectionRepository(),
+      secrets: getSecretWriter(),
+      workspaces: getWorkspaceRepository(),
+      audit: getAuditLogger(),
+      entitlements: getEntitlementService(),
+      redirectUri: oauthRedirectUri(),
+      clientIdFor: (providerId) => {
+        const keys = getConnectorRegistry().provider(providerId)?.oauth?.credential_keys;
+        return (keys && envValue(keys.client_id)) ?? '';
+      },
+    }),
+);
+
+export const getHandleOAuthCallbackUseCase = memoize(
+  () =>
+    new HandleOAuthCallbackUseCase({
+      registry: getConnectorRegistry(),
+      drivers: getConnectorDriverResolver(),
+      flows: getOAuthFlowRepository(),
+      connections: getConnectionRepository(),
+      grants: getConnectionGrantRepository(),
+      secrets: getSecretWriter(),
+      resolver: getCredentialResolver(),
+      members: getWorkspaceMemberRepository(),
+      audit: getAuditLogger(),
+      transactions: getTransactionRunner(),
+      log: getConnectionLog(),
+    }),
+);
+
+const getConnectionIncidentNotifier = memoize(
+  () =>
+    new ConnectionIncidentNotifier({
+      inbox: getCreateInboxItemUseCase(),
+      accounts: getMemberAccountLookup(),
+      email: getEmailSender(),
+      workspaces: getWorkspaceRepository(),
+      registry: getConnectorRegistry(),
+      appUrl: getEnvConfig().next_public_app_url,
+      log: getConnectionLog(),
+    }),
+);
+const getConnectionStateService = memoize(
+  () =>
+    new ConnectionStateService({
+      connections: getConnectionRepository(),
+      audit: getAuditLogger(),
+      transactions: getTransactionRunner(),
+      incidents: getConnectionIncidentNotifier(),
+    }),
+);
+export const getRefreshConnectionTokenUseCase = memoize(
+  () =>
+    new RefreshConnectionTokenUseCase({
+      connections: getConnectionRepository(),
+      resolver: getCredentialResolver(),
+      secrets: getSecretWriter(),
+      drivers: getConnectorDriverResolver(),
+      audit: getAuditLogger(),
+      transactions: getTransactionRunner(),
+      state: getConnectionStateService(),
+      log: getConnectionLog(),
+    }),
+);
+export const getConnectionHealthService = memoize(
+  () =>
+    new ConnectionHealthService({
+      connections: getConnectionRepository(),
+      resolver: getCredentialResolver(),
+      drivers: getConnectorDriverResolver(),
+      refresh: getRefreshConnectionTokenUseCase(),
+      state: getConnectionStateService(),
+      log: getConnectionLog(),
+    }),
+);
+export const getReconcileConnectionsUseCase = memoize(
+  () => new ReconcileConnectionsUseCase({ connections: getConnectionRepository(), queue: getJobQueue(), log: getConnectionLog() }),
+);
+
+export const getEnqueueConnectionReconcileUseCase = memoize(
+  () => new EnqueueConnectionReconcileUseCase({ queue: getJobQueue() }),
+);
+
+// The Connections API (WP-M2-17). Specialist slugs come from the roster manifest, so the
+// access matrix has one row per specialist and a new specialist appears with no migration.
+const connectionSpecialistSlugs = () => SPECIALIST_MANIFEST.map((entry) => entry.agent_slug);
+const getConnectionViewBuilder = memoize(
+  () =>
+    new ConnectionViewBuilder({
+      registry: getConnectorRegistry(),
+      grants: getConnectionGrantRepository(),
+      specialistSlugs: connectionSpecialistSlugs(),
+    }),
+);
+const getConnectionRevoker = memoize(
+  () =>
+    new ConnectionRevoker({
+      connections: getConnectionRepository(),
+      grants: getConnectionGrantRepository(),
+      resolver: getCredentialResolver(),
+      secrets: getSecretWriter(),
+      drivers: getConnectorDriverResolver(),
+      audit: getAuditLogger(),
+      transactions: getTransactionRunner(),
+      log: getConnectionLog(),
+    }),
+);
+export const getListProvidersUseCase = memoize(
+  () => new ListProvidersUseCase({ registry: getConnectorRegistry(), builder: getConnectionViewBuilder() }),
+);
+export const getListConnectionsUseCase = memoize(
+  () => new ListConnectionsUseCase({ connections: getConnectionRepository(), builder: getConnectionViewBuilder() }),
+);
+export const getGetConnectionUseCase = memoize(
+  () => new GetConnectionUseCase({ connections: getConnectionRepository(), builder: getConnectionViewBuilder() }),
+);
+export const getListConnectionActivityUseCase = memoize(
+  () => new ListConnectionActivityUseCase({ connections: getConnectionRepository(), audit: getAuditEventRepository() }),
+);
+export const getSaveApiKeyConnectionUseCase = memoize(
+  () =>
+    new SaveApiKeyConnectionUseCase({
+      registry: getConnectorRegistry(),
+      drivers: getConnectorDriverResolver(),
+      connections: getConnectionRepository(),
+      grants: getConnectionGrantRepository(),
+      secrets: getSecretWriter(),
+      audit: getAuditLogger(),
+      transactions: getTransactionRunner(),
+      entitlements: getEntitlementService(),
+      builder: getConnectionViewBuilder(),
+    }),
+);
+export const getUpdateConnectionGrantsUseCase = memoize(
+  () =>
+    new UpdateConnectionGrantsUseCase({
+      registry: getConnectorRegistry(),
+      connections: getConnectionRepository(),
+      grants: getConnectionGrantRepository(),
+      audit: getAuditLogger(),
+      transactions: getTransactionRunner(),
+      builder: getConnectionViewBuilder(),
+      specialistSlugs: connectionSpecialistSlugs(),
+    }),
+);
+export const getDisconnectConnectionUseCase = memoize(
+  () => new DisconnectConnectionUseCase({ connections: getConnectionRepository(), revoker: getConnectionRevoker() }),
+);
+export const getMassRevokeConnectionsUseCase = memoize(
+  () =>
+    new MassRevokeConnectionsUseCase({
+      connections: getConnectionRepository(),
+      revoker: getConnectionRevoker(),
+      registry: getConnectorRegistry(),
+    }),
+);
+export const getTestConnectionUseCase = memoize(
+  () => new TestConnectionUseCase({ connections: getConnectionRepository(), health: getConnectionHealthService() }),
+);
+export const getReconnectConnectionUseCase = memoize(
+  () => new ReconnectConnectionUseCase({ connections: getConnectionRepository(), start: getStartOAuthFlowUseCase() }),
+);
+
+// Resolved on first use, so a missing key fails the first connection call with a
+// typed 503 instead of failing the whole app at boot.
+const getKms = memoize<KmsPort>(() => {
+  const env = getEnvConfig();
+  if ((env.vault_kms_provider ?? 'local') === 'cloud') {
+    return new CloudKmsStub();
+  }
+  if (!env.vault_local_kek) {
+    throw new VaultUnavailableError('VAULT_LOCAL_KEK is not set');
+  }
+  return new LocalKms({
+    current: env.vault_local_kek,
+    previous: env.vault_local_kek_previous,
+    production: env.node_env === 'production',
+  });
+});
+
+// One vault object, held privately: the container hands out its write half
+// (`getSecretWriter`) and builds the read half into the credential resolver
+// only, so no other module can obtain a `SecretReader` (vault_access.test.ts).
+const getVaultService = memoize(
+  () => new VaultService(new PrismaVaultSecretRepository(getVaultPrismaClient()), getKms()),
+);
+export const getSecretWriter = memoize<SecretWriter>(() => getVaultService());
+// Rotation rewraps data keys and decrypts nothing, so it can be handed out on its own.
+export const getVaultKeyRotation = memoize(() => ({ rotate: (limit: number) => getVaultService().rotateKeys(limit) }));
+export const getCredentialResolver = memoize(
+  () => new CredentialResolver({ connections: getConnectionRepository(), secrets: getVaultService() }),
+);
+
+// ---------------------------------------------------------------------------
+// Durable jobs (ADR-0038)
+// ---------------------------------------------------------------------------
+
+export const getJobQueue = memoize<JobQueue>(() => new PrismaJobQueue(getPrismaClient()));
+const getJobLog = memoize(() => new LoggerJobLog());
+
+// One id per process: it names the lease holder, so two instances never
+// complete each other's jobs. Random rather than the hostname because a
+// restarted container must not inherit leases of its previous life.
+const jobWorkerId = `web-${process.pid}-${randomBytes(4).toString('hex')}`;
+
+export const getJobRunner = memoize(() => {
+  const runner = new JobRunner({ queue: getJobQueue(), log: getJobLog(), workerId: jobWorkerId });
+  registerConnectionJobs(runner, {
+    refresh: getRefreshConnectionTokenUseCase(),
+    health: getConnectionHealthService(),
+    reconcile: getReconcileConnectionsUseCase(),
+    incidents: getConnectionIncidentNotifier(),
+    connections: getConnectionRepository(),
+    queue: getJobQueue(),
+  });
+  return runner;
+});
+
+// Planners enqueue what is due; each must be idempotent because a tick can run twice.
+const getJobPlanners = memoize<readonly JobPlanner[]>(() => [
+  new RefreshPlanner({ connections: getConnectionRepository(), queue: getJobQueue() }),
+  new HealthPlanner({ connections: getConnectionRepository(), queue: getJobQueue() }),
+  new RotationReminderPlanner({ connections: getConnectionRepository(), queue: getJobQueue() }),
+]);
+
+export const getTickJobsUseCase = memoize(
+  () =>
+    new TickJobsUseCase({
+      queue: getJobQueue(),
+      runner: getJobRunner(),
+      planners: getJobPlanners(),
+      log: getJobLog(),
+    }),
 );

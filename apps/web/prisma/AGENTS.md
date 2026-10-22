@@ -35,6 +35,12 @@ Print the host and database name of `DATABASE_URL`. If it is not a local throwaw
 
 Why the URL differs: with a plain URL, Prisma puts `_prisma_migrations` in `public`. With `?schema=platform` it goes to `platform`, but `migrate dev` then writes SQL without schema prefixes. So `migrate dev` uses the plain URL on a throwaway DB, and `migrate deploy` on a shared DB uses `?schema=platform`. Deploying with the wrong form fails with P3005 or splits the history across two schemas.
 
+## Vault table and database roles
+
+`platform.vault_secrets` holds envelope-encrypted credentials (ADR-0036). Production keeps it out of reach of the application role: `ops/vault_roles.sql` revokes the app role and grants a separate vault role, and the app reaches the table only through `VAULT_DATABASE_URL`. That script is an operator step, never a migration (roles are cluster objects and migrations also run on developer databases); do not run it on the local development database, and never add `CREATE ROLE` or `GRANT` to a migration (`vault_access.test.ts` fails on it). Re-run it after any migration that touches the table. Only `prisma_vault_secret_repository.ts` may mention the table or `vaultSecret`. `integration/vault_roles.int.test.ts` proves the separation on a disposable cluster and runs only with `ALLOW_ROLE_DDL=true`.
+
+Partial and expression unique indexes (`jobs_one_running_per_key_idx`, `connections_active_account_idx`) are written by hand in the migration SQL because Prisma schema syntax cannot express them; a later `migrate diff` will not list them as drift, but never drop them to silence a diff.
+
 ## Seed
 
 `seed.ts` is idempotent: it upserts development tenants, users and memberships by natural key. It seeds no specialists: the roster is sineva-ai's catalog presented through the static manifest in `src/shared/specialists/manifest.ts` (ADR-0024), and the old `agent_configs` table is dropped. Keep new seed data keyed by a natural unique column. It runs outside Next.js and must not import `prisma_client.ts` (`server-only`).

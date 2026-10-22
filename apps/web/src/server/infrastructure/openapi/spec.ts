@@ -2,6 +2,7 @@ import 'server-only';
 import { businessProfilePaths } from './business_profile_paths';
 import { membersPaths } from './members_paths';
 import { getInboxPaths } from './inbox_paths';
+import { getConnectionsPaths } from './connections_paths';
 import { LIBRARY_COMPONENT_SCHEMAS, libraryOpenApiPaths } from './library_paths';
 
 // Response object of the standard envelope, for the profile family below.
@@ -99,6 +100,11 @@ export function getOpenApiSpec(): Record<string, unknown> {
           'Sino Library: documents, folders, scopes, uploads, quotas and retrieval tests (ADR-0030)',
       },
       {
+        name: 'Connections',
+        description:
+          'Connected tools: provider catalog, OAuth and pasted-key connections, the access matrix, disconnect (ADR-0036 to ADR-0039)',
+      },
+      {
         name: 'Internal',
         description: 'Internal service-to-service endpoints guarded by X-Internal-Api-Key',
       },
@@ -106,6 +112,7 @@ export function getOpenApiSpec(): Record<string, unknown> {
     paths: {
       ...membersPaths(),
       ...getInboxPaths(),
+      ...getConnectionsPaths(),
       ...libraryOpenApiPaths(),
       ...businessProfilePaths(),
       '/api/internal/v1/keys': {

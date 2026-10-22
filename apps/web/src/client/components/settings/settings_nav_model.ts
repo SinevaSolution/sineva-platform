@@ -118,7 +118,9 @@ export function buildSettingsNav(workspaceSlug: string, role: string): SettingsN
       items: [
         live('business'),
         live('members'),
-        ...(manager ? [soon('usage'), soon('tools'), soon('models'), soon('billing'), soon('security')] : []),
+        // Connected tools has its own section outside /settings (WP-M2-18).
+        item('tools', 'workspace', `/w/${workspaceSlug}/tools`),
+        ...(manager ? [soon('usage'), soon('models'), soon('billing'), soon('security')] : []),
       ],
     },
   ];
