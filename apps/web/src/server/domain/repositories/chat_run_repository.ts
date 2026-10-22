@@ -41,6 +41,9 @@ export interface ChatRunRepository {
 
   setAssistantMessage(id: string, assistantMessageId: string): Promise<void>;
 
+  /** Every run of a conversation, oldest first. */
+  listByConversation(conversationId: string): Promise<ChatRunEntity[]>;
+
   /** The sineva-ai session of the conversation's latest run that has one. */
   findLatestSessionId(conversationId: string): Promise<string | null>;
 }

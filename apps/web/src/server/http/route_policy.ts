@@ -82,6 +82,18 @@ export const MUTATING_ROUTE_POLICY: Record<string, MutatingRoutePolicy> = {
     entitlement: 'none',
     reason: 'Conversations are not plan-gated; the entitlement list has no conversation key and usage is metered per reply from M1.',
   },
+  'PATCH /api/v1/workspaces/{workspace_id}/conversations/{conversation_id}': {
+    effect: 'change',
+    audit: ['conversation.renamed'],
+    entitlement: 'none',
+    reason: 'Renaming your own chat spends nothing, so no plan limit applies.',
+  },
+  'DELETE /api/v1/workspaces/{workspace_id}/conversations/{conversation_id}': {
+    effect: 'delete',
+    audit: ['conversation.deleted'],
+    entitlement: 'none',
+    reason: 'Deleting your own chat spends nothing, so no plan limit applies.',
+  },
   'POST /api/v1/workspaces/{workspace_id}/conversations/{conversation_id}/messages': {
     effect: 'run',
     audit: 'none',

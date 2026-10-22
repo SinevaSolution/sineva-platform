@@ -11,6 +11,7 @@ import type {
   ListMessagesFilter,
   MessageRepository,
 } from '@/server/domain/repositories/message_repository';
+import { activeClient } from './prisma_transaction_runner';
 import type { InputJsonValue } from '@/server/infrastructure/database/generated/internal/prismaNamespace';
 
 function mapMessage(row: {
@@ -85,6 +86,12 @@ export class PrismaMessageRepository implements MessageRepository {
       orderBy: { created_at: 'asc' },
     });
     return row ? mapMessage(row) : null;
+  }
+
+  async countByConversation(conversationId: string): Promise<number> {
+    // Reads through the active client so a count taken inside a transaction
+    // sees the same rows the transaction is about to delete.
+    return activeClient(this.prisma).message.count({ where: { conversation_id: conversationId } });
   }
 
   async listByConversation(filter: ListMessagesFilter): Promise<{
