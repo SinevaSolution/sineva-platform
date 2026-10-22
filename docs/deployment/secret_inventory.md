@@ -18,7 +18,7 @@ related_docs:
 
 Per **FR-SEC-39**, every secret, API key, and cryptographic token in Sineva Platform is tracked in this inventory with its owner, required rotation schedule, and operational runbook.
 
-In production environments, missing secrets or credentials matching known development defaults fail fast at application startup (WP-M0-09, `SEC-4`).
+In production, a missing or blank secret, or one that matches a known development value, stops startup (`SEC-4`). Development and tests read their values from `.env.example`; the code carries no credential default.
 
 ## Secret Inventory Table
 
@@ -27,7 +27,7 @@ In production environments, missing secrets or credentials matching known develo
 | `DATABASE_URL` (password component) | PostgreSQL connection authentication for `platform` schema | Server-only (`env.ts`, Docker/K8s secrets) | Platform Infra | 90 days | Zero downtime via dual-user switch in Postgres | Rotate database user password, update secret store, trigger rolling deployment |
 | `S3_SECRET_ACCESS_KEY` | SeaweedFS S3 API authentication for presigned URLs & asset storage | Server-only (`env.ts`, Docker/K8s secrets) | Platform Infra | 90 days | Dual-key rotation in SeaweedFS | Generate second S3 key pair in SeaweedFS, update environment, revoke previous key |
 | `AI_ENGINE_INTERNAL_API_KEY` | Shared symmetric service authentication token between BFF and `sineva-ai` (`X-Internal-Api-Key`) | Server-only (`env.ts`, `settings.py`) | Platform Infra & AI Runtime | 30 days | Dual-key support via `AI_ENGINE_INTERNAL_API_KEY_NEXT` | Set `..._NEXT` on both services, switch primary key, deploy, remove old key |
-| `AUTH_SECRET` | Session cookie signing, CSRF token encryption, and authentication state integrity | Server-only (Better Auth / `env.ts`) | Platform Security | 90 days | Sliding session re-authentication | Rotate secret in secret manager during maintenance window; invalidates older idle sessions |
+| `AUTH_SECRET` | Signs access tokens and authentication state | Server-only (`env.ts`, custom JWT auth) | Platform Security | 90 days | Sliding session re-authentication | Rotate secret in secret manager during maintenance window; invalidates older idle sessions |
 | `INTERNAL_CONTEXT_SIGNING_KEY` | Private Ed25519 key used to mint signed context JWS tokens for cross-service calls | Server-only (`env.ts`) | Platform Security | 60 days | Key ID (`kid`) rotation with 2 active public keys in `sineva-ai` | Generate new Ed25519 key pair, add public key to `sineva-ai` with `kid=k2`, point platform to `k2`, rotate `k1` out |
 
 ## Rotation Rules

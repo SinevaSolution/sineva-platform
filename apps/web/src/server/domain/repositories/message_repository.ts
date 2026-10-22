@@ -30,6 +30,11 @@ export interface MessageRepository {
     conversationId: string,
     clientMessageId: string,
   ): Promise<MessageEntity | null>;
+  /**
+   * The user message a run handle was allocated for (D-M0-3). Assistant
+   * messages store the same handle, so the role filter matters.
+   */
+  findUserMessageByRunId(runId: string): Promise<MessageEntity | null>;
   listByConversation(filter: ListMessagesFilter): Promise<{
     items: MessageEntity[];
     next_cursor: string | null;

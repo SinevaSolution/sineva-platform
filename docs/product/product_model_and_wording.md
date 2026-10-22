@@ -28,7 +28,7 @@ related_docs:
 - "Agent" stays in code, route paths, JSON keys, OpenAPI and developer docs. It never appears in text a customer reads.
 - The guardrails are product limits, not UI hints. The platform proxies chat and has no write tools, so it does not enforce them today. Whether `sineva-ai` enforces them was not verified.
 - The R-36 check (`@Sino[A-Za-z]+,`) also matches comma-separated lists of handles. Read each hit before calling it a violation.
-- The platform UI ships in English and Indonesian from message catalogs (`apps/web/messages`, [ADR-0022](../decisions/0022-locale-preference-and-i18n-architecture.md)). The wording rules in this file are enforced by a copy lint in `npm run test`.
+- The platform UI ships in English and Indonesian from message catalogs (`apps/web/messages`, [ADR-0023](../decisions/0023-locale-preference-and-i18n-architecture.md)). The wording rules in this file are enforced by a copy lint in `npm run test`.
 
 ## One chat
 

@@ -1,3 +1,4 @@
+import { installHeaderSessionResolver } from './fakes/header_session_resolver';
 import { NextRequest } from 'next/server';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { GET as getOAuthInitiate } from '@/app/api/v1/auth/oauth/[provider]/route';
@@ -10,6 +11,8 @@ import { setCustomSessionResolver } from '@/server/http/with_auth';
 import type { OAuthSignInUseCase } from '@/server/application/use-cases/auth/oauth_sign_in_use_case';
 import type { ListUserAccountsUseCase } from '@/server/application/use-cases/auth/list_user_accounts_use_case';
 import type { UnlinkAccountUseCase } from '@/server/application/use-cases/auth/unlink_account_use_case';
+
+installHeaderSessionResolver();
 
 describe('OAuth API Routes (WP-M0-25)', () => {
   let fakeGoogleProvider: FakeOAuthProvider;
@@ -64,7 +67,7 @@ describe('OAuth API Routes (WP-M0-25)', () => {
       fakeUnlinkAccountUseCase as unknown as UnlinkAccountUseCase,
     );
 
-    setCustomSessionResolver(null);
+    installHeaderSessionResolver();
   });
 
   it('GET /api/v1/auth/oauth/[provider] sets state cookie and redirects to authorization URL', async () => {

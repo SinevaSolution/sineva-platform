@@ -13,12 +13,12 @@ related_docs:
   - "../design-context/copywriting_and_brand.md"
   - "../product/product_model_and_wording.md"
   - "../../docs/implementation-plan/M0-foundations.md"
-adr_id: "0022"
+adr_id: "0023"
 decision_status: "accepted"
 supersedes: []
 ---
 
-# 0022 Locale Preference and i18n Architecture
+# 0023 Locale Preference and i18n Architecture
 
 Accepted on the Founder's delegation, using the implementation plan's recommended option (ADR-P-06), with one stated deviation in the library choice (see Decision, point 6).
 

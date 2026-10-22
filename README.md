@@ -165,7 +165,7 @@ Never run `prisma migrate reset` or `prisma db push` against this database, and 
 If an existing database was seeded earlier with the old `sino-*` slugs, re-seeding adds the canonical rows and leaves the old ones. Remove or rename them by hand ([ADR-0012](docs/decisions/0012-canonical-product-slugs-and-guardrails.md)).
 
 ### Option A: Run Local Development Server (UI and BFF iteration)
-Needs Postgres from the step above. The agent registry is read from Postgres, so a missing database fails the request. The Redis cache is still an in-memory stub and the S3 presign returns an unsigned URL when signing fails (known debt, [ADR-0008](docs/decisions/0008-no-silent-fallbacks.md)), so a green page here does not prove Redis or SeaweedFS work. `sineva-ai` has no host port, so chat returns `503` in this mode. Use Option B to exercise chat.
+Needs Postgres from the step above. The agent registry is read from Postgres, so a missing database fails the request. Redis and S3 are real dependencies: `GET /api/v1/health` probes them (`PING`, `HeadBucket`) and answers 503 when one is down, and a presign signing failure is a 502, never an unsigned URL ([ADR-0008](docs/decisions/0008-no-silent-fallbacks.md)). `sineva-ai` has no host port, so chat returns `503` in this mode. Use Option B to exercise chat.
 
 ```bash
 npm run dev
@@ -194,7 +194,7 @@ To stop the stack and keep data:
 docker compose down
 ```
 
-`npm run docker:down` runs `docker compose down -v`, which also deletes the volumes, including the Postgres data shared with `sineva-ai`.
+`npm run docker:down` is a plain `docker compose down` and keeps the volumes. `npm run docker:reset` also deletes them, including the Postgres data shared with `sineva-ai`, and only runs with `CONFIRM_RESET=yes`.
 
 ---
 

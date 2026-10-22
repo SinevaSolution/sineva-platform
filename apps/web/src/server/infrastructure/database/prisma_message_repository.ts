@@ -79,6 +79,14 @@ export class PrismaMessageRepository implements MessageRepository {
     return row ? mapMessage(row) : null;
   }
 
+  async findUserMessageByRunId(runId: string): Promise<MessageEntity | null> {
+    const row = await this.prisma.message.findFirst({
+      where: { run_id: runId, role: 'user' },
+      orderBy: { created_at: 'asc' },
+    });
+    return row ? mapMessage(row) : null;
+  }
+
   async listByConversation(filter: ListMessagesFilter): Promise<{
     items: MessageEntity[];
     next_cursor: string | null;

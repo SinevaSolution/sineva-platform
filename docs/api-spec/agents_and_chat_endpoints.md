@@ -228,6 +228,29 @@ During streaming (`/chat/stream`), the engine emits typed SSE events:
 - `done`: Terminal `ChatTurnResultV2` payload.
 - `error`: Error payload (`{ code, message, details }`).
 
+### Browser streaming relay (WP-M0-30, ADR-0022)
+
+A chat turn is two steps. `POST /api/v1/workspaces/{workspace_id}/conversations/{conversation_id}/messages` stores the user message and returns a run handle (`run_<uuid>`). The browser then attaches to the stream. The handle is not the sineva-ai `run_id`; the platform maps one to the other in `chat_runs`.
+
+| Route | Purpose |
+| :--- | :--- |
+| `GET /api/v1/workspaces/{workspace_id}/runs/{run_id}/events` | SSE relay. Header `Last-Event-ID` resumes. Needs `chat.send`. |
+| `POST /api/v1/workspaces/{workspace_id}/runs/{run_id}/cancel` | Stop. The streamed text is kept and the reply is stored with status `cancelled`. Returns `{ run_id, status }`. |
+
+Behaviour to know before you touch it:
+
+- The first attach starts the sineva-ai stream (`POST /api/v2/agents/{slug}/chat/stream`) and records its `run_id` and `session_id`. Later attaches never start a second run. The next turn of the conversation sends the latest stored `session_id`.
+- The relay reads upstream in a loop that does not depend on the browser. If the tab closes, the reply is still stored and sineva-ai cancel is never called.
+- Events are forwarded with their original `id`, `event` and `data`. The platform adds only `error` events of its own: `upstream_unavailable` (503), `model_unavailable`, `dependency_unavailable` (503), `upstream_error`, `upstream_bad_response` (502), `upstream_interrupted` (502), `run_busy` and `stream_timeout` (reconnect), `run_cancelled`. Their data is `{ code, status, message, retryable }`. A stream never ends silently.
+- If sineva-ai cannot be started, nothing is stored and the run stays `pending`, so retry attaches to the same handle. A failure after the stream started stores the reply with status `error` and the code in `finish_reason`.
+- Resume: from memory while this process still holds the run (about a minute after it ends), otherwise from `GET /api/v2/runs/{id}/events?after={seq}`.
+- Ownership (conversation owner inside the workspace) is checked before any upstream call. A foreign handle is a 404.
+- `RunFrameGuard` is the hook where the card validator plugs in (WP-M0-32). M0 forwards everything.
+- Latency (first token, total) is logged per specialist and reply language as `[run-metrics]`, without text.
+- Gotchas: the in-memory buffer is per process (a restart or another instance falls back to the replay endpoint); the replay endpoint of sineva-ai (WP-M0-18) did not exist when this was written, so until it ships an attach ends with `upstream_unavailable`.
+
+Browser side: `src/client/lib/event_stream.ts` (`openRunStream`) reads this stream with `fetch`, reconnects with backoff and `Last-Event-ID`, and maps error codes to message keys in `src/client/lib/stream_errors.ts`.
+
 ### Upstream Error Mapping & Log Hygiene (SEC-6, ADR-0016)
 
 The platform adapter maps upstream failure codes into strongly-typed platform domain errors without fabricating canned fallback responses:

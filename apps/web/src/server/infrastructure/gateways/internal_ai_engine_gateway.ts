@@ -26,10 +26,14 @@ import {
 } from './ai_engine_v2_schemas';
 import type { ChatTurnResultV2 } from '@/server/domain/chat/chat_v2';
 import { getEnvConfig } from '../config/env';
+import { logger, utf8ByteLength } from '../logging/logger';
 
 const INTERNAL_API_KEY_HEADER = 'X-Internal-Api-Key';
 const SINEVA_CONTEXT_HEADER = 'X-Sineva-Context';
 const REQUEST_ID_HEADER = 'X-Request-Id';
+
+// Machine-code shape accepted from an upstream error body.
+const SAFE_UPSTREAM_CODE = /^[A-Za-z][A-Za-z0-9_]{0,63}$/;
 const TRACEPARENT_HEADER = 'traceparent';
 
 const HEALTH_TIMEOUT_MS = 1200;
@@ -111,8 +115,7 @@ export class InternalAiEngineGateway implements AiEngineGateway {
       status = response.status;
       rawBody = await response.text();
     } catch (error) {
-      console.error('[ai-engine] chatTurn failed', {
-        url,
+      logger.error('ai_engine.request_failed', {
         reason: error instanceof Error ? error.name : 'unknown',
         aborted: controller.signal.aborted,
       });
@@ -122,17 +125,16 @@ export class InternalAiEngineGateway implements AiEngineGateway {
     }
 
     if (status < 200 || status >= 300) {
-      this.handleUpstreamError(status, rawBody, url);
+      this.handleUpstreamError(status, rawBody);
     }
 
     let json: unknown;
     try {
       json = JSON.parse(rawBody);
     } catch {
-      console.error('[ai-engine] chatTurn returned non-JSON body', {
-        url,
+      logger.error('ai_engine.non_json', {
         status,
-        byte_length: rawBody.length,
+        byte_length: utf8ByteLength(rawBody),
       });
       throw new UpstreamServiceError();
     }
@@ -154,10 +156,9 @@ export class InternalAiEngineGateway implements AiEngineGateway {
       };
     }
 
-    console.error('[ai-engine] chatTurn body failed contract validation', {
-      url,
+    logger.error('ai_engine.contract_violation', {
       status,
-      byte_length: rawBody.length,
+      byte_length: utf8ByteLength(rawBody),
     });
     throw new UpstreamServiceError();
   }
@@ -191,7 +192,7 @@ export class InternalAiEngineGateway implements AiEngineGateway {
 
       if (!response.ok) {
         const rawBody = await response.text();
-        this.handleUpstreamError(response.status, rawBody, url);
+        this.handleUpstreamError(response.status, rawBody);
       }
 
       if (!response.body) {
@@ -209,8 +210,7 @@ export class InternalAiEngineGateway implements AiEngineGateway {
       ) {
         throw error;
       }
-      console.error('[ai-engine] chatStream failed', {
-        url,
+      logger.error('ai_engine.request_failed', {
         reason: error instanceof Error ? error.name : 'unknown',
       });
       throw new UpstreamUnavailableError();
@@ -251,7 +251,7 @@ export class InternalAiEngineGateway implements AiEngineGateway {
 
       const rawBody = await response.text();
       if (!response.ok) {
-        this.handleUpstreamError(response.status, rawBody, url);
+        this.handleUpstreamError(response.status, rawBody);
       }
 
       const json = JSON.parse(rawBody);
@@ -267,7 +267,7 @@ export class InternalAiEngineGateway implements AiEngineGateway {
       ) {
         throw error;
       }
-      console.error('[ai-engine] listAgents failed', { url });
+      logger.error('ai_engine.request_failed', { reason: 'listAgents' });
       throw new UpstreamUnavailableError();
     } finally {
       clearTimeout(timeout);
@@ -309,7 +309,7 @@ export class InternalAiEngineGateway implements AiEngineGateway {
 
       const rawBody = await response.text();
       if (!response.ok) {
-        this.handleUpstreamError(response.status, rawBody, url);
+        this.handleUpstreamError(response.status, rawBody);
       }
 
       const events = parseSseTranscript(rawBody);
@@ -328,7 +328,7 @@ export class InternalAiEngineGateway implements AiEngineGateway {
       ) {
         throw error;
       }
-      console.error('[ai-engine] getRunEvents failed', { url });
+      logger.error('ai_engine.request_failed', { reason: 'getRunEvents' });
       throw new UpstreamUnavailableError();
     } finally {
       clearTimeout(timeout);
@@ -368,7 +368,7 @@ export class InternalAiEngineGateway implements AiEngineGateway {
 
       const rawBody = await response.text();
       if (!response.ok) {
-        this.handleUpstreamError(response.status, rawBody, url);
+        this.handleUpstreamError(response.status, rawBody);
       }
 
       const json = JSON.parse(rawBody);
@@ -387,7 +387,7 @@ export class InternalAiEngineGateway implements AiEngineGateway {
       ) {
         throw error;
       }
-      console.error('[ai-engine] cancelRun failed', { url });
+      logger.error('ai_engine.request_failed', { reason: 'cancelRun' });
       throw new UpstreamUnavailableError();
     } finally {
       clearTimeout(timeout);
@@ -487,10 +487,11 @@ export class InternalAiEngineGateway implements AiEngineGateway {
       status = response.status;
       rawBody = await response.text();
     } catch (error) {
-      console.error('[ai-engine] chat request failed', {
-        url,
+      logger.error('ai_engine.request_failed', {
+        agent_slug: payload.agent_slug,
         reason: error instanceof Error ? error.name : 'unknown',
         aborted: controller.signal.aborted,
+        latency_ms: Date.now() - startedAt,
       });
       throw new UpstreamUnavailableError();
     } finally {
@@ -498,30 +499,30 @@ export class InternalAiEngineGateway implements AiEngineGateway {
     }
 
     if (status < 200 || status >= 300) {
-      this.handleUpstreamError(status, rawBody, url);
+      this.handleUpstreamError(status, rawBody);
     }
 
     let json: unknown;
     try {
       json = JSON.parse(rawBody);
     } catch {
-      console.error('[ai-engine] chat returned non-JSON body', {
-        url,
+      logger.error('ai_engine.non_json', {
+        agent_slug: payload.agent_slug,
         status,
-        byte_length: rawBody.length,
+        byte_length: utf8ByteLength(rawBody),
+        latency_ms: Date.now() - startedAt,
       });
       throw new UpstreamServiceError();
     }
 
     const parsed = chatEnvelopeSchema.safeParse(json);
     if (!parsed.success) {
-      console.error('[ai-engine] chat body failed contract validation', {
-        url,
+      // Paths only. Zod messages can quote the offending value, and that
+      // value is model or user content.
+      logger.error('ai_engine.contract_violation', {
+        agent_slug: payload.agent_slug,
         status,
-        issues: parsed.error.issues.map((issue) => ({
-          path: issue.path.join('.'),
-          message: issue.message,
-        })),
+        issue_paths: parsed.error.issues.map((issue) => issue.path.join('.')),
       });
       throw new UpstreamServiceError();
     }
@@ -533,22 +534,30 @@ export class InternalAiEngineGateway implements AiEngineGateway {
    * Maps upstream 4xx and 5xx to typed platform errors (WP-M0-28, ADR-0016, SEC-6)
    * Enforces log hygiene: never logs prompt, reply, or tool call payloads.
    */
-  private handleUpstreamError(status: number, rawBody: string, url: string): never {
-    let code: string | undefined;
-    let message: string | undefined;
+  private handleUpstreamError(status: number, rawBody: string): never {
+    let upstreamCode: string | undefined;
+    // Used to classify only. Upstream text can echo user content or internals, so
+    // it is never copied into a thrown error: those messages reach the client.
+    let upstreamMessage: string | undefined;
 
     try {
       const json = JSON.parse(rawBody);
-      code = json?.errors?.[0]?.code || json?.code || json?.error?.code;
-      message = json?.errors?.[0]?.detail || json?.message || json?.error?.message;
+      upstreamCode = json?.errors?.[0]?.code || json?.code || json?.error?.code;
+      upstreamMessage = json?.errors?.[0]?.detail || json?.message || json?.error?.message;
     } catch {
       // Body not JSON
     }
 
-    console.error('[ai-engine] upstream call returned non-2xx', {
-      url,
+    // Only a machine token may travel to the client; anything else is dropped.
+    const code =
+      typeof upstreamCode === 'string' && SAFE_UPSTREAM_CODE.test(upstreamCode)
+        ? upstreamCode
+        : undefined;
+    const lowered = typeof upstreamMessage === 'string' ? upstreamMessage.toLowerCase() : '';
+
+    logger.error('ai_engine.non_2xx', {
       status,
-      byte_length: rawBody.length,
+      byte_length: utf8ByteLength(rawBody),
       code,
     });
 
@@ -556,26 +565,26 @@ export class InternalAiEngineGateway implements AiEngineGateway {
     if (status === 401 || status === 403 || code === 'context_invalid') {
       if (
         code === 'context_invalid' ||
-        message?.toLowerCase().includes('context') ||
-        message?.toLowerCase().includes('signature')
+        lowered.includes('context') ||
+        lowered.includes('signature')
       ) {
-        throw new ContextInvalidError(message || 'Internal context verification failed');
+        throw new ContextInvalidError();
       }
-      throw new UpstreamServiceError(message || 'AI engine rejected request authorization', code, 502);
+      throw new UpstreamServiceError('The AI engine rejected the request', code, 502);
     }
 
     // Upstream unavailable / model overloaded
     if (status === 503 || code === 'model_unavailable') {
-      if (code === 'model_unavailable' || message?.toLowerCase().includes('model')) {
-        throw new ModelUnavailableError(message || 'AI model is currently overloaded');
+      if (code === 'model_unavailable' || lowered.includes('model')) {
+        throw new ModelUnavailableError();
       }
       if (code === 'dependency_unavailable') {
-        throw new DependencyUnavailableError(message || 'AI engine dependency unavailable');
+        throw new DependencyUnavailableError();
       }
-      throw new UpstreamUnavailableError(message || 'AI engine service unavailable', code);
+      throw new UpstreamUnavailableError(undefined, code);
     }
 
     // Generic upstream service error 502
-    throw new UpstreamServiceError(message || 'The AI engine returned an unexpected response', code || 'UPSTREAM_ERROR');
+    throw new UpstreamServiceError(undefined, code || 'UPSTREAM_ERROR');
   }
 }

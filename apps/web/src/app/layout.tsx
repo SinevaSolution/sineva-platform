@@ -1,8 +1,10 @@
 import type { Metadata, Viewport } from 'next';
+import { headers } from 'next/headers';
 import { Plus_Jakarta_Sans, Geist_Mono } from 'next/font/google';
 import { AppProviders } from '@/client/store/provider';
 import { I18nProvider } from '@/i18n/provider';
 import { getLocale, getMessages, getTranslations } from '@/i18n/server';
+import { NONCE_REQUEST_HEADER } from '@/server/http/csp';
 import './globals.css';
 
 const plusJakartaSans = Plus_Jakarta_Sans({
@@ -37,6 +39,10 @@ export default async function RootLayout({
 }: Readonly<{ children: React.ReactNode }>) {
   const locale = await getLocale();
   const messages = await getMessages();
+  // Reading the request headers makes every page render per request, which a
+  // per-request nonce requires anyway.
+  const nonce = (await headers()).get(NONCE_REQUEST_HEADER) ?? undefined;
+
   return (
     <html
       lang={locale}
@@ -45,7 +51,7 @@ export default async function RootLayout({
     >
       <body>
         <I18nProvider locale={locale} messages={messages}>
-          <AppProviders>{children}</AppProviders>
+          <AppProviders nonce={nonce}>{children}</AppProviders>
         </I18nProvider>
       </body>
     </html>

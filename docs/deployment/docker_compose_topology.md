@@ -68,6 +68,6 @@ docker compose down                        # stop and remove containers, keep vo
 docker compose up -d --force-recreate sineva-ai sineva-platform   # re-read env (for example after changing the shared key)
 ```
 
-Danger: `npm run docker:down` is `docker compose down -v`. The `-v` deletes every named volume, including `postgres_data`, which also holds `sineva-ai`'s data. There is no confirmation prompt. To stop the stack, use `docker compose down` without `-v`. Delete volumes only on a machine whose data you can lose, and only on purpose.
+Danger: `npm run docker:reset` is `docker compose down -v`. The `-v` deletes every named volume, including `postgres_data`, which also holds `sineva-ai`'s data. It refuses to run unless `CONFIRM_RESET=yes` is set. `npm run docker:down` stops the stack and keeps the volumes. Delete volumes only on a machine whose data you can lose, and only on purpose.
 
 Variables that change behavior of this stack are listed in [environment variables](environment_variables.md).

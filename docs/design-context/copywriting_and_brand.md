@@ -25,7 +25,7 @@ This document covers voice and microcopy. The product roster, slugs, guardrails,
 
 ## Gotchas first
 
-- Every UI string is a message key in `apps/web/messages/en.json` and `id.json` ([ADR-0022](../decisions/0022-locale-preference-and-i18n-architecture.md)). A hardcoded string in `src/client` or `src/app` fails `npm run lint`, and a missing, unused or untranslated key, a banned word or a translated product name fails `npm run test`. Add both languages in the same change.
+- Every UI string is a message key in `apps/web/messages/en.json` and `id.json` ([ADR-0023](../decisions/0023-locale-preference-and-i18n-architecture.md)). A hardcoded string in `src/client` or `src/app` fails `npm run lint`, and a missing, unused or untranslated key, a banned word or a translated product name fails `npm run test`. Add both languages in the same change.
 - A failed call must show no reply. Never show a canned, cached or simulated answer, and never label anything a "fallback" reply ([ADR-0008](../decisions/0008-no-silent-fallbacks.md), [ADR-0016](../decisions/0016-upstream-failures-return-502-503.md)). An earlier version of this document recommended showing a "cached local simulation response" when the AI engine was down. That behavior was removed from the code and the advice is withdrawn.
 - Error copy maps from the machine code (`apiErrorKey` in `client/lib/api.ts`, catalog namespace `errors.api`), never from the API `message`. The table below is the English source; the Indonesian is in `id.json`.
 - The voice and style rules below come from the public site guide, `sineva-compro/docs/design/copywriting.md`. They are not repeated in an ADR here. Where this repository has no decision, follow that guide.

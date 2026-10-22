@@ -369,8 +369,26 @@
       "placeholder_team": "Message Sino. Type @ to bring in a specialist",
       "placeholder_specialist": "Message {name}",
       "messages_label": "Messages",
-      "sent_note": "Sent. {name} will reply here once live replies are switched on in this early version.",
-      "stage_team": "Sino · Team"
+      "stage_team": "Sino · Team",
+      "stop_tooltip": "Stop the reply",
+      "stop": "Stop",
+      "stopping": "Stopping",
+      "stop_failed": "Couldn't stop the reply. Try again.",
+      "still_replying": "{name} is still replying. Press Stop to send something new.",
+      "announce_replied": "{name} replied.",
+      "announce_stopped": "Reply stopped.",
+      "working": "{name} is working on it",
+      "you_stopped": "You stopped this reply."
+    },
+    "error": {
+      "unavailable": "{name} can't reply right now. Your message is saved, so you can try again in a moment.",
+      "interrupted": "{name}'s reply was cut short. Your message is saved, so you can send it again.",
+      "connection_lost": "The connection dropped before the reply finished. Check your connection and try again.",
+      "signed_out": "Your session ended. Sign in again to continue.",
+      "forbidden": "You don't have access to this yet. Ask an admin.",
+      "not_found": "This reply couldn't be found. Reload the chat to see where things stand.",
+      "rate_limited": "Too many tries. Wait a moment, then try again.",
+      "generic": "Something went wrong while {name} was replying. Try again."
     }
   },
   "mcp": {}

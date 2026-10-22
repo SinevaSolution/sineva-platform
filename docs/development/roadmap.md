@@ -46,9 +46,6 @@ What is a stub or fake today:
 
 | Area | Reality | Item |
 | :--- | :--- | :--- |
-| Redis cache | In-memory `Map`, `ping()` always true | INF-1 |
-| Presign | Returns an unsigned URL when signing fails; URL host is the internal Docker name | INF-2, INF-5 |
-| Health | Postgres, Redis and S3 values are not probed | INF-3 |
 | Dashboard stats | "342 ms", "All Systems Nominal", the token budget and the status pills are literals | UI-7 |
 | Orchestrator toggle | A Redux value nothing reads | UI-11 |
 
@@ -71,7 +68,7 @@ Goal: nothing in the platform lies, and nobody can act as someone else. Each ite
 | :--- | :--- | :--- | :--- |
 | H1 | Authentication and server-side identity. Pick the mechanism in an ADR. Remove `user_id` and `workspace_id` from public request bodies (a breaking change: update OpenAPI and the [chat doc](../api-spec/agents_and_chat_endpoints.md)). | SEC-1, SEC-2, SEC-3 | A route test per endpoint shows 401 without credentials. The `sineva-ai` contract test still passes with a server-derived `user_id`. `POST /api/v1/agents` is restricted. |
 | H2 | Secrets without defaults. Validate required environment variables at startup. | SEC-4, INF-6 | The app fails to start in production with a missing secret (test). `grep` for default credentials in `env.ts` and compose finds none (R-28). |
-| H3 | Honest errors. Invalid JSON returns a client error. 500 returns a fixed message. The gateway stops logging response bodies. | API-1, SEC-5, SEC-6 | Tests: bad JSON gives 422, a thrown `Error` does not reach the response text, the gateway log has no body. |
+| H3 | Honest errors. Invalid JSON returns a client error. 500 returns a fixed message. The gateway stops logging response bodies (done, see logging_and_pii_masking.md). | API-1, SEC-5, SEC-6 | Tests: bad JSON gives 422, a thrown `Error` does not reach the response text, the gateway log has no body. |
 | H4 | Truthful infrastructure. Real health probes. Presign failures surface as errors, with a public signing endpoint. The cache is real or gone. | INF-1, INF-2, INF-3, INF-4, INF-5, SEC-7 | Fake-based tests: a failing dependency shows `standby` and a non-200 health status. A signing failure is not a 201. An integration test for the Redis adapter, or the adapter and its health entry are removed. |
 | H5 | Remove invented numbers and statuses from the UI. Fix strings that break the wording rules in files you touch. | UI-7, COPY-1, COPY-2 | The page shows no number without a source. The wording checklist in [product model and wording](../product/product_model_and_wording.md) passes for touched strings. |
 | H6 | Page states and basics. `loading.tsx`, `error.tsx`, `not-found.tsx`. Selection in the URL. `dark:` follows the theme. Accessibility fixes. Markdown replies. | UI-4, UI-2, UI-3, UI-5, UI-6, UI-8 | The three files exist (R-31). Both themes checked by keyboard. A renderer test for script and link injection. |
@@ -95,7 +92,7 @@ Goal: the product the Founder described. One conversation with Sino, a product c
 
 These came from the earlier roadmap. No design, owner or priority exists for them. Do not plan against them.
 
-- Streaming replies from `sineva-ai` to the browser. It needs `sineva-ai` support and a change to the contract.
+- Streaming replies from `sineva-ai` to the browser: the platform side exists (run relay, ADR-0022) and waits for the sineva-ai v2 stream endpoints (WP-M0-18). Markdown rendering of streamed text is M1.
 - A file upload UI on top of presign, after H1 and H4.
 - Roles and an audit log, after H1.
 

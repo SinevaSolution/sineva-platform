@@ -11,10 +11,16 @@ import {
   type CreateSuccessResponseOptions,
 } from '@sineva/shared';
 import { DomainError, MalformedJsonError } from '@/server/domain/errors/domain_error';
+import { logger } from '@/server/infrastructure/logging/logger';
+
+// A client-supplied id ends up in logs, headers and the envelope, so only a
+// bounded token is trusted. Anything else (CR/LF, spaces, 300 characters) is
+// replaced rather than sanitized: a partial id would break cross-service tracing.
+const SAFE_REQUEST_ID = /^[A-Za-z0-9._-]{8,128}$/;
 
 export function extractRequestId(request?: Request | NextRequest | null): string {
   const headerId = request?.headers?.get('x-request-id')?.trim();
-  if (headerId && headerId.length > 0) {
+  if (headerId && SAFE_REQUEST_ID.test(headerId)) {
     return headerId;
   }
   return generateRequestId();
@@ -159,8 +165,12 @@ export function handleRouteError(
     return res;
   }
 
-  // SEC-5: Log the actual error with request_id, but return fixed message to client
-  console.error(`[server-error] request_id=${requestId}`, error);
+  // SEC-5: fixed message to the client; the log keeps the request id and the
+  // error class only, since driver and Prisma messages can quote row data.
+  logger.error('http.unhandled_error', {
+    request_id: requestId,
+    reason: error instanceof Error ? error.name : 'unknown',
+  });
 
   const payload = createErrorResponse({
     message: 'Internal server error',

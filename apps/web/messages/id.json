@@ -369,8 +369,26 @@
       "placeholder_team": "Kirim pesan ke Sino. Ketik @ untuk memanggil spesialis",
       "placeholder_specialist": "Kirim pesan ke {name}",
       "messages_label": "Pesan",
-      "sent_note": "Terkirim. {name} akan membalas di sini setelah balasan langsung diaktifkan di versi awal ini.",
-      "stage_team": "Sino · Tim"
+      "stage_team": "Sino · Tim",
+      "stop_tooltip": "Hentikan balasan",
+      "stop": "Hentikan",
+      "stopping": "Menghentikan",
+      "stop_failed": "Balasan tidak bisa dihentikan. Coba lagi.",
+      "still_replying": "{name} masih membalas. Tekan Hentikan untuk mengirim yang baru.",
+      "announce_replied": "{name} sudah membalas.",
+      "announce_stopped": "Balasan dihentikan.",
+      "working": "{name} sedang mengerjakannya",
+      "you_stopped": "Kamu menghentikan balasan ini."
+    },
+    "error": {
+      "unavailable": "{name} belum bisa membalas sekarang. Pesanmu tersimpan, jadi kamu bisa coba lagi sebentar lagi.",
+      "interrupted": "Balasan {name} terputus. Pesanmu tersimpan, jadi kamu bisa mengirimnya lagi.",
+      "connection_lost": "Koneksi terputus sebelum balasan selesai. Cek koneksimu, lalu coba lagi.",
+      "signed_out": "Sesi kamu berakhir. Masuk lagi untuk melanjutkan.",
+      "forbidden": "Kamu belum punya akses ke sini. Hubungi admin.",
+      "not_found": "Balasan ini tidak ditemukan. Muat ulang obrolan untuk melihat kondisi terakhirnya.",
+      "rate_limited": "Terlalu banyak percobaan. Tunggu sebentar, lalu coba lagi.",
+      "generic": "Ada yang tidak beres saat {name} membalas. Coba lagi."
     }
   },
   "mcp": {}

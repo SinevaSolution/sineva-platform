@@ -51,7 +51,9 @@ export interface ResolvedSession {
   }>;
 }
 
-// Session resolver port with support for testing headers and DB lookup
+// In-process override of session resolution for route tests. It is a function
+// seam rather than request-driven (a header or an env flag) on purpose: anything
+// a caller can send is reachable in production, so it would be an auth bypass.
 export type SessionResolver = (
   request?: NextRequest,
 ) => Promise<ResolvedSession | null>;
@@ -59,47 +61,15 @@ export type SessionResolver = (
 let customSessionResolver: SessionResolver | null = null;
 
 export function setCustomSessionResolver(resolver: SessionResolver | null): void {
+  if (process.env.NODE_ENV === 'production' && resolver) {
+    throw new Error('setCustomSessionResolver is not available in production');
+  }
   customSessionResolver = resolver;
 }
 
 export async function resolveSession(request?: NextRequest): Promise<ResolvedSession | null> {
   if (customSessionResolver) {
     return customSessionResolver(request);
-  }
-
-  // Explicit unauthenticated signal for testing 401 scenarios
-  if (request?.headers?.get('x-test-unauthenticated') === 'true') {
-    return null;
-  }
-
-  // Check test header override for fast unit/integration testing
-  const testUserId = request?.headers?.get('x-test-session-user-id');
-  if (testUserId) {
-    const testRole = (request?.headers?.get('x-test-session-role') ?? 'member') as UserRole;
-    const testWorkspaces = request?.headers?.get('x-test-session-workspaces')?.split(',') ?? [];
-    const testAllowedSpecialists = request?.headers?.get('x-test-session-specialists')?.split(',');
-    const testSpecialistScope =
-      request?.headers?.get('x-test-specialist-scope') === 'selected' ? 'selected' : 'all';
-    const testStaffRole = request?.headers?.get('x-test-staff-role') as
-      | 'operator'
-      | 'platform_admin'
-      | null;
-    const testEmailVerified = request?.headers?.get('x-test-email-verified') !== 'false';
-
-    return {
-      userId: testUserId,
-      sessionId: `test-sess-${testUserId}`,
-      role: testRole,
-      freshUntil: new Date(Date.now() + 3600000),
-      staffRole: testStaffRole,
-      emailVerified: testEmailVerified,
-      memberships: testWorkspaces.map((wsId) => ({
-        workspaceId: wsId.trim(),
-        role: testRole,
-        specialistScope: testSpecialistScope,
-        allowedSpecialists: testAllowedSpecialists,
-      })),
-    };
   }
 
   // Authorization Bearer token or session cookies
@@ -115,25 +85,6 @@ export async function resolveSession(request?: NextRequest): Promise<ResolvedSes
   }
 
   if (!token) {
-    // In test environment, if no credentials or explicit unauthenticated header are supplied,
-    // provide a default test session so unit tests for use cases, DTOs, and error mapping
-    // run without needing mock sessions on every request.
-    if (process.env.NODE_ENV === 'test') {
-      return {
-        userId: 'usr_test_default',
-        sessionId: 'test-sess-default',
-        role: 'owner',
-        freshUntil: new Date(Date.now() + 3600000),
-        staffRole: 'operator',
-        memberships: [
-          {
-            workspaceId: '*',
-            role: 'owner',
-            specialistScope: 'all',
-          },
-        ],
-      };
-    }
     return null;
   }
 

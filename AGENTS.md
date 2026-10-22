@@ -7,7 +7,7 @@ Router for AI coding agents and humans. Details live in `docs/`. The numbered ru
 ## 1. What this repo is
 
 - Sineva Platform: the web app and BFF (Backend-for-Frontend) for the Sineva suite. It is the only public entry point; `sineva-ai` (Python FastAPI) is reachable only over the internal Docker network.
-- Turborepo monorepo (npm workspaces): `apps/web` (`@sineva/web`), `packages/shared` (`@sineva/shared`: response envelope), `packages/ui` (`@sineva/ui`).
+- Turborepo monorepo (npm workspaces): `apps/web` (`@sineva/web`), `packages/shared` (`@sineva/shared`: response envelope, PII masking), `packages/ui` (`@sineva/ui`).
 - Stack: Next.js 16.4 App Router, React 19.2, TypeScript 5.7, Redux Toolkit, Tailwind 4, Zod, Prisma 7.10.1 (`@prisma/adapter-pg`), ioredis, AWS SDK S3, Vitest. Node 24 (`.nvmrc`).
 - Shared infrastructure with `sineva-ai`: Postgres 17 (database `sineva_platform`), Redis 7.4, SeaweedFS S3, Qdrant (used by `sineva-ai`).
 
@@ -75,7 +75,7 @@ apps/web/
     client/                components/, store/ (Redux Toolkit)
     shared/                wire/view types (agent_view, chat_view)
     __tests__/             unit tests, fakes/, contract/ (+ fixtures/), integration/, stubs/, architecture.test.ts
-packages/shared/           @sineva/shared: response envelope, snake_case helpers
+packages/shared/           @sineva/shared: response envelope, snake_case helpers, pii/ (identifier detectors and mask)
 packages/ui/               @sineva/ui
 packages/i18n/             locale registry, message formatter, copy lint (path alias @sineva/i18n, not a workspace link)
 docs/                      see docs/README.md
@@ -89,12 +89,12 @@ docs/                      see docs/README.md
 - `prisma.config.ts` reads `process.env.DATABASE_URL ?? ''` on purpose: `env()` throws when the variable is unset, and `generate`, `build` and `typecheck` must run without a database. Commands that connect (`migrate`, `db seed`) fail on the empty URL.
 - Primary keys are UUID (`gen_random_uuid()`, v4). Do not add prefixed string ids, and do not hand-generate ids in application code.
 - Compose publishes Postgres (5432), Redis (6379, no password), Qdrant (6333) and the SeaweedFS master, filer and S3 ports (9333, 8888, 8333) on the host. Only `sineva-ai` (8000, `expose` only) and `seaweedfs-volume` have no host port. "Only public entry point" describes application traffic, not these data-store ports ([docker_compose_topology](docs/deployment/docker_compose_topology.md)).
-- `npm run docker:down` runs `docker compose down -v`. It deletes all volumes, including the shared Postgres data. Use `docker compose down` (no `-v`) to keep data.
+- `npm run docker:down` is a plain `docker compose down` and keeps volumes. `npm run docker:reset` runs `down -v`, which deletes all volumes including the shared Postgres data, and refuses to run unless `CONFIRM_RESET=yes` is set.
 - `server-only` throws outside a React Server Components build. Vitest aliases it to `src/__tests__/stubs/server_only.ts` (`apps/web/vitest.config.ts` and `vitest.integration.config.ts`). Keep both aliases.
 - The container memoizes adapters, including the Prisma connection pool, so state persists across calls in one process. There is no reset hook (`resetContainerForTests` was removed). Unit tests build use cases with fakes directly, and route tests mock `@/server/container`; do not reach into the container from tests.
 - `src/__tests__/contract/fixtures/` are copied byte-for-byte from `../sineva-ai/tests/contract/fixtures/`. Never edit the copies. Change them in `sineva-ai` first, copy them here in the same change, and open the matching change in both repos (ADR-0015).
 - Re-seeding an existing database that was seeded with the old `sino-*` slugs leaves stale rows. `prisma/seed.ts` upserts by `agent_slug`, so it adds the canonical rows and never removes or renames the old ones. Fix such a database with a manual or data migration (ADR-0012).
-- Known debt, not patterns to copy: the "Redis" cache is an in-memory `Map` with `ping()` always true, presigning returns an unsigned URL on error, the health check reports Postgres healthy when `DATABASE_URL` is merely set, and `getEnvConfig()` and `docker-compose.yml` hold hardcoded default secrets. Details: [known_issues_and_tech_debt](docs/development/known_issues_and_tech_debt.md).
+- Known debt: see [known_issues_and_tech_debt](docs/development/known_issues_and_tech_debt.md). The cache is a real ioredis adapter, health is probed, presign fails with a 502 instead of returning an unsigned URL, and credentials have no default in code: development reads them from `.env.example`, production must supply real ones or startup fails.
 - Cross-service: `sineva-ai` has migrated to the canonical slugs (`sinopeople`, `sinofinance`, and so on; its orchestrator is `sino`), so the old `sino_*` mismatch no longer exists. It owns the chat contract (ADR-0015): the platform sends `user_message` and reads `reply_content`, so the public chat response no longer has `reply_text`. The internal header is `X-Internal-Api-Key` (ADR-0013). `sineva-ai` non-2xx or an invalid body becomes 502, and an unreachable `sineva-ai` becomes 503 (ADR-0016).
 
 ## 7. Product wording

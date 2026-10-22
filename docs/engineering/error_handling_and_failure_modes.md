@@ -42,30 +42,31 @@ Rules: R-26 (no hidden failures) and R-41 (upstream failures are typed 502 or 50
 | `DomainError` (base) | its own `code` | its own `status`, default 400 | Nothing throws the base class directly |
 | Anything else | `INTERNAL_SERVER_ERROR` | 500 | `handleRouteError` fallthrough |
 
-`handleRouteError` checks in this order: `ZodError`, then `DomainError`, then everything else. Upstream error messages are client-safe on purpose ("The AI engine returned an unexpected response", "The AI engine is unavailable"). The upstream status and body stay in the server log.
+`handleRouteError` checks in this order: `ZodError`, then `DomainError`, then everything else. Upstream error messages are client-safe on purpose ("The AI engine returned an unexpected response", "The AI engine is unavailable"). The upstream status and body size (not the body) stay in the server log.
 
 ## 3. What gets logged
 
-Only the AI gateway logs, with `console.error` and a `[ai-engine]` prefix:
+Only the AI gateway logs, through the logger wrapper ([logging and PII masking](logging_and_pii_masking.md)): one JSON line with a fixed `event` and allowlisted fields.
 
 | Event | Fields logged |
 | :--- | :--- |
-| Request failed (network, timeout, abort) | `url`, `reason` (the error name), `aborted` |
-| Non-2xx answer | `url`, `status`, `body` truncated to 500 characters |
-| Non-JSON body | `url`, `status`, `body` truncated to 500 characters |
-| Envelope failed validation | `url`, `status`, `issues` (path and message per issue) |
+| `ai_engine.request_failed` (network, timeout, abort) | `agent_slug`, `reason` (the error name), `aborted`, `latency_ms` |
+| `ai_engine.non_2xx` | `agent_slug`, `status`, `byte_length`, `latency_ms`, `code` (only when it is a machine token) |
+| `ai_engine.non_json` | `agent_slug`, `status`, `byte_length`, `latency_ms` |
+| `ai_engine.contract_violation` | `agent_slug`, `status`, `issue_paths` (schema paths, never values) |
 
 Not logged:
 
-- `handleRouteError` logs nothing. A 500 leaves no trace on the server except the response the caller saw.
+- Upstream response bodies. The gateway never logs them and never copies upstream error text into a thrown error, because those messages reach the client.
 - A 404, 409 or 422 is not logged (they are caller errors, so this is fine).
-- The `request_id` in the response is not written to any log line, so a user-reported id cannot be traced.
+- Request or response content anywhere. `handleRouteError` logs the cause of an unexpected error with the `request_id` (`[server-error] request_id=...`), so a user-reported id can be traced.
 
 Gotchas:
 
-- The truncated upstream body can contain user text if sineva-ai echoes input in an error. Treat these logs as sensitive.
-- For an unknown error, `handleRouteError` puts the raw `Error.message` in the response. That can leak internals: a Prisma error text, `Agent 'x' has unknown category 'y'` from the repository mapper, or the `SyntaxError` text from a malformed JSON body.
-- A request body that is not valid JSON throws from `request.json()` before the DTO runs, so it is a 500, not a 4xx.
+- The upstream body is never logged, because sineva-ai can echo user text in an error. Do not add it back; log the size instead.
+- The cause of a 500 is logged as `http.unhandled_error` with the `request_id` and the error class only, never its message (driver and ORM text can quote row data). The response carries a fixed message and the same `request_id`.
+- A request body that is empty or not valid JSON is a 422 `validation_failed` (`parseJsonBody` throws `MalformedJsonError`). Handlers must not call `request.json()` directly.
+- A client `X-Request-Id` is trusted only when it is 8 to 128 characters of `A-Za-z0-9._-`; otherwise a UUID is generated.
 
 ## 4. No silent fallbacks
 
@@ -90,9 +91,9 @@ Forbidden patterns, each with where it shows up today:
 
 | Pattern | Why it is wrong | Example in the code |
 | :--- | :--- | :--- |
-| Empty `catch`, or a `catch` that returns a default | The caller cannot tell success from failure | `SeaweedStorageRepository.createPresignedUploadUrl` returns an unsigned URL when signing throws |
-| Invented values in place of a measurement | A made-up number reads as data | `InternalAiEngineGateway.checkHealth` returns `engine_version: '1.0.0'` or `'1.0.0-standby'` |
-| A health check that does not check | An outage reports healthy | `RedisCacheRepository.ping()` returns `true`; `GetSystemHealthUseCase` reports Postgres `healthy` whenever `DATABASE_URL` is set |
+| Empty `catch`, or a `catch` that returns a default | The caller cannot tell success from failure | Removed: presigning used to return an unsigned URL when signing threw. Now it is a 502 |
+| Invented values in place of a measurement | A made-up number reads as data | Removed: `engine_version` used to be a constant. Now it comes from the engine's health body |
+| A health check that does not check | An outage reports healthy | Removed: health values used to come from configuration. Now `SELECT 1`, Redis `PING`, S3 `HeadBucket` and the engine call decide |
 | Filling a missing upstream field with a default | A contract break becomes silent bad data | Removed: the gateway used to default token counts and text. Now a missing field fails the Zod check and raises 502 |
 | Canned reply text when the AI call fails | The user reads fiction as an answer | Removed from the gateway. Must not return in the UI either |
 | Swallowing in the UI (`catch {}` then rendering something) | Same, in the browser | The chat UI shows a toast and renders nothing ([section 6](#6-ui-behavior)) |
@@ -104,14 +105,6 @@ Acceptable degradation: a health check may report `is_reachable: false` after ca
 
 These break R-26 or its neighbours. Do not copy them. Removing one needs a failing test first and, where the user sees it, a UI error state.
 
-- The cache is in-memory. `RedisCacheRepository` never calls Redis and `ping()` always returns `true`.
-- Presigning returns an unsigned URL on error, and `SeaweedStorageRepository.checkHealth()` only tests that `S3_ENDPOINT` is non-empty.
-- The Postgres health value is `process.env.DATABASE_URL ? 'healthy' : 'standby'`. There is no `SELECT 1`.
-- `checkHealth` returns a hardcoded `engine_version`.
-- `getEnvConfig()` has hardcoded default secrets and hosts (database URL and password, S3 keys, the internal API key). `docker-compose.yml` has defaults too.
-- `AI_ENGINE_TIMEOUT_MS` is parsed with `Number(process.env.AI_ENGINE_TIMEOUT_MS ?? '15000')`. A non-numeric value gives `NaN`, and Node's `setTimeout` then fires after about 1 ms, so every chat call would abort and return 503.
-- `handleRouteError` does not log, returns raw messages for unknown errors, and turns malformed JSON into a 500.
-- Upstream non-2xx bodies are logged up to 500 characters and may contain user text.
 - `DomainError` carries an HTTP `status` and imports a type from `@sineva/shared`, so the domain knows about HTTP.
 
 ## 6. UI behavior

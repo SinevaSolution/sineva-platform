@@ -409,6 +409,85 @@ describe('InternalAiEngineGateway Contract v2 (WP-M0-28)', () => {
   });
 
   describe('Legacy contract compatibility & health', () => {
+    // SEC-6, FR-SEC-20: an upstream error body can echo the user's message.
+    // The log keeps status and size only, and masks anything free-text.
+    it.each([
+      [
+        'non-2xx JSON body',
+        () =>
+          jsonResponse(
+            { success: false, detail: 'bad input NIK 3273011508900001 budi@contoh.co.id' },
+            422,
+          ),
+      ],
+      [
+        'non-2xx text body',
+        () =>
+          new Response('echo: telp 081234567890 budi@contoh.co.id', { status: 500 }),
+      ],
+      [
+        'non-JSON 200 body',
+        () =>
+          new Response('NIK 3273011508900001 budi@contoh.co.id', { status: 200 }),
+      ],
+    ])('does not log the upstream body on %s', async (_label, factory) => {
+      stubFetch(factory);
+      const errorSpy = vi.spyOn(console, 'error');
+
+      await expect(
+        new InternalAiEngineGateway().dispatchAgentChat(platformRequest()),
+      ).rejects.toBeInstanceOf(UpstreamServiceError);
+
+      const logged = JSON.stringify(errorSpy.mock.calls);
+      expect(logged).not.toContain('3273011508900001');
+      expect(logged).not.toContain('budi@contoh.co.id');
+      expect(logged).not.toContain('081234567890');
+      expect(logged).not.toContain('echo:');
+      expect(logged).toMatch(/byte_length\\":\d+/);
+    });
+
+    it('does not log the request url or message text when the call fails', async () => {
+      stubFetch(() => {
+        throw new TypeError('fetch failed');
+      });
+      const errorSpy = vi.spyOn(console, 'error');
+
+      await expect(
+        new InternalAiEngineGateway().dispatchAgentChat(platformRequest()),
+      ).rejects.toBeInstanceOf(UpstreamUnavailableError);
+
+      const logged = JSON.stringify(errorSpy.mock.calls);
+      expect(logged).toContain('ai_engine.request_failed');
+      expect(logged).not.toContain(platformRequest().message_text);
+      expect(logged).not.toContain(platformRequest().user_id);
+    });
+
+    it('logs only schema paths, never failing values, on a contract violation', async () => {
+      stubFetch(() =>
+        jsonResponse({
+          success: true,
+          data: {
+            ...chatResponseEnvelopeFixture.data,
+            reply_content: 12345,
+            display_name: 'Budi 3273011508900001',
+            message_id: 'budi@contoh.co.id',
+          },
+        }),
+      );
+      const errorSpy = vi.spyOn(console, 'error');
+
+      await expect(
+        new InternalAiEngineGateway().dispatchAgentChat(platformRequest()),
+      ).rejects.toBeInstanceOf(UpstreamServiceError);
+
+      const logged = JSON.stringify(errorSpy.mock.calls);
+      expect(logged).toContain('ai_engine.contract_violation');
+      expect(logged).toContain('data.reply_content');
+      expect(logged).not.toContain('3273011508900001');
+      expect(logged).not.toContain('budi@contoh.co.id');
+    });
+
+
     it('dispatchAgentChat works with legacy v1 request/response', async () => {
       stubFetch(() => jsonResponse(chatResponseEnvelopeFixture));
       const reply = await new InternalAiEngineGateway().dispatchAgentChat(platformRequest());

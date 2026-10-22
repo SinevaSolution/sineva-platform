@@ -7,6 +7,7 @@ import type {
   EmailTemplateRenderer,
 } from '@/server/domain/email/email_sender';
 import { DependencyUnavailableError } from '@/server/domain/errors/domain_error';
+import { logger } from '../logging/logger';
 
 export interface SmtpConfig {
   host: string;
@@ -75,10 +76,8 @@ export class SmtpEmailSender implements EmailSender {
         html: rendered.html,
       });
     } catch (err) {
-      console.error(
-        '[email-error] Failed to send transactional email',
-        err instanceof Error ? err.message : String(err),
-      );
+      // Error name only: SMTP messages can quote the recipient address.
+      logger.error('email.send_failed', { reason: err instanceof Error ? err.name : 'unknown' });
       throw new DependencyUnavailableError(
         'The email delivery service is currently unavailable. Please try again later.',
       );
