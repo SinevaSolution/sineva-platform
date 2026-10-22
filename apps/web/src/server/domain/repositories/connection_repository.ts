@@ -12,6 +12,15 @@ export interface ConnectionRepository {
   findById(workspaceId: string, id: string): Promise<ConnectionEntity | null>;
   /** Lookup for a person: workspace connections and the viewer's own personal ones only. */
   findVisible(workspaceId: string, id: string, viewerUserId: string): Promise<ConnectionEntity | null>;
+  /** The non-revoked connection for the same external account and owner scope, if any (duplicate detection). */
+  findActiveByAccount(
+    workspaceId: string,
+    providerId: string,
+    ownerUserId: string | null,
+    externalAccountId: string,
+  ): Promise<ConnectionEntity | null>;
+  /** Non-revoked connections of the workspace, personal ones included: the figure the plan limit counts. */
+  countActive(workspaceId: string): Promise<number>;
   update(workspaceId: string, id: string, patch: ConnectionPatch): Promise<ConnectionEntity | null>;
   /**
    * Marks the connection revoked and clears the account fields, keeping the

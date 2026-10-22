@@ -50,6 +50,7 @@ export const NOTION: ProviderManifest = {
     // PKCE, so it is off here; turn it on when the documentation says otherwise.
     pkce: false,
     scope_separator: ' ',
+    send_scope_param: false,
     extra_authorize_params: { owner: 'user' },
     // Recalling, not verified: HTTP Basic client authentication and a JSON body.
     client_auth: 'basic',

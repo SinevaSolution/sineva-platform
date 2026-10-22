@@ -70,6 +70,7 @@ export const GOOGLE_CALENDAR: ProviderManifest = {
     issuer: 'https://accounts.google.com',
     pkce: true,
     scope_separator: ' ',
+    send_scope_param: true,
     // Recalling, not verified (OQ-CONN-8): Google issues a refresh token only
     // with offline access and, on a repeat consent, only when consent is forced.
     extra_authorize_params: { access_type: 'offline', prompt: 'consent', include_granted_scopes: 'true' },

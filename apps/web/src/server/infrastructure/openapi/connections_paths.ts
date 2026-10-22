@@ -19,8 +19,66 @@ function internalPaths(path: string, method: 'get' | 'post', operation: Record<s
   ]);
 }
 
+const WS = { name: 'workspace_id', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } };
+
+const COMMON_ERRORS = {
+  '401': response('Not signed in'),
+  '403': response('Role lacks the permission, or a bearer token minted for another audience'),
+  '404': response('Not found, not visible to this person, or another workspace'),
+};
+
 export function getConnectionsPaths(): Record<string, unknown> {
   return {
+    '/api/v1/workspaces/{workspace_id}/connections/oauth/start': {
+      post: {
+        tags: ['Connections'],
+        summary: 'Start connecting a tool with a sign-in',
+        description:
+          'Creates a one-time flow (10 minutes) bound to the session and returns the provider URL; the app shows its consent screen first, then sends the browser there. Workspace and user come from the session and the path, never the body (a user_id or workspace_id key is a 422). owner_scope workspace needs connection.connect_workspace (owner, admin); user needs connection.connect_personal and a provider that allows personal connections. return_to must be a path under /w/. Details and result codes: docs/api-spec/connections_endpoints.md.',
+        operationId: 'start_connection_oauth',
+        parameters: [WS],
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                additionalProperties: false,
+                required: ['provider_id', 'scope_bundle', 'owner_scope'],
+                properties: {
+                  provider_id: { type: 'string' },
+                  scope_bundle: { type: 'string' },
+                  owner_scope: { type: 'string', enum: ['workspace', 'user'] },
+                  return_to: { type: 'string', description: 'Relative path starting with /w/' },
+                },
+              },
+            },
+          },
+        },
+        responses: {
+          '200': response('flow_id, authorization_url, expires_at'),
+          ...COMMON_ERRORS,
+          '409': response('provider_coming_soon or provider_not_configured'),
+          '422': response('Validation failed, unknown scope bundle, unsafe return_to, or owner_scope_not_allowed'),
+        },
+      },
+    },
+    '/api/v1/connections/oauth/callback': {
+      get: {
+        tags: ['Connections'],
+        summary: 'Provider redirect target for a connection flow',
+        description:
+          'Called by the provider through the browser (a cross-site GET; the session cookie is SameSite=Lax). Consumes the one-time state, checks expiry, the session binding, the role and iss, then redeems the code server side. Never returns JSON: every outcome is a 302 to a path in the app with connection_result (connected, partial, reconnected, denied, duplicate_account, different_account, expired, error) and, when known, provider_id and connection_id.',
+        operationId: 'oauth_connection_callback',
+        parameters: [
+          { name: 'code', in: 'query', schema: { type: 'string' } },
+          { name: 'state', in: 'query', schema: { type: 'string' } },
+          { name: 'error', in: 'query', schema: { type: 'string' } },
+          { name: 'iss', in: 'query', schema: { type: 'string' } },
+        ],
+        responses: { '302': { description: 'Redirect to the return path with connection_result' } },
+      },
+    },
     ...Object.fromEntries([
       ...internalPaths('/internal/v1/jobs/tick', 'post', {
         tags: ['Internal'],

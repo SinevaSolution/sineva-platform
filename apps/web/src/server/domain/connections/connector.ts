@@ -66,6 +66,8 @@ export interface OAuthConfig {
   issuer: string;
   pkce: boolean;
   scope_separator: ' ' | ',';
+  /** False when the provider has no scope strings (Notion): the bundle's keys are Sineva's own names and are not sent. */
+  send_scope_param: boolean;
   /** Provider-specific authorization parameters (offline access, forced consent). Recalled until verified (OQ-CONN-8). */
   extra_authorize_params: Record<string, string>;
   client_auth: 'body' | 'basic';

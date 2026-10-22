@@ -100,6 +100,28 @@ export class PrismaConnectionRepository implements ConnectionRepository {
     return row ? mapConnection(row) : null;
   }
 
+  async findActiveByAccount(
+    workspaceId: string,
+    providerId: string,
+    ownerUserId: string | null,
+    externalAccountId: string,
+  ): Promise<ConnectionEntity | null> {
+    const row = await this.db.connection.findFirst({
+      where: {
+        workspace_id: workspaceId,
+        provider_id: providerId,
+        owner_user_id: ownerUserId,
+        external_account_id: externalAccountId,
+        status: { not: 'revoked' },
+      },
+    });
+    return row ? mapConnection(row) : null;
+  }
+
+  async countActive(workspaceId: string): Promise<number> {
+    return this.db.connection.count({ where: { workspace_id: workspaceId, status: { not: 'revoked' } } });
+  }
+
   async update(workspaceId: string, id: string, patch: ConnectionPatch): Promise<ConnectionEntity | null> {
     const result = await this.db.connection.updateMany({
       where: { id, workspace_id: workspaceId },

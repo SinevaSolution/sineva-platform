@@ -7,11 +7,14 @@ import {
 } from '@/server/domain/connections/connection';
 import { ConflictError } from '@/server/domain/errors/domain_error';
 import type { ConnectionRepository } from '@/server/domain/repositories/connection_repository';
+import type { FakeTransactionRunner } from './fake_transaction_runner';
 
 /** Unit-test stand-in obeying the same tenant and duplicate rules as the Postgres adapter. */
 export class InMemoryConnectionRepository implements ConnectionRepository {
   readonly rows = new Map<string, ConnectionEntity>();
   now: () => Date = () => new Date();
+  /** When set, writes made inside a transaction scope are undone if the scope rolls back. */
+  tx: FakeTransactionRunner | null = null;
 
   async create(input: NewConnection): Promise<ConnectionEntity> {
     if (input.external_account_id && input.status !== 'revoked') {
@@ -52,6 +55,7 @@ export class InMemoryConnectionRepository implements ConnectionRepository {
       updated_at: at,
     };
     this.rows.set(row.id, row);
+    if (this.tx?.active) this.tx.onRollback(() => this.rows.delete(row.id));
     return { ...row };
   }
 
@@ -65,9 +69,34 @@ export class InMemoryConnectionRepository implements ConnectionRepository {
     return row && isVisibleTo(row, viewerUserId) ? row : null;
   }
 
+  async findActiveByAccount(
+    workspaceId: string,
+    providerId: string,
+    ownerUserId: string | null,
+    externalAccountId: string,
+  ): Promise<ConnectionEntity | null> {
+    const row = [...this.rows.values()].find(
+      (candidate) =>
+        candidate.workspace_id === workspaceId &&
+        candidate.provider_id === providerId &&
+        (candidate.owner_user_id ?? '') === (ownerUserId ?? '') &&
+        candidate.external_account_id === externalAccountId &&
+        candidate.status !== 'revoked',
+    );
+    return row ? { ...row } : null;
+  }
+
+  async countActive(workspaceId: string): Promise<number> {
+    return [...this.rows.values()].filter((row) => row.workspace_id === workspaceId && row.status !== 'revoked').length;
+  }
+
   async update(workspaceId: string, id: string, patch: ConnectionPatch): Promise<ConnectionEntity | null> {
     const row = this.rows.get(id);
     if (!row || row.workspace_id !== workspaceId) return null;
+    if (this.tx?.active) {
+      const before = { ...row };
+      this.tx.onRollback(() => Object.assign(row, before));
+    }
     Object.assign(row, patch, { updated_at: this.now() });
     return { ...row };
   }

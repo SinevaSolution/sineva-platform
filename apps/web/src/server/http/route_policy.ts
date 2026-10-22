@@ -332,6 +332,18 @@ export const MUTATING_ROUTE_POLICY: Record<string, MutatingRoutePolicy> = {
     effect: 'ingest',
     audit: ['approval.expired', 'input.expired'],
   },
+  'POST /api/v1/workspaces/{workspace_id}/connections/oauth/start': {
+    effect: 'change',
+    audit: ['connection.oauth_started'],
+    entitlement: ENTITLEMENT_KEYS.CONNECTIONS,
+  },
+  'GET /api/v1/connections/oauth/callback': {
+    effect: 'create',
+    audit: ['connection.created', 'connection.reconnected', 'connection.scope_downgraded'],
+    entitlement: 'none',
+    reason:
+      'The connection limit is checked when the flow starts; the callback only completes a flow that already passed that check.',
+  },
   'POST /internal/v1/jobs/tick': {
     effect: 'ingest',
     audit: 'none',

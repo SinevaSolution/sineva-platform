@@ -7,6 +7,17 @@ import { JobRunner } from './application/jobs/job_runner';
 import { TickJobsUseCase, type JobPlanner } from './application/jobs/tick_jobs_use_case';
 import { CredentialResolver } from './application/connections/credential_resolver';
 import { ConnectorRegistry } from './application/connections/connector_registry';
+import { StartOAuthFlowUseCase } from './application/connections/oauth/start_oauth_flow_use_case';
+import { HandleOAuthCallbackUseCase } from './application/connections/oauth/handle_oauth_callback_use_case';
+import type { ConnectionLog } from './domain/connections/connection_errors';
+import type { ConnectorDriverResolver } from './domain/connections/driver_resolver';
+import type { ConnectionGrantRepository } from './domain/repositories/connection_grant_repository';
+import type { OAuthFlowRepository } from './domain/repositories/oauth_flow_repository';
+import { EgressHttpClient } from './infrastructure/connectors/egress_http_client';
+import { ManifestDriverResolver } from './infrastructure/connectors/manifest_driver_resolver';
+import { PrismaConnectionGrantRepository } from './infrastructure/database/prisma_connection_grant_repository';
+import { PrismaOAuthFlowRepository } from './infrastructure/database/prisma_oauth_flow_repository';
+import { LoggerConnectionLog } from './infrastructure/logging/log_connection_log';
 import { PROVIDER_MANIFESTS } from './application/connections/manifests';
 import { specialistsDeclaring } from '@/shared/specialists/connection_providers';
 import type { ConnectionRepository } from './domain/repositories/connection_repository';
@@ -1115,6 +1126,73 @@ export const getConnectorRegistry = memoize(
         return Boolean(env[manifest.oauth.credential_keys.client_id] && env[manifest.oauth.credential_keys.client_secret]);
       },
       specialistsFor: specialistsDeclaring,
+    }),
+);
+
+const envValue = (key: string): string | undefined =>
+  (getEnvConfig() as unknown as Record<string, string | undefined>)[key];
+
+// Every provider call goes through this client: allowlist, no redirects, time and size caps.
+const getConnectorHttpClient = memoize(
+  () => new EgressHttpClient({ isAllowed: (providerId, url) => getConnectorRegistry().isEgressAllowed(providerId, url) }),
+);
+
+export const getConnectorDriverResolver = memoize<ConnectorDriverResolver>(
+  () =>
+    new ManifestDriverResolver({
+      manifests: PROVIDER_MANIFESTS,
+      http: getConnectorHttpClient(),
+      oauthCredentials: (manifest) => {
+        const keys = manifest.oauth?.credential_keys;
+        const client_id = keys && envValue(keys.client_id);
+        const client_secret = keys && envValue(keys.client_secret);
+        return client_id && client_secret ? { client_id, client_secret } : null;
+      },
+    }),
+);
+
+export const getConnectionLog = memoize<ConnectionLog>(() => new LoggerConnectionLog());
+export const getOAuthFlowRepository = memoize<OAuthFlowRepository>(() => new PrismaOAuthFlowRepository(getPrismaClient()));
+export const getConnectionGrantRepository = memoize<ConnectionGrantRepository>(
+  () => new PrismaConnectionGrantRepository(getPrismaClient()),
+);
+
+// The exact redirect URI registered with every provider in this environment (no wildcards).
+const oauthRedirectUri = () => `${getEnvConfig().next_public_app_url.replace(/\/+$/, '')}/api/v1/connections/oauth/callback`;
+
+export const getStartOAuthFlowUseCase = memoize(
+  () =>
+    new StartOAuthFlowUseCase({
+      registry: getConnectorRegistry(),
+      drivers: getConnectorDriverResolver(),
+      flows: getOAuthFlowRepository(),
+      connections: getConnectionRepository(),
+      secrets: getSecretWriter(),
+      workspaces: getWorkspaceRepository(),
+      audit: getAuditLogger(),
+      entitlements: getEntitlementService(),
+      redirectUri: oauthRedirectUri(),
+      clientIdFor: (providerId) => {
+        const keys = getConnectorRegistry().provider(providerId)?.oauth?.credential_keys;
+        return (keys && envValue(keys.client_id)) ?? '';
+      },
+    }),
+);
+
+export const getHandleOAuthCallbackUseCase = memoize(
+  () =>
+    new HandleOAuthCallbackUseCase({
+      registry: getConnectorRegistry(),
+      drivers: getConnectorDriverResolver(),
+      flows: getOAuthFlowRepository(),
+      connections: getConnectionRepository(),
+      grants: getConnectionGrantRepository(),
+      secrets: getSecretWriter(),
+      resolver: getCredentialResolver(),
+      members: getWorkspaceMemberRepository(),
+      audit: getAuditLogger(),
+      transactions: getTransactionRunner(),
+      log: getConnectionLog(),
     }),
 );
 

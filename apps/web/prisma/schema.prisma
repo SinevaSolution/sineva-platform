@@ -74,6 +74,7 @@ model Workspace {
   connections        Connection[]
   connection_grants  ConnectionGrant[]
   vault_secrets      VaultSecret[]
+  oauth_flows        OAuthFlow[]
 
   @@map("workspaces")
   @@schema("platform")
@@ -206,6 +207,7 @@ model User {
   preferences              UserPreferences?
   onboarding_states OnboardingState[]
   connections_owned Connection[] @relation("ConnectionOwner")
+  oauth_flows       OAuthFlow[]
 
   @@map("users")
   @@schema("platform")
@@ -1097,5 +1099,37 @@ model VaultSecret {
   @@index([workspace_id])
   @@index([kek_id])
   @@map("vault_secrets")
+  @@schema("platform")
+}
+
+// One authorization attempt (FR-CONN-06, ADR-0037). `state` is stored only as a
+// SHA-256 hash, the PKCE verifier is in the vault (owner type `oauth_flow`), and
+// the row is consumed by one atomic UPDATE, so a replayed callback finds nothing.
+// `session_hash` binds the flow to the browser session that started it.
+model OAuthFlow {
+  id            String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  workspace_id  String    @db.Uuid
+  user_id       String    @db.Uuid
+  provider_id   String    @db.VarChar(64)
+  connection_id String?   @db.Uuid
+  owner_scope   String    @db.VarChar(16) // workspace | user
+  scope_bundle  String    @db.VarChar(64)
+  scopes        String[]  @default([])
+  state_hash    String    @unique @db.VarChar(64)
+  nonce         String
+  redirect_uri  String
+  issuer        String
+  session_hash  String    @db.VarChar(64)
+  return_to     String
+  expires_at    DateTime  @db.Timestamptz(6)
+  consumed_at   DateTime? @db.Timestamptz(6)
+  created_at    DateTime  @default(now()) @db.Timestamptz(6)
+
+  workspace Workspace @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
+  user      User      @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@index([workspace_id, user_id])
+  @@index([expires_at])
+  @@map("oauth_flows")
   @@schema("platform")
 }
