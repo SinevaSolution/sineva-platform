@@ -5,7 +5,7 @@ import {
   createInputRequestRequestSchema,
   inputRequiredEventSchema,
   resumeRunBodySchema,
-} from '@/server/application/dtos/approval_contract_dto';
+} from '@/server/application/inbox/approval_contract_dto';
 import { hashPayload } from '@/server/domain/approvals/action_types';
 import {
   UpstreamServiceError,
@@ -49,8 +49,10 @@ describe('approval contract fixtures (proposed, WP-M1-40)', () => {
   });
 
   it('keeps the create body equal to the event plus its scope', () => {
-    const { workspace_id: _w, run_id: _r, ...rest } = approvalCreate;
-    expect(rest).toEqual(approvalEvent);
+    const scoped: Record<string, unknown> = { ...approvalCreate };
+    delete scoped.workspace_id;
+    delete scoped.run_id;
+    expect(scoped).toEqual(approvalEvent);
   });
 
   it('parses every resume body', () => {

@@ -20,13 +20,13 @@ import type {
   RunEventsResult,
   StreamCallOptions,
 } from '@/server/domain/repositories/ai_engine_gateway';
-import { resumeRunResponseSchema } from '@/server/application/dtos/approval_contract_dto';
 import {
   agentCatalogEnvelopeV2Schema,
   agentCatalogV2Schema,
   chatTurnResultEnvelopeV2Schema,
   chatTurnResultV2Schema,
   parseSseTranscript,
+  resumeRunResponseSchema,
 } from './ai_engine_v2_schemas';
 import type { ChatTurnResultV2 } from '@/server/domain/chat/chat_v2';
 import type { AgentCatalog } from '@/server/domain/specialists/agent_catalog';

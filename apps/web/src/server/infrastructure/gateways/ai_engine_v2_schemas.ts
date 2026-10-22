@@ -125,3 +125,8 @@ export function parseSseTranscript(transcript: string): ParsedSseMessage[] {
 
   return messages;
 }
+
+// What sineva-ai answers to the resume call (ADR-0032, proposed contract).
+export const resumeRunResponseSchema = z.object({
+  status: z.enum(['resumed', 'already_resumed']),
+});

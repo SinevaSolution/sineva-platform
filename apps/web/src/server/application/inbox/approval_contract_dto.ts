@@ -92,7 +92,3 @@ export const resumeRunBodySchema = z.discriminatedUnion('kind', [
   resumeApprovalBodySchema,
   resumeInputBodySchema,
 ]);
-
-export const resumeRunResponseSchema = z.object({
-  status: z.enum(['resumed', 'already_resumed']),
-});

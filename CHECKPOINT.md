@@ -68,6 +68,7 @@ The database has been migrated and seeded (`npm run db:seed`):
 | **WP-M0-33 / 48** | **DONE (platform)** | `audit_events` (migration `20261022100000_audit_events`), route policy inventory, internal ingest; entitlement seam in `open` mode (`ENTITLEMENTS_MODE`). |
 | **WP-M0-34** | **DONE (platform)** | PII detectors and `mask()` in `@sineva/shared`, allowlisted logger, lint bans `console` in server code. sineva-ai copy of vectors pending. |
 | **WP-M0-42** | **DONE** | i18n EN/ID (in-repo translator, ADR-0023), catalogs in `apps/web/messages`, copy lint, all UI strings migrated. Indonesian needs native review. |
+| **WP-M1-40** | **DONE (platform)** | Inbox backend: `inbox_items`, `inbox_item_reads`, `approvals`, `approval_revisions`, `input_requests` (migration `20261022170000_inbox_items_and_approvals`), item creation port, list, counts, read, decide, changes, answer, dismiss, expiry job, relay bridge for `approval_required` and `input_required`, internal routes. ADR-0032. Approval contract is proposed by the platform; sineva-ai half (WP-M1-07) blocked. |
 | **Hotfix (React 19)** | **DONE** | Commit `61855a0`: Suppressed React 19 false-positive console error regarding `<script>` tag in `next-themes` (`apps/web/src/client/store/provider.tsx`). Superseded: `next-themes` was removed in WP-M0-37 (compro theme script and `useTheme` replace it), so the console-error suppression is gone too. |
 
 ---
@@ -77,6 +78,7 @@ The database has been migrated and seeded (`npm run db:seed`):
 - Done 2026-10-22: `chat_runs` and `audit_events` deployed to the shared DB; `test:integration` green (5 files, 33 tests) on a throwaway DB, since dropped.
 - Gotcha for this local DB: `_prisma_migrations` lives in `public` (the DB was first migrated with a plain URL) while every table is in `platform`. Run `migrate status`/`deploy` with the plain `DATABASE_URL` from `.env`; adding `?schema=platform` makes Prisma look for `platform._prisma_migrations`, see nothing applied and try to re-run `init`. All migration SQL is schema-qualified, so tables still land in `platform`.
 - Add `ENTITLEMENTS_MODE=open` to `.env.example`.
+- WP-M1-40: deploy migration `20261022170000_inbox_items_and_approvals`; schedule `POST /internal/v1/inbox/expire` (header `X-Internal-Api-Key`) every minute or so, there is no job runner yet.
 - Blocked on sineva-ai team: WP-M0-13..20 (v2 contract, SSE, catalog), PII vectors copy, audit publisher.
 
 ## 5. Next Tasks (superseded list below kept for history)

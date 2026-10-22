@@ -1,4 +1,5 @@
 import 'server-only';
+import { getInboxPaths } from './inbox_paths';
 
 // Response object of the standard envelope, for the profile family below.
 function envelopeResponse(description: string) {
@@ -71,11 +72,16 @@ export function getOpenApiSpec(): Record<string, unknown> {
         description: 'Multi-tenant conversations and messages persistence and ownership (FR-HUB-20, FR-HUB-32)',
       },
       {
+        name: 'Inbox',
+        description: 'Inbox items, approvals of drafts and input requests (FR-INBOX-01 to FR-INBOX-15)',
+      },
+      {
         name: 'Internal',
         description: 'Internal service-to-service endpoints guarded by X-Internal-Api-Key',
       },
     ],
     paths: {
+      ...getInboxPaths(),
       '/api/internal/v1/keys': {
         get: {
           tags: ['Internal'],
