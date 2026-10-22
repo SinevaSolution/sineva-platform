@@ -1383,6 +1383,7 @@
     "providers": {
       "generic": "Lets your specialists work inside this tool, with your approval.",
       "google_calendar": "Lets Sino see your schedule and find free time.",
+      "gmail": "Read and search email, and prepare replies for you to send.",
       "notion": "Lets Sino read your notes and pages, so answers use what you already wrote.",
       "xendit": "Lets Sino read your payments and balance. It can never move money.",
       "midtrans": "Lets Sino read your payments and balance. It can never move money.",

@@ -36,6 +36,7 @@ describe('providers (FR-CONN-01, FR-CONN-05)', () => {
     const { providers } = await world.listProviders.execute({ context: world.context(OWNER) });
     expect(providers.map((p) => p.provider_id)).toEqual([
       'google_calendar',
+      'gmail',
       'notion',
       'xendit',
       'midtrans',

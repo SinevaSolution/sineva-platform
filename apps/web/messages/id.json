@@ -1383,6 +1383,7 @@
     "providers": {
       "generic": "Membuat Spesialis kamu bisa bekerja di aplikasi ini, dengan persetujuanmu.",
       "google_calendar": "Membuat Sino bisa melihat jadwalmu dan menemukan waktu kosong.",
+      "gmail": "Baca dan cari email, lalu siapkan balasan untuk kamu kirim.",
       "notion": "Membuat Sino bisa membaca catatan dan halamanmu, jadi jawabannya memakai apa yang sudah kamu tulis.",
       "xendit": "Membuat Sino bisa membaca pembayaran dan saldomu. Sino tidak bisa memindahkan uang.",
       "midtrans": "Membuat Sino bisa membaca pembayaran dan saldomu. Sino tidak bisa memindahkan uang.",

@@ -95,8 +95,12 @@ describe('provider manifests (ADR-0037)', () => {
     }
   });
 
-  it('only Google Calendar is personal capable (OQ-CONN-7 default)', () => {
-    expect(PROVIDER_MANIFESTS.filter((m) => m.personal_capable).map((m) => m.provider_id)).toEqual(['google_calendar']);
+  // OQ-CONN-7 default was calendar only; Gmail joins it because a mailbox belongs to one person.
+  it('only Google Calendar and Gmail are personal capable', () => {
+    expect(PROVIDER_MANIFESTS.filter((m) => m.personal_capable).map((m) => m.provider_id)).toEqual([
+      'google_calendar',
+      'gmail',
+    ]);
   });
 
   it('keeps provider credentials out of the manifest: only env key names appear', () => {
@@ -283,5 +287,33 @@ describe('specialists that declare a provider (ADR-0039 decision 4)', () => {
     const order = specialistsDeclaring('google_calendar');
     expect([...order].sort((a, b) => slugs.indexOf(a) - slugs.indexOf(b))).toEqual(order);
     expect(specialistsDeclaring('nope')).toEqual([]);
+  });
+});
+
+describe('Gmail connector (Founder request 2026-10-23)', () => {
+  const gmail = () => PROVIDER_MANIFESTS.find((m) => m.provider_id === 'gmail');
+
+  it('is listed as an available messaging provider that signs in with Google', () => {
+    const m = gmail();
+    expect(m?.status).toBe('available');
+    expect(m?.category).toBe('messaging');
+    expect(m?.auth_type).toBe('oauth2_pkce');
+    expect(m?.oauth?.credential_keys).toEqual({
+      client_id: 'google_connect_client_id',
+      client_secret: 'google_connect_client_secret',
+    });
+  });
+
+  it('offers a read-only bundle and a drafts-and-send bundle', () => {
+    const bundles = gmail()?.bundles.map((b) => b.bundle_key);
+    expect(bundles).toEqual(['email_read', 'email_compose']);
+  });
+
+  it('sends mail only as a write that needs approval, never as a read', () => {
+    const send = gmail()?.actions.find((a) => a.action_id === 'gmail_send_message');
+    expect(send?.side_effect).toBe('write_external');
+    expect(send?.reversible).toBe(false);
+    const reads = gmail()?.actions.filter((a) => a.side_effect === 'read').map((a) => a.action_id);
+    expect(reads).toEqual(['gmail_search_messages', 'gmail_get_message']);
   });
 });

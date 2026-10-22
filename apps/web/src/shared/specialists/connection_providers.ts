@@ -15,9 +15,9 @@ import { SPECIALIST_MANIFEST } from './manifest';
 export const SPECIALIST_CONNECTION_PROVIDERS: Readonly<Record<string, readonly string[]>> = {
   sinopeople: ['google_calendar'],
   sinofinance: ['xendit', 'midtrans', 'mekari_jurnal'],
-  sinosales: ['google_calendar', 'notion'],
+  sinosales: ['google_calendar', 'gmail', 'notion'],
   sinosocial: [],
-  sinohelp: ['notion'],
+  sinohelp: ['gmail', 'notion'],
   sinoinsights: ['notion'],
 };
 
