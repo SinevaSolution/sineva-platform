@@ -1,0 +1,36 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "framework": "nextjs",
+  "installCommand": "cd ../.. && npm ci",
+  "buildCommand": "node scripts/vercel_build.mjs",
+  "crons": [
+    {
+      "path": "/api/internal/v1/inbox/expire",
+      "schedule": "* * * * *"
+    },
+    {
+      "path": "/api/internal/v1/jobs/tick",
+      "schedule": "* * * * *"
+    }
+  ],
+  "functions": {
+    "src/app/api/v1/workspaces/*/runs/*/events/route.ts": {
+      "maxDuration": 300
+    },
+    "src/app/api/v1/workspaces/*/conversations/*/messages/route.ts": {
+      "maxDuration": 60
+    },
+    "src/app/api/v1/workspaces/*/profile/scans/route.ts": {
+      "maxDuration": 60
+    },
+    "src/app/api/v1/workspaces/*/library/try/route.ts": {
+      "maxDuration": 60
+    },
+    "src/app/api/internal/v1/inbox/expire/route.ts": {
+      "maxDuration": 60
+    },
+    "src/app/api/internal/v1/jobs/tick/route.ts": {
+      "maxDuration": 120
+    }
+  }
+}

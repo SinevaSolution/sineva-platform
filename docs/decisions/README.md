@@ -61,6 +61,7 @@ Items marked "cross-service" are mirrored in `sineva-ai` (`docs/decisions/` ther
 
 | [0033](0033-library-collections-access-and-plain-language.md) | Library collections carry 'Who can use this', documents inherit or override, Squad and Workflow scopes reserved, retrieval scope equals access, plain-language statuses and banned technical words | You touch Library access, the Library page or the technical-word copy rule |
 | [0041](0041-oauth-reauthentication-and-account-linking.md) | OAuth intents (sign in, link, re-confirm) bound to the signed-in user; re-confirming through a linked provider marks the session fresh | You touch OAuth, fresh-session recovery or sign-in methods |
+| [0047](0047-hosting-on-vercel.md) | Vercel hosting rooted at `apps/web`, cron bearer auth on job routes only, migrations during the production build behind a destructive gate, serverless limits | You deploy, add a cron job or change a migration |
 | [0036](0036-credential-vault-kms-and-key-hierarchy.md) | Generalized `vault_secrets`, envelope AES-256-GCM with AAD, `KmsPort`, separate vault database role | You store or read a credential or a key |
 | [0037](0037-oauth-flow-and-connector-driver.md) | OAuth code flow with PKCE, `ConnectorDriver`, manifests as data, provider credentials from env | You touch connections, OAuth or a connector |
 | [0038](0038-durable-job-runner.md) | Postgres jobs table with SKIP LOCKED, retries, idempotency, single-flight, internal tick endpoint | You add background work |

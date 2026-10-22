@@ -7,16 +7,24 @@ const envelope = { $ref: '#/components/schemas/StandardEnvelope' };
 const json = { 'application/json': { schema: envelope } };
 const response = (description: string) => ({ description, content: json });
 
-function internalPaths(path: string, method: 'get' | 'post', operation: Record<string, unknown>): Array<[string, unknown]> {
-  return [path, `/api${path}`].map((p) => [
-    p,
-    {
-      [method]: {
-        ...operation,
-        operationId: p.startsWith('/api') ? `${operation.operationId as string}_api_alias` : operation.operationId,
+function internalPaths(
+  path: string,
+  method: 'get' | 'post',
+  operation: Record<string, unknown>,
+  // A scheduler that can only issue GET (Vercel Cron) triggers the same job.
+  options: { alsoGet?: boolean } = {},
+): Array<[string, unknown]> {
+  return [path, `/api${path}`].map((p) => {
+    const operationId = (suffix: string) =>
+      p.startsWith('/api') ? `${operation.operationId as string}${suffix}_api_alias` : `${operation.operationId as string}${suffix}`;
+    return [
+      p,
+      {
+        [method]: { ...operation, operationId: operationId('') },
+        ...(options.alsoGet ? { get: { ...operation, operationId: operationId('_get') } } : {}),
       },
-    },
-  ]);
+    ];
+  });
 }
 
 const WS = { name: 'workspace_id', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } };
@@ -249,7 +257,7 @@ export function getConnectionsPaths(): Record<string, unknown> {
         tags: ['Internal'],
         summary: 'Run one job scheduler beat',
         description:
-          'Guarded by X-Internal-Api-Key. Plans due jobs (idempotent), takes back jobs whose worker died, then runs up to max_jobs ready jobs. Optional body {max_jobs: 1 to 100, default 25}. Call about once a minute; safe to call repeatedly.',
+          'Guarded by X-Internal-Api-Key or by Authorization: Bearer CRON_SECRET (the form Vercel Cron sends; GET exists because Vercel Cron only issues GET). Plans due jobs (idempotent), takes back jobs whose worker died, then runs up to max_jobs ready jobs. Optional body {max_jobs: 1 to 100, default 25}. Call about once a minute; safe to call repeatedly.',
         operationId: 'run_job_tick',
         requestBody: {
           required: false,
@@ -265,10 +273,10 @@ export function getConnectionsPaths(): Record<string, unknown> {
         },
         responses: {
           '200': response('Counts: planned, reaped, ran, succeeded, retried, failed, planner_errors'),
-          '401': response('Missing or invalid X-Internal-Api-Key header'),
+          '401': response('Missing or invalid X-Internal-Api-Key header or cron bearer token'),
           '422': response('Body failed validation'),
         },
-      }),
+      }, { alsoGet: true }),
       ...internalPaths('/internal/v1/connections/reconcile', 'post', {
         tags: ['Internal'],
         summary: 'Queue the connection sweep after a restore',

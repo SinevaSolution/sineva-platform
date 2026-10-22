@@ -4,14 +4,26 @@ import { VaultUnavailableError } from '@/server/domain/vault/vault';
 import { getEnvConfig } from '../config/env';
 import { PrismaClient } from './generated/client';
 
-export function createPrismaClient(connectionString: string): PrismaClient {
-  const adapter = new PrismaPg({
+/**
+ * Pool settings for the pg adapter. `max` is per app instance: on serverless
+ * hosting every warm instance has its own pool, so total connections are
+ * roughly instances times `max`. Keep it small there and point the URL at the
+ * provider's pooled endpoint.
+ */
+export function buildPoolConfig(connectionString: string, max: number) {
+  return {
     connectionString,
     // Prisma 7's pg adapter defaults to no connect timeout, so an unreachable
     // database would hang every request (and `next build` page-data collection)
     // instead of failing fast.
     connectionTimeoutMillis: 5_000,
-  });
+    max,
+  };
+}
+
+// Callers that pass only a URL (integration tests) keep the pg default of 10.
+export function createPrismaClient(connectionString: string, poolMax = 10): PrismaClient {
+  const adapter = new PrismaPg(buildPoolConfig(connectionString, poolMax));
   return new PrismaClient({ adapter });
 }
 
@@ -61,11 +73,14 @@ export function getVaultPrismaClient(): PrismaClient {
 /** Lazy: nothing connects (or even reads env) until the first call. */
 export function getPrismaClient(): PrismaClient {
   if (process.env.NODE_ENV === 'production') {
-    productionInstance ??= createPrismaClient(getEnvConfig().database_url);
+    const env = getEnvConfig();
+    productionInstance ??= createPrismaClient(env.database_url, env.database_pool_max);
     return productionInstance;
   }
+  const env = getEnvConfig();
   globalForPrisma.__sineva_prisma ??= createPrismaClient(
-    getEnvConfig().database_url,
+    env.database_url,
+    env.database_pool_max,
   );
   return globalForPrisma.__sineva_prisma;
 }

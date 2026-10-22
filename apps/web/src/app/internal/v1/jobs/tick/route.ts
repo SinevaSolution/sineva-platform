@@ -1,7 +1,7 @@
 import type { NextRequest } from 'next/server';
 import { tickJobsRequestSchema } from '@/server/application/dtos/jobs_dto';
 import { getTickJobsUseCase } from '@/server/container';
-import { verifyInternalApiKey } from '@/server/http/internal_guard';
+import { verifyInternalJobCaller } from '@/server/http/internal_guard';
 import {
   extractRequestId,
   handleRouteError,
@@ -17,14 +17,18 @@ export const dynamic = 'force-dynamic';
 // does (cron, a worker process later) calls this about once a minute. It plans
 // what is due, takes back jobs of dead workers and runs a bounded batch. Safe
 // to call as often as wanted: planning is idempotent and claims are exclusive.
-export async function POST(request: NextRequest) {
+//
+// Vercel Cron only issues GET and cannot send X-Internal-Api-Key, so GET (and
+// POST) also accept `Authorization: Bearer $CRON_SECRET` (ADR-0047). The stats
+// route next to it stays internal-key only.
+async function run(request: NextRequest) {
   const requestId = extractRequestId(request);
 
-  if (!verifyInternalApiKey(request)) {
+  if (!verifyInternalJobCaller(request)) {
     return sendErrorJson({
       status: 401,
       code: 'unauthorized',
-      message: 'Missing or invalid X-Internal-Api-Key header',
+      message: 'Missing or invalid X-Internal-Api-Key header or cron bearer token',
       request_id: requestId,
     });
   }
@@ -42,3 +46,5 @@ export async function POST(request: NextRequest) {
     return handleRouteError(error, request);
   }
 }
+
+export { run as GET, run as POST };

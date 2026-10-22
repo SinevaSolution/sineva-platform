@@ -119,6 +119,7 @@ Folder guide: [README](deployment/README.md).
 - [CI/CD Pipeline](deployment/ci_cd_pipeline.md)
 - [Connections Runbook](deployment/connections_runbook.md)
 - [Environment Variables](deployment/environment_variables.md)
+- [Deploying on Vercel](deployment/vercel.md): project settings, variables for Production and Preview, cron, migrations in the build, domain, OAuth URLs, smoke checklist, rollback.
 
 ## Development (`development/`)
 

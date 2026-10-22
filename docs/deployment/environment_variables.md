@@ -56,8 +56,18 @@ Rule: no new hardcoded secret defaults and no secret in a `NEXT_PUBLIC_*` variab
 | `NOTION_CLIENT_ID`, `NOTION_CLIENT_SECRET` | no | none | not set | Notion public integration used to connect Notion. Same rules and redirect URI as above |
 | `ENTITLEMENTS_MODE` | no | `open` | not set | `open` (M0 to M5: nothing blocks, checks logged as `entitlement.checked`), `shadow` (would-be blocks logged as `entitlement.would_block`, still allowed) or `enforced` (blocks with 403 `entitlement_required`). Any other value fails startup |
 | `ENTITLEMENTS_ALLOW_ENFORCED` | no | unset | not set | Must be `true` for `ENTITLEMENTS_MODE=enforced` to start in production. A second flag on purpose: one mistyped variable must not switch on paywalls before plans and payments exist (M6) |
+| `CRON_SECRET` | no (Vercel cron) | unset | not set | Shared secret Vercel Cron sends as `Authorization: Bearer <value>`. At least 16 characters or startup fails. Accepted only by the job routes (`inbox/expire`, `jobs/tick`), never by the routes `sineva-ai` calls. Unset: the bearer path never matches. See [vercel.md](vercel.md) and [ADR-0047](../decisions/0047-hosting-on-vercel.md) |
+| `DATABASE_POOL_MAX` | no | `10` | not set | Largest pg pool of one app instance, an integer from 1 to 50. Serverless hosting sets it low (5): every warm instance has its own pool |
+| `DIRECT_DATABASE_URL` | Vercel production build | unset | not used | Direct (non-pooled) URL of the migration role. Read only by `apps/web/scripts/vercel_build.mjs`, never by the app. The script adds `?schema=platform` |
+| `PREVIEW_DATABASE_URL` | no | unset | not used | Direct URL of a dedicated preview database. Read only by the Vercel build script: a preview build migrates it, or skips migrations when unset. Never the production database |
+| `ENABLE_DEV_UI` | no | unset | not set | `1` serves the `/dev/ui` gallery in production. Leave unset |
+| `OAUTH_TEST_IDP_URL`, `OAUTH_TEST_IDP_ALLOW` | no | unset | not set | Browser-test identity provider; production needs both. Never set on a real deployment |
 
 All of these are server-only. `NEXT_PUBLIC_APP_URL` and `NEXT_PUBLIC_API_BASE_URL` are not secrets. Next.js inlines `NEXT_PUBLIC_*` values into the client bundle at build time (recalling Next.js behavior, not tested here), so setting them only in the container's runtime environment would not change a bundle that is already built.
+
+### Hosting on Vercel
+
+The same variables apply. The extra ones for that host are `CRON_SECRET`, `DATABASE_POOL_MAX`, `DIRECT_DATABASE_URL` and `PREVIEW_DATABASE_URL` above; the Production and Preview values, formats and where to get each are in [vercel.md](vercel.md). Preview deployments also run with `NODE_ENV=production`, so the production checks apply to them. `NEXT_PUBLIC_APP_URL` has a localhost fallback in code (known debt, ADR-0008): the Vercel production build refuses to run without an https value instead.
 
 ### Gotchas
 
