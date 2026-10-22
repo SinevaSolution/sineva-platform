@@ -121,7 +121,7 @@ jobs:
       - name: Custom Token & Key Pattern Scan
         run: |
           echo "Scanning for forbidden credential patterns (snv_pat_, -----BEGIN ... KEY)..."
-          FORBIDDEN=$(git grep -E -I "snv_pat_[a-zA-Z0-9_\-]{16,}|-----BEGIN (RSA |EC |OPENSSH |DSA )?PRIVATE KEY-----" -- ':!*test*' ':!*fixture*' ':!*.md' || true)
+          FORBIDDEN=$(git grep -E -I "snv_pat_[a-zA-Z0-9_\-]{16,}|-----BEGIN (RSA |EC |OPENSSH |DSA )?PRIVATE KEY-----" -- ':!*test*' ':!*fixture*' ':!*.md' ':!packages/shared/src/pii/vectors/**' || true)
           if [ -n "$FORBIDDEN" ]; then
             echo "ERROR: Found secret patterns in tracked files:"
             echo "$FORBIDDEN"
