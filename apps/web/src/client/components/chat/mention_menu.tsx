@@ -1,6 +1,7 @@
 import * as React from 'react';
 import type { ShellSpecialistView } from '@/shared/shell_view';
 import { cn } from '@/client/components/ui/cn';
+import { PresetEmptyState } from '@/client/components/ui/empty_state';
 import { SNSinoFigure } from '@/client/components/ui/sn_sino_figure';
 import { specialistPose } from '@/client/components/ui/specialist_accent';
 import { useTranslations } from '@/i18n/provider';
@@ -42,8 +43,8 @@ export function MentionMenu({
   // ARIA. The id stays so the textarea's aria-controls never dangles.
   if (items.length === 0) {
     return (
-      <div id={id} role="status" className={cn(shell, 'px-3 py-2.5 text-sm text-text-tertiary')}>
-        {t('mention_menu.empty', { query })}
+      <div id={id} className={cn(shell, 'px-3 py-3')}>
+        <PresetEmptyState preset="mention_no_match" values={{ query }} />
       </div>
     );
   }

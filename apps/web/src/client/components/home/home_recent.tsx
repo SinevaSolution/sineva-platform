@@ -6,6 +6,7 @@ import { ConversationActions } from '@/client/components/conversation/conversati
 import { InlineTitleEdit } from '@/client/components/conversation/inline_title_edit';
 import { useConversationActions } from '@/client/components/conversation/use_conversation_actions';
 import { chatMarker } from '@/client/components/shell/nav_model';
+import { PresetEmptyState } from '@/client/components/ui/empty_state';
 import { SNSinoFigure } from '@/client/components/ui/sn_sino_figure';
 import { apiRequest } from '@/client/lib/api';
 import { useAppSelector } from '@/client/store/hooks';
@@ -66,18 +67,11 @@ export function HomeRecent({
   }
   if (items.length === 0) {
     return (
-      <div className="flex items-center gap-3 rounded-md border border-dashed border-border-strong p-4">
-        <SNSinoFigure pose="wave" size={44} />
-        <p className="text-sm text-text-secondary">
-          {t.rich('home.recent_empty', {
-            link: (
-              <Link href={`/w/${workspaceSlug}/new`} className="font-medium text-text-brand hover:underline">
-                {t('home.recent_empty_link')}
-              </Link>
-            ),
-          })}
-        </p>
-      </div>
+      <PresetEmptyState
+        preset="home_recent"
+        actionHref={`/w/${workspaceSlug}/new`}
+        className="rounded-md border border-dashed border-border-strong p-6"
+      />
     );
   }
   return (

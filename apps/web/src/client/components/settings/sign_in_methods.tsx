@@ -4,6 +4,7 @@ import { Mail } from 'lucide-react';
 import * as React from 'react';
 import { GitHubMark, GoogleMark } from '@/client/components/auth/oauth_buttons';
 import { SNPill } from '@sineva/ui';
+import { PresetEmptyState } from '@/client/components/ui/empty_state';
 import { useTranslations } from '@/i18n/provider';
 import { SettingsRow, SettingsSection } from './settings_layout';
 
@@ -78,6 +79,9 @@ export function SignInMethods({
             </SNPill>
           </span>
         </SettingsRow>
+        {!byProvider.has('google') && !byProvider.has('github') ? (
+          <PresetEmptyState preset="sign_in_methods_none" className="py-4" />
+        ) : null}
       </SettingsSection>
     </div>
   );

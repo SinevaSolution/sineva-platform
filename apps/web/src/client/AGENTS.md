@@ -22,6 +22,7 @@ Browser-side UI: `components/` and the Redux store in `store/`. Rules R-08, R-14
 - Every shared component is an `SN` component from `@sineva/ui` ([ADR-0028](../../../../docs/decisions/0028-sn-component-prefix-and-form-controls.md)): `SNButton`, `SNIconButton`, `SNInput`, `SNField`, `SNSelect`, `SNCombobox`, `SNDialog`, `SNDropdownMenu`, `snToast`. A new shared component gets the `SN` prefix and the `sn_x/` folder; a feature component keeps its domain name.
 - Dropdown fields are `SNSelect` (short list) or `SNCombobox` (long, searchable). A native `<select>` fails lint (`sineva-design/no-native-select`). Do not import `@radix-ui/*` or `sonner` in app code; use the `SN` wrapper (`snToast.error(...)`, not `toast.error(...)`).
 - An icon-only button is an `SNIconButton` with a `label` (accessible name and tooltip). Menus use `SNDropdownMenu`, confirmations `SNConfirmDialog`, side sheets `SNDrawer`.
+- A place that can be empty is a preset in `components/ui/empty_states.ts` (icon for compact places, Sino pose for pages, size, and keys in the `empty` namespace, EN and ID) rendered with `<PresetEmptyState preset="...">`. Never write ad-hoc "no items" text; `empty_state_usage.test.ts` fails on it. Add the entry to the registry and both catalogs together; the `/dev/ui` gallery lists every preset.
 - Without tailwind-merge in `@sineva/ui`, do not restyle a variant with `className`; pick the right size or variant, or add one to the component.
 
 ## Redux

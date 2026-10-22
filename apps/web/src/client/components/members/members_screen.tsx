@@ -14,6 +14,7 @@ import {
   SNSelect,
 } from '@sineva/ui';
 import { formatDate } from '@sineva/ui/format';
+import { PresetEmptyState } from '@/client/components/ui/empty_state';
 import { ApiError, apiRequest } from '@/client/lib/api';
 import { useApiErrorText } from '@/client/lib/use_api_error';
 import { useLocale, useTranslations } from '@/i18n/provider';
@@ -149,7 +150,10 @@ export function MembersScreen({
           </SNButton>
         </div>
       ) : null}
-      <ul className="divide-y divide-border rounded-md border border-border">
+      {members.length === 0 ? (
+        <PresetEmptyState preset="members_list" className="rounded-md border border-dashed border-border py-6" />
+      ) : null}
+      <ul className="divide-y divide-border rounded-md border border-border" hidden={members.length === 0}>
         {members.map((member) => (
           <li
             key={member.id}
@@ -199,7 +203,7 @@ export function MembersScreen({
         <section className="space-y-3">
           <h2 className="text-lg font-semibold">{t('invitations')}</h2>
           {invitations.length === 0 ? (
-            <p className="text-sm text-text-secondary">{t('empty_invites')}</p>
+            <PresetEmptyState preset="members_invitations" className="rounded-md border border-dashed border-border py-6" />
           ) : (
             <ul className="divide-y divide-border rounded-md border border-border">
               {invitations.map((invitation) => (

@@ -5,6 +5,7 @@ import * as React from 'react';
 import type { ComposerHandle } from '@/client/components/chat/composer';
 import { StartChat } from '@/client/components/chat/start_chat';
 import { cn } from '@/client/components/ui/cn';
+import { PresetEmptyState } from '@/client/components/ui/empty_state';
 import { SNSinoFigure } from '@/client/components/ui/sn_sino_figure';
 import { specialistPose } from '@/client/components/ui/specialist_accent';
 import { SNTooltip } from '@sineva/ui';
@@ -122,7 +123,13 @@ export function NewChatView({
             {current ? t('intro_specialist', { role: current.role_title }) : t('intro_team')}
           </RoomBubble>
         </div>
-        <ul className="flex flex-wrap gap-2" aria-label={t('starters_label')}>
+        {starterTexts.length === 0 ? (
+          <PresetEmptyState
+            preset="new_chat_starters"
+            className="rounded-lg bg-surface p-3 shadow-md ring-1 ring-border"
+          />
+        ) : null}
+        <ul className="flex flex-wrap gap-2" aria-label={t('starters_label')} hidden={starterTexts.length === 0}>
           {starterTexts.map((text, i) => {
             return (
               <li key={text} className="anim-rise" style={{ '--d': `${120 + i * 70}ms` } as React.CSSProperties}>

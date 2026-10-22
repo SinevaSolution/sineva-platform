@@ -13,7 +13,8 @@
     "normal": "Normal text",
     "width": "Preview width",
     "sample": "Sample data",
-    "components": "Components"
+    "components": "Components",
+    "empty_states": "Empty states"
   },
   "common": {
     "loading": "Loading",
@@ -25,6 +26,82 @@
       "aria_to_dark": "Switch to dark theme",
       "title_to_light": "Switch to light mode",
       "title_to_dark": "Switch to dark mode"
+    }
+  },
+  "empty": {
+    "sidebar_recent": {
+      "title": "No chats yet",
+      "description": "Start one and it will wait for you here."
+    },
+    "home_recent": {
+      "title": "No chats to pick up yet",
+      "description": "Start a chat with Sino and it will be waiting for you here next time.",
+      "action": "Start a chat"
+    },
+    "home_ideas": {
+      "title": "No ideas for today yet",
+      "description": "Ideas show up as soon as your team is ready."
+    },
+    "chat_thread_empty": {
+      "title": "Start the conversation",
+      "description": "Write your first message below and the reply shows up right here."
+    },
+    "chat_deleted": {
+      "title": "This chat is gone",
+      "description": "It may have been deleted. You can start a new one any time.",
+      "action": "Start a new chat"
+    },
+    "chat_load_failed": {
+      "title": "Sino couldn't open this chat",
+      "description": "Your messages are safe. Try again in a moment.",
+      "action": "Try again"
+    },
+    "new_chat_starters": {
+      "title": "No ideas to start with",
+      "description": "Just write what you need in the box and send it."
+    },
+    "mention_no_match": {
+      "title": "No specialist matches “{query}”",
+      "description": "Try another name, or delete the @ to keep writing."
+    },
+    "members_list": {
+      "title": "No members yet",
+      "description": "Invite your team and they will show up here."
+    },
+    "members_invitations": {
+      "title": "No pending invitations",
+      "description": "Invite someone and their invitation waits here until they accept."
+    },
+    "business_offerings": {
+      "title": "No products or services yet",
+      "description": "Add what you sell so Sino can describe it the right way."
+    },
+    "business_policies": {
+      "title": "No policies yet",
+      "description": "Add your returns, shipping or payment rules so Sino answers the way you would."
+    },
+    "onboarding_tasks": {
+      "title": "No first task right now",
+      "description": "Open your workspace and ask Sino anything to get going."
+    },
+    "sign_in_methods_none": {
+      "title": "No other sign-in methods",
+      "description": "Google and GitHub are not linked to this account yet."
+    },
+    "coming_soon": {
+      "title": "Sino is still building {title}",
+      "description": "It is on the way. Until then, a chat with Sino is a good place to start.",
+      "action": "Start a chat instead"
+    },
+    "not_found": {
+      "title": "Sino can't find this page",
+      "description": "It may have moved, or you may not have access to it.",
+      "action": "Go to Home"
+    },
+    "workspace_error": {
+      "title": "Something went wrong on our side",
+      "description": "Nothing you did caused this. Try again in a moment.",
+      "action": "Try again"
     }
   },
   "conversation": {
@@ -41,15 +118,6 @@
     "deleted": "Chat deleted"
   },
   "errors": {
-    "not_found": {
-      "title": "Sino can't find this page",
-      "body": "It may have moved, or you may not have access to it.",
-      "cta": "Go to Home"
-    },
-    "workspace_error": {
-      "title": "Something went wrong on our side",
-      "body": "Nothing you did caused this. Try again in a moment."
-    },
     "api": {
       "network": "We couldn't reach the server. Check your connection and try again.",
       "unauthenticated": "Your session ended. Sign in again to continue.",
@@ -397,14 +465,11 @@
     },
     "recent": {
       "load_failed": "Couldn't load your chats.",
-      "empty": "Your chats will show up here.",
       "untitled": "New chat",
       "with": "with"
     },
     "coming_soon": {
-      "badge": "Coming soon",
-      "heading": "Sino is still building {title}",
-      "cta": "Start a chat instead"
+      "badge": "Coming soon"
     }
   },
   "specialists": {
@@ -431,8 +496,6 @@
       "coming_heading": "Coming to your workspace",
       "recent_loading": "Loading chats",
       "recent_failed": "Couldn't load your chats. Refresh to try again.",
-      "recent_empty": "No chats yet. Pick someone from your team above, or {link}.",
-      "recent_empty_link": "ask Sino",
       "chat_team": "Team chat",
       "chat_with": "With {name}"
     }
@@ -484,8 +547,7 @@
     },
     "mention_menu": {
       "heading": "Bring in a specialist",
-      "list_label": "Specialists",
-      "empty": "No specialist matches “{query}”"
+      "list_label": "Specialists"
     },
     "thread": {
       "loading": "Loading chat",
@@ -552,7 +614,6 @@
     "invitations": "Pending invitations",
     "resend": "Resend invitation",
     "revoke": "Revoke invitation",
-    "empty_invites": "There are no pending invitations.",
     "expires": "Expires {date}",
     "copy": "Copy invitation link",
     "email_failed": "The email could not be sent. Copy the link and share it with the invited person.",
@@ -809,10 +870,8 @@
     "discard_scan": "Discard suggestions",
     "offerings": "Products and services",
     "add_offering": "Add product or service",
-    "empty_offerings": "No products or services added.",
     "policies": "Business policies",
     "add_policy": "Add policy",
-    "empty_policies": "No business policies added.",
     "entry_name": "Name or title",
     "entry_body": "Description",
     "policy_kind": "Policy type",

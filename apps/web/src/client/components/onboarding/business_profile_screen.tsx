@@ -14,6 +14,7 @@ import {
   snToast,
 } from '@sineva/ui';
 import { formatDate, formatIdr } from '@sineva/ui/format';
+import { PresetEmptyState } from '@/client/components/ui/empty_state';
 import { apiRequest } from '@/client/lib/api';
 import { useApiErrorText } from '@/client/lib/use_api_error';
 import { useLocale, useTranslations } from '@/i18n/provider';
@@ -321,7 +322,7 @@ export function BusinessProfileScreen({
           ) : null}
         </div>
         {result.offerings.length === 0 ? (
-          <p className="text-sm text-text-secondary">{t('empty_offerings')}</p>
+          <PresetEmptyState preset="business_offerings" className="rounded-md border border-dashed border-border py-6" />
         ) : (
           <ul className="space-y-3">
             {result.offerings.map((offer) => (
@@ -380,7 +381,7 @@ export function BusinessProfileScreen({
           ) : null}
         </div>
         {result.policies.length === 0 ? (
-          <p className="text-sm text-text-secondary">{t('empty_policies')}</p>
+          <PresetEmptyState preset="business_policies" className="rounded-md border border-dashed border-border py-6" />
         ) : (
           <ul className="space-y-3">
             {result.policies.map((policy) => (
