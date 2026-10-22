@@ -12,6 +12,7 @@ related_docs:
   - "agents_and_chat_endpoints.md"
   - "storage_and_health_endpoints.md"
   - "profile_and_preferences_endpoints.md"
+  - "library_endpoints.md"
   - "swagger_and_openapi.md"
   - "../README.md"
 ---
@@ -28,6 +29,7 @@ This folder documents the HTTP routes under `apps/web/src/app/api` exactly as th
 | [agents_and_chat_endpoints.md](agents_and_chat_endpoints.md) | `GET /api/v1/workspaces/{workspace_id}/agents` (the specialist roster), and the internal contract with `sineva-ai` | You build the chat UI, change the gateway, or touch the fixtures |
 | [storage_and_health_endpoints.md](storage_and_health_endpoints.md) | `POST /api/v1/storage/presign` and `GET /api/v1/health`, including what "healthy" really checks | You upload files, wire a health probe, or debug a standby subsystem |
 | [profile_and_preferences_endpoints.md](profile_and_preferences_endpoints.md) | `/api/v1/me`, member attributes, preferences, avatar upload and its image checks | You touch the profile page, preferences or avatars |
+| [library_endpoints.md](library_endpoints.md) | Sino Library routes, upload flow, statuses, audit events, the ingest contract proposed to sineva-ai | You touch documents, folders, uploads or the knowledge calls |
 | [swagger_and_openapi.md](swagger_and_openapi.md) | Where the OpenAPI document lives, what `/api-docs` is (and is not), how to register a route | You add a route or change a schema |
 
 ## Reading order

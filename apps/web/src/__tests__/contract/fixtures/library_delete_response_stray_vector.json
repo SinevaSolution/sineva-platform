@@ -1,0 +1,14 @@
+{
+  "success": true,
+  "status_code": 200,
+  "message": "OK",
+  "data": {
+    "document_id": "20000000-0000-4000-8000-000000000001",
+    "files_deleted": 2,
+    "text_deleted": true,
+    "chunks_deleted": 96,
+    "vectors_deleted": 95,
+    "vectors_remaining": 1,
+    "verified": false
+  }
+}

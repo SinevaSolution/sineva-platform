@@ -101,6 +101,34 @@ import { PrismaUserPreferencesRepository } from './infrastructure/database/prism
 import { SeaweedObjectStore } from './infrastructure/storage/seaweed_object_store';
 import { SharpAvatarImageProcessor } from './infrastructure/media/sharp_avatar_image_processor';
 import { AllowlistedRemoteImageFetcher } from './infrastructure/media/allowlisted_remote_image_fetcher';
+import type { LibraryDeps } from './application/library/library_support';
+import type { KnowledgeIngestGateway } from './domain/library/knowledge_ingest_gateway';
+import type {
+  LibraryDocumentRepository,
+  LibraryFolderRepository,
+  LibraryIngestEventRepository,
+} from './domain/repositories/library_repository';
+import { PrismaLibraryDocumentRepository } from './infrastructure/database/prisma_library_document_repository';
+import { PrismaLibraryFolderRepository } from './infrastructure/database/prisma_library_folder_repository';
+import { PrismaLibraryIngestEventRepository } from './infrastructure/database/prisma_library_ingest_event_repository';
+import { InternalKnowledgeGateway } from './infrastructure/gateways/internal_knowledge_gateway';
+import { LoggerLibraryLog } from './infrastructure/logging/log_library_log';
+import { RequestLibraryUploadUseCase } from './application/use-cases/library/request_library_upload_use_case';
+import { CompleteLibraryUploadUseCase } from './application/use-cases/library/complete_library_upload_use_case';
+import { CreateLibraryDocumentUseCase } from './application/use-cases/library/create_library_document_use_case';
+import { ListLibraryDocumentsUseCase } from './application/use-cases/library/list_library_documents_use_case';
+import { GetLibraryDocumentUseCase } from './application/use-cases/library/get_library_document_use_case';
+import { UpdateLibraryDocumentUseCase } from './application/use-cases/library/update_library_document_use_case';
+import { DeleteLibraryDocumentUseCase } from './application/use-cases/library/delete_library_document_use_case';
+import { ReindexLibraryDocumentUseCase } from './application/use-cases/library/reindex_library_document_use_case';
+import { PreviewLibraryDocumentUseCase } from './application/use-cases/library/preview_library_document_use_case';
+import { ApplyIngestEventUseCase } from './application/use-cases/library/apply_ingest_event_use_case';
+import { TryLibraryRetrievalUseCase } from './application/use-cases/library/try_library_retrieval_use_case';
+import { GetLibraryUsageUseCase } from './application/use-cases/library/get_library_usage_use_case';
+import { CreateLibraryFolderUseCase } from './application/use-cases/library/create_library_folder_use_case';
+import { ListLibraryFoldersUseCase } from './application/use-cases/library/list_library_folders_use_case';
+import { UpdateLibraryFolderUseCase } from './application/use-cases/library/update_library_folder_use_case';
+import { DeleteLibraryFolderUseCase } from './application/use-cases/library/delete_library_folder_use_case';
 
 // Composition root: the only module that knows which concrete adapter backs
 // each port. Route handlers and pages ask for use cases here instead of
@@ -548,3 +576,53 @@ export const getIngestAuditEventUseCase = memoize(
 export const getRotateSigningKeyUseCase = memoize(
   () => new RotateSigningKeyUseCase(getSigningKeyRepository(), getAuditLogger(), getTransactionRunner()),
 );
+
+// --- Sino Library (ADR-0030) ------------------------------------------------
+// The review-reminder sweep (`SendLibraryReviewRemindersUseCase`) has no getter
+// on purpose: it needs the Inbox adapter of the Inbox backend, which does not
+// exist yet, and wiring a no-op would make "reminded" a lie.
+export const getLibraryDocumentRepository = memoize<LibraryDocumentRepository>(
+  () => new PrismaLibraryDocumentRepository(getPrismaClient()),
+);
+export const getLibraryFolderRepository = memoize<LibraryFolderRepository>(
+  () => new PrismaLibraryFolderRepository(getPrismaClient()),
+);
+export const getLibraryIngestEventRepository = memoize<LibraryIngestEventRepository>(
+  () => new PrismaLibraryIngestEventRepository(getPrismaClient()),
+);
+const getKnowledgeIngestGateway = memoize<KnowledgeIngestGateway>(() => new InternalKnowledgeGateway());
+
+const getLibraryDeps = memoize<LibraryDeps>(() => ({
+  documents: getLibraryDocumentRepository(),
+  folders: getLibraryFolderRepository(),
+  events: getLibraryIngestEventRepository(),
+  gateway: getKnowledgeIngestGateway(),
+  contextSigner: getContextSigner(),
+  store: getObjectStore(),
+  audit: getAuditLogger(),
+  entitlements: getEntitlementService(),
+  transactions: getTransactionRunner(),
+  log: new LoggerLibraryLog(),
+  // Correlation id sent to sineva-ai, not a database id.
+  newJobId: () => crypto.randomUUID(),
+  now: () => new Date(),
+}));
+
+export const getRequestLibraryUploadUseCase = memoize(() => new RequestLibraryUploadUseCase(getLibraryDeps()));
+export const getCompleteLibraryUploadUseCase = memoize(() => new CompleteLibraryUploadUseCase(getLibraryDeps()));
+export const getCreateLibraryDocumentUseCase = memoize(
+  () => new CreateLibraryDocumentUseCase({ ...getLibraryDeps(), conversations: getConversationRepository() }),
+);
+export const getListLibraryDocumentsUseCase = memoize(() => new ListLibraryDocumentsUseCase(getLibraryDeps()));
+export const getGetLibraryDocumentUseCase = memoize(() => new GetLibraryDocumentUseCase(getLibraryDeps()));
+export const getUpdateLibraryDocumentUseCase = memoize(() => new UpdateLibraryDocumentUseCase(getLibraryDeps()));
+export const getDeleteLibraryDocumentUseCase = memoize(() => new DeleteLibraryDocumentUseCase(getLibraryDeps()));
+export const getReindexLibraryDocumentUseCase = memoize(() => new ReindexLibraryDocumentUseCase(getLibraryDeps()));
+export const getPreviewLibraryDocumentUseCase = memoize(() => new PreviewLibraryDocumentUseCase(getLibraryDeps()));
+export const getApplyIngestEventUseCase = memoize(() => new ApplyIngestEventUseCase(getLibraryDeps()));
+export const getTryLibraryRetrievalUseCase = memoize(() => new TryLibraryRetrievalUseCase(getLibraryDeps()));
+export const getGetLibraryUsageUseCase = memoize(() => new GetLibraryUsageUseCase(getLibraryDeps()));
+export const getCreateLibraryFolderUseCase = memoize(() => new CreateLibraryFolderUseCase(getLibraryDeps()));
+export const getListLibraryFoldersUseCase = memoize(() => new ListLibraryFoldersUseCase(getLibraryDeps()));
+export const getUpdateLibraryFolderUseCase = memoize(() => new UpdateLibraryFolderUseCase(getLibraryDeps()));
+export const getDeleteLibraryFolderUseCase = memoize(() => new DeleteLibraryFolderUseCase(getLibraryDeps()));

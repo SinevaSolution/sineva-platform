@@ -37,7 +37,7 @@ export class FolderNotEmptyError extends DomainError {
 
 /** The request is fine but the document is in a state that does not allow it. */
 export class LibraryStateError extends DomainError {
-  constructor(code: 'document_deleting' | 'preview_not_ready' | 'upload_not_found', message: string) {
+  constructor(code: 'preview_not_ready' | 'upload_not_found', message: string) {
     super({ message, code, status: 409 });
     this.name = 'LibraryStateError';
   }

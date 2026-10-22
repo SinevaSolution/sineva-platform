@@ -1,0 +1,22 @@
+{
+  "event_id": "40000000-0000-4000-8000-000000000003",
+  "tenant_id": "11111111-1111-4111-8111-111111111111",
+  "document_id": "20000000-0000-4000-8000-000000000001",
+  "job_id": "30000000-0000-4000-8000-000000000001",
+  "sequence": 6,
+  "stage": "ocr",
+  "status": "needs_attention",
+  "occurred_at": "2026-10-22T10:06:00.000Z",
+  "progress": null,
+  "reason_code": "unreadable_pages",
+  "pages": [
+    3,
+    7
+  ],
+  "page_count": 10,
+  "chunk_count": null,
+  "language": "id",
+  "embedding_model": null,
+  "ocr_pages": 10,
+  "personal_data_hint": true
+}

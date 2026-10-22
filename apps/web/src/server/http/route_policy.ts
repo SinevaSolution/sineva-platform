@@ -136,6 +136,78 @@ export const MUTATING_ROUTE_POLICY: Record<string, MutatingRoutePolicy> = {
     entitlement: 'none',
     reason: 'Stopping a reply spends nothing, so no plan limit applies.',
   },
+  'POST /api/v1/workspaces/{workspace_id}/library/uploads': {
+    effect: 'create',
+    audit: 'none',
+    reason:
+      'Presign only: the row stays a pending upload, not a document, until complete, which writes library.document.uploaded.',
+    // The use case also checks `library.storage_mb` and, for scannable types, `library.ocr_pages.monthly`.
+    entitlement: ENTITLEMENT_KEYS.DOCUMENTS,
+  },
+  'POST /api/v1/workspaces/{workspace_id}/library/documents/{document_id}/complete': {
+    effect: 'change',
+    audit: ['library.document.uploaded'],
+    entitlement: 'none',
+    reason:
+      'The document, storage and OCR quotas were checked when the upload was presigned; completing adds no second document or storage.',
+  },
+  'POST /api/v1/workspaces/{workspace_id}/library/documents': {
+    effect: 'create',
+    audit: ['library.document.uploaded'],
+    entitlement: ENTITLEMENT_KEYS.DOCUMENTS,
+  },
+  'PATCH /api/v1/workspaces/{workspace_id}/library/documents/{document_id}': {
+    effect: 'change',
+    audit: ['library.document.scope_changed'],
+    entitlement: 'none',
+    reason:
+      'Renaming, moving or setting a review interval spends nothing, and a scope change only relabels existing chunks without adding storage.',
+  },
+  'DELETE /api/v1/workspaces/{workspace_id}/library/documents/{document_id}': {
+    effect: 'delete',
+    audit: ['library.document.deleted'],
+    entitlement: 'none',
+    reason: 'Deleting a document frees storage and spends nothing, so no plan limit applies.',
+  },
+  'POST /api/v1/workspaces/{workspace_id}/library/documents/{document_id}/reindex': {
+    effect: 'run',
+    audit: ['library.document.reindexed'],
+    // Reading again uses OCR pages for scannable documents.
+    entitlement: ENTITLEMENT_KEYS.OCR_PAGES,
+  },
+  'POST /api/v1/workspaces/{workspace_id}/library/folders': {
+    effect: 'create',
+    audit: 'none',
+    reason:
+      'Folder structure is not a PRD auditable event; what a folder holds is audited per document.',
+    entitlement: 'none',
+  },
+  'PATCH /api/v1/workspaces/{workspace_id}/library/folders/{folder_id}': {
+    effect: 'change',
+    audit: 'none',
+    reason:
+      'Renaming or moving a folder is not a PRD auditable event; what a folder holds is audited per document.',
+    entitlement: 'none',
+  },
+  'DELETE /api/v1/workspaces/{workspace_id}/library/folders/{folder_id}': {
+    effect: 'delete',
+    audit: 'none',
+    reason:
+      'Only an empty folder can be deleted, so no document is removed here; folder structure is not a PRD auditable event.',
+    entitlement: 'none',
+  },
+  'POST /api/v1/workspaces/{workspace_id}/library/try': {
+    effect: 'run',
+    audit: 'none',
+    // One reason covers both `none` values.
+    reason:
+      'The test question must never enter the audit log, and retrieval alone calls no model, so it is metered by usage events once the ledger exists, not by plan limits.',
+    entitlement: 'none',
+  },
+  'POST /api/internal/v1/library/ingest-events': {
+    effect: 'ingest',
+    audit: ['library.document.indexed', 'library.document.failed'],
+  },
   'POST /api/v1/storage/presign': {
     effect: 'create',
     audit: 'none',

@@ -1,0 +1,19 @@
+{
+  "event_id": "40000000-0000-4000-8000-000000000002",
+  "tenant_id": "11111111-1111-4111-8111-111111111111",
+  "document_id": "20000000-0000-4000-8000-000000000001",
+  "job_id": "30000000-0000-4000-8000-000000000001",
+  "sequence": 7,
+  "stage": "completed",
+  "status": "ready",
+  "occurred_at": "2026-10-22T10:06:30.000Z",
+  "progress": null,
+  "reason_code": null,
+  "pages": [],
+  "page_count": 40,
+  "chunk_count": 96,
+  "language": "id",
+  "embedding_model": "bge-m3",
+  "ocr_pages": 12,
+  "personal_data_hint": false
+}
