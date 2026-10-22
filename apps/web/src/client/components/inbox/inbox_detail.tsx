@@ -85,6 +85,10 @@ export function InboxDetail({
   const [note, setNote] = React.useState('');
   const [instruction, setInstruction] = React.useState('');
   const panelField = React.useRef<HTMLTextAreaElement>(null);
+  const approveButton = React.useRef<HTMLButtonElement>(null);
+  const rejectButton = React.useRef<HTMLButtonElement>(null);
+  // Spoken when a key moves focus to a decision button, so the next Enter is not a surprise.
+  const [announcement, setAnnouncement] = React.useState('');
 
   // Opening a panel moves the caret into its field so the next key types.
   React.useEffect(() => {
@@ -134,10 +138,18 @@ export function InboxDetail({
   // The latest closures, handed to the screen's key handler on every render.
   React.useEffect(() => {
     apiRef.current = {
-      approve,
+      // FR-INBOX-30: a key never decides. It moves focus to the button, and the
+      // decision is the Enter or click that follows, like any button.
+      approve: () => {
+        if (!canDecide || busy) return;
+        approveButton.current?.focus();
+        setAnnouncement(t('press_enter_approve'));
+      },
       edit: toggleEdit,
       reject: () => {
-        if (canDecide && !busy) setPanel('reject');
+        if (!canDecide || busy) return;
+        rejectButton.current?.focus();
+        setAnnouncement(t('press_enter_reject'));
       },
       changes: () => {
         if (canDecide && !busy) setPanel('changes');
@@ -294,6 +306,9 @@ export function InboxDetail({
         </div>
       </div>
 
+      <p role="status" className="sr-only">
+        {announcement}
+      </p>
       {canDecide ? (
         <div className="shrink-0 border-t border-border bg-surface px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3 sm:px-6">
           <div className="mx-auto w-full max-w-2xl">
@@ -364,8 +379,9 @@ export function InboxDetail({
               </form>
             ) : null}
             <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
-              <SNTooltip label={t('approve')} shortcut="a">
+              <SNTooltip label={t('approve')} shortcut={t('shortcut_then_enter', { key: 'a' })}>
                 <SNButton
+                  ref={approveButton}
                   variant="primary"
                   size="lg"
                   loading={busy}
@@ -392,8 +408,8 @@ export function InboxDetail({
                   {t('changes')}
                 </SNButton>
               </SNTooltip>
-              <SNTooltip label={t('reject')} shortcut="r">
-                <SNButton variant="ghost" size="lg" disabled={busy} onClick={() => setPanel('reject')}>
+              <SNTooltip label={t('reject')} shortcut={t('shortcut_then_enter', { key: 'r' })}>
+                <SNButton ref={rejectButton} variant="ghost" size="lg" disabled={busy} onClick={() => setPanel('reject')}>
                   {t('reject')}
                 </SNButton>
               </SNTooltip>

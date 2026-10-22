@@ -699,7 +699,10 @@
     "detail_error_title": "Could not open this",
     "toast_conflict": "{name} already decided this.",
     "toast_conflict_unknown": "Someone already decided this.",
-    "toast_changed": "This changed while you were looking. Here is the latest."
+    "toast_changed": "This changed while you were looking. Here is the latest.",
+    "press_enter_approve": "Press Enter to approve",
+    "press_enter_reject": "Press Enter to reject",
+    "shortcut_then_enter": "{key} then Enter"
   },
   "library_ui": {
     "title": "Sino Library",

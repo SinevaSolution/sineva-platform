@@ -63,7 +63,7 @@ Dropzone component tests (`sn_dropzone.test.tsx`) and the Library component suit
 - Filters, all server-side and in the address: specialist (Sino in that specialist's pose), kind (Drafts, Questions), source (chat, room, system) and text search. Updates hides the kind chips.
 - Rows: specialist avatar, title, the plain "what will happen" sentence, relative time, unread dot, kind icon with label, "Expires in 2 h" inside the last day.
 - Detail: who, what, when, link back to the chat (by conversation id), draft preview card with inline edit and word diff, Approve, Edit, Ask for changes (short instruction), Reject (optional note), the reassurance line, result states (who decided and when), conflict state naming who decided first, expired state with Draft again, question form with `SNInput`, `SNSelect`, `SNCheckbox` and `SNSegmented`.
-- Keyboard: `j` and `k` move (and open beside the list), Enter opens, `a` approve, `e` edit, `r` reject, `c` ask for changes, `Esc` closes a field, a panel or the item, `/` searches. Nothing fires while a field, menu or dialog has focus.
+- Keyboard: `j` and `k` move (and open beside the list), Enter opens, `a` and `r` focus Approve and Reject (Enter decides, FR-INBOX-30), `e` edit, `c` ask for changes, `Esc` closes a field, a panel or the item, `/` searches. Nothing fires while a field, menu or dialog has focus.
 - Optimistic decisions with rollback and a toast; the sidebar badge reads `GET .../inbox/counts` (poll 30 s, on focus, and at once after a decision).
 - Not done: date filter, browser, mobile and axe matrix, screenshot baselines.
 

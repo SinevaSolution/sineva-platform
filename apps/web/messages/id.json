@@ -699,7 +699,10 @@
     "detail_error_title": "Ini belum bisa dibuka",
     "toast_conflict": "{name} sudah memutuskan ini.",
     "toast_conflict_unknown": "Seseorang sudah memutuskan ini.",
-    "toast_changed": "Ini berubah saat kamu melihatnya. Ini versi terbarunya."
+    "toast_changed": "Ini berubah saat kamu melihatnya. Ini versi terbarunya.",
+    "press_enter_approve": "Tekan Enter untuk menyetujui",
+    "press_enter_reject": "Tekan Enter untuk menolak",
+    "shortcut_then_enter": "{key} lalu Enter"
   },
   "library_ui": {
     "title": "Sino Library",

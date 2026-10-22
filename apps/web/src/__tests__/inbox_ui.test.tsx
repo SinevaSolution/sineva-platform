@@ -428,9 +428,13 @@ describe('keyboard', () => {
     await screen.findByRole('heading', { name: 'Second draft', level: 2 });
   });
 
-  it('approves with a, rejects with r and asks for changes with c on the open item', async () => {
+  it('r, c and e only move focus or open editors; r never rejects by itself', () => {
     setup({ selectedItem: draft });
+    api.mockClear();
     fireEvent.keyDown(document.body, { key: 'r' });
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Reject' }));
+    expect(screen.queryByLabelText('Note (optional)')).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Reject' }));
     expect(screen.getByLabelText('Note (optional)')).toBeTruthy();
     fireEvent.keyDown(document.activeElement ?? document.body, { key: 'Escape' });
     fireEvent.keyDown(document.body, { key: 'c' });
@@ -438,13 +442,25 @@ describe('keyboard', () => {
     fireEvent.keyDown(document.body, { key: 'Escape' });
     fireEvent.keyDown(document.body, { key: 'e' });
     expect(screen.getByRole('textbox', { name: 'Text' })).toBeTruthy();
+    expect(api.mock.calls.filter(([path]) => String(path).includes('/decision'))).toHaveLength(0);
   });
 
-  it('a approves the open draft', async () => {
+  it('FR-INBOX-30: a alone never approves, it focuses Approve and says to press Enter', async () => {
     route({ '/decision': () => ({}), '/inbox/item-1': () => decidedRecord('approved') });
-    setup({ selectedItem: draft });
+    setup({ selectedItem: { ...draft, unread: false }, list: { items: [{ ...draft, unread: false }, second], next_cursor: null } });
     fireEvent.keyDown(document.body, { key: 'a' });
+    const approve = screen.getByRole('button', { name: 'Approve' });
+    expect(document.activeElement).toBe(approve);
+    expect(screen.getByText('Press Enter to approve')).toBeTruthy();
+    expect(api).not.toHaveBeenCalled();
+    expect(screen.queryByText('You approved this draft')).toBeNull();
+    // Enter on a focused button is a click.
+    fireEvent.click(approve);
     await screen.findByText('You approved this draft');
+    expect(api).toHaveBeenCalledWith(`${BASE}/approvals/approval-1/decision`, {
+      method: 'POST',
+      body: { version: 7, decision: 'approve' },
+    });
   });
 
   it('does nothing while a field has focus, and Escape leaves the field', () => {
@@ -476,7 +492,7 @@ describe('keyboard', () => {
     setup({ selectedItem: draft });
     const approve = screen.getByRole('button', { name: 'Approve' });
     act(() => approve.focus());
-    expect(await screen.findAllByText('a')).toBeTruthy();
+    expect((await screen.findAllByText('a then Enter')).length).toBeGreaterThan(0);
   });
 });
 
