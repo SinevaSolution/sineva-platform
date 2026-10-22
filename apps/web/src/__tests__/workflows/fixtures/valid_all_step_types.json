@@ -1,0 +1,174 @@
+{
+  "description": "Every step type that can be published today, wired with references.",
+  "context": {
+    "can_raise_loop_cap": false,
+    "enabled_specialists": [
+      "sinopeople",
+      "sinofinance",
+      "sinosales",
+      "sinosocial",
+      "sinohelp",
+      "sinoinsights"
+    ],
+    "connections": [
+      {
+        "id": "11111111-1111-4111-8111-111111111111",
+        "provider": "jurnal",
+        "connected": true
+      },
+      {
+        "id": "22222222-2222-4222-8222-222222222222",
+        "provider": "whatsapp",
+        "connected": true
+      },
+      {
+        "id": "33333333-3333-4333-8333-333333333333",
+        "provider": "bank",
+        "connected": true
+      }
+    ],
+    "actions": {
+      "jurnal:list_unpaid_invoices": {
+        "class": "read",
+        "reads_private": true,
+        "reads_external": false
+      },
+      "whatsapp:read_messages": {
+        "class": "read",
+        "reads_private": true,
+        "reads_external": true
+      },
+      "whatsapp:send_message": {
+        "class": "send",
+        "reads_private": false,
+        "reads_external": false
+      },
+      "bank:transfer_money": {
+        "class": "pay",
+        "reads_private": false,
+        "reads_external": false
+      }
+    },
+    "generated": false,
+    "requested_send": false
+  },
+  "definition": {
+    "schema_version": 1,
+    "inputs": [
+      {
+        "key": "days",
+        "type": "number",
+        "label": "Days overdue",
+        "required": true,
+        "default": 7
+      }
+    ],
+    "steps": [
+      {
+        "key": "invoices",
+        "type": "connection_action",
+        "title": "Read invoices",
+        "connection_id": "11111111-1111-4111-8111-111111111111",
+        "provider": "jurnal",
+        "action_id": "list_unpaid_invoices",
+        "args": {},
+        "output_type": "list"
+      },
+      {
+        "key": "has_invoices",
+        "type": "condition",
+        "title": "Any overdue?",
+        "check": {
+          "left": "{{steps.invoices.output}}",
+          "op": "is_not_empty"
+        },
+        "if_not": "end",
+        "end_note": "No overdue invoices"
+      },
+      {
+        "key": "drafts",
+        "type": "loop",
+        "title": "Each drafts",
+        "over": "{{steps.invoices.output}}",
+        "cap": 25,
+        "body": [
+          {
+            "key": "reminder",
+            "type": "specialist_task",
+            "title": "Step reminder",
+            "specialist": "sinofinance",
+            "instruction": "Draft a reminder for {{loop.item}} after {{inputs.days}} days.",
+            "output_type": "text"
+          }
+        ]
+      },
+      {
+        "key": "approval",
+        "type": "review",
+        "title": "Review approval",
+        "instruction": "Check the drafts.",
+        "subject": "{{steps.drafts.output}}",
+        "expiry_days": 7,
+        "on_reject": "end",
+        "output_type": "list"
+      },
+      {
+        "key": "who",
+        "type": "ask_me",
+        "title": "Pick one",
+        "question": "Which draft goes first?",
+        "answer": "choice",
+        "choices": [
+          "First",
+          "Second"
+        ],
+        "per_item_of": null,
+        "output_type": "text"
+      },
+      {
+        "key": "sending",
+        "type": "loop",
+        "title": "Each sending",
+        "over": "{{steps.approval.output}}",
+        "cap": 25,
+        "body": [
+          {
+            "key": "send_reminder",
+            "type": "connection_action",
+            "title": "Send send_reminder",
+            "connection_id": "22222222-2222-4222-8222-222222222222",
+            "provider": "whatsapp",
+            "action_id": "send_message",
+            "args": {
+              "text": "{{loop.item}}"
+            },
+            "output_type": "record"
+          }
+        ]
+      },
+      {
+        "key": "pause",
+        "type": "wait",
+        "title": "Wait",
+        "duration_hours": 72,
+        "or_reply": true
+      },
+      {
+        "key": "summary",
+        "type": "specialist_task",
+        "title": "Step summary",
+        "specialist": "sinoinsights",
+        "instruction": "Summarize {{steps.sending.output}} and {{steps.who.output}}.",
+        "output_type": "text"
+      }
+    ],
+    "outputs": [
+      {
+        "key": "report",
+        "from": "{{steps.summary.output}}"
+      }
+    ],
+    "limits": {}
+  },
+  "expected_codes": []
+}

@@ -1,0 +1,71 @@
+{
+  "description": "A type nobody defined.",
+  "context": {
+    "can_raise_loop_cap": false,
+    "enabled_specialists": [
+      "sinopeople",
+      "sinofinance",
+      "sinosales",
+      "sinosocial",
+      "sinohelp",
+      "sinoinsights"
+    ],
+    "connections": [
+      {
+        "id": "11111111-1111-4111-8111-111111111111",
+        "provider": "jurnal",
+        "connected": true
+      },
+      {
+        "id": "22222222-2222-4222-8222-222222222222",
+        "provider": "whatsapp",
+        "connected": true
+      },
+      {
+        "id": "33333333-3333-4333-8333-333333333333",
+        "provider": "bank",
+        "connected": true
+      }
+    ],
+    "actions": {
+      "jurnal:list_unpaid_invoices": {
+        "class": "read",
+        "reads_private": true,
+        "reads_external": false
+      },
+      "whatsapp:read_messages": {
+        "class": "read",
+        "reads_private": true,
+        "reads_external": true
+      },
+      "whatsapp:send_message": {
+        "class": "send",
+        "reads_private": false,
+        "reads_external": false
+      },
+      "bank:transfer_money": {
+        "class": "pay",
+        "reads_private": false,
+        "reads_external": false
+      }
+    },
+    "generated": false,
+    "requested_send": false
+  },
+  "definition": {
+    "schema_version": 1,
+    "inputs": [],
+    "steps": [
+      {
+        "key": "x",
+        "type": "code",
+        "title": "Code"
+      }
+    ],
+    "outputs": [],
+    "limits": {}
+  },
+  "expected_codes": [
+    "step_type_unknown"
+  ]
+}
