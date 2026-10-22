@@ -74,8 +74,8 @@ The database has been migrated and seeded (`npm run db:seed`):
 
 ## 4. Pending integrator actions
 
-- Apply migrations to the shared DB: `DATABASE_URL='...?schema=platform' npx prisma migrate deploy` (chat_runs, audit_events).
-- Run `npm run test:integration` on a throwaway test DB (not run in batch 1: local Docker hung).
+- Done 2026-10-22: `chat_runs` and `audit_events` deployed to the shared DB; `test:integration` green (5 files, 33 tests) on a throwaway DB, since dropped.
+- Gotcha for this local DB: `_prisma_migrations` lives in `public` (the DB was first migrated with a plain URL) while every table is in `platform`. Run `migrate status`/`deploy` with the plain `DATABASE_URL` from `.env`; adding `?schema=platform` makes Prisma look for `platform._prisma_migrations`, see nothing applied and try to re-run `init`. All migration SQL is schema-qualified, so tables still land in `platform`.
 - Add `ENTITLEMENTS_MODE=open` to `.env.example`.
 - Blocked on sineva-ai team: WP-M0-13..20 (v2 contract, SSE, catalog), PII vectors copy, audit publisher.
 
