@@ -8,6 +8,7 @@ import { Tooltip } from '@/client/components/ui/tooltip';
 import { useTranslations } from '@/i18n/provider';
 import type { ShellSpecialistView } from '@/shared/shell_view';
 import { insertMention } from './mention_insert';
+import { mentionEndingAt, splitMentions } from './mention_segments';
 import { MentionMenu } from './mention_menu';
 import { activeMention, applyMention, filterSpecialists } from './mention_query';
 
@@ -72,6 +73,10 @@ export function Composer({
   // (the chat thread's bottom bar) that a downward menu would leave the
   // screen; measured once per opening, not on every keystroke.
   const formRef = React.useRef<HTMLFormElement>(null);
+  const backdropRef = React.useRef<HTMLDivElement>(null);
+  const mentionNames = React.useMemo(() => specialists.map((sp) => sp.display_name), [specialists]);
+  const segments = React.useMemo(() => splitMentions(value, mentionNames), [value, mentionNames]);
+  const hasPills = segments.some((seg) => seg.mention);
   const [menuPlacement, setMenuPlacement] = React.useState<'below' | 'above'>('below');
   React.useLayoutEffect(() => {
     if (!menuOpen || !formRef.current) return;
@@ -173,6 +178,21 @@ export function Composer({
 
   function onKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
     if (e.nativeEvent.isComposing) return;
+    // A mention pill deletes as one unit: Backspace right after it removes
+    // the whole "@Name", like a chip, instead of one letter at a time.
+    if (e.key === 'Backspace' && !e.shiftKey && !e.metaKey && !e.altKey && !e.ctrlKey) {
+      const el = e.currentTarget;
+      if (el.selectionStart === el.selectionEnd) {
+        const hit = mentionEndingAt(value, el.selectionStart, mentionNames);
+        if (hit) {
+          e.preventDefault();
+          const next = value.slice(0, hit.start) + value.slice(hit.end);
+          setValue(next);
+          requestAnimationFrame(() => el.setSelectionRange(hit.start, hit.start));
+          return;
+        }
+      }
+    }
     if (capturing) {
       if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
         e.preventDefault();
@@ -238,33 +258,69 @@ export function Composer({
       <label className="sr-only" htmlFor="composer-input">
         {t('composer.message_label')}
       </label>
-      <textarea
-        id="composer-input"
-        ref={ref}
-        rows={1}
-        value={value}
-        maxLength={MAX_LENGTH}
-        autoFocus={autoFocus}
-        disabled={disabled}
-        placeholder={placeholder}
-        role="combobox"
-        aria-autocomplete="list"
-        aria-expanded={menuOpen}
-        aria-controls={menuOpen ? menuId : undefined}
-        aria-activedescendant={capturing ? `${menuId}-opt-${active}` : undefined}
-        onChange={(e) => {
-          setValue(e.target.value);
-          sync(e.target.value, e.target.selectionStart);
-        }}
-        onSelect={syncFromEvent}
-        onKeyUp={syncFromEvent}
-        onClick={syncFromEvent}
-        onKeyDown={onKeyDown}
-        className={cn(
-          'min-h-9 w-full resize-none bg-transparent px-1 py-1.5 text-[15px] leading-6 text-fg outline-none placeholder:text-fg-tertiary',
-          size === 'lg' && 'min-h-11 text-base',
-        )}
-      />
+      {/* Mention pills: a backdrop with the same box, font and wrapping as the
+          textarea draws "@Name" as a pill; the textarea above stays native
+          (IME, autocorrect, undo, screen readers). Pills use background and
+          a spread shadow only, never padding or weight, so text widths and
+          line breaks match the textarea exactly. */}
+      <div className="relative">
+        {hasPills ? (
+          <div
+            ref={backdropRef}
+            aria-hidden="true"
+            className={cn(
+              'pointer-events-none absolute inset-0 overflow-hidden whitespace-pre-wrap break-words px-1 py-1.5 text-[15px] leading-6 text-fg',
+              size === 'lg' && 'text-base',
+            )}
+          >
+            {segments.map((seg, i) =>
+              seg.mention ? (
+                <span
+                  key={i}
+                  className="rounded-md bg-[color-mix(in_oklab,var(--color-focus)_16%,transparent)] text-fg-brand shadow-[0_0_0_2px_color-mix(in_oklab,var(--color-focus)_16%,transparent)]"
+                >
+                  {seg.text}
+                </span>
+              ) : (
+                <React.Fragment key={i}>{seg.text}</React.Fragment>
+              ),
+            )}
+            {/* Keeps a trailing newline from collapsing so heights match. */}
+            {'\u200b'}
+          </div>
+        ) : null}
+        <textarea
+          id="composer-input"
+          ref={ref}
+          rows={1}
+          value={value}
+          maxLength={MAX_LENGTH}
+          autoFocus={autoFocus}
+          disabled={disabled}
+          placeholder={placeholder}
+          role="combobox"
+          aria-autocomplete="list"
+          aria-expanded={menuOpen}
+          aria-controls={menuOpen ? menuId : undefined}
+          aria-activedescendant={capturing ? `${menuId}-opt-${active}` : undefined}
+          onChange={(e) => {
+            setValue(e.target.value);
+            sync(e.target.value, e.target.selectionStart);
+          }}
+          onSelect={syncFromEvent}
+          onKeyUp={syncFromEvent}
+          onClick={syncFromEvent}
+          onKeyDown={onKeyDown}
+          onScroll={(e) => {
+            if (backdropRef.current) backdropRef.current.scrollTop = e.currentTarget.scrollTop;
+          }}
+          className={cn(
+            'relative min-h-9 w-full resize-none bg-transparent px-1 py-1.5 text-[15px] leading-6 text-fg caret-fg outline-none placeholder:text-fg-tertiary',
+            size === 'lg' && 'min-h-11 text-base',
+            hasPills && 'text-transparent',
+          )}
+        />
+      </div>
       <div className="mt-1 flex items-center justify-between gap-2">
         <div className="flex items-center gap-1">
           {specialists.length > 0 ? (

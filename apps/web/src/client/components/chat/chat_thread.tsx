@@ -17,6 +17,7 @@ import type { ConversationView, MessageView, SendMessageResultView } from '@/sha
 import type { ShellSpecialistView } from '@/shared/shell_view';
 import { Composer } from './composer';
 import { moodForLive, pendingRunToAttach, reduceLiveReply, type LiveReply } from './live_reply_model';
+import { splitMentions } from './mention_segments';
 
 const IDLE: LiveReply = { phase: 'idle' };
 
@@ -372,7 +373,20 @@ function MessageRow({
   if (message.role === 'user') {
     return (
       <li className="anim-rise flex">
-        <RoomBubble from="user">{message.content}</RoomBubble>
+        <RoomBubble from="user">
+          {splitMentions(
+            message.content,
+            specialists.map((sp) => sp.display_name),
+          ).map((seg, i) =>
+            seg.mention ? (
+              <span key={i} className="rounded-md bg-white/20 shadow-[0_0_0_2px_rgb(255_255_255/0.2)]">
+                {seg.text}
+              </span>
+            ) : (
+              <React.Fragment key={i}>{seg.text}</React.Fragment>
+            ),
+          )}
+        </RoomBubble>
       </li>
     );
   }
