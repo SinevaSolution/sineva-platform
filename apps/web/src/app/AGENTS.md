@@ -21,7 +21,7 @@ Three steps, nothing else:
 
 - Failing route test first (`src/__tests__/api_routes.test.ts` style, container mocked with fakes): success status, 422 for a bad body, each domain error.
 - Register it in `server/infrastructure/openapi/spec.ts` with every status it can return, including 502 and 503 for upstream calls (R-25).
-- A malformed JSON body is a 500 today (`request.json()` throws). Do not rely on it as a validation path.
+- Read JSON bodies with `parseJsonBody` from `response_helper`, never `request.json()`: empty or invalid JSON becomes a typed 422.
 - A new payload the browser reads needs a view in `src/shared` and a guard in `server/http`.
 
 ## Pages and layouts

@@ -1,0 +1,500 @@
+{
+  "common": {
+    "loading": "Loading",
+    "try_again": "Try again",
+    "close": "Close",
+    "theme": {
+      "toggle": "Toggle color theme",
+      "aria_to_light": "Switch to light theme",
+      "aria_to_dark": "Switch to dark theme",
+      "title_to_light": "Switch to light mode",
+      "title_to_dark": "Switch to dark mode"
+    }
+  },
+  "conversation": {
+    "options_tooltip": "Chat options",
+    "options_for": "Options for {title}",
+    "rename": "Rename",
+    "delete": "Delete",
+    "rename_label": "Chat name",
+    "delete_title": "Delete this chat?",
+    "delete_body": "This removes the chat and all its messages. It can't be undone.",
+    "delete_confirm": "Delete chat",
+    "delete_cancel": "Cancel",
+    "deleting": "Deleting...",
+    "deleted": "Chat deleted"
+  },
+  "errors": {
+    "not_found": {
+      "title": "Sino can't find this page",
+      "body": "It may have moved, or you may not have access to it.",
+      "cta": "Go to Home"
+    },
+    "workspace_error": {
+      "title": "Something went wrong on our side",
+      "body": "Nothing you did caused this. Try again in a moment."
+    },
+    "api": {
+      "network": "We couldn't reach the server. Check your connection and try again.",
+      "unauthenticated": "Your session ended. Sign in again to continue.",
+      "forbidden": "You don't have access to this yet. Ask an admin.",
+      "not_found": "We can't find that. It may have been removed.",
+      "conflict": "That clashes with something that already exists. Check it and try again.",
+      "validation_failed": "Something in that request isn't valid. Check it and try again.",
+      "rate_limited": "Too many tries. Wait a moment, then try again.",
+      "internal_error": "Something went wrong on our side. Try again in a moment.",
+      "model_unavailable": "Sino couldn't finish that request. Try again in a moment.",
+      "dependency_unavailable": "Sino isn't answering right now. Try again in a moment.",
+      "breached_password": "That password has appeared in a data breach. Choose a different one.",
+      "invalid_password": "Use between 12 and 128 characters.",
+      "terms_required": "Please agree to the terms to continue.",
+      "privacy_required": "Please agree to the privacy policy to continue.",
+      "generic": "Something went wrong. Try again.",
+      "unsupported_image": "Use a JPG, PNG or WebP image.",
+      "image_too_large": "That photo is over 2 MB. Choose a smaller one.",
+      "invalid_image": "We couldn't read that image. Try another one.",
+      "upload_failed": "The photo didn't upload. Try again in a moment."
+    }
+  },
+  "meta": {
+    "description": "Sino and your specialists help with the work that fills your day, while you stay in charge.",
+    "sign_in": "Sign in",
+    "sign_up": "Create your account",
+    "forgot_password": "Reset your password",
+    "reset_password": "Set a new password",
+    "verify_email": "Verify your email",
+    "home": "Home",
+    "new_chat": "New chat",
+    "chat": "Chat",
+    "not_found": "Not found"
+  },
+  "auth": {
+    "sign_in": {
+      "title": "Welcome back",
+      "subtitle": "Sign in to pick up where you left off with Sino.",
+      "footer": "New to Sineva? {link}",
+      "footer_link": "Create an account",
+      "forgot_link": "Forgot password?",
+      "submit": "Sign in",
+      "submitting": "Signing in...",
+      "bad_credentials": "That email and password don't match. Try again."
+    },
+    "sign_up": {
+      "title": "Meet Sino",
+      "subtitle": "Create your account. Sino and the specialists are ready when you are.",
+      "footer": "Already have an account? {link}",
+      "footer_link": "Sign in",
+      "password_hint": "At least {min} characters.",
+      "password_too_short": "Use at least {min} characters.",
+      "consent": "I agree to the Terms of Service and the Privacy Policy.",
+      "consent_required": "Please agree to the terms to continue.",
+      "marketing": "Send me product news now and then. You can stop any time.",
+      "submit": "Create account",
+      "submitting": "Creating your account...",
+      "sent": "We sent a link to {email}. Open it to verify your email, then sign in."
+    },
+    "forgot_password": {
+      "title": "Forgot your password?",
+      "subtitle": "Enter your email and we'll send you a link to set a new one.",
+      "footer": "Remembered it? {link}",
+      "footer_link": "Back to sign in",
+      "sent": "If that email has an account, a reset link is on its way. It works for 30 minutes.",
+      "submit": "Send reset link",
+      "submitting": "Sending..."
+    },
+    "reset_password": {
+      "title": "Set a new password",
+      "subtitle": "Pick something you don't use anywhere else.",
+      "footer_link": "Request a new link",
+      "incomplete": "This reset link is incomplete. Request a new one.",
+      "mismatch": "The two passwords don't match.",
+      "expired": "This link has expired or was already used. Request a new one.",
+      "done": "Your password is changed. Other devices were signed out.",
+      "go_sign_in": "Sign in",
+      "submit": "Save new password",
+      "submitting": "Saving..."
+    },
+    "verify_email": {
+      "title": "Verify your email",
+      "footer_link": "Back to sign in",
+      "checking": "Checking your link...",
+      "verified": "Your email is verified. You're all set.",
+      "continue": "Continue to sign in",
+      "failed": "This link has expired or was already used. Sign in and we'll send you a new one."
+    },
+    "fields": {
+      "email": "Email",
+      "work_email": "Work email",
+      "password": "Password",
+      "new_password": "New password",
+      "confirm_password": "Confirm new password",
+      "full_name": "Full name"
+    },
+    "oauth": {
+      "google": "Continue with Google",
+      "github": "Continue with GitHub",
+      "or_email": "or use email"
+    },
+    "oauth_errors": {
+      "access_denied": "Sign-in was cancelled. Try again, or use your email.",
+      "link_expired": "That sign-in link expired. Try again.",
+      "email_not_verified": "Your account with that provider has no verified email. Verify it there, or sign up with email.",
+      "generic": "We couldn't sign you in with that account. Try again, or use your email."
+    },
+    "scene": {
+      "orbit": {
+        "headline": "Your team is already at work.",
+        "line": "Sino and six specialists handle the busywork. You stay in charge of what goes out."
+      },
+      "lineup": {
+        "headline": "Meet your new team.",
+        "line": "Six specialists, one companion. Create your account and they start today."
+      },
+      "mail": {
+        "headline": "A reset link is on its way.",
+        "line": "Sino delivers it to your inbox. It works for 30 minutes."
+      },
+      "build": {
+        "headline": "Almost back in.",
+        "line": "Pick a new password and Sino signs you out everywhere else, to be safe."
+      },
+      "thumbs": {
+        "headline": "One tap and you are in.",
+        "line": "Verifying your email keeps your workspace yours."
+      }
+    },
+    "ticker": {
+      "sinofinance": "matches invoices to your bank statement",
+      "sinosales": "drafts the follow-up after a client call",
+      "sinosocial": "plans next week’s posts in your brand voice",
+      "sinohelp": "answers the questions customers repeat",
+      "sinopeople": "turns a job brief into a ready posting",
+      "sinoinsights": "spots what changed in this month’s numbers"
+    }
+  },
+  "account": {
+    "settings": {
+      "title": "Settings",
+      "edit_profile": "Edit your profile"
+    },
+    "tabs": {
+      "label": "Account settings",
+      "profile": "Profile",
+      "preferences": "Preferences",
+      "sign_in": "Sign-in methods"
+    },
+    "save_bar": {
+      "label": "Unsaved changes",
+      "unsaved": "You have unsaved changes",
+      "discard": "Discard",
+      "save": "Save changes",
+      "saving": "Saving..."
+    },
+    "avatar": {
+      "change": "Change photo",
+      "remove": "Remove photo",
+      "updated": "Photo updated",
+      "removed": "Photo removed"
+    },
+    "roles": {
+      "owner": "Owner",
+      "admin": "Admin",
+      "member": "Member",
+      "viewer": "Viewer"
+    },
+    "departments": {
+      "management": "Management",
+      "finance": "Finance",
+      "sales": "Sales",
+      "marketing": "Marketing",
+      "operations": "Operations",
+      "hr": "People and HR",
+      "it": "IT",
+      "customer_support": "Customer support",
+      "legal": "Legal",
+      "other": "Other"
+    },
+    "profile": {
+      "call_you": "Sino will call you {name}",
+      "verified": "Verified",
+      "not_verified": "Not verified yet",
+      "linked": "Linked",
+      "not_linked": "Not linked",
+      "saved": "Profile saved",
+      "section_about": "About you",
+      "full_name": "Full name",
+      "full_name_helper": "As it appears on your documents. 2 to 100 characters.",
+      "preferred_name": "Preferred name",
+      "preferred_name_helper": "What Sino should call you. Leave empty to use your first name.",
+      "salutation": "Form of address",
+      "salutation_helper": "Used with your name, for example Kak Faishal.",
+      "salutation_unset": "Not set",
+      "salutation_none": "No title",
+      "about_me": "About you",
+      "about_me_helper": "A line or two about you and your work. Sino can use it to answer better.",
+      "about_me_count": "{count} of {max}",
+      "use_context": "Let Sino use this",
+      "use_context_helper": "Share your name, form of address, language and these notes with Sino. Never your email, phone or photo.",
+      "section_contact": "Contact",
+      "email": "Email",
+      "email_helper": "Your sign-in email. It cannot be changed here yet.",
+      "phone": "Phone number",
+      "phone_helper": "Optional. We save it as +62..., for example 0812 3456 7890 becomes +6281234567890.",
+      "section_region": "Language and region",
+      "language": "Language",
+      "language_helper": "The language of the app. Sino's replies follow your messages.",
+      "time_zone": "Time zone",
+      "time_zone_helper": "Used for dates, times and schedules.",
+      "time_zone_placeholder": "Choose a time zone",
+      "time_zone_search": "Search time zones",
+      "time_zone_empty": "No time zone found",
+      "section_workspace": "In {workspace}",
+      "job_title": "Job title",
+      "job_title_helper": "Shown to the people in this workspace.",
+      "department": "Department",
+      "department_helper": "Only for this workspace.",
+      "department_unset": "Not set",
+      "errors": {
+        "name_length": "Use between 2 and 100 characters.",
+        "name_chars": "Use letters, spaces, apostrophes, periods or hyphens only.",
+        "preferred_name_length": "Use 40 characters or fewer.",
+        "phone_invalid": "Enter a valid phone number, for example 0812 3456 7890.",
+        "about_me_length": "Use 280 characters or fewer.",
+        "job_title_length": "Use 60 characters or fewer."
+      }
+    },
+    "preferences": {
+      "section_appearance": "Appearance",
+      "theme": "Theme",
+      "theme_helper": "Saved to your account, so your other devices follow.",
+      "theme_light": "Light",
+      "theme_dark": "Dark",
+      "theme_system": "System",
+      "density": "Density",
+      "density_helper": "How much room lists and rows take.",
+      "density_comfortable": "Comfortable",
+      "density_compact": "Compact",
+      "section_motion": "Motion and Rooms",
+      "reduce_motion": "Reduce motion",
+      "reduce_motion_helper": "Less movement across the app. Your system setting is always respected.",
+      "pause_character": "Pause Sino",
+      "pause_character_helper": "Keep Sino still in Rooms.",
+      "focus_mode": "Focus mode",
+      "focus_mode_helper": "A plain background in Rooms, with no character.",
+      "room_view": "Room view in chats with Sino",
+      "room_view_helper": "Show the Room of the specialist who answered."
+    },
+    "sign_in": {
+      "section_methods": "How you sign in",
+      "google": "Google",
+      "github": "GitHub",
+      "password": "Email and password",
+      "password_set": "Set",
+      "password_not_set": "Not set",
+      "not_linked_helper": "Not linked to your account",
+      "linked_helper": "Linked to your account"
+    }
+  },
+  "shell": {
+    "features": {
+      "inbox": {
+        "label": "Inbox",
+        "blurb": "Drafts waiting for your OK, and updates from your specialists, in one place."
+      },
+      "customers": {
+        "label": "Customer chats",
+        "blurb": "See every chat your customers send on WhatsApp, Instagram and Facebook. SinoHelp drafts the replies, and you can take over any chat yourself."
+      },
+      "squads": {
+        "label": "Squads",
+        "blurb": "Put specialists together as a squad that works on one goal."
+      },
+      "library": {
+        "label": "Sino Library",
+        "blurb": "Your files and notes, so Sino answers with what your business already knows."
+      },
+      "tools": {
+        "label": "Connected tools",
+        "blurb": "Connect the tools you already use so specialists can work inside them."
+      },
+      "workflows": {
+        "label": "Workflows",
+        "blurb": "Chain steps across specialists and tools, with your approval where it matters."
+      },
+      "routines": {
+        "label": "Routines",
+        "blurb": "Jobs that run on a schedule, like a Monday sales recap."
+      },
+      "skills": {
+        "label": "Skills",
+        "blurb": "Teach a specialist how your business does a task, once."
+      },
+      "settings": {
+        "label": "Settings",
+        "blurb": "Workspace, members, models and billing."
+      }
+    },
+    "nav": {
+      "home": "Home",
+      "new_chat": "New chat"
+    },
+    "sections": {
+      "workspace": "Workspace",
+      "automate": "Automate",
+      "recent": "Recent chats"
+    },
+    "sidebar": {
+      "main_label": "Main",
+      "expand": "Expand sidebar",
+      "collapse": "Collapse sidebar",
+      "soon_tag": "Soon",
+      "hint_soon": "{label} (coming soon)",
+      "tooltip_soon": "{label}: coming soon"
+    },
+    "frame": {
+      "nav_title": "Navigation",
+      "close_menu": "Close menu",
+      "close_nav": "Close navigation",
+      "open_menu": "Open menu",
+      "open_nav": "Open navigation"
+    },
+    "user_menu": {
+      "tooltip": "Your profile and sign out",
+      "profile": "Profile",
+      "light_mode": "Light mode",
+      "dark_mode": "Dark mode",
+      "sign_out": "Sign out"
+    },
+    "workspace_menu": {
+      "switch": "Switch workspace",
+      "workspaces": "Workspaces",
+      "current": "Current workspace"
+    },
+    "recent": {
+      "load_failed": "Couldn't load your chats.",
+      "empty": "Your chats will show up here.",
+      "untitled": "New chat",
+      "with": "with"
+    },
+    "coming_soon": {
+      "badge": "Coming soon",
+      "heading": "Sino is still building {title}",
+      "cta": "Start a chat instead"
+    }
+  },
+  "specialists": {
+    "marker": {
+      "team": "Team",
+      "specialist": "Specialist"
+    }
+  },
+  "workspace": {
+    "no_workspace": {
+      "title": "You're not in a workspace yet",
+      "body": "Ask the owner of your business workspace to invite you, then sign in again."
+    },
+    "fallback_name": "there",
+    "home": {
+      "greeting_morning": "Good morning, {name}.",
+      "greeting_afternoon": "Good afternoon, {name}.",
+      "greeting_evening": "Good evening, {name}.",
+      "greeting_night": "Hi, {name}.",
+      "subtitle": "Your team is here. Who do you need today?",
+      "team_heading": "Your team",
+      "team_role": "Sino with everyone",
+      "team_hint": "Chat with Sino. Bring any specialist in with @",
+      "private_hint": "Open a private chat with {name}",
+      "launch": "Ask Sino anything…",
+      "recent_heading": "Pick up where you left off",
+      "ideas_heading": "Ideas for today",
+      "coming_heading": "Coming to your workspace",
+      "recent_loading": "Loading chats",
+      "recent_failed": "Couldn't load your chats. Refresh to try again.",
+      "recent_empty": "No chats yet. Pick someone from your team above, or {link}.",
+      "recent_empty_link": "ask Sino",
+      "chat_team": "Team chat",
+      "chat_with": "With {name}"
+    }
+  },
+  "room": {
+    "picker_label": "Who do you want to work with?",
+    "team_hint": "Sino and every specialist. Type @ to bring someone in.",
+    "team_role": "Sino with everyone",
+    "specialist_hint": "Private chat with {name}, your {role}",
+    "placeholder_team": "Ask Sino anything. Type @ to bring in a specialist",
+    "placeholder_specialist": "Message {name}",
+    "footer_team": "Sino drafts, you decide what goes out.",
+    "footer_specialist": "Private to you. {name} drafts, you decide what goes out.",
+    "stage_team": "Sino · Team",
+    "hello": "Hi {name}!",
+    "intro_specialist": "I'm your {role}. What should we work on?",
+    "intro_team": "What are we working on today? Type @ to bring a specialist into this chat.",
+    "starters_label": "Ideas to start with",
+    "starters": {
+      "sino": {
+        "a": "@SinoSales draft a follow-up for yesterday’s client meeting",
+        "b": "Plan my week around three priorities",
+        "c": "@SinoFinance and @SinoInsights review last month’s spending"
+      }
+    }
+  },
+  "cards": {
+    "title": {
+      "generic": "Result",
+      "guardrail_notice": "What I can't do here"
+    },
+    "rejected_notice": "Could not show this result as a card.",
+    "no_text": "This result could not be shown.",
+    "copy": "Copy",
+    "copied": "Copied",
+    "copy_failed": "Could not copy"
+  },
+  "chat": {
+    "composer": {
+      "message_label": "Message",
+      "mention_tooltip": "Mention a specialist",
+      "attach_label": "Attach files (coming soon)",
+      "attach_toast": "Attachments are coming soon",
+      "counter": "{count} / {max}",
+      "send_tooltip": "Send",
+      "send_disabled": "Type a message to send",
+      "sending": "Sending",
+      "send_message": "Send message"
+    },
+    "mention_menu": {
+      "heading": "Bring in a specialist",
+      "list_label": "Specialists",
+      "empty": "No specialist matches “{query}”"
+    },
+    "thread": {
+      "loading": "Loading chat",
+      "title_default": "Chat with {name}",
+      "subtitle_team": "Team chat with Sino",
+      "subtitle_private": "Private chat with {name}",
+      "placeholder_team": "Message Sino. Type @ to bring in a specialist",
+      "placeholder_specialist": "Message {name}",
+      "messages_label": "Messages",
+      "stage_team": "Sino · Team",
+      "stop_tooltip": "Stop the reply",
+      "stop": "Stop",
+      "stopping": "Stopping",
+      "stop_failed": "Couldn't stop the reply. Try again.",
+      "still_replying": "{name} is still replying. Press Stop to send something new.",
+      "announce_replied": "{name} replied.",
+      "announce_stopped": "Reply stopped.",
+      "working": "{name} is working on it",
+      "you_stopped": "You stopped this reply."
+    },
+    "error": {
+      "unavailable": "{name} can't reply right now. Your message is saved, so you can try again in a moment.",
+      "interrupted": "{name}'s reply was cut short. Your message is saved, so you can send it again.",
+      "connection_lost": "The connection dropped before the reply finished. Check your connection and try again.",
+      "signed_out": "Your session ended. Sign in again to continue.",
+      "forbidden": "You don't have access to this yet. Ask an admin.",
+      "not_found": "This reply couldn't be found. Reload the chat to see where things stand.",
+      "rate_limited": "Too many tries. Wait a moment, then try again.",
+      "generic": "Something went wrong while {name} was replying. Try again."
+    }
+  },
+  "mcp": {}
+}

@@ -97,7 +97,7 @@ Use cases and adapters import domain types and ports. Adapters never import use 
 - **Check**: `architecture.test.ts`, plus review of non-layer imports.
 
 ### R-14 MUST keep wire types in `src/shared` and guarded
-Browser-facing shapes (for example `AgentView`) live in `src/shared`. A compile-time guard must keep the domain type assignable to the view: `server/http/agent_view_contract.ts` for `AgentView`, `server/http/chat_view_contract.ts` for the chat reply (`chat_view.ts`). Add a guard when you add a shared view.
+Browser-facing shapes (for example `WorkspaceSpecialistRosterView`) live in `src/shared`. A compile-time guard must keep the domain type assignable to the view: `server/http/specialist_view_contract.ts` for the roster, `server/http/chat_view_contract.ts` for the chat reply (`chat_view.ts`). Add a guard when you add a shared view.
 - **Why**: Backend entity changes would otherwise break the client at runtime.
 - **Check**: `npm run typecheck` fails when the entity or chat response drifts from its view.
 
@@ -168,7 +168,7 @@ Use the helpers that wrap `createSuccessResponse`, `createPaginatedResponse` and
 ### R-25 MUST register new routes in the OpenAPI spec
 Add the path and schemas in `src/server/infrastructure/openapi/spec.ts`.
 - **Why**: `/api/openapi.json` and `/api-docs` are the API catalog.
-- **Check**: Enforced by review. No test compares the route files with the spec. Fetch `/api/openapi.json` and find the new path before you open the PR.
+- **Check**: `src/__tests__/openapi_guard.test.ts` fails when a route file or exported method has no spec entry, and when a spec path has no route file. It does not check that a schema matches its Zod DTO, so read the entry before you open the PR.
 
 ### R-40 MUST keep the sineva-ai contract fixtures in sync, byte for byte
 `sineva-ai` owns the internal chat contract (`ChatRequestDTO`, `ChatResponseDTO` and its success envelope). The platform gateway adapts to it. The files in `apps/web/src/__tests__/contract/fixtures/` are copies of `sineva-ai/tests/contract/fixtures/`. Never edit a copy. Change the fixture in `sineva-ai` first, copy it here in the same change, and open the matching change in both repos.
@@ -189,8 +189,8 @@ Do not trust `user_id` or `workspace_id` sent by the client for access decisions
 
 ### R-28 MUST NOT add hardcoded secret defaults or expose secrets
 No new fallback credentials in code or compose files. No secret in a `NEXT_PUBLIC_*` variable.
-- **Why**: Defaults leak into production, and `NEXT_PUBLIC_*` values ship to the browser. Current debt: `getEnvConfig()` and `docker-compose.yml` already hold dev defaults.
-- **Check**: `grep -rn "NEXT_PUBLIC_" apps/web docker-compose.yml .env.example` lists only non-secret URLs. Review every new `??` default on an env variable.
+- **Why**: Defaults leak into production, and `NEXT_PUBLIC_*` values ship to the browser. Development values live in `.env.example` only.
+- **Check**: `src/__tests__/secrets_and_hardening.test.ts` boots `validateEnvConfig` with missing and development secrets, greps `env.ts` for known development literals and checks that every secret-looking variable in `docker-compose.yml` uses `${VAR:?message}`. `grep -rn "NEXT_PUBLIC_" apps/web docker-compose.yml .env.example` lists only non-secret URLs. Review every new `??` default on an env variable.
 
 ### R-29 MUST reach `sineva-ai` only internally
 Use the `AiEngineGateway` over `sineva_internal` with `X-Internal-Api-Key`. The platform env variable is `AI_ENGINE_INTERNAL_API_KEY` and the `sineva-ai` one is `INTERNAL_API_KEY`; compose passes the same value to both. Never publish `sineva-ai` ports or call it from the browser.
@@ -198,7 +198,7 @@ Use the `AiEngineGateway` over `sineva_internal` with `X-Internal-Api-Key`. The 
 - **Check**: `docker-compose.yml` has `expose` and no `ports` for `sineva-ai`. `grep -rn "X-Internal" apps/web/src` shows `X-Internal-Api-Key` in code. The legacy `X-Internal-Service-Token` appears only in the contract test that asserts it is not sent.
 
 ### R-41 MUST turn upstream failures into typed 502 or 503 errors
-When `sineva-ai` answers with a non-2xx status or a body that fails the Zod envelope check, the gateway throws `UpstreamServiceError` (502, code `UPSTREAM_ERROR`). When it cannot be reached (network error, timeout, abort), it throws `UpstreamUnavailableError` (503, code `UPSTREAM_UNAVAILABLE`). Messages are client-safe; the upstream status and a truncated body are logged server-side only. Never return a canned reply, never retry silently, and never map these to 500 or 200.
+When `sineva-ai` answers with a non-2xx status or a body that fails the Zod envelope check, the gateway throws `UpstreamServiceError` (502, code `UPSTREAM_ERROR`). When it cannot be reached (network error, timeout, abort), it throws `UpstreamUnavailableError` (503, code `UPSTREAM_UNAVAILABLE`). Messages are client-safe; the upstream status and body size (never the body) are logged server-side only, through the logger wrapper. Never return a canned reply, never retry silently, and never map these to 500 or 200.
 - **Why**: Callers and the UI must tell "the engine answered badly" from "the engine is down", and neither may look like a real reply. ([ADR-0016](../decisions/0016-upstream-failures-return-502-503.md), [ADR-0008](../decisions/0008-no-silent-fallbacks.md))
 - **Check**: `internal_ai_engine_gateway.contract.test.ts` (under `apps/web/src/__tests__/contract/`) covers non-2xx, invalid bodies and network failure, and `api_routes.test.ts` covers the 503 response. A new adapter that calls another service follows the same split and gets the same tests.
 
@@ -207,7 +207,7 @@ When `sineva-ai` answers with a non-2xx status or a body that fails the Zod enve
 ### R-30 MUST use semantic design tokens, never raw hex
 Reference CSS variables such as `--color-surface` and `--color-text`.
 - **Why**: Tokens carry light and dark themes.
-- **Check**: `grep -rnE "#[0-9a-fA-F]{3,8}\b" apps/web/src/client` returns nothing. See [design tokens](../design-context/design_tokens.md).
+- **Check**: `npm run lint` fails on a hex, `rgb(`, Tailwind palette color, primitive variable, `dark:` class, arbitrary `z-[n]` or physical-direction class in `src/client` and `packages/ui` (rules in `packages/ui/eslint/design_rules.mjs`), and `packages/ui` tests assert token drift and contrast in both themes. See [design tokens](../design-context/design_tokens.md).
 
 ### R-31 MUST give new routes loading, error and not-found states
 Add `loading.tsx`, `error.tsx` and `not-found.tsx` as the route needs them.
@@ -224,7 +224,7 @@ Keyboard access, visible focus, AA contrast, and `prefers-reduced-motion` suppor
 ### R-33 MUST follow the wording rules in user-facing copy
 Sino is a "companion" (ID: "teman kerja", "teman AI"). Never "chatbot", "assistant", "asisten" or "agent" in copy a customer reads. Code identifiers and `/api/v1/agents` keep "agent".
 - **Why**: Consistent positioning. ([ADR-0011](../decisions/0011-user-facing-wording.md))
-- **Check**: `grep -rniE "chatbot|assistant|asisten" apps/web/src/client apps/web/src/app` and read each hit that is user-visible.
+- **Check**: `npm run test` runs the copy lint over both message catalogs and the email templates (banned words, dashes, mention comma, protected names, parity), and `npm run lint` rejects hardcoded UI text. Strings in `apps/web/messages/*.json` are the user-visible copy.
 
 ### R-34 MUST respect product guardrails
 SinoPeople never hires or rejects. SinoSales proposals and SinoSocial posts stay drafts until a person approves. SinoFinance never moves money. SinoInsights is read-only. SinoHelp auto-replies to routine questions within user-set rules and escalates new, sensitive or uncertain ones to a person.
@@ -243,7 +243,7 @@ Write "the tools you already use". Do not name specific platforms in user-facing
 ### R-37 MUST use the canonical product slugs
 `sinopeople`, `sinofinance`, `sinosales`, `sinosocial`, `sinohelp`, `sinoinsights`. Not `sino-*`, not `sino_*`. SinoMoney is SinoFinance.
 The orchestrator slug in `sineva-ai` is `sino`. Handles keep their casing (`@SinoFinance`).
-- **Why**: A slug is a routing key shared with `sineva-compro` and `sineva-ai`, and `sineva-ai` has migrated to the canonical slugs. A database seeded earlier with `sino-*` slugs keeps those rows after a re-seed (the seed upserts by slug), so it needs a manual or data migration. ([ADR-0012](../decisions/0012-canonical-product-slugs-and-guardrails.md))
+- **Why**: A slug is a routing key shared with `sineva-compro` and `sineva-ai`, and `sineva-ai` has migrated to the canonical slugs. The platform no longer stores specialists (`agent_configs` was dropped, ADR-0024), so a stale `sino-*` slug cannot persist there. ([ADR-0012](../decisions/0012-canonical-product-slugs-and-guardrails.md))
 - **Check**: `grep -rnE "sino[-_](people|finance|sales|social|help|insights)|SinoMoney|sino[-_]?money" apps docs` returns only text that discusses the old names.
 
 ### R-38 MUST update docs in the same change
@@ -255,13 +255,8 @@ A change to behavior, structure, a command or a decision updates the affected do
 
 These exist today and break the rules above. Do not extend them. Details and removal status: [known issues and tech debt](../development/known_issues_and_tech_debt.md).
 
-- In-memory "Redis" cache with `ping()` always `true` (`RedisCacheRepository`). Breaks R-26.
-- Unsigned upload URL returned when presigning fails, and S3 health that only checks configuration (`SeaweedStorageRepository`). Breaks R-26.
-- Health check that reports Postgres healthy when `DATABASE_URL` is merely set, and a hardcoded `engine_version` in `InternalAiEngineGateway.checkHealth()`. Breaks R-26.
 - `user_id` and `workspace_id` taken from request bodies, with no authentication. Breaks R-27.
-- Hardcoded default secrets in `getEnvConfig()` and `docker-compose.yml`. Breaks R-28.
 - `@sineva/shared` type import in `domain/errors/domain_error.ts`, and domain errors that carry an HTTP status. Breaks R-12 (Target).
 - No `loading.tsx`, `error.tsx` or `not-found.tsx` yet. Breaks R-31.
-- Upstream 4xx response bodies are logged, truncated to 500 characters, and may contain user text (`InternalAiEngineGateway`).
 
-Removed since the first version of this list: the canned AI reply on `sineva-ai` failure (now R-41), the in-memory agent registry (Prisma repository is wired in `container.ts`), the `X-Internal-Service-Token` header, and the old `sino-*` slugs in gateway playbooks.
+Removed since the first version of this list: the canned AI reply on `sineva-ai` failure (now R-41), the in-memory agent registry (later the Prisma registry, itself replaced by the manifest, ADR-0024), the `X-Internal-Service-Token` header, the old `sino-*` slugs in gateway playbooks, upstream 4xx/500 masked body logging and request id propagation (WP-M0-07), truthful infrastructure probes (Postgres SELECT 1, Redis ping, S3 HeadBucket, sineva-ai health version), typed 502 on presign failure, the platform specialist table and its `POST /api/v1/agents` (DOM-3, DOM-4, DOM-6, COPY-2, closed by the static manifest and the sineva-ai catalog, ADR-0024), S3 public endpoint presigning host, and real ioredis cache repository with prefix invalidation (WP-M0-08), and validated secrets without fallback defaults in production, bounded `AI_ENGINE_TIMEOUT_MS`, security headers, and CSRF protection baseline (WP-M0-09).

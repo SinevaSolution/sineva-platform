@@ -2,13 +2,15 @@
 
 import * as React from 'react';
 import { Moon, Sun } from 'lucide-react';
-import { useTheme } from 'next-themes';
-import { Button } from '@sineva/ui';
+import { SNIconButton } from '@sineva/ui';
+import { useTheme } from '@/client/lib/use_theme';
+import { useTranslations } from '@/i18n/provider';
 
 const emptySubscribe = () => () => {};
 
 export function ThemeToggle() {
-  const { theme, setTheme } = useTheme();
+  const t = useTranslations('common');
+  const { theme, toggle } = useTheme();
   const mounted = React.useSyncExternalStore(
     emptySubscribe,
     () => true,
@@ -17,36 +19,23 @@ export function ThemeToggle() {
 
   if (!mounted) {
     return (
-      <Button
-        variant="secondary"
-        size="icon"
-        aria-label="Toggle color theme"
-        disabled
-      >
-        <Sun className="h-4 w-4" />
-      </Button>
+      <SNIconButton variant="secondary" size="lg" label={t('theme.toggle')} disabled>
+        <Sun aria-hidden="true" />
+      </SNIconButton>
     );
   }
 
   const isDark = theme === 'dark';
 
   return (
-    <Button
+    <SNIconButton
       variant="secondary"
-      size="icon"
-      onClick={() => setTheme(isDark ? 'light' : 'dark')}
-      aria-label={
-        isDark
-          ? 'Switch to warm light theme'
-          : 'Switch to deep teal dark theme'
-      }
-      title={isDark ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
+      size="lg"
+      onClick={toggle}
+      label={isDark ? t('theme.aria_to_light') : t('theme.aria_to_dark')}
+      tooltip={isDark ? t('theme.title_to_light') : t('theme.title_to_dark')}
     >
-      {isDark ? (
-        <Sun className="h-4 w-4 text-[var(--sun-500)]" />
-      ) : (
-        <Moon className="h-4 w-4 text-[var(--teal-700)]" />
-      )}
-    </Button>
+      {isDark ? <Sun aria-hidden="true" className="text-warning" /> : <Moon aria-hidden="true" className="text-text-brand" />}
+    </SNIconButton>
   );
 }

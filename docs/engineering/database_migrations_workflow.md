@@ -106,30 +106,13 @@ On a fresh database both services need their release step before they take traff
 
 ## Seeding
 
-`npm run db:seed` runs `prisma/seed.ts` against `DATABASE_URL` (either URL form works). It upserts the six companions by `agent_slug`, so you can run it any number of times: running it twice on an empty database leaves six rows. On conflict it refreshes only the catalogue columns (name, role, category, description, capabilities, model, accent token). It leaves `status`, latency, session and token counters alone, because those are live runtime values. Seeded rows have no workspace. The seed creates no workspaces or users.
-
-Run it once after the first deploy to a new environment, and again after changing the catalogue text in `seed.ts`.
+`npm run db:seed` runs `prisma/seed.ts` against `DATABASE_URL` (either URL form works). It upserts two development tenants (`sineva-hq` and `acme-corp`, each with an owner) by their natural keys, so it can run any number of times. It seeds no specialists: the roster is sineva-ai's catalog presented through the static manifest in `src/shared/specialists/manifest.ts` ([ADR-0024](../decisions/0024-specialist-manifest-and-catalog-split.md)). Run it once on a new development environment.
 
 ## Old `sino-*` slugs
 
-Canonical slugs are `sinopeople`, `sinofinance`, `sinosales`, `sinosocial`, `sinohelp`, `sinoinsights` ([ADR-0012](../decisions/0012-canonical-product-slugs-and-guardrails.md)). A database seeded earlier with `sino-people`, `sino-finance` and so on keeps those rows: the seed upserts by slug, so it adds the new rows and never renames the old ones. The dashboard then lists duplicates, and chat to an old slug reaches `sineva-ai`, which no longer knows it (the platform shows a 502).
+Canonical slugs are `sinopeople`, `sinofinance`, `sinosales`, `sinosocial`, `sinohelp`, `sinoinsights` ([ADR-0012](../decisions/0012-canonical-product-slugs-and-guardrails.md)). The table that held old `sino-people`, `sino-finance` and similar slugs was `agent_configs` (the seed upserted by slug and never renamed old rows; the old `chat_sessions` and `chat_messages` tables were empty and are already gone). Migration `20261022120000_drop_agent_configs` drops that table, so the stale rows go with it and no data fix is needed in the platform database. `conversations.agent_slug` is validated against the canonical list on write. The slugs also live in `sineva-ai` data, which this repo does not manage.
 
-Fix it with a data change run before re-seeding. This is a manual step, not a committed migration. It ran correctly against a throwaway database holding one old row; `chat_sessions` and `chat_messages` were empty there. Rehearse it on a copy first.
-
-```sql
-BEGIN;
-CREATE TEMP TABLE slug_map (old_slug text PRIMARY KEY, new_slug text NOT NULL) ON COMMIT DROP;
-INSERT INTO slug_map VALUES
-  ('sino-people', 'sinopeople'), ('sino-finance', 'sinofinance'),
-  ('sino-sales', 'sinosales'), ('sino-social', 'sinosocial'),
-  ('sino-help', 'sinohelp'), ('sino-insights', 'sinoinsights');
-UPDATE platform.agent_configs t SET agent_slug = m.new_slug FROM slug_map m WHERE t.agent_slug = m.old_slug;
-UPDATE platform.chat_sessions t SET agent_slug = m.new_slug FROM slug_map m WHERE t.agent_slug = m.old_slug;
-UPDATE platform.chat_messages t SET agent_slug = m.new_slug FROM slug_map m WHERE t.agent_slug = m.old_slug;
-COMMIT;
-```
-
-If the seed already ran, the canonical rows exist and the first `UPDATE` fails on the unique index on `agent_slug`. Then delete the old `agent_configs` rows instead and keep the two chat updates. Confirm what you delete before you delete it. The slugs also live in `sineva-ai` data, which this repo does not manage.
+Before deploying that migration to a database where `POST /api/v1/agents` may have been used, check for rows other than the six defaults (the query is in the migration file). An empty result means nothing is lost.
 
 ## Forbidden commands
 

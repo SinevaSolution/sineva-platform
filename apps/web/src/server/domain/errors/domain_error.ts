@@ -44,11 +44,30 @@ export class ValidationError extends DomainError {
   constructor(message: string, details: ErrorDetail[]) {
     super({
       message,
-      code: 'VALIDATION_ERROR',
+      code: 'validation_failed',
       status: 422,
       details,
     });
     this.name = 'ValidationError';
+  }
+}
+
+export class MalformedJsonError extends DomainError {
+  constructor(detail = 'Invalid or malformed JSON payload') {
+    super({
+      message: 'Request payload validation failed',
+      code: 'validation_failed',
+      status: 422,
+      field: null,
+      details: [
+        {
+          code: 'validation_failed',
+          field: null,
+          detail,
+        },
+      ],
+    });
+    this.name = 'MalformedJsonError';
   }
 }
 
@@ -64,15 +83,43 @@ export class ConflictError extends DomainError {
   }
 }
 
+export class ForbiddenError extends DomainError {
+  constructor(message = 'Access forbidden') {
+    super({
+      message,
+      code: 'forbidden',
+      status: 403,
+      field: null,
+    });
+    this.name = 'ForbiddenError';
+  }
+}
+
+export class UnauthorizedError extends DomainError {
+  constructor(message = 'Authentication required') {
+    super({
+      message,
+      code: 'unauthenticated',
+      status: 401,
+      field: null,
+    });
+    this.name = 'UnauthorizedError';
+  }
+}
+
 // sineva-ai answered, but not with a usable reply: non-2xx status or a body
 // that fails contract validation. Messages are client-safe on purpose; the
 // upstream status and body are logged server-side by the adapter instead.
 export class UpstreamServiceError extends DomainError {
-  constructor(message = 'The AI engine returned an unexpected response') {
+  constructor(
+    message = 'The AI engine returned an unexpected response',
+    code = 'UPSTREAM_ERROR',
+    status = 502,
+  ) {
     super({
       message,
-      code: 'UPSTREAM_ERROR',
-      status: 502,
+      code,
+      status,
       field: null,
     });
     this.name = 'UpstreamServiceError';
@@ -81,13 +128,71 @@ export class UpstreamServiceError extends DomainError {
 
 // sineva-ai could not be reached at all: network failure, timeout or abort.
 export class UpstreamUnavailableError extends DomainError {
-  constructor(message = 'The AI engine is unavailable') {
+  constructor(
+    message = 'The AI engine is unavailable',
+    code = 'UPSTREAM_UNAVAILABLE',
+    status = 503,
+  ) {
     super({
       message,
-      code: 'UPSTREAM_UNAVAILABLE',
-      status: 503,
+      code,
+      status,
       field: null,
     });
     this.name = 'UpstreamUnavailableError';
   }
 }
+
+// Upstream model unavailable, overloaded, or rate-limited
+export class ModelUnavailableError extends DomainError {
+  constructor(message = 'The AI model is currently overloaded or unavailable') {
+    super({
+      message,
+      code: 'model_unavailable',
+      status: 503,
+      field: null,
+    });
+    this.name = 'ModelUnavailableError';
+  }
+}
+
+// Signed context token is invalid or rejected by upstream
+// Since the platform minted the token, this is an internal server error (500)
+export class ContextInvalidError extends DomainError {
+  constructor(message = 'Signed context token or claims are invalid') {
+    super({
+      message,
+      code: 'context_invalid',
+      status: 500,
+      field: null,
+    });
+    this.name = 'ContextInvalidError';
+  }
+}
+
+// Required infrastructure dependency unavailable (database, cache, storage, email transport)
+export class DependencyUnavailableError extends DomainError {
+  constructor(message = 'A required infrastructure dependency is unavailable') {
+    super({
+      message,
+      code: 'dependency_unavailable',
+      status: 503,
+      field: null,
+    });
+    this.name = 'DependencyUnavailableError';
+  }
+}
+
+// Signed context token exceeds header budget (assumed 8KB, fail closed)
+export class ContextTooLargeError extends DomainError {
+  constructor(message = 'Context token exceeds header budget (8KB)') {
+    super({
+      message,
+      code: 'context_too_large',
+      status: 500,
+      field: null,
+    });
+    this.name = 'ContextTooLargeError';
+  }
+}
+

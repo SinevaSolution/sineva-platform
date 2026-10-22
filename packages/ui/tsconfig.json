@@ -13,5 +13,6 @@
     "noEmit": true
   },
   "include": ["src/**/*.ts", "src/**/*.tsx"],
-  "exclude": ["node_modules", "dist"]
+  // Lint fixtures are broken on purpose (they import banned packages).
+  "exclude": ["node_modules", "dist", "src/__tests__/lint_fixtures"]
 }

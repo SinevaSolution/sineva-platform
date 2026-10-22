@@ -44,44 +44,24 @@ When you fix an item, delete it here in the same change (R-38) and remove its li
 | SEC-1 | No authentication or authorization | High |
 | SEC-2 | `user_id` taken from the request body | High |
 | SEC-3 | Presign takes `workspace_id` from the body | High |
-| SEC-4 | Hardcoded default secrets | High |
-| SEC-5 | 500 responses return the raw error message | Medium |
-| SEC-6 | Upstream response bodies are logged | Medium |
-| SEC-7 | Health route is public and shows internal details | Low |
-| INF-1 | In-memory "Redis" cache, `ping()` always true | Medium |
-| INF-2 | Presign returns an unsigned URL on error | Medium |
-| INF-3 | Health reports healthy without checking | High |
-| INF-4 | Hardcoded `engine_version` | Low |
-| INF-5 | Presigned URL host is the internal Docker name | Medium |
-| INF-6 | `AI_ENGINE_TIMEOUT_MS` is not validated | Low |
-| API-1 | Malformed JSON returns 500 | Medium |
-| API-2 | OpenAPI is hand-written, incomplete and unguarded | Medium |
 | API-3 | A chat retry can run the turn twice | Medium |
 | API-4 | The orchestrator `sino` is unreachable; chat is per product | Medium |
-| API-5 | Request id is not propagated | Low |
 | API-6 | `swagger-ui-react` unused, "Swagger UI" labels wrong | Low |
 | API-7 | R-23's check names a test that does not exist | Low |
 | DOM-1 | Domain errors carry HTTP status and import `@sineva/shared` | Low |
-| DOM-2 | Cache invalidation clears one key | Low |
-| DOM-3 | New-agent defaults live in the repository | Low |
-| DOM-4 | Two companion registries | Medium |
 | DOM-5 | Unused tables and columns | Low |
-| DOM-6 | Databases seeded with old slugs keep stale rows | Medium |
 | COPY-1 | UI copy breaks the wording rules | Medium |
-| COPY-2 | Seed data holds invented metrics and unsourced claims | Medium |
 | UI-1 | One 777-line dashboard component | Medium |
 | UI-2 | Selection is not in the URL | Low |
 | UI-3 | Server data is copied into Redux in an effect | Low |
 | UI-4 | No loading, error or not-found pages | Medium |
-| UI-5 | The `dark:` variant is not tied to `data-theme` | Medium |
+| UI-5 | The `dark:` variant is not tied to `data-theme` (resolved) | Medium |
 | UI-6 | `reply_content` Markdown is shown as plain text | Medium |
 | UI-7 | Fake dashboard stats | High |
 | UI-8 | Accessibility deviations | Medium |
 | UI-9 | Transcripts are lost on reload | Medium |
 | UI-10 | Unused front-end packages and tokens | Low |
 | UI-11 | The orchestrator mode toggle does nothing verified | Low |
-| OPS-1 | CI has no Postgres, so integration tests do not run | Medium |
-| OPS-2 | `npm run docker:down` deletes volumes | High |
 | OPS-3 | Prettier width disagrees with the code | Low |
 | AI-1 | sineva-ai: session ownership is not checked | High |
 | AI-2 | sineva-ai: Postgres persistence is dormant | Medium |
@@ -122,143 +102,9 @@ When you fix an item, delete it here in the same change (R-38) and remove its li
 | Do not copy | Building a storage key from client input without validation. |
 | Suggested fix | Take the workspace from the authenticated context, check membership, and validate the id as a UUID before it goes into a key. |
 
-### SEC-4 Hardcoded default secrets
-
-| | |
-| :--- | :--- |
-| Symptom | A deployment that forgets an environment variable runs with known credentials and no warning. |
-| Root cause | `getEnvConfig()` uses `??` defaults for the database URL (password `sineva_secret_password`), the S3 key pair and `AI_ENGINE_INTERNAL_API_KEY` (`sineva_internal_service_token_dev`). `docker-compose.yml` repeats them as `${VAR:-default}` and literals. |
-| Location | `server/infrastructure/config/env.ts`, `docker-compose.yml` |
-| Severity | High |
-| Do not copy | A fallback value for a secret (R-28). |
-| Suggested fix | Validate required variables at startup in production and fail fast. Keep dev defaults in `.env.example` only. In compose, require secrets with the `${VAR:?message}` form. |
-
-### SEC-5 500 responses return the raw error message
-
-| | |
-| :--- | :--- |
-| Symptom | An unexpected error (a Prisma error, a driver error, a `SyntaxError`) reaches the client with its own text. |
-| Root cause | The last branch of `handleRouteError` uses `error.message` as the response message. |
-| Location | `server/http/response_helper.ts` |
-| Severity | Medium |
-| Do not copy | Returning exception text to a client. |
-| Suggested fix | Return a fixed message for 500, log the cause with the request id. Add the test first. |
-
-### SEC-6 Upstream response bodies are logged
-
-| | |
-| :--- | :--- |
-| Symptom | When `sineva-ai` answers non-2xx or sends a non-JSON body, up to 500 characters of the body are written to the log. A 4xx body can echo user text. |
-| Root cause | `InternalAiEngineGateway` logs `rawBody.slice(0, LOGGED_BODY_MAX_CHARS)`. The code logs every non-2xx, not only 4xx. |
-| Location | `server/infrastructure/gateways/internal_ai_engine_gateway.ts` |
-| Severity | Medium |
-| Do not copy | Logging a response body that can carry personal data. |
-| Suggested fix | Log the status, the error code and the byte length. Put the body behind an explicit debug switch that is off in production. The existing test that checks the key is not logged stays. |
-
-### SEC-7 Health route is public and shows internal details
-
-| | |
-| :--- | :--- |
-| Symptom | `GET /api/v1/health` shows the `sineva-ai` internal URL, the S3 bucket name and uptime to anyone. |
-| Root cause | The route has no auth and returns every field the use case builds. |
-| Location | `get_system_health_use_case.ts`, `app/api/v1/health/route.ts` |
-| Severity | Low |
-| Do not copy | Returning internal addresses from a public route. |
-| Suggested fix | Keep a minimal public probe (status only). Return detail to authenticated callers. |
-
 The cross-tenant session issue in `sineva-ai` (AI-1) is also a security item; it lives in the other repository.
 
-## Infrastructure stubs and health
-
-### INF-1 In-memory "Redis" cache, `ping()` always true
-
-| | |
-| :--- | :--- |
-| Symptom | The cache is per process and is lost on restart. Two instances disagree. The health route reports Redis healthy whatever Redis does. |
-| Root cause | `RedisCacheRepository` keeps a `Map` and never opens a connection. `redis_client.ts` (ioredis) exists and nothing calls it. |
-| Location | `server/infrastructure/cache/redis_cache_repository.ts`, `redis_client.ts` |
-| Severity | Medium |
-| Do not copy | A class named for a technology that it does not use. It breaks R-26. |
-| Suggested fix | Implement the adapter with ioredis, with a real `PING`, and test it against a throwaway Redis. Or remove the cache, and the health entry, until it is needed. |
-
-### INF-2 Presign returns an unsigned URL on error
-
-| | |
-| :--- | :--- |
-| Symptom | The route answers 201 with a URL that will be rejected by S3. Nothing in the response says it is unsigned. |
-| Root cause | `createPresignedUploadUrl` catches every error and builds `<endpoint>/<bucket>/<key>?X-Amz-Expires=900`. |
-| Location | `server/infrastructure/storage/seaweed_storage_repository.ts` |
-| Severity | Medium |
-| Do not copy | A `catch` that returns a plausible value (R-26, [ADR-0008](../decisions/0008-no-silent-fallbacks.md)). |
-| Suggested fix | Remove the `catch`, or throw a typed domain error that maps to a 5xx. Test: a signing failure produces an error response. |
-
-### INF-3 Health reports healthy without checking
-
-| | |
-| :--- | :--- |
-| Symptom | Stopping Postgres, Redis or SeaweedFS does not change `/api/v1/health`. It always answers 200. |
-| Root cause | Postgres is `healthy` when `DATABASE_URL` is set. Redis `ping()` returns `true`. S3 `checkHealth()` returns `Boolean(endpoint)`, which is always true. Only the `sineva-ai` probe is real. |
-| Location | `get_system_health_use_case.ts`, `RedisCacheRepository.ping`, `SeaweedStorageRepository.checkHealth` |
-| Severity | High |
-| Do not copy | A health value computed from configuration. |
-| Suggested fix | Add real probes with short timeouts: `SELECT 1`, Redis `PING`, S3 `HeadBucket`. Return a non-200 status when a required dependency is down. Add the failing tests first, with fakes. |
-
-### INF-4 Hardcoded `engine_version`
-
-| | |
-| :--- | :--- |
-| Symptom | `AiEngineHealthResult.engine_version` is always `1.0.0` or `1.0.0-standby`. The health route does not show it, so nothing is wrong on the wire today. |
-| Root cause | The gateway writes a constant instead of reading the version from the `sineva-ai` health response. |
-| Location | `InternalAiEngineGateway.checkHealth` |
-| Severity | Low |
-| Do not copy | Returning a fixed value for a measured field. |
-| Suggested fix | Read the version from the health body, or drop the field. |
-
-### INF-5 Presigned URL host is the internal Docker name
-
-| | |
-| :--- | :--- |
-| Symptom | In the compose stack `upload_url` starts with `http://seaweedfs-s3:8333`, which a browser outside the Docker network cannot resolve. Not tested end to end. |
-| Root cause | The URL is signed against `S3_ENDPOINT`, which compose sets to the internal host. There is no separate public endpoint setting. |
-| Location | `docker-compose.yml`, `s3_client.ts`, `SeaweedStorageRepository` |
-| Severity | Medium |
-| Do not copy | Returning a URL built from an internal address. |
-| Suggested fix | Add a public S3 endpoint setting for signing, and an end-to-end upload check. |
-
-### INF-6 `AI_ENGINE_TIMEOUT_MS` is not validated
-
-| | |
-| :--- | :--- |
-| Symptom | A non-numeric value makes every chat return 503 at once. |
-| Root cause | `Number(process.env.AI_ENGINE_TIMEOUT_MS ?? '15000')` yields `NaN`, and the abort timer fires immediately. |
-| Location | `getEnvConfig()` |
-| Severity | Low |
-| Do not copy | Casting an environment string with no check. |
-| Suggested fix | Parse with Zod at startup and fail on an invalid value. |
-
 ## API contract and errors
-
-### API-1 Malformed JSON returns 500
-
-| | |
-| :--- | :--- |
-| Symptom | An empty or invalid body returns 500 with the parser's message. It should be a client error. |
-| Root cause | Each handler calls `request.json()` and a `SyntaxError` falls through to the generic branch of `handleRouteError`. |
-| Location | the three POST handlers under `app/api/v1`, `server/http/response_helper.ts` |
-| Severity | Medium |
-| Do not copy | Calling `request.json()` with no handling of invalid input. |
-| Suggested fix | A shared body parser that throws a typed 422 error for invalid JSON. Test first. |
-
-### API-2 OpenAPI is hand-written, incomplete and unguarded
-
-| | |
-| :--- | :--- |
-| Symptom | The document can drift from the Zod schemas. Health, list and presign have no response schema and no constraints. A route added without a spec entry passes every test. |
-| Root cause | `getOpenApiSpec()` is a static object, and `api_routes.test.ts` asserts only the chat contract, the health path and the 409. |
-| Location | `server/infrastructure/openapi/spec.ts`, `__tests__/api_routes.test.ts` |
-| Severity | Medium |
-| Do not copy | A route with no spec entry (R-25). |
-| Suggested fix | Add the guard test described in [swagger and OpenAPI](../api-spec/swagger_and_openapi.md), then fill the gaps listed there. |
 
 ### API-3 A chat retry can run the turn twice
 
@@ -281,17 +127,6 @@ The cross-tenant session issue in `sineva-ai` (AI-1) is also a security item; it
 | Severity | Medium |
 | Do not copy | Keying conversations by product. |
 | Suggested fix | Design the one-chat mapping first (session model, orchestrator call, attribution). Write the ADR, then change the route, schema and UI. |
-
-### API-5 Request id is not propagated
-
-| | |
-| :--- | :--- |
-| Symptom | A request cannot be traced across the platform and `sineva-ai`. The id differs per response and is not a header. |
-| Root cause | `generateRequestId()` uses `Math.random` and no `X-Request-Id` is read, returned or forwarded. |
-| Location | `packages/shared/src/response.ts`, `InternalAiEngineGateway` |
-| Severity | Low |
-| Do not copy | Treating `request_id` as a trace id. |
-| Suggested fix | Accept or create the id per request, return it as a header, forward it in the internal call, and log it. |
 
 ### API-6 `swagger-ui-react` unused, "Swagger UI" labels wrong
 
@@ -328,60 +163,16 @@ The cross-tenant session issue in `sineva-ai` (AI-1) is also a security item; it
 | Do not copy | Putting a transport concern in the domain. |
 | Suggested fix | Give errors a `code` only, and map code to status in `server/http`. Keep `ErrorDetail` out of the domain. |
 
-### DOM-2 Cache invalidation clears one key
-
-| | |
-| :--- | :--- |
-| Symptom | After `POST /api/v1/agents`, only the default list is refreshed. Other pages, filters and the home page (`per_page: 20`) show stale data for up to 30 seconds. |
-| Root cause | `registerAgent` deletes the literal key `agents:list:p_1:pp_10:cat_all`. |
-| Location | `server/application/use-cases/get_agents_use_case.ts` |
-| Severity | Low |
-| Do not copy | Invalidating a hand-written key. |
-| Suggested fix | Version or tag the list keys and clear by prefix, or drop the cache until it is real (INF-1). |
-
-### DOM-3 New-agent defaults live in the repository
-
-| | |
-| :--- | :--- |
-| Symptom | A new agent starts with `status: online`, `avg_latency_ms: 350`, `active_sessions_count: 1` and `accent_token: --teal-500`. These are not measurements. |
-| Root cause | The defaults are written in `PrismaAgentRepository.create`, not in the domain. |
-| Location | `server/infrastructure/database/prisma_agent_repository.ts` |
-| Severity | Low |
-| Do not copy | Business defaults in an adapter. |
-| Suggested fix | A domain factory that builds a new agent, with honest zero values for runtime counters. |
-
-### DOM-4 Two companion registries
-
-| | |
-| :--- | :--- |
-| Symptom | The platform registry and `sineva-ai` disagree on names (`SinoFinance` and `Sino Finance`). An agent registered in the platform has no engine behind it, so chat returns 502. |
-| Root cause | Two sources of truth: platform `agent_configs`, and `sineva-ai`'s static catalog (`build_canonical_agent_entities`) plus its `ai_agents` table. |
-| Location | `apps/web/prisma/schema.prisma` (`AgentConfig`), `sineva-ai/src/sineva_ai/agentic/agents/specialists.py` |
-| Severity | Medium |
-| Do not copy | A second copy of data another service owns. |
-| Suggested fix | Decide one owner for slug, name and category (ADR). The platform may keep only presentation fields keyed by slug. Until then, document that `POST /api/v1/agents` does not create an engine agent. |
-
 ### DOM-5 Unused tables and columns
 
 | | |
 | :--- | :--- |
-| Symptom | Only `agent_configs` has code. `workspaces`, `users`, `chat_sessions`, `chat_messages` and `storage_objects` are empty tables. `chat_messages.reasoning_summary`, `suggested_actions` and `tokens_used` match no field in any reply. |
+| Symptom | Previously only `agent_configs` had code. `workspaces`, `users`, `chat_sessions`, `chat_messages` and `storage_objects` were empty tables. `chat_messages.reasoning_summary`, `suggested_actions` and `tokens_used` match no field in any reply. |
 | Root cause | The schema was drawn before the features and before the `sineva-ai` contract ([ADR-0015](../decisions/0015-sineva-ai-owns-internal-chat-contract.md)). |
 | Location | `apps/web/prisma/schema.prisma` |
 | Severity | Low |
 | Do not copy | Adding columns no code fills. |
-| Suggested fix | Decide chat persistence together with the one-chat design (API-4), then drop or reshape the tables in a migration. |
-
-### DOM-6 Databases seeded with old slugs keep stale rows
-
-| | |
-| :--- | :--- |
-| Symptom | A database seeded earlier with `sino-*` slugs shows both old and canonical rows after a re-seed. |
-| Root cause | `seed.ts` upserts by `agent_slug`, so it adds the canonical rows and never renames or removes the old ones. |
-| Location | `apps/web/prisma/seed.ts` |
-| Severity | Medium |
-| Do not copy | Relying on a seed to migrate data. |
-| Suggested fix | A one-off data migration (or a manual SQL step in the release notes) that renames the old slugs. Follow the migration rules (R-18 to R-20, R-42). |
+| Suggested fix | Partially resolved in WP-M0-21 (`users` and `workspaces` reshaped into multi-tenant identity and RBAC schema). Chat persistence tables will be reshaped in WP-M0-29. |
 
 ## Product copy and data
 
@@ -395,17 +186,6 @@ The cross-tenant session issue in `sineva-ai` (AI-1) is also a security item; it
 | Severity | Medium |
 | Do not copy | Any string on the full list in [product model and wording](../product/product_model_and_wording.md). |
 | Suggested fix | Fix strings when a file is touched, or all at once with the one-chat UI. |
-
-### COPY-2 Seed data holds invented metrics and unsourced claims
-
-| | |
-| :--- | :--- |
-| Symptom | Cards show session counts, token counts and latency that were never measured. Descriptions carry "99.4% SLA adherence", "high-converting", and platform names. |
-| Root cause | `seed.ts` was written as demo data and is displayed as real. |
-| Location | `apps/web/prisma/seed.ts` |
-| Severity | Medium |
-| Do not copy | A number with no source. |
-| Suggested fix | Seed zero runtime counters, or show none. Rewrite descriptions with the Founder against the guardrails. |
 
 ## Dashboard and UI
 
@@ -459,10 +239,10 @@ The cross-tenant session issue in `sineva-ai` (AI-1) is also a security item; it
 | :--- | :--- |
 | Symptom | `dark:` classes follow the OS setting, not the app theme. They misfire in both directions. |
 | Root cause | Tailwind v4's default `dark:` variant, and no `@custom-variant` in `globals.css`. |
-| Location | `packages/ui/src/index.tsx` (`Badge`), `client/components/sineva_dashboard.tsx`, `app/globals.css` |
+| Location | was `packages/ui` (`Badge`), the dashboard and `app/globals.css` |
 | Severity | Medium |
 | Do not copy | A `dark:` class. Use semantic tokens. |
-| Suggested fix | See [design tokens](../design-context/design_tokens.md). Verify both themes visually. |
+| Suggested fix | Resolved by the token re-base: no component uses `dark:` (the lint rule and `design_tokens_wiring.test.ts` keep it that way) and every color is a semantic token that swaps under `data-theme`. See [design tokens](../design-context/design_tokens.md). |
 
 ### UI-6 `reply_content` Markdown is shown as plain text
 
@@ -492,7 +272,7 @@ The cross-tenant session issue in `sineva-ai` (AI-1) is also a security item; it
 | :--- | :--- |
 | Symptom | Controls under 44 px, `role="tab"` with no panel or arrow keys, a focus cue that is only a border color, no announcement of new replies, an input border under 3:1. |
 | Root cause | The UI was not checked against R-32. |
-| Location | `packages/ui/src/index.tsx` (`Button` `sm`), `client/components/sineva_dashboard.tsx`, `command_palette.tsx` |
+| Location | `client/components/sineva_dashboard.tsx`, `command_palette.tsx` (the legacy `Button` `sm` is gone: `SNButton` keeps a 44 px hit area on `xs` and `sm`) |
 | Severity | Medium |
 | Do not copy | A role the component does not implement. |
 | Suggested fix | The list and measured values are in [design system](../design-context/design_system.md). Fix with the UI rebuild and re-check by keyboard in both themes. |
@@ -512,7 +292,7 @@ The cross-tenant session issue in `sineva-ai` (AI-1) is also a security item; it
 
 | | |
 | :--- | :--- |
-| Symptom | `gsap`, `motion`, `recharts`, `vaul`, `react-hook-form`, `@hookform/resolvers`, `swagger-ui-react`, six Radix packages and `ioredis` are installed and unused. `--ease-out-expo`, `--color-accent-highlight` and the `accent_token` field are unused. |
+| Symptom | `gsap`, `recharts`, `vaul`, `react-hook-form`, `@hookform/resolvers`, `swagger-ui-react`, six Radix packages and `ioredis` are installed and unused. The `accent_token` field is unused. (`motion`, `next-themes`, `--color-accent-highlight` and the old platform-only tokens were removed by the token re-base; `--ease-out-expo` is kept because compro defines it and the result cards will use it.) |
 | Root cause | Packages and tokens were added ahead of use. |
 | Location | `apps/web/package.json`, `app/globals.css` |
 | Severity | Low |
@@ -531,28 +311,6 @@ The cross-tenant session issue in `sineva-ai` (AI-1) is also a security item; it
 | Suggested fix | Remove it, or implement an approval step for real and write the ADR. |
 
 ## Tooling and operations
-
-### OPS-1 CI has no Postgres, so integration tests do not run
-
-| | |
-| :--- | :--- |
-| Symptom | `npm run test:integration` passes only on a developer machine. CI cannot catch a broken Prisma adapter. |
-| Root cause | `.github/workflows/ci.yml` runs lint, typecheck, `npm run test` and build. It has no database service and no integration step. |
-| Location | `.github/workflows/ci.yml` |
-| Severity | Medium |
-| Do not copy | Marking database code as tested when only fakes ran. |
-| Suggested fix | Add a Postgres 17 service container, set `TEST_DATABASE_URL` to a database whose name contains "test", and run `npm run test:integration`. |
-
-### OPS-2 `npm run docker:down` deletes volumes
-
-| | |
-| :--- | :--- |
-| Symptom | Running the script erases Postgres, Redis, SeaweedFS and Qdrant data, including the data `sineva-ai` keeps in the shared database. |
-| Root cause | The root script is `docker compose down -v`. |
-| Location | root `package.json` |
-| Severity | High |
-| Do not copy | A convenience script with a destructive flag. |
-| Suggested fix | Make `docker:down` plain `docker compose down` and add a separate, clearly named `docker:reset` that asks first. |
 
 ### OPS-3 Prettier width disagrees with the code
 

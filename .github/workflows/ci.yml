@@ -29,8 +29,108 @@ jobs:
       - name: Run TypeScript Typecheck
         run: npm run typecheck
 
-      - name: Run Unit & Integration Tests
+      - name: Run Unit & Contract Tests
         run: npm run test
 
       - name: Build Production Bundle
         run: npm run build
+
+      # Records chunk sizes and fails when three.js, GSAP, Recharts, Tiptap or
+      # dnd-kit land in the chunk every page loads (FR-UX-43).
+      - name: Bundle size report and heavy-library gate
+        run: npm run bundle:report --workspace=@sineva/web
+
+      - name: Upload bundle report
+        uses: actions/upload-artifact@v4
+        with:
+          name: bundle-report
+          path: apps/web/.next/bundle-report.json
+          if-no-files-found: error
+
+  integration:
+    name: Integration Tests (Postgres & Redis)
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: sineva_user
+          POSTGRES_PASSWORD: sineva_test_password
+          POSTGRES_DB: sineva_platform_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 24 LTS
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run Integration Tests
+        env:
+          TEST_DATABASE_URL: postgresql://sineva_user:sineva_test_password@localhost:5432/sineva_platform_test
+          REDIS_URL: redis://localhost:6379
+        run: npm run test:integration
+
+  security:
+    name: Security & Compliance
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js 24 LTS
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Dependency Vulnerability Audit (High/Critical)
+        run: npm audit --omit=dev --audit-level=high
+
+      - name: Secret Scanning (TruffleHog)
+        uses: trufflesecurity/trufflehog@v3.88.2
+        with:
+          extra_args: --only-verified
+
+      - name: Custom Token & Key Pattern Scan
+        run: |
+          echo "Scanning for forbidden credential patterns (snv_pat_, -----BEGIN ... KEY)..."
+          FORBIDDEN=$(git grep -E -I "snv_pat_[a-zA-Z0-9_\-]{16,}|-----BEGIN (RSA |EC |OPENSSH |DSA )?PRIVATE KEY-----" -- ':!*test*' ':!*fixture*' ':!*.md' ':!packages/shared/src/pii/vectors/**' || true)
+          if [ -n "$FORBIDDEN" ]; then
+            echo "ERROR: Found secret patterns in tracked files:"
+            echo "$FORBIDDEN"
+            exit 1
+          fi
+          echo "No secret patterns found."
+
+      - name: Generate Software Bill of Materials (SBOM)
+        run: |
+          npm sbom --omit=dev --sbom-format=cyclonedx > sbom.json
+          test -s sbom.json
+          echo "SBOM generated successfully ($(wc -c < sbom.json) bytes)."

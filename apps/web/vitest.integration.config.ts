@@ -17,6 +17,7 @@ export default defineConfig({
   resolve: {
     alias: {
       '@': resolve(import.meta.dirname, './src'),
+      '@sineva/card-schemas': resolve(import.meta.dirname, '../../packages/card-schemas/src/index.ts'),
       // See vitest.config.ts: `server-only` throws outside an RSC build.
       'server-only': resolve(
         import.meta.dirname,

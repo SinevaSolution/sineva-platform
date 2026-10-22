@@ -22,100 +22,425 @@ datasource db {
   schemas  = ["platform"]
 }
 
-model Workspace {
-  id                      String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  workspace_slug          String   @unique
-  workspace_name          String
-  subscription_tier       String   @default("growth")
-  monthly_token_quota     Int      @default(1000000)
-  monthly_tokens_consumed Int      @default(0)
-  created_at              DateTime @default(now()) @db.Timestamptz(6)
-  updated_at              DateTime @default(now()) @db.Timestamptz(6)
+// ---------------------------------------------------------------------------
+// Tenancy & Workspaces
+// ---------------------------------------------------------------------------
 
-  users           User[]
-  agent_configs   AgentConfig[]
-  chat_sessions   ChatSession[]
-  storage_objects StorageObject[]
+model Workspace {
+  id              String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  workspace_slug  String    @unique @map("workspace_slug")
+  workspace_name  String    @map("workspace_name")
+  owner_user_id   String?   @map("owner_user_id") @db.Uuid
+  status          String    @default("active") @map("status") // trialing | active | past_due | read_only | suspended | pending_deletion | deleted
+  status_reason   String?   @map("status_reason")
+  trial_ends_at   DateTime? @map("trial_ends_at") @db.Timestamptz(6)
+  timezone        String    @default("Asia/Jakarta") @map("timezone")
+  default_locale  String    @default("id") @map("default_locale")
+  logo_url        String?   @map("logo_url")
+  deleted_at      DateTime? @map("deleted_at") @db.Timestamptz(6)
+  slug_changed_at DateTime? @map("slug_changed_at") @db.Timestamptz(6)
+
+  // Usage, Plans & Billing fields (kept untouched per WP-M0-21, moved in WP-M3-27 / WP-M4-38)
+  subscription_tier       String @default("growth") @map("subscription_tier")
+  monthly_token_quota     Int    @default(1000000) @map("monthly_token_quota")
+  monthly_tokens_consumed Int    @default(0) @map("monthly_tokens_consumed")
+
+  created_at DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updated_at DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  owner               User?                       @relation("WorkspaceOwner", fields: [owner_user_id], references: [id], onDelete: SetNull)
+  members             WorkspaceMember[]
+  member_specialists  WorkspaceMemberSpecialist[]
+  invitations         WorkspaceInvitation[]
+  ownership_transfers OwnershipTransfer[]
+  conversations       Conversation[]
+  storage_objects     StorageObject[]
+  chat_runs           ChatRun[]
+  message_cards       MessageCard[]
 
   @@map("workspaces")
   @@schema("platform")
 }
 
-model User {
-  id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  workspace_id String   @db.Uuid
-  email        String   @unique
-  full_name    String
-  role         String   @default("member")
-  avatar_url   String?
-  is_active    Boolean  @default(true)
-  created_at   DateTime @default(now()) @db.Timestamptz(6)
-  updated_at   DateTime @default(now()) @db.Timestamptz(6)
+model WorkspaceMember {
+  id               String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  workspace_id     String   @map("workspace_id") @db.Uuid
+  user_id          String   @map("user_id") @db.Uuid
+  role             String   @default("member") @map("role") // owner | admin | member | viewer
+  specialist_scope String   @default("all") @map("specialist_scope") // all | selected
+  job_title        String?  @map("job_title")
+  department       String?  @map("department")
+  created_at       DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updated_at       DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  workspace     Workspace     @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
-  chat_sessions ChatSession[]
+  workspace   Workspace                   @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
+  user        User                        @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  specialists WorkspaceMemberSpecialist[]
+
+  @@unique([workspace_id, user_id])
+  @@index([workspace_id])
+  @@index([user_id])
+  @@map("workspace_members")
+  @@schema("platform")
+}
+
+model WorkspaceMemberSpecialist {
+  id                  String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  workspace_id        String   @map("workspace_id") @db.Uuid
+  workspace_member_id String   @map("workspace_member_id") @db.Uuid
+  agent_slug          String   @map("agent_slug")
+  created_at          DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  workspace Workspace       @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
+  member    WorkspaceMember @relation(fields: [workspace_member_id], references: [id], onDelete: Cascade)
+
+  @@unique([workspace_member_id, agent_slug])
+  @@index([workspace_id])
+  @@index([workspace_member_id])
+  @@map("workspace_member_specialists")
+  @@schema("platform")
+}
+
+model WorkspaceInvitation {
+  id                String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  workspace_id      String    @map("workspace_id") @db.Uuid
+  email             String    @map("email")
+  role              String    @default("member") @map("role") // owner | admin | member | viewer
+  inviter_user_id   String    @map("inviter_user_id") @db.Uuid
+  token_hash        String    @unique @map("token_hash")
+  specialist_scope  String    @default("all") @map("specialist_scope")
+  // Allowlist of agent_slug for scope `selected` (ADR-0029); applied to
+  // workspace_member_specialists on accept. Empty for scope `all`.
+  scope_agent_slugs String[]  @default([]) @map("scope_agent_slugs")
+  expires_at        DateTime  @map("expires_at") @db.Timestamptz(6)
+  accepted_at       DateTime? @map("accepted_at") @db.Timestamptz(6)
+  revoked_at        DateTime? @map("revoked_at") @db.Timestamptz(6)
+  last_sent_at      DateTime  @default(now()) @map("last_sent_at") @db.Timestamptz(6)
+  // Set once when an expiry was first noticed, so `invitation.expired` is audited once.
+  expired_logged_at DateTime? @map("expired_logged_at") @db.Timestamptz(6)
+  created_at        DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updated_at        DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  workspace Workspace @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
+  inviter   User      @relation("InviterUser", fields: [inviter_user_id], references: [id], onDelete: Cascade)
+
+  @@index([workspace_id])
+  @@index([email])
+  @@map("workspace_invitations")
+  @@schema("platform")
+}
+
+// One open row per workspace (partial unique index, raw SQL in the migration):
+// the owner names an existing admin, who confirms through an emailed link.
+model OwnershipTransfer {
+  id           String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  workspace_id String    @map("workspace_id") @db.Uuid
+  from_user_id String    @map("from_user_id") @db.Uuid
+  to_user_id   String    @map("to_user_id") @db.Uuid
+  token_hash   String    @unique @map("token_hash")
+  expires_at   DateTime  @map("expires_at") @db.Timestamptz(6)
+  accepted_at  DateTime? @map("accepted_at") @db.Timestamptz(6)
+  cancelled_at DateTime? @map("cancelled_at") @db.Timestamptz(6)
+  created_at   DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updated_at   DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  workspace Workspace @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
+  from_user User      @relation("OwnershipTransferFrom", fields: [from_user_id], references: [id], onDelete: Cascade)
+  to_user   User      @relation("OwnershipTransferTo", fields: [to_user_id], references: [id], onDelete: Cascade)
+
+  @@index([workspace_id])
+  @@map("ownership_transfers")
+  @@schema("platform")
+}
+
+// ---------------------------------------------------------------------------
+// Identity & Authentication
+// ---------------------------------------------------------------------------
+
+model User {
+  id                     String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  email                  String    @unique @map("email")
+  email_verified         Boolean   @default(false) @map("email_verified")
+  email_verified_at      DateTime? @map("email_verified_at") @db.Timestamptz(6)
+  full_name              String    @map("full_name")
+  preferred_name         String?   @map("preferred_name")
+  salutation             String?   @map("salutation") // none | pak | bu | kak | mas | mbak
+  phone_number           String?   @map("phone_number")
+  phone_verified_at      DateTime? @map("phone_verified_at") @db.Timestamptz(6)
+  locale                 String    @default("id") @map("locale")
+  timezone               String    @default("Asia/Jakarta") @map("timezone")
+  about_me               String?   @map("about_me")
+  use_profile_in_context Boolean   @default(true) @map("use_profile_in_context")
+  avatar_url             String?   @map("avatar_url")
+  status                 String    @default("active") @map("status") // active | suspended | pending_deletion | deleted
+  two_factor_enabled     Boolean   @default(false) @map("two_factor_enabled")
+  created_at             DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updated_at             DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  owned_workspaces         Workspace[]           @relation("WorkspaceOwner")
+  memberships              WorkspaceMember[]
+  invitations_sent         WorkspaceInvitation[] @relation("InviterUser")
+  ownership_transfers_from OwnershipTransfer[]   @relation("OwnershipTransferFrom")
+  ownership_transfers_to   OwnershipTransfer[]   @relation("OwnershipTransferTo")
+  accounts                 Account[]
+  sessions                 Session[]
+  staff_profile            PlatformStaff?
+  conversations            Conversation[]
+  preferences              UserPreferences?
 
   @@map("users")
   @@schema("platform")
 }
 
-model AgentConfig {
-  id                    String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  workspace_id          String?  @db.Uuid
-  agent_slug            String   @unique
-  display_name          String
-  role_title            String
-  category              String
-  status                String   @default("online")
-  short_description     String
-  capabilities          Json     @default("[]")
-  model_name            String   @default("sineva-core-v2")
-  avg_latency_ms        Int      @default(420)
-  active_sessions_count Int      @default(0)
-  daily_tokens_used     Int      @default(0)
-  accent_token          String   @default("--teal-500")
-  created_at            DateTime @default(now()) @db.Timestamptz(6)
-  updated_at            DateTime @default(now()) @db.Timestamptz(6)
+model UserPreferences {
+  id                String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id           String   @unique @map("user_id") @db.Uuid
+  theme             String   @default("system") @map("theme") // light | dark | system
+  density           String   @default("comfortable") @map("density") // comfortable | compact
+  focus_mode        Boolean  @default(false) @map("focus_mode")
+  reduce_motion     Boolean  @default(false) @map("reduce_motion")
+  sidebar_collapsed Boolean  @default(false) @map("sidebar_collapsed")
+  pause_character   Boolean  @default(false) @map("pause_character")
+  room_view         Boolean  @default(false) @map("room_view")
+  created_at        DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updated_at        DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  workspace Workspace? @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
+  user User @relation(fields: [user_id], references: [id], onDelete: Cascade)
 
-  @@map("agent_configs")
+  @@map("user_preferences")
   @@schema("platform")
 }
 
-model ChatSession {
-  id            String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  workspace_id  String   @db.Uuid
-  user_id       String   @db.Uuid
-  agent_slug    String
-  session_title String
-  is_archived   Boolean  @default(false)
-  created_at    DateTime @default(now()) @db.Timestamptz(6)
-  updated_at    DateTime @default(now()) @db.Timestamptz(6)
+model Account {
+  id                       String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id                  String    @map("user_id") @db.Uuid
+  account_id               String    @map("account_id")
+  provider_id              String    @map("provider_id")
+  provider_email           String?   @map("provider_email")
+  provider_username        String?   @map("provider_username")
+  access_token             String?   @map("access_token")
+  refresh_token            String?   @map("refresh_token")
+  access_token_expires_at  DateTime? @map("access_token_expires_at") @db.Timestamptz(6)
+  refresh_token_expires_at DateTime? @map("refresh_token_expires_at") @db.Timestamptz(6)
+  scope                    String?   @map("scope")
+  id_token                 String?   @map("id_token")
+  password                 String?   @map("password")
+  created_at               DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updated_at               DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  user User @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@unique([provider_id, account_id])
+  @@index([user_id])
+  @@map("accounts")
+  @@schema("platform")
+}
+
+model Session {
+  id                  String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id             String    @map("user_id") @db.Uuid
+  token               String    @unique @map("token")
+  token_hash          String?   @unique @map("token_hash")
+  active_workspace_id String?   @map("active_workspace_id") @db.Uuid
+  fresh_until         DateTime? @map("fresh_until") @db.Timestamptz(6)
+  expires_at          DateTime  @map("expires_at") @db.Timestamptz(6)
+  revoked_at          DateTime? @map("revoked_at") @db.Timestamptz(6)
+  ip_address          String?   @map("ip_address")
+  user_agent          String?   @map("user_agent")
+  created_at          DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updated_at          DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  user User @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@index([user_id])
+  @@index([active_workspace_id])
+  @@map("sessions")
+  @@schema("platform")
+}
+
+model Verification {
+  id         String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  identifier String    @map("identifier")
+  value      String    @map("value")
+  expires_at DateTime  @map("expires_at") @db.Timestamptz(6)
+  created_at DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updated_at DateTime? @map("updated_at") @db.Timestamptz(6)
+
+  @@index([identifier])
+  @@map("verifications")
+  @@schema("platform")
+}
+
+model PlatformStaff {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id     String   @unique @map("user_id") @db.Uuid
+  staff_role  String   @map("staff_role") // operator | platform_admin | support
+  assigned_by String?  @map("assigned_by") @db.Uuid
+  created_at  DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updated_at  DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  user User @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@map("platform_staff")
+  @@schema("platform")
+}
+
+model AuthLoginAttempt {
+  id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  identifier   String   @map("identifier")
+  ip_address   String   @map("ip_address")
+  success      Boolean  @map("success")
+  attempted_at DateTime @default(now()) @map("attempted_at") @db.Timestamptz(6)
+
+  @@index([identifier])
+  @@index([ip_address])
+  @@index([attempted_at])
+  @@map("auth_login_attempts")
+  @@schema("platform")
+}
+
+model SigningKey {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  kid         String   @unique @map("kid") @db.VarChar(64)
+  alg         String   @default("EdDSA") @map("alg") @db.VarChar(32)
+  public_key  String   @map("public_key") @db.Text
+  status      String   @default("active") @map("status") @db.VarChar(32) // active | next | retired
+  purpose     String   @default("context") @map("purpose") @db.VarChar(32) // context | mcp_access_token
+  valid_from  DateTime @default(now()) @map("valid_from") @db.Timestamptz(6)
+  valid_until DateTime @map("valid_until") @db.Timestamptz(6)
+  created_at  DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updated_at  DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@index([purpose, status])
+  @@map("signing_keys")
+  @@schema("platform")
+}
+
+// ---------------------------------------------------------------------------
+// Agents & Operations (Carried over from Init)
+// ---------------------------------------------------------------------------
+
+model Conversation {
+  id                String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  workspace_id      String    @map("workspace_id") @db.Uuid
+  user_id           String    @map("user_id") @db.Uuid
+  kind              String    @default("hub") @map("kind") // hub | room
+  agent_slug        String?   @map("agent_slug")
+  title             String?   @map("title")
+  title_source      String?   @map("title_source") // user | auto | first_message
+  pinned_at         DateTime? @map("pinned_at") @db.Timestamptz(6)
+  archived_at       DateTime? @map("archived_at") @db.Timestamptz(6)
+  origin_message_id String?   @map("origin_message_id") @db.Uuid
+  origin_channel    String?   @default("web") @map("origin_channel")
+  last_message_at   DateTime? @map("last_message_at") @db.Timestamptz(6)
+  created_at        DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updated_at        DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   workspace     Workspace     @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
   user          User          @relation(fields: [user_id], references: [id], onDelete: Cascade)
-  chat_messages ChatMessage[]
+  messages      Message[]
+  chat_runs     ChatRun[]
+  message_cards MessageCard[]
 
-  @@map("chat_sessions")
+  @@index([workspace_id, user_id, last_message_at])
+  @@index([workspace_id, kind])
+  @@index([workspace_id, agent_slug])
+  @@map("conversations")
   @@schema("platform")
 }
 
-model ChatMessage {
+model Message {
   id                String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  session_id        String   @db.Uuid
-  agent_slug        String
-  sender_role       String
-  message_text      String
-  reasoning_summary String?
-  suggested_actions Json     @default("[]")
-  tokens_used       Int      @default(0)
-  latency_ms        Int      @default(0)
-  created_at        DateTime @default(now()) @db.Timestamptz(6)
+  conversation_id   String   @map("conversation_id") @db.Uuid
+  role              String   @map("role") // user | assistant | system
+  agent_slug        String?  @map("agent_slug")
+  content           String   @map("content") @db.Text
+  mentions          Json?    @map("mentions")
+  status            String   @default("completed") @map("status") // pending | completed | failed | needs_approval | needs_input | budget_exceeded | cancelled | error
+  finish_reason     String?  @map("finish_reason")
+  run_id            String?  @map("run_id")
+  channel           String?  @default("web") @map("channel")
+  client_message_id String?  @map("client_message_id")
+  created_at        DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updated_at        DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  session ChatSession @relation(fields: [session_id], references: [id], onDelete: Cascade)
+  conversation  Conversation  @relation(fields: [conversation_id], references: [id], onDelete: Cascade)
+  chat_runs     ChatRun[]
+  message_cards MessageCard[]
 
-  @@map("chat_messages")
+  @@index([conversation_id, created_at])
+  @@index([conversation_id, client_message_id])
+  @@index([run_id])
+  @@map("messages")
+  @@schema("platform")
+}
+
+// One streamed reply (ADR-0022). `run_handle` is the id the browser holds
+// (allocated by POST .../messages); the upstream_* columns map it to sineva-ai.
+model ChatRun {
+  id                   String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  workspace_id         String   @map("workspace_id") @db.Uuid
+  conversation_id      String   @map("conversation_id") @db.Uuid
+  user_message_id      String   @map("user_message_id") @db.Uuid
+  run_handle           String   @unique @map("run_handle")
+  agent_slug           String   @map("agent_slug")
+  status               String   @default("pending") @map("status") // pending | streaming | completed | cancelled | error | needs_approval | needs_input | budget_exceeded | failed
+  upstream_run_id      String?  @map("upstream_run_id")
+  upstream_session_id  String?  @map("upstream_session_id")
+  assistant_message_id String?  @map("assistant_message_id") @db.Uuid
+  error_code           String?  @map("error_code")
+  created_at           DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updated_at           DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  workspace    Workspace    @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
+  conversation Conversation @relation(fields: [conversation_id], references: [id], onDelete: Cascade)
+  user_message Message      @relation(fields: [user_message_id], references: [id], onDelete: Cascade)
+
+  @@index([workspace_id, conversation_id, created_at])
+  @@map("chat_runs")
+  @@schema("platform")
+}
+
+// A typed result card of an assistant message (ADR-0025, FR-AX-13). Written
+// when the relay has validated `card_completed`; patches are never stored. A
+// rejected card keeps only its code (`rejected_code`), `data` stays `{}`.
+// `connection_id` and `approval_id` have no foreign key yet: their tables
+// arrive with the connections and approvals work packages.
+model MessageCard {
+  id                String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  message_id        String    @map("message_id") @db.Uuid
+  conversation_id   String    @map("conversation_id") @db.Uuid
+  workspace_id      String    @map("workspace_id") @db.Uuid
+  run_id            String?   @map("run_id")
+  call_id           String?   @map("call_id")
+  position          Int       @map("position")
+  card_type         String    @map("card_type")
+  schema_version    Int       @map("schema_version")
+  state             String    @map("state") // drafting | ready | needs_review | done | failed | disconnected | cancelled | expired
+  provider_slug     String?   @map("provider_slug")
+  connection_id     String?   @map("connection_id") @db.Uuid
+  approval_id       String?   @map("approval_id") @db.Uuid
+  data              Json      @default("{}") @map("data")
+  actions           Json      @default("[]") @map("actions")
+  fallback_text     String?   @map("fallback_text") @db.Text
+  payload_hash      String?   @map("payload_hash")
+  validation_status String    @map("validation_status") // valid | rejected
+  rejected_code     String?   @map("rejected_code")
+  search_text       String?   @map("search_text") @db.Text
+  version           Int       @default(1) @map("version")
+  data_expires_at   DateTime? @map("data_expires_at") @db.Timestamptz(6)
+  created_at        DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updated_at        DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  message      Message      @relation(fields: [message_id], references: [id], onDelete: Cascade)
+  conversation Conversation @relation(fields: [conversation_id], references: [id], onDelete: Cascade)
+  workspace    Workspace    @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
+
+  @@unique([message_id, position])
+  @@index([conversation_id, position])
+  @@index([approval_id])
+  @@index([workspace_id, conversation_id])
+  @@map("message_cards")
   @@schema("platform")
 }
 
@@ -133,5 +458,47 @@ model StorageObject {
   workspace Workspace @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
 
   @@map("storage_objects")
+  @@schema("platform")
+}
+
+// ---------------------------------------------------------------------------
+// Audit log (append-only; FR-SEC-31, FR-SEC-32)
+// ---------------------------------------------------------------------------
+
+// No foreign key on `workspace_id` on purpose: audit rows must outlive the
+// workspace they describe (whether workspace deletion removes them is
+// OQ-SEC-9), and a cascade here would let a workspace delete rewrite history.
+// The ingest endpoint and the use cases validate ids before writing.
+// `prev_hash` and `hash` stay null until the per-workspace chain lands; the
+// application only ever inserts and selects (the repository port has no
+// update or delete). `actor_id` and `target_id` are text because they name
+// non-uuid things too (a specialist slug, a signing key `kid`).
+model AuditEvent {
+  id                   String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  workspace_id         String?  @db.Uuid
+  occurred_at          DateTime @default(now()) @db.Timestamptz(6)
+  actor_type           String   @db.VarChar(32) // user | specialist | system | support | mcp_client
+  actor_id             String
+  on_behalf_of_user_id String?
+  action               String   @db.VarChar(128)
+  target_type          String?  @db.VarChar(64)
+  target_id            String?
+  outcome              String   @default("allowed") @db.VarChar(16) // allowed | denied | error
+  reason_code          String?  @db.VarChar(128)
+  request_id           String?
+  run_id               String?
+  ip                   String?  @db.VarChar(64)
+  user_agent           String?  @db.VarChar(512)
+  change               Json?
+  metadata             Json?
+  prev_hash            String?  @db.VarChar(64)
+  hash                 String?  @db.VarChar(64)
+
+  @@index([workspace_id, occurred_at(sort: Desc)])
+  @@index([workspace_id, action, occurred_at(sort: Desc)])
+  @@index([actor_id, occurred_at(sort: Desc)])
+  @@index([request_id])
+  @@index([run_id])
+  @@map("audit_events")
   @@schema("platform")
 }

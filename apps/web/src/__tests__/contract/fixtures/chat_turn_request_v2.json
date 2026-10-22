@@ -1,0 +1,23 @@
+{
+  "user_message": "Tolong hitungkan runway dan burn rate SaaS kami untuk Q3.",
+  "session_id": "8f3a1c2d-6b4e-4d7a-9c15-2e0b7a41f9d3",
+  "client_message_id": "a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6d",
+  "mentions": [
+    {
+      "agent_slug": "sinofinance",
+      "start": 0,
+      "end": 12
+    }
+  ],
+  "attachments": [
+    {
+      "storage_key": "t/8f3a1c2d-6b4e-4d7a-9c15-2e0b7a41f9d3/uploads/invoices_q3.csv",
+      "filename": "invoices_q3.csv",
+      "mime": "text/csv",
+      "size_bytes": 10240
+    }
+  ],
+  "use_library": true,
+  "invoke_skill": null,
+  "allow_degraded": false
+}

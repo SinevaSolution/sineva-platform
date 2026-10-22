@@ -6,9 +6,10 @@ import { SeaweedStorageRepository } from '@/server/infrastructure/storage/seawee
 describe('Infrastructure adapters', () => {
   it('storage adapter sanitizes the object_key of presigned uploads', async () => {
     const storage = new SeaweedStorageRepository();
+    const testWorkspaceId = '11111111-1111-4111-8111-111111111111';
 
     const result = await storage.createPresignedUploadUrl({
-      workspace_id: 'wks_enterprise_01',
+      workspace_id: testWorkspaceId,
       file_name: 'Q4 Financial Model.xlsx',
       content_type:
         'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
@@ -16,7 +17,7 @@ describe('Infrastructure adapters', () => {
     });
 
     expect(result.storage_provider).toBe('seaweedfs_s3');
-    expect(result.object_key).toContain('workspaces/wks_enterprise_01/');
+    expect(result.object_key).toContain(`t/${testWorkspaceId}/`);
     expect(result.object_key).toContain('q4_financial_model.xlsx');
     expect(result.upload_url).toContain('http');
   });

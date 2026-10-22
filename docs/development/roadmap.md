@@ -35,7 +35,7 @@ What works, with the evidence:
 | Area | State | Evidence |
 | :--- | :--- | :--- |
 | Routes | Five routes with Zod validation, the shared envelope and typed errors (404, 409, 422, 502, 503) | `src/__tests__/api_routes.test.ts` |
-| Agent registry | Prisma 7.10.1 repository on schema `platform`, migration `20261021013412_init`, seed with the six products | `src/__tests__/integration/prisma_agent_repository.int.test.ts` (needs a throwaway Postgres) |
+| Specialist roster | Static presentation manifest in code plus sineva-ai's catalog (`GET /api/v2/agents`); `agent_configs` dropped, 503 when sineva-ai is down ([ADR-0024](../decisions/0024-specialist-manifest-and-catalog-split.md)) | `src/__tests__/specialist_manifest.test.ts`, `list_workspace_specialists_use_case.test.ts`, `specialists_api_routes.test.ts` |
 | AI gateway | Real contract with `sineva-ai`: `X-Internal-Api-Key`, `user_message`, Zod check of the envelope, 502 and 503, no fallback | `src/__tests__/contract/internal_ai_engine_gateway.contract.test.ts`. Not run against a live `sineva-ai` in this pass. |
 | Layering | Import rules enforced by ESLint and a test | `src/__tests__/architecture.test.ts` |
 | API docs | OpenAPI 3.1 document and a static `/api-docs` page | [swagger and OpenAPI](../api-spec/swagger_and_openapi.md) |
@@ -46,9 +46,6 @@ What is a stub or fake today:
 
 | Area | Reality | Item |
 | :--- | :--- | :--- |
-| Redis cache | In-memory `Map`, `ping()` always true | INF-1 |
-| Presign | Returns an unsigned URL when signing fails; URL host is the internal Docker name | INF-2, INF-5 |
-| Health | Postgres, Redis and S3 values are not probed | INF-3 |
 | Dashboard stats | "342 ms", "All Systems Nominal", the token budget and the status pills are literals | UI-7 |
 | Orchestrator toggle | A Redux value nothing reads | UI-11 |
 
@@ -69,11 +66,11 @@ Goal: nothing in the platform lies, and nobody can act as someone else. Each ite
 
 | # | Item | Debt | Exit evidence |
 | :--- | :--- | :--- | :--- |
-| H1 | Authentication and server-side identity. Pick the mechanism in an ADR. Remove `user_id` and `workspace_id` from public request bodies (a breaking change: update OpenAPI and the [chat doc](../api-spec/agents_and_chat_endpoints.md)). | SEC-1, SEC-2, SEC-3 | A route test per endpoint shows 401 without credentials. The `sineva-ai` contract test still passes with a server-derived `user_id`. `POST /api/v1/agents` is restricted. |
+| H1 | Authentication and server-side identity. Pick the mechanism in an ADR. Remove `user_id` and `workspace_id` from public request bodies (a breaking change: update OpenAPI and the [chat doc](../api-spec/agents_and_chat_endpoints.md)). | SEC-1, SEC-2, SEC-3 | A route test per endpoint shows 401 without credentials. The `sineva-ai` contract test still passes with a server-derived `user_id`. `POST /api/v1/agents` is gone (ADR-0024). |
 | H2 | Secrets without defaults. Validate required environment variables at startup. | SEC-4, INF-6 | The app fails to start in production with a missing secret (test). `grep` for default credentials in `env.ts` and compose finds none (R-28). |
-| H3 | Honest errors. Invalid JSON returns a client error. 500 returns a fixed message. The gateway stops logging response bodies. | API-1, SEC-5, SEC-6 | Tests: bad JSON gives 422, a thrown `Error` does not reach the response text, the gateway log has no body. |
+| H3 | Honest errors. Invalid JSON returns a client error. 500 returns a fixed message. The gateway stops logging response bodies (done, see logging_and_pii_masking.md). | API-1, SEC-5, SEC-6 | Tests: bad JSON gives 422, a thrown `Error` does not reach the response text, the gateway log has no body. |
 | H4 | Truthful infrastructure. Real health probes. Presign failures surface as errors, with a public signing endpoint. The cache is real or gone. | INF-1, INF-2, INF-3, INF-4, INF-5, SEC-7 | Fake-based tests: a failing dependency shows `standby` and a non-200 health status. A signing failure is not a 201. An integration test for the Redis adapter, or the adapter and its health entry are removed. |
-| H5 | Remove invented numbers and statuses from the UI. Fix strings that break the wording rules in files you touch. | UI-7, COPY-1, COPY-2 | The page shows no number without a source. The wording checklist in [product model and wording](../product/product_model_and_wording.md) passes for touched strings. |
+| H5 | Remove invented numbers and statuses from the UI. Fix strings that break the wording rules in files you touch. | UI-7, COPY-1 | The page shows no number without a source. The wording checklist in [product model and wording](../product/product_model_and_wording.md) passes for touched strings. |
 | H6 | Page states and basics. `loading.tsx`, `error.tsx`, `not-found.tsx`. Selection in the URL. `dark:` follows the theme. Accessibility fixes. Markdown replies. | UI-4, UI-2, UI-3, UI-5, UI-6, UI-8 | The three files exist (R-31). Both themes checked by keyboard. A renderer test for script and link injection. |
 | H7 | Guards. Integration tests in CI. The OpenAPI route guard test. A safe `docker:down`. A decision on idempotency for chat. | OPS-1, API-2, OPS-2, API-3 | CI runs `test:integration` against a Postgres service. The guard test fails when a route has no spec entry. `docker:down` no longer passes `-v`. |
 
@@ -88,14 +85,14 @@ Goal: the product the Founder described. One conversation with Sino, a product c
 | P1 | Design and ADR: how one chat maps to `session_id`, `chat_sessions.agent_slug` and `chat_messages.agent_slug`; how Sino (the orchestrator) is called; how the answering product is shown; where history lives; the workspace on the request (`tenant_id`). | API-4, DOM-5, UI-9 | An accepted ADR in this repository and the matching one in `sineva-ai`. |
 | P2 | Contract change, `sineva-ai` first: new fixtures there, copied here byte for byte (R-40), gateway and Zod schema, `ChatReplyView`, OpenAPI, [chat doc](../api-spec/agents_and_chat_endpoints.md). | API-4 | Contract tests pass in both repositories. |
 | P3 | One-chat UI: parse the @mention, default to Sino, show the answering product, render Markdown, split the dashboard, remove the console panels. | UI-1, COPY-1 | Component tests for mention parsing (no comma form, plain `@Sino`). The wording checklist passes. |
-| P4 | One owner for the product registry, and a data migration that renames old slugs. | DOM-4, DOM-6 | An accepted ADR. A migration reviewed under R-18 to R-20 and R-42. |
+| P4 | Done (WP-M0-31): sineva-ai owns the product registry, the platform presents it through a static manifest, and migration `20261022120000_drop_agent_configs` removes the old rows. | none left | [ADR-0024](../decisions/0024-specialist-manifest-and-catalog-split.md) and the migration. |
 | P5 | Guardrail review of every product tool. A tool that sends, publishes, pays, hires or rejects needs an approval step. | none | Review notes against R-34 for each tool in `sineva-ai`. |
 
 ## Phase 3: ideas, not committed
 
 These came from the earlier roadmap. No design, owner or priority exists for them. Do not plan against them.
 
-- Streaming replies from `sineva-ai` to the browser. It needs `sineva-ai` support and a change to the contract.
+- Streaming replies from `sineva-ai` to the browser: the platform side exists (run relay, ADR-0022) and waits for the sineva-ai v2 stream endpoints (WP-M0-18). Markdown rendering of streamed text is M1.
 - A file upload UI on top of presign, after H1 and H4.
 - Roles and an audit log, after H1.
 

@@ -2,11 +2,11 @@
 title: "Agents and Chat Endpoints"
 category: "api-spec"
 status: "active"
-version: "2.0.0"
+version: "2.1.0"
 last_updated: "2026-10-21"
 owner: "Sineva Engineering"
-tags: ["sineva", "api-spec", "agents", "chat", "sineva-ai", "contract", "pagination", "snake-case"]
-summary: "GET and POST /api/v1/agents and POST /api/v1/agents/{agent_slug}/chat as implemented, with schemas, examples and every error, plus the internal contract with sineva-ai."
+tags: ["sineva", "api-spec", "agents", "chat", "contract-v2", "sineva-ai", "signed-context", "snake-case"]
+summary: "The workspace specialist roster route (sineva-ai catalog merged with the static manifest), Contract v2 internal gateway with sineva-ai, and retirement of legacy /api/v1/agents routes."
 related_docs:
   - "overview.md"
   - "storage_and_health_endpoints.md"
@@ -14,312 +14,274 @@ related_docs:
   - "../decisions/0013-internal-service-auth-header.md"
   - "../decisions/0015-sineva-ai-owns-internal-chat-contract.md"
   - "../decisions/0016-upstream-failures-return-502-503.md"
+  - "../decisions/0018-workspace-tenancy-and-public-contract.md"
+  - "../decisions/0021-signed-internal-context.md"
+  - "../decisions/0024-specialist-manifest-and-catalog-split.md"
   - "../engineering/error_handling_and_failure_modes.md"
   - "../product/product_model_and_wording.md"
 ---
 
-# Agents and chat endpoints
+# Agents and Chat Endpoints
 
-Source: `apps/web/src/app/api/v1/agents/route.ts`, `apps/web/src/app/api/v1/agents/[agent_slug]/chat/route.ts`, the Zod schemas in `src/server/application/dtos/`, and the use cases in `src/server/application/use-cases/`. The envelope and the error table are in [overview](overview.md).
+Source: `apps/web/src/app/api/v1/workspaces/[workspace_id]/agents/route.ts`, `src/server/application/use-cases/list_workspace_specialists_use_case.ts`, `src/shared/specialists/manifest.ts`, `src/server/application/dtos/agent_dto.ts`, `src/server/application/dtos/chat_v2_dto.ts`, and `src/server/infrastructure/gateways/internal_ai_engine_gateway.ts`.
 
-"Current" is what the code does. "Target" is decided but not built.
+## Public Contract Evolution (WP-M0-28, ADR-0018)
 
-## Gotchas first
+- **Legacy Route Retired**: `POST /api/v1/agents/{agent_slug}/chat` has been permanently deleted. In Sineva Platform v1.0, user interactions take place through conversation threads managed via workspace-scoped conversation endpoints (`/api/v1/workspaces/{workspace_id}/conversations`, WP-M0-29).
+- **Zero Identity in Payloads (SEC-2, API-4)**: Client payloads must never include `user_id` or `workspace_id`. Tenancy and caller identity are derived exclusively server-side from session cookies and `RequestContext`.
+- **Idempotency Key**: Message generation requires `client_message_id` (UUID) supplied by the client (closes API-3).
 
-- Current: `user_id` in the chat body is trusted as sent. There is no authentication, and the dashboard hardcodes `usr_executive_01`. Do not use `user_id` for an access decision (R-27).
-- Breaking change: the chat response now mirrors `sineva-ai` (`reply_content`, `routed_agent_slug`, `token_usage`, `tool_calls`, `citations` and more, plus `latency_ms`). `reply_text`, `reasoning_summary` and `suggested_actions` no longer exist ([ADR-0015](../decisions/0015-sineva-ai-owns-internal-chat-contract.md)). Any client reading the old fields breaks.
-- Any upstream failure that is not a timeout or network error is a 502, including `sineva-ai` answering 401 (wrong key), 404 (unknown agent or session) or 422. A 404 from this route only ever means the slug is not in the platform registry.
-- `POST /api/v1/agents` registers a row in the platform registry only. If `sineva-ai` has no agent with that slug, chatting with it returns 502.
-- `GET /api/v1/agents` is cached for 30 seconds in process memory. `POST` clears only one cache key, so a new agent can stay invisible on other pages and on the home page for up to 30 seconds.
-- The platform cannot reach the orchestrator `sino` through this route: `sino` is not in `agent_configs`, so `POST /api/v1/agents/sino/chat` returns 404. The one-chat model ([ADR-0010](../decisions/0010-one-chat-with-mentions.md)) needs a design for this (see the [roadmap](../development/roadmap.md)).
-- A 503 can follow a turn that `sineva-ai` did complete (the platform aborted first). No idempotency key exists, so a retry can run the turn twice.
+---
 
-## `GET /api/v1/agents`
+## `GET /api/v1/workspaces/{workspace_id}/agents`
 
-Lists registered products ("agents" in code). Ordered by `created_at` ascending, then `id`.
+The specialist roster ([ADR-0024](../decisions/0024-specialist-manifest-and-catalog-split.md), FR-SPEC-05 to FR-SPEC-08, FR-SPEC-13). `GET /api/v1/agents` and `POST /api/v1/agents` no longer exist: the platform does not store or create specialists, and nothing under `/api/v1/agents` answers (the framework returns 404).
 
-Query (`listAgentsQuerySchema`):
+Availability comes from sineva-ai (`GET /api/v2/agents`, called on every request with `X-Internal-Api-Key`); display copy, `accent_key`, `room_theme_id` and `order` come from the static manifest (`src/shared/specialists/manifest.ts`). The roster is returned whole, without pagination. Guard: session, workspace membership (404 for another tenant), permission `specialist.view`.
+
+### Query Parameters (`listAgentsQuerySchema`)
 
 | Parameter | Type | Default | Constraint |
 | :--- | :--- | :--- | :--- |
-| `page` | integer | `1` | at least 1 |
-| `per_page` | integer | `10` | 1 to 100 |
-| `category_filter` | enum | none | `people_hr`, `finance_ops`, `sales_growth`, `social_marketing`, `customer_support`, `data_insights` |
+| `category_filter` | enum | none | the 13 categories of the sineva-ai enum (`people_hr`, `finance_ops`, `sales_growth`, `social_marketing`, `customer_support`, `data_insights`, `personal_ops`, `content_studio`, `marketplace_ops`, `it_security`, `tax_compliance`, `legal_drafting`, `inventory_procurement`) |
 
-- `page` and `per_page` use `z.coerce.number()`. An empty value (`?page=`) coerces to `0` and fails with 422 instead of taking the default. A non-numeric value fails with 422. Unknown query parameters are ignored.
-- A page past the end returns `data: []` with the real `total_items`.
-
-Example: `GET /api/v1/agents?category_filter=finance_ops`. Values come from `prisma/seed.ts`. `id` is generated by the database, so the value here is illustrative. The latency, session and token numbers are seed values, not measurements.
+### Example Response (200 OK, abridged to one specialist)
 
 ```json
 {
   "success": true,
   "status": 200,
-  "message": "Specialized Sineva AI companions retrieved successfully",
-  "data": [
-    {
-      "id": "6f1d2c8e-3b7a-4e55-9a0c-1d4f7b2e8c91",
-      "agent_slug": "sinofinance",
-      "display_name": "SinoFinance",
-      "role_title": "FP&A, Cashflow & Ledger Reconciliation Architect",
-      "category": "finance_ops",
-      "status": "online",
-      "short_description": "Monitors real-time runway, reconciles multi-currency invoices, flags anomalous vendor spend, and drafts board-ready variance narratives.",
-      "capabilities": ["multi_currency_reconciliation", "burn_rate_forecasting", "anomaly_invoice_detection", "gaap_ifrs_variance_briefs"],
-      "model_name": "sineva-finance-quant-v2",
-      "avg_latency_ms": 410,
-      "active_sessions_count": 24,
-      "daily_tokens_used": 218450,
-      "accent_token": "--teal-700",
-      "created_at": "2026-10-01T08:05:00.000Z",
-      "updated_at": "2026-10-20T16:35:00.000Z"
-    }
-  ],
-  "meta": {
-    "page": 1, "per_page": 10, "total_items": 1, "total_pages": 1, "has_next": false, "has_prev": false,
-    "request_id": "req_1792547075000_k3j9x2ab", "timestamp": "2026-10-21T01:44:35.000Z"
-  },
-  "errors": null
-}
-```
-
-`data` items are `AgentView` (`src/shared/agent_view.ts`), guarded against the domain `AgentEntity` by `server/http/agent_view_contract.ts`. `status` is one of `online`, `standby`, `busy`, `maintenance`.
-
-Errors: 422 (bad query), 500 (for example the database is unreachable; `PrismaAgentRepository` throws a plain `Error` that `handleRouteError` returns with its raw message).
-
-Caching: `GetAgentsUseCase.execute` keys the result as `agents:list:p_<page>:pp_<per_page>:cat_<filter or all>` with a 30 second TTL. The store behind `CacheRepository` is the in-memory `Map` in `RedisCacheRepository`: per process, lost on restart, not shared between instances. See [known issues](../development/known_issues_and_tech_debt.md).
-
-## `POST /api/v1/agents`
-
-Registers an agent in the platform registry (`agent_configs`).
-
-Body (`createAgentDtoSchema`):
-
-| Field | Type | Required | Constraint |
-| :--- | :--- | :--- | :--- |
-| `agent_slug` | string | yes | 3 to 64 characters, `^[a-z0-9-]+$` |
-| `display_name` | string | yes | 2 to 80 |
-| `role_title` | string | yes | 2 to 120 |
-| `category` | enum | yes | the six `category_filter` values |
-| `short_description` | string | yes | 10 to 400 |
-| `capabilities` | string[] | yes | at least 1 item, each at least 2 characters, no maximum |
-| `model_name` | string | no | 2 to 80, default `sineva-core-v2` |
-
-The slug pattern allows hyphens, but canonical product slugs have no separator (`sinofinance`, R-37). The schema does not enforce that.
-
-Server-set defaults on the new row: `status: "online"`, `avg_latency_ms: 350`, `active_sessions_count: 1`, `daily_tokens_used: 0`, `accent_token: "--teal-500"`. These live in `PrismaAgentRepository.create`, not in the domain, and `active_sessions_count: 1` is not a measurement.
-
-Success: 201 with the new `AgentView` as `data` and message `Custom AI companion registered successfully`.
-
-Errors:
-
-| Status | Code | When |
-| :--- | :--- | :--- |
-| 409 | `RESOURCE_CONFLICT` | `agent_slug` already exists (unique index violation, Prisma `P2002`) |
-| 422 | `VALIDATION_ERROR` | a field fails its constraint, or a required field is missing |
-| 500 | `INTERNAL_SERVER_ERROR` | bad JSON, or any unexpected failure |
-
-```json
-{
-  "success": false,
-  "status": 409,
-  "message": "Agent 'sinofinance' already exists",
-  "data": null,
-  "meta": { "request_id": "req_1792547075000_k3j9x2ab", "timestamp": "2026-10-21T01:44:35.000Z" },
-  "errors": [{ "code": "RESOURCE_CONFLICT", "field": null, "detail": "Agent 'sinofinance' already exists" }]
-}
-```
-
-Current: no authentication. Any caller can register an agent. After a successful create the use case deletes only the cache key `agents:list:p_1:pp_10:cat_all`.
-
-## `POST /api/v1/agents/{agent_slug}/chat`
-
-Sends one user message to one product through `sineva-ai`. The slug in the path selects the product.
-
-### Request
-
-Path: `agent_slug`. Any string. The use case looks it up with `AgentRepository.findBySlug`.
-
-Body (`sendAgentChatDtoSchema`):
-
-| Field | Type | Required | Constraint |
-| :--- | :--- | :--- | :--- |
-| `message_text` | string | yes | 1 to 8000 characters. Not trimmed, so whitespace-only text passes. |
-| `session_id` | string (UUID) | no | Omit on the first turn. `sineva-ai` creates the session and returns its id. Send that id on later turns. |
-| `user_id` | string | yes | 3 to 128 characters. Trusted as sent (debt). |
-| `context_metadata` | object | no | Any keys. Passed through to `sineva-ai`. |
-
-```json
-{
-  "session_id": "8f3a1c2d-6b4e-4d7a-9c15-2e0b7a41f9d3",
-  "user_id": "usr_01J9ZQ4K7M",
-  "message_text": "What is our current monthly burn rate and runway?",
-  "context_metadata": { "locale": "id-ID", "channel": "web_chat" }
-}
-```
-
-### Response 200
-
-`data` is `ChatReplyView` (`src/shared/chat_view.ts`). Field names are `sineva-ai`'s. The platform adds only `latency_ms`, measured around the upstream call. The example is the `sineva-ai` contract fixture (`chat_response_envelope.json`) wrapped in the platform envelope; `latency_ms` is illustrative.
-
-```json
-{
-  "success": true,
-  "status": 200,
-  "message": "Agent companion message processed successfully",
+  "message": "Specialists retrieved successfully",
   "data": {
-    "message_id": "c2e8f1a4-0d93-4b6e-a7c5-5f1d3e9b8a60",
-    "session_id": "8f3a1c2d-6b4e-4d7a-9c15-2e0b7a41f9d3",
-    "agent_slug": "sinofinance",
-    "display_name": "Sino Finance",
-    "handle": "@SinoFinance",
-    "routed_agent_slug": "sinofinance",
-    "reply_content": "**Sino Finance (`@SinoFinance`)** processed your request using skills `[fpna_burn_and_budget_analysis]`.\n\n- **Grounded Knowledge (`sineva_knowledge_finance`)**: Software subscriptions above $2,500/month require VP Finance approval. Quarterly runway target is maintained above 24 months with SaaS burn metrics.\n- **Tool Telemetry**: `{'tool_name': 'calculate_saas_burn_metrics', 'monthly_revenue_usd': 420000.0, 'monthly_expenses_usd': 310000.0, 'net_burn_usd': 0.0, 'net_cash_flow_usd': 110000.0, 'estimated_runway_months': 999.0}`\n- **Resolution for Prompt**: What is our current monthly burn rate and runway?",
-    "model_id": "openai:gpt-4o-mini",
-    "execution_mode": "agno_deterministic_runtime",
-    "token_usage": { "prompt_tokens": 18, "completion_tokens": 122, "total_tokens": 140 },
-    "tool_calls": [
+    "catalog_version": "cat-2026-10-22-a",
+    "items": [
       {
-        "tool_name": "calculate_saas_burn_metrics",
-        "arguments": {},
-        "result_summary": "{'tool_name': 'calculate_saas_burn_metrics', 'monthly_revenue_usd': 420000.0, 'monthly_expenses_usd': 310000.0, 'net_burn_usd': 0.0, 'net_cash_flow_usd': 110000.0, 'estimated_runway_months': 999.0}"
+        "agent_slug": "sinofinance",
+        "handle": "SinoFinance",
+        "display_name": "SinoFinance",
+        "category": "finance_ops",
+        "wave": 1,
+        "status": "live",
+        "enabled": true,
+        "accent_key": "finance",
+        "room_theme_id": "sinofinance",
+        "order": 2,
+        "copy": {
+          "en": {
+            "role_title": "Finance & Cash Flow Specialist",
+            "short_description": "Explains invoices, flags unusual spending and outlines your cash flow. Gives information, never moves money.",
+            "starter_prompts": ["Make a simple cash flow plan for next month", "Explain this invoice and what I should check", "Draft a polite payment reminder to a client"]
+          },
+          "id": {
+            "role_title": "Spesialis Keuangan & Arus Kas",
+            "short_description": "Menjelaskan invoice, menandai pengeluaran yang tidak biasa, dan menyusun gambaran arus kas. Memberi informasi, tidak pernah memindahkan uang.",
+            "starter_prompts": ["Buat rencana arus kas sederhana untuk bulan depan", "Jelaskan invoice ini dan apa yang perlu aku periksa", "Buat draf pengingat pembayaran yang sopan untuk klien"]
+          }
+        },
+        "my_access": "available"
       }
-    ],
-    "citations": [
-      {
-        "document_id": "89e98e76-fd4a-52fe-bcb2-c7c8e220eb25",
-        "title": "Corporate Expense & Procurement Controls",
-        "similarity_score": 0.9002,
-        "source_uri": "s3://sineva-artifacts/finance/expense_controls.pdf"
-      }
-    ],
-    "created_at": "2026-10-21T01:44:34.656409Z",
-    "latency_ms": 842
+    ]
   },
   "meta": { "request_id": "req_1792547075000_k3j9x2ab", "timestamp": "2026-10-21T01:44:35.000Z" },
   "errors": null
 }
 ```
 
-| Field | Type | Note |
-| :--- | :--- | :--- |
-| `message_id`, `session_id` | UUID string | |
-| `agent_slug` | string | The product addressed in the path. |
-| `routed_agent_slug` | string | The product that answered. Can differ from `agent_slug` when `sineva-ai` routes. |
-| `display_name`, `handle` | string | `sineva-ai` writes `Sino Finance` (with a space). The platform registry writes `SinoFinance`. Use `handle` for the @mention. |
-| `reply_content` | string | Markdown. The dashboard renders it as plain text (debt). |
-| `model_id`, `execution_mode` | string | Free-form strings from `sineva-ai`. |
-| `token_usage` | object of numbers | Free-form keys. `total_tokens` may be absent. |
-| `tool_calls` | array | `tool_name`, `arguments` (object), `result_summary` (string or null). |
-| `citations` | array | `document_id` (UUID), `title`, `similarity_score`, `source_uri` (string or null). |
-| `created_at` | ISO 8601 | `sineva-ai` timestamp. |
-| `latency_ms` | integer | Platform-measured round trip to `sineva-ai`. |
+### Fields
+
+- `enabled` is derived in this release: a wave 1 specialist that sineva-ai reports `live` is on. It is not a stored setting; per-workspace enablement arrives with `workspace_specialists` (M1).
+- `my_access` is `available` or `unavailable`, from the caller's role (`specialist.use`) and `specialist_scope` with its allowed list. A specialist the caller may not use has the same keys as one that is not enabled, so the response does not say why.
+- There are no latency, token, session-count or model fields: the platform never held real values for them.
+- A catalog entry the manifest cannot present (the orchestrator `sino`, wave 2 and 3 `coming_soon`) is skipped. A manifest specialist missing from the catalog fails the call with 502 `catalog_drift`.
 
 ### Errors
 
 | Status | Code | When |
 | :--- | :--- | :--- |
-| 404 | `RESOURCE_NOT_FOUND` | `agent_slug` is not in the platform registry. Checked after the body validates. |
-| 422 | `VALIDATION_ERROR` | `session_id` is not a UUID, `message_text` is empty or over 8000, `user_id` is missing or outside 3 to 128, `context_metadata` is not an object |
-| 502 | `UPSTREAM_ERROR` | `sineva-ai` answered non-2xx, with a non-JSON body, or with a body that fails the Zod check |
-| 503 | `UPSTREAM_UNAVAILABLE` | network error, timeout or abort |
-| 500 | `INTERNAL_SERVER_ERROR` | bad JSON, or any unexpected failure |
+| 401 | `unauthorized` | No session |
+| 404 | `RESOURCE_NOT_FOUND` | The caller is not a member of the workspace |
+| 422 | `validation_failed` | Unknown `category_filter` |
+| 502 | `UPSTREAM_ERROR`, `catalog_drift` | sineva-ai answered non-2xx, non-JSON or off-contract, or its catalog does not list a manifest specialist |
+| 503 | `UPSTREAM_UNAVAILABLE` | sineva-ai is unreachable. The manifest is never served as a roster |
 
-```json
+### Assumed sineva-ai shape
+
+The sineva-ai half (WP-M0-19) and its `catalog_slugs.json` fixture do not exist yet. The platform reads, after an optional `{ success, data }` envelope, `{ catalog_version, agents: [{ agent_slug, handle, category, wave, status }] }` and ignores other fields. The Zod schema is `agentCatalogV2Schema` in `src/server/infrastructure/gateways/ai_engine_v2_schemas.ts`; adjust it when the fixture lands.
+
+---
+
+## Internal AI Engine Contract v2 (`sineva-ai`)
+
+The platform connects to `sineva-ai` using `InternalAiEngineGateway` (`src/server/infrastructure/gateways/internal_ai_engine_gateway.ts`). All requests execute against v2 internal endpoints using asymmetric cryptographic context minting.
+
+### Required Internal Headers
+
+Every service-to-service invocation from `sineva-platform` to `sineva-ai` sends four mandatory headers:
+
+| Header | Description |
+| :--- | :--- |
+| `X-Internal-Api-Key` | Transport authentication key shared across internal services (`AI_ENGINE_INTERNAL_API_KEY`). |
+| `X-Sineva-Context` | Ed25519 compact JWS token minted by `ContextSigner` carrying verified tenant, user, permissions, and budget constraints (ADR-0021, FR-AIR-06). |
+| `traceparent` | W3C Distributed Tracing header (`00-${traceId}-${spanId}-01`). |
+| `X-Request-Id` | Unique UUID request tracing identifier propagated end-to-end. |
+
+### Contract v2 Endpoints
+
+- `POST /api/v2/agents/{agent_slug}/chat` (Unary synchronous turn execution)
+- `POST /api/v2/agents/{agent_slug}/chat/stream` (SSE Event stream execution)
+- `GET /api/v2/agents` (The specialist catalog with `catalog_version`; sent with the internal key only, no signed context)
+- `GET /api/v2/runs/{run_id}/events?after={seq}` (Replay run event transcript)
+- `POST /api/v2/runs/{run_id}/cancel` (Cancel active execution)
+
+### `ChatTurnRequestV2` Schema
+
+```typescript
 {
-  "success": false,
-  "status": 502,
-  "message": "The AI engine returned an unexpected response",
-  "data": null,
-  "meta": { "request_id": "req_1792547075000_k3j9x2ab", "timestamp": "2026-10-21T01:44:35.000Z" },
-  "errors": [{ "code": "UPSTREAM_ERROR", "field": null, "detail": "The AI engine returned an unexpected response" }]
+  user_message: string;              // Required prompt text
+  session_id?: string | null;        // UUID conversation session (null on turn 1)
+  client_message_id: string;         // Required UUID idempotency key
+  mentions: Array<{                  // @mention offsets in user_message
+    agent_slug: string;
+    start: number;
+    end: number;
+  }>;
+  attachments: Array<{               // Attached files from S3/SeaweedFS
+    storage_key: string;
+    filename: string;
+    mime: string;
+    size_bytes: number;
+  }>;
+  use_library: boolean;              // Whether to query workspace Library
+  invoke_skill?: string | null;      // Optional skill override
+  allow_degraded: boolean;           // Default false
 }
 ```
 
-- No reply is ever fabricated. A failed call has `data: null` ([ADR-0008](../decisions/0008-no-silent-fallbacks.md), [ADR-0016](../decisions/0016-upstream-failures-return-502-503.md)).
-- 422 example: `session_id` that is not a UUID gives `errors[0].field: "session_id"` and `code: "VALIDATION_ERROR"` (covered by `api_routes.test.ts`).
-- Client behavior for 502 and 503 (Current): the dashboard shows an error toast with a Retry action and renders no reply. Treat 503 as "retry may duplicate the turn", not as "safe to retry".
-- The UI error copy for 502 and 503 is in [copywriting and brand](../design-context/copywriting_and_brand.md).
+Notice: `user_id`, `workspace_id`, and `tenant_id` are strictly forbidden in `ChatTurnRequestV2`. They are carried exclusively inside the signed JWS claims of `X-Sineva-Context`.
 
-### Target: one chat and @mentions
+### `ChatTurnResultV2` Schema
 
-Current: the route is per product. The client holds one transcript and one `session_id` per slug. Target ([ADR-0010](../decisions/0010-one-chat-with-mentions.md)): one conversation with Sino, with a product called by @mention. How that maps onto this path and onto `chat_sessions.agent_slug` is not designed yet. Until it is, treat the per-slug route as current structure, not as a decision for per-product threads.
-
-## Internal contract with sineva-ai
-
-The platform calls `sineva-ai` from `InternalAiEngineGateway` (`src/server/infrastructure/gateways/internal_ai_engine_gateway.ts`). `sineva-ai` owns the contract: `ChatRequestDTO`, `ChatResponseDTO` and its success envelope ([ADR-0015](../decisions/0015-sineva-ai-owns-internal-chat-contract.md)). The platform adapts to it.
-
-### Call
-
-| Item | Value |
-| :--- | :--- |
-| URL | `POST {AI_ENGINE_INTERNAL_URL}/api/v1/agents/{agent_slug}/chat`, slug through `encodeURIComponent`. Default base `http://sineva-ai:8000`. |
-| Auth header | `X-Internal-Api-Key: <key>`. Platform env `AI_ENGINE_INTERNAL_API_KEY`, `sineva-ai` env `INTERNAL_API_KEY`. Compose passes the same value to both ([ADR-0013](../decisions/0013-internal-service-auth-header.md)). |
-| Content type | `application/json` |
-| Timeout | `AI_ENGINE_TIMEOUT_MS`, default 15000. The timer covers reading the body. |
-| Network | `sineva_internal` only. `sineva-ai` publishes no host port. |
-
-- `sineva-ai` compares the key with `secrets.compare_digest` and answers 401 (`unauthorized_internal_call`) on a missing or wrong key. The platform turns that into a 502. `sineva-ai` can switch the check off with `ENFORCE_INTERNAL_AUTH=false`.
-- Gotcha: `Number(process.env.AI_ENGINE_TIMEOUT_MS)` is not validated. A non-numeric value becomes `NaN`, the abort timer fires at once, and every chat returns 503.
-- Debt: the default key `sineva_internal_service_token_dev` is hardcoded in `getEnvConfig()` and `docker-compose.yml`.
-
-### Request mapping
-
-`ChatRequestDTO` forbids unknown keys, so the gateway builds the body field by field.
-
-| Platform public request | Sent to sineva-ai | sineva-ai constraint |
-| :--- | :--- | :--- |
-| `message_text` | `user_message` | 1 to 16000 characters |
-| `session_id` | `session_id` | UUID or omitted. Omitted starts a new session. |
-| `user_id` | `user_id` | 1 to 128 characters |
-| `context_metadata` | `context_metadata` | object |
-| `agent_slug` (path) | path only, never in the body | |
-| none | `tenant_id` not sent | defaults to `default_tenant` (known gap: the public request has no workspace) |
-| none | `include_knowledge` not sent | defaults to `true` |
-
-Optional fields that are `undefined` are left out of the JSON, not sent as `null`. The sineva-ai side also does not check that a `session_id` belongs to the caller (known gap on the `sineva-ai` side).
-
-### Response envelope
-
-`sineva-ai` answers with:
-
-```json
-{ "success": true, "status_code": 200, "message": "Companion 'sinofinance' completed chat turn.", "data": { }, "meta": null, "errors": null }
+```typescript
+{
+  run_id: string;                    // UUID execution run
+  message_id: string;                // UUID generated assistant message
+  session_id: string;                // UUID conversation session
+  agent_slug: string;                // Addressed specialist
+  routed_agent_slug: string;         // Specialist that responded
+  handoffs: Array<{                  // Delegation records
+    from_agent_slug: string;
+    to_agent_slug: string;
+    reason?: string;
+  }>;
+  reply_content: string;             // Markdown reply
+  reply_language: string;            // 'id' | 'en'
+  status: 'completed' | 'needs_approval' | 'needs_input' | 'budget_exceeded' | 'failed';
+  finish_reason?: string | null;     // 'stop' | 'approval_required' | 'waiting_user_input' | ...
+  model: {
+    provider: string;                // 'anthropic' | 'openai' | ...
+    model_id: string;
+    execution_mode: string;          // 'agno_deterministic_runtime'
+  };
+  execution_mode: string;
+  usage: {
+    prompt_tokens: number;
+    completion_tokens: number;
+    total_tokens: number;
+  };
+  tool_calls: Array<{
+    tool_name: string;
+    arguments: Record<string, unknown>;
+    result_summary?: string | null;
+  }>;
+  citations: Array<{
+    document_id: string;
+    title: string;
+    similarity_score: number;
+    source_uri?: string | null;
+    score_kind?: string;
+  }>;
+  created_at: string;                // ISO 8601 timestamp
+}
 ```
 
-The platform envelope differs on purpose: it uses `status`, not `status_code`, and its error items are `{ code, field, detail }`, not `{ field, error_code, message }`. The gateway validates with Zod:
+### SSE Event Vocabulary (`FR-AIR-10`)
 
-- `success` must be `true`, and `data` must have every `ChatResponseDTO` field with the right type. `message_id`, `session_id` and each `citations[].document_id` must be UUIDs. `created_at` must be an ISO datetime with `Z` or an offset. `token_usage` values must be numbers.
-- Unknown fields in `data` are dropped, so `sineva-ai` can add fields without breaking the platform. A missing or mistyped field is a 502.
-- `message`, `status_code`, `meta` and `errors` of the upstream envelope are not read.
-- On success the gateway returns `data` plus `latency_ms`.
+During streaming (`/chat/stream`), the engine emits typed SSE events:
+- `token`: Partial text generation tokens (`{ token: string }`).
+- `handoff`: Specialist delegation notification.
+- `handoff_result`: Specialist delegation result.
+- `tool_call`: Tool invocation telemetry.
+- `citation`: Grounded retrieval citations.
+- `approval_required`: Autonomy ladder pause requiring user review.
+- `card_started`, `card_patch`, `card_completed`: Rich AX result cards lifecycle.
+- `step_started`, `step_completed`: Multi-step reasoning telemetry.
+- `turn_limit`: Max turn budget reached.
+- `usage`: Final token counts (`usage` replaces legacy `token_usage`).
+- `done`: Terminal `ChatTurnResultV2` payload.
+- `error`: Error payload (`{ code, message, details }`).
 
-### Fixtures
+### Browser streaming relay (WP-M0-30, ADR-0022)
 
-Two files define the contract and live in both repositories:
+A chat turn is two steps. `POST /api/v1/workspaces/{workspace_id}/conversations/{conversation_id}/messages` stores the user message and returns a run handle (`run_<uuid>`). The browser then attaches to the stream. The handle is not the sineva-ai `run_id`; the platform maps one to the other in `chat_runs`.
 
-| Fixture | Owned in | Copied to |
-| :--- | :--- | :--- |
-| `chat_request.json` | `sineva-ai/tests/contract/fixtures/` | `apps/web/src/__tests__/contract/fixtures/` |
-| `chat_response_envelope.json` | `sineva-ai/tests/contract/fixtures/` | `apps/web/src/__tests__/contract/fixtures/` |
+| Route | Purpose |
+| :--- | :--- |
+| `GET /api/v1/workspaces/{workspace_id}/runs/{run_id}/events` | SSE relay. Header `Last-Event-ID` resumes. Needs `chat.send`. |
+| `POST /api/v1/workspaces/{workspace_id}/runs/{run_id}/cancel` | Stop. The streamed text is kept and the reply is stored with status `cancelled`. Returns `{ run_id, status }`. |
 
-- The copies are byte-identical (checked with `cmp` on 2026-10-21). Never edit the platform copy. Change `sineva-ai` first, copy the files here in the same change, and update both repositories together (R-40).
-- `internal_ai_engine_gateway.contract.test.ts` asserts the auth header, the exact body keys (the fixture request without `tenant_id`), the path encoding, the timeout, the response mapping, 502 cases (non-2xx, non-JSON, `success: false`, null data, missing `reply_content`, the old `reply_text` shape, a non-UUID `message_id`, a non-numeric `token_usage` value), the additive-field case and 503 cases.
-- Nothing compares the two fixture directories automatically. The check is manual (`diff -r`) until CI can see both repositories.
+Behaviour to know before you touch it:
 
-### Health call
+- The first attach starts the sineva-ai stream (`POST /api/v2/agents/{slug}/chat/stream`) and records its `run_id` and `session_id`. Later attaches never start a second run. The next turn of the conversation sends the latest stored `session_id`.
+- The relay reads upstream in a loop that does not depend on the browser. If the tab closes, the reply is still stored and sineva-ai cancel is never called.
+- Events are forwarded with their original `id`, `event` and `data`. The platform adds only `error` events of its own: `upstream_unavailable` (503), `model_unavailable`, `dependency_unavailable` (503), `upstream_error`, `upstream_bad_response` (502), `upstream_interrupted` (502), `run_busy` and `stream_timeout` (reconnect), `run_cancelled`. Their data is `{ code, status, message, retryable }`. A stream never ends silently.
+- If sineva-ai cannot be started, nothing is stored and the run stays `pending`, so retry attaches to the same handle. A failure after the stream started stores the reply with status `error` and the code in `finish_reason`.
+- Resume: from memory while this process still holds the run (about a minute after it ends), otherwise from `GET /api/v2/runs/{id}/events?after={seq}`.
+- Ownership (conversation owner inside the workspace) is checked before any upstream call. A foreign handle is a 404.
+- `RunFrameGuard` is the hook every upstream frame passes before it is stored or forwarded. The container wires `CardFrameGuard` (typed cards, below); `passThroughFrameGuard` remains for tests.
+- Latency (first token, total) is logged per specialist and reply language as `[run-metrics]`, without text.
+- Gotchas: the in-memory buffer is per process (a restart or another instance falls back to the replay endpoint); the replay endpoint of sineva-ai (WP-M0-18) did not exist when this was written, so until it ships an attach ends with `upstream_unavailable`.
 
-`InternalAiEngineGateway.checkHealth()` calls `GET {AI_ENGINE_INTERNAL_URL}/api/v1/health` with the same header and a fixed 1200 ms timeout. It never throws: any failure is reported as `is_reachable: false`. It returns a hardcoded `engine_version` that the health route does not expose. See [storage and health endpoints](storage_and_health_endpoints.md).
+### Typed result cards (WP-M0-32, ADR-0025)
 
-### Who changes what
+The platform is the authority on cards. `CardFrameGuard` (`server/application/chat/card_frame_guard.ts`) validates every card frame against the registry in `packages/card-schemas` before it is stored or forwarded.
 
-| Change | Owner | Also required |
-| :--- | :--- | :--- |
-| New or changed field in the chat request or response | `sineva-ai` | New fixture there, copy here, gateway Zod schema, `ChatReplyView`, OpenAPI `AgentChatReply`, this document |
-| New public field computed by the platform (like `latency_ms`) | platform | OpenAPI, `ChatReplyView`, this document |
-| Header or key rename | both | [ADR-0013](../decisions/0013-internal-service-auth-header.md), compose, env docs |
-| `tenant_id` support | both (Target) | A workspace on the public request, and identity from a server-side source (R-27) |
+| Frame | What the relay does |
+| :--- | :--- |
+| `card_started` | Forwarded only when the type and version are known. Dropped otherwise. |
+| `card_patch` | Dropped. Patches would have to be checked against `x-streamable` paths and nothing consumes them yet. |
+| `card_completed` | Needs `display = {card_type, schema_version, data, actions, provider, fallback_text}`. Valid: forwarded as `{card_id, state, approval_id?, display}` with normalised content. Rejected: rewritten to `{card_id, state: "failed", rejected_code, fallback_text}`; the producer's data never travels on. |
 
-## Related
+Rules (FR-AX-09): at most 64 KB per card and 40 per message; `https:` only in typed link fields, `mailto:` and `tel:` only in typed contact fields; media only as a `media_ref` UUID; bidi and zero-width characters are stripped from `x-sanitize` fields; action kinds come from a fixed list (never `pay`, `transfer`, `hire`, `refund`, `sign`). A rejection logs `card.rejected` with the code and schema paths only and never blocks the reply.
 
-[Overview](overview.md), [storage and health endpoints](storage_and_health_endpoints.md), [swagger and OpenAPI](swagger_and_openapi.md), [product model and wording](../product/product_model_and_wording.md), [known issues and tech debt](../development/known_issues_and_tech_debt.md).
+Cards are saved in `message_cards` with the assistant message (rejected cards keep the code, `data` is `{}`), also when a resume adopts the run. `GET .../conversations/{id}/messages` returns `cards[]` on every message, validated again and upcast on read; a stored card that no longer validates comes back as rejected with its fallback text.
+
+Gotchas: the contract fixture `sse_transcript_with_card.txt` still carries `final_payload` instead of `display` and an unregistered type, so the platform rejects it (`display_missing`); sineva-ai has to emit `display`. The drift test for `packages/card-schemas/schemas/` is skipped until sineva-ai has a byte-identical copy at `tests/contract/fixtures/card_schemas/` (override the path with `SINEVA_AI_CARD_SCHEMAS`).
+
+Browser side: `src/client/lib/event_stream.ts` (`openRunStream`) reads this stream with `fetch`, reconnects with backoff and `Last-Event-ID`, and maps error codes to message keys in `src/client/lib/stream_errors.ts`.
+
+### Renaming and deleting a conversation
+
+| Route | Purpose |
+| :--- | :--- |
+| `PATCH /api/v1/workspaces/{workspace_id}/conversations/{conversation_id}` | Body `{ title }`, trimmed, 1 to 120 characters (422 otherwise). Sets `title_source = 'user'` so a later automatic title never overwrites it. Needs `chat.create`. Audit `conversation.renamed`. |
+| `DELETE /api/v1/workspaces/{workspace_id}/conversations/{conversation_id}` | Hard delete of the conversation, its messages and its `chat_runs`. Returns `{ id, deleted: true }`. Needs `chat.delete`. Audit `conversation.deleted`. |
+
+- Only the owner can use either route. Another member, an admin and another workspace all get 404, never 403 (FR-HUB-32).
+- Delete first cancels every non-terminal run through `CancelRunUseCase`, outside the transaction (the cancel calls sineva-ai). A refused or unreachable cancel (409, 502, 503) is logged as `run.relay_failed` with code `cancel_before_delete_failed` and the delete goes on; the person's deletion must not depend on sineva-ai being up. A drain that finishes later finds no run row and its message insert fails on the foreign key, so nothing is written into the deleted chat (logged as `store_reply_failed`).
+- The counts for the audit row, the audit write and the delete share one transaction. The audit write comes first, so a failed audit leaves the data in place. Audit metadata is ids and counts only (`kind`, `agent_slug`, `message_count`, `run_count`; for a rename `title_length`), never titles or text.
+- Messages and runs go through `ON DELETE CASCADE` (no migration needed). Attachments and their storage objects do not exist yet; purging them is the retention job (WP-M4-41).
+- A message posted at the same moment as the delete can still fail with a foreign key error instead of a clean 404 (no lock on the conversation row). Rare and harmless: the delete wins.
+
+### Upstream Error Mapping & Log Hygiene (SEC-6, ADR-0016)
+
+The platform adapter maps upstream failure codes into strongly-typed platform domain errors without fabricating canned fallback responses:
+
+| Upstream Status / Code | Platform Error Class | HTTP Status | Platform Error Code | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| 503 `model_unavailable` | `ModelUnavailableError` | 503 | `model_unavailable` | Upstream AI model provider is overloaded or rate limited |
+| 503 `dependency_unavailable` | `DependencyUnavailableError` | 503 | `dependency_unavailable` | Upstream Redis or Qdrant vector store is unreachable |
+| 401 / 403 `context_invalid` | `ContextInvalidError` | 500 | `context_invalid` | Platform-minted JWS context was rejected by upstream (internal fault) |
+| Non-2xx / Unparseable | `UpstreamServiceError` | 502 | `UPSTREAM_ERROR` | Upstream returned unexpected status or failed contract validation |
+| Network drop / Timeout | `UpstreamUnavailableError` | 503 | `UPSTREAM_UNAVAILABLE` | Connection aborted, timed out, or socket hung up |
+
+**Zero Body Logging (SEC-6)**: Internal logging records only `{ url, status, byte_length, reason, code }`. User prompt text, assistant reply text, and tool execution payloads are strictly prohibited from appearing in log streams.

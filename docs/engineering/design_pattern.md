@@ -25,12 +25,11 @@ A port is a TypeScript interface in `server/domain/repositories/`. An adapter is
 
 | Port | File | Adapter | Fake for tests |
 | :--- | :--- | :--- | :--- |
-| `AgentRepository` | `agent_repository.ts` | `PrismaAgentRepository` (`infrastructure/database`) | `FakeAgentRepository` |
 | `AiEngineGateway` | `ai_engine_gateway.ts` | `InternalAiEngineGateway` (`infrastructure/gateways`) | `FakeAiEngineGateway` |
 | `CacheRepository` | `cache_repository.ts` | `RedisCacheRepository` (in-memory today) | `FakeCache` |
 | `StorageRepository` | `storage_repository.ts` | `SeaweedStorageRepository` (`infrastructure/storage`) | `FakeStorage` |
 
-Fakes live in `src/__tests__/fakes/`. `AgentRepository` exposes `findAll`, `findBySlug` and `create`. `AiEngineGateway` exposes `dispatchAgentChat` and `checkHealth`, and its doc comment states which domain errors it throws. A port is the contract for failures as well as for data.
+Fakes live in `src/__tests__/fakes/`. `AiEngineGateway` exposes `chatTurn`, `chatStream`, `listAgents` (the specialist catalog), `getRunEvents`, `cancelRun`, `dispatchAgentChat` and `checkHealth`, and its doc comment states which domain errors it throws. A port is the contract for failures as well as for data.
 
 Rules of thumb:
 
@@ -59,9 +58,7 @@ export class SendAgentMessageUseCase {
 }
 ```
 
-Existing use cases: `GetAgentsUseCase`, `SendAgentMessageUseCase`, `PresignStorageUploadUseCase`, `GetSystemHealthUseCase`. A use case never imports `next`, `react`, Prisma, `fetch` wrappers or `http`.
-
-Debt: `GetAgentsUseCase` also has `registerAgent` (a write), builds its own cache keys, and on register deletes only the page-1 key, so other cached pages go stale for up to the 30 second TTL.
+Existing use cases include `ListWorkspaceSpecialistsUseCase`, `SendAgentMessageUseCase`, `PresignStorageUploadUseCase`, `GetSystemHealthUseCase`. A use case never imports `next`, `react`, Prisma, `fetch` wrappers or `http`.
 
 ## 3. Container getters
 
@@ -79,9 +76,9 @@ A route handler calls `getSendAgentMessageUseCase().execute(...)`. Tests do not 
 
 Untrusted data is parsed once, where it enters:
 
-- Inbound HTTP. DTO schemas live in `server/application/dtos/` (`sendAgentChatDtoSchema`, `presignStorageDtoSchema`, `createAgentDtoSchema`, `listAgentsQuerySchema`, `paginationQuerySchema`). Route handlers read the body as `unknown` and call `.parse`. Types come from `z.infer` (`SendAgentChatDto` and so on). Query strings use `z.coerce` for numbers.
+- Inbound HTTP. DTO schemas live in `server/application/dtos/` (`sendAgentChatDtoSchema`, `presignStorageDtoSchema`, `listAgentsQuerySchema`, `paginationQuerySchema`). Route handlers read the body as `unknown` and call `.parse`. Types come from `z.infer` (`SendAgentChatDto` and so on). Query strings use `z.coerce` for numbers.
 - Upstream HTTP. `InternalAiEngineGateway` validates sineva-ai's `{ success: true, data }` envelope with `chatEnvelopeSchema`. The schema is deliberately not `.strict()`: unknown fields are dropped so sineva-ai can add fields, while a missing or mistyped field fails and raises `UpstreamServiceError`.
-- Database rows. Columns are free-form text and JSON, so `prisma_agent_repository.ts` checks values (`toCategory`, `toStatus`, `toCapabilities`) and throws on unknown ones instead of casting.
+- Database rows. Columns are free-form text and JSON, so adapters check values and throw on unknown ones instead of casting.
 
 A `ZodError` becomes a 422 in `handleRouteError`.
 
@@ -96,9 +93,9 @@ The table of errors and statuses is in [error handling and failure modes](error_
 
 ## 6. Contract-guard types
 
-`AssertAssignable<Sub extends Super, Super>` in `server/http/agent_view_contract.ts` and `chat_view_contract.ts` fails `tsc` when a server type stops fitting the browser view in `src/shared`. It is a compile-time check with no runtime cost. Use the same shape for any new browser-facing payload.
+`AssertAssignable<Sub extends Super, Super>` in `server/http/specialist_view_contract.ts` and `chat_view_contract.ts` fails `tsc` when a server type stops fitting the browser view in `src/shared`. It is a compile-time check with no runtime cost. Use the same shape for any new browser-facing payload.
 
-A related trick, in `prisma_agent_repository.ts`: `Record<AgentCategory, true>` and `Record<AgentStatus, true>` make adding a member to a domain union fail to compile until the adapter handles it, instead of rejecting valid rows at runtime.
+A related trick: a `Record<Union, true>` map makes adding a member to a domain union fail to compile until the adapter handles it, instead of rejecting valid rows at runtime.
 
 ## 7. Response envelope
 

@@ -24,7 +24,7 @@ This folder describes the web UI as it is built in `apps/web` and `packages/ui`:
 | File | What it covers | Read it when |
 | :--- | :--- | :--- |
 | [design_system.md](design_system.md) | Components in `@sineva/ui`, theming, the WCAG 2.2 AA baseline with measured contrast, page states, current deviations | You build or review UI |
-| [design_tokens.md](design_tokens.md) | Every CSS variable in `globals.css`, the `[data-theme="dark"]` mechanism, the `dark:` variant gap, fonts | You add a color, a theme rule, or a dark-mode style |
+| [design_tokens.md](design_tokens.md) | The vendored sineva-compro token set, the app-density layer, the `data-theme` mechanism, z-index, fonts, how to add a token | You add a color, a theme rule, or a dark-mode style |
 | [ux_and_frontend_libraries.md](ux_and_frontend_libraries.md) | Which packages are installed and which are used, motion, the command palette, toasts, UX patterns still to build | You pick a library or add an interaction |
 | [copywriting_and_brand.md](copywriting_and_brand.md) | Voice, microcopy patterns, error copy for 404, 422, 500, 502 and 503 | You write a button, an empty state or an error message |
 

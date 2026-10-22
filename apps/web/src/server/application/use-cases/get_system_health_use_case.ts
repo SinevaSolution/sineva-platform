@@ -1,8 +1,10 @@
 import type { AiEngineGateway } from '@/server/domain/repositories/ai_engine_gateway';
 import type { CacheRepository } from '@/server/domain/repositories/cache_repository';
+import type { DatabaseHealthProbe } from '@/server/domain/repositories/database_health_probe';
 import type { StorageRepository } from '@/server/domain/repositories/storage_repository';
 
 export interface SystemHealthStatus {
+  status: 'healthy' | 'standby';
   service_name: 'sineva-platform';
   environment: string;
   uptime_seconds: number;
@@ -24,12 +26,14 @@ export interface SystemHealthStatus {
       internal_url: string;
       network_mode: 'sineva_internal_bridge_only';
       latency_ms: number;
+      engine_version: string;
     };
   };
 }
 
 export class GetSystemHealthUseCase {
   constructor(
+    private readonly databaseHealthProbe: DatabaseHealthProbe,
     private readonly cacheRepository: CacheRepository,
     private readonly storageRepository: StorageRepository,
     private readonly aiEngineGateway: AiEngineGateway,
@@ -37,19 +41,24 @@ export class GetSystemHealthUseCase {
   ) {}
 
   async execute(): Promise<SystemHealthStatus> {
-    const [redisHealthy, s3Healthy, aiHealth] = await Promise.all([
+    const [dbHealthy, redisHealthy, s3Healthy, aiHealth] = await Promise.all([
+      this.databaseHealthProbe.ping(),
       this.cacheRepository.ping(),
       this.storageRepository.checkHealth(),
       this.aiEngineGateway.checkHealth(),
     ]);
 
+    const isHealthy =
+      dbHealthy && redisHealthy && s3Healthy && aiHealth.is_reachable;
+
     return {
+      status: isHealthy ? 'healthy' : 'standby',
       service_name: 'sineva-platform',
       environment: process.env.NODE_ENV ?? 'development',
       uptime_seconds: Math.floor(process.uptime()),
       subsystems: {
         postgresql_prisma: {
-          status: process.env.DATABASE_URL ? 'healthy' : 'standby',
+          status: dbHealthy ? 'healthy' : 'standby',
           orm_driver: '@prisma/adapter-pg',
         },
         redis_cache: {
@@ -65,6 +74,7 @@ export class GetSystemHealthUseCase {
           internal_url: aiHealth.internal_url,
           network_mode: 'sineva_internal_bridge_only',
           latency_ms: aiHealth.latency_ms,
+          engine_version: aiHealth.engine_version,
         },
       },
     };

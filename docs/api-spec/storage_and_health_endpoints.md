@@ -6,30 +6,28 @@ version: "2.0.0"
 last_updated: "2026-10-21"
 owner: "Sineva Engineering"
 tags: ["sineva", "api-spec", "health", "storage", "seaweedfs", "s3", "presigned-url"]
-summary: "POST /api/v1/storage/presign and GET /api/v1/health as implemented, including the unsigned URL returned on error and what the health route really checks."
+summary: "POST /api/v1/storage/presign and GET /api/v1/health specification, including truthful dependency health probes and typed 502 errors."
 related_docs:
   - "overview.md"
   - "agents_and_chat_endpoints.md"
+  - "swagger_and_openapi.md"
+  - "../development/known_issues_and_tech_debt.md"
   - "../decisions/0002-seaweedfs-presigned-uploads.md"
   - "../decisions/0008-no-silent-fallbacks.md"
-  - "../troubleshooting/storage_db_and_redis.md"
-  - "../development/known_issues_and_tech_debt.md"
 ---
 
 # Storage and health endpoints
 
 Source: `apps/web/src/app/api/v1/storage/presign/route.ts`, `apps/web/src/app/api/v1/health/route.ts`, `PresignStorageUploadUseCase`, `GetSystemHealthUseCase`, `SeaweedStorageRepository`. The envelope and errors are in [overview](overview.md).
 
-"Current" is what the code does. "Target" is decided but not built.
+## Baseline behavior
 
-## Gotchas first
-
-- Current: when presigning throws, the route still answers 201 with an unsigned URL. The browser upload to that URL fails at S3. This breaks R-26 and is listed as debt.
-- Current: `workspace_id` comes from the request body and is put into the object key unchanged. Without authentication, a caller can presign an upload into any workspace prefix.
-- In the compose stack the platform signs against `S3_ENDPOINT=http://seaweedfs-s3:8333`, so `upload_url` carries a host name that only resolves inside the Docker network. A browser outside it cannot use that URL as returned. There is no separate public endpoint setting. Not tested end to end.
-- `postgresql_prisma.status` is `healthy` when `DATABASE_URL` is set. Nothing pings Postgres.
-- `redis_cache.status` is always `healthy`. The "Redis" cache is an in-memory `Map`, and `ping()` returns `true`.
-- The health route returns 200 whatever the subsystem states are.
+- Presigning fails fast with a typed 502 `UpstreamServiceError` (`model_unavailable`) when signing fails; it never fabricates an unsigned fallback URL (R-26, [ADR-0008](../decisions/0008-no-silent-fallbacks.md)).
+- Presigned URL host is configured by `S3_PUBLIC_ENDPOINT` (default `http://localhost:8333`), ensuring browsers outside Docker can reach the upload endpoint directly.
+- `workspace_id` is derived strictly from server authentication (`RequestContext`), closing SEC-2 and SEC-3. Client payloads must never include `workspace_id`.
+- Real health probes execute on every `/api/v1/health` call: Postgres (`SELECT 1`), Redis (`PING`), S3 (`HeadBucketCommand`), and `sineva-ai` (`GET /api/v1/health`).
+- When any required subsystem fails, the route responds with HTTP 503 (`code: 'dependency_unavailable'`) and status `standby`.
+- For public / unauthenticated callers, `/api/v1/health` returns status only (`{ status: "healthy" | "standby" }`), concealing internal network addresses, bucket names, and subsystems (SEC-7).
 
 ## `POST /api/v1/storage/presign`
 
@@ -39,14 +37,14 @@ Body (`presignStorageDtoSchema`):
 
 | Field | Type | Required | Constraint |
 | :--- | :--- | :--- | :--- |
-| `workspace_id` | string | yes | 2 to 128 characters. Not checked against any workspace. |
 | `file_name` | string | yes | 1 to 255 characters |
-| `content_type` | string | yes | 3 to 128 characters. No allow-list. |
+| `content_type` | string | yes | 3 to 128 characters. |
 | `file_size_bytes` | integer | yes | positive, at most 104857600 (100 MiB) |
+
+Notice: `workspace_id` is never supplied in the body; it is derived from the authenticated workspace session.
 
 ```json
 {
-  "workspace_id": "wks_sineva_hq",
   "file_name": "q3_board_deck.pdf",
   "content_type": "application/pdf",
   "file_size_bytes": 2048576
@@ -55,11 +53,11 @@ Body (`presignStorageDtoSchema`):
 
 Behavior (`SeaweedStorageRepository.createPresignedUploadUrl`):
 
-- Object key: `workspaces/<workspace_id>/<Date.now()>_<file_name>`. In `file_name`, every character outside `a-z A-Z 0-9 . _ -` becomes `_`, then it is lowercased. `workspace_id` is not sanitized.
-- The URL is built with `getSignedUrl` and a `PutObjectCommand` that sets `Bucket`, `Key`, `ContentType` and `ContentLength`. It expires after 900 seconds. Whether SeaweedFS enforces the signed content type and length on upload was not verified.
-- Signing is a local computation. It needs no network call, so the error path below is rare in practice (for example a broken credential or endpoint configuration).
+- Object key: `workspaces/<workspace_id>/<Date.now()>_<file_name>`. In `file_name`, every character outside `a-z A-Z 0-9 . _ -` becomes `_`, then it is lowercased.
+- The URL is built with `getSignedUrl` and a `PutObjectCommand` that sets `Bucket`, `Key`, `ContentType` and `ContentLength`. It expires after 900 seconds.
+- The presigned URL host uses `S3_PUBLIC_ENDPOINT`.
 
-Success: 201, message `SeaweedFS S3 presigned upload URL generated successfully`. The example uses placeholder values; the signature parameters are shortened.
+Success: 201, message `SeaweedFS S3 presigned upload URL generated successfully`.
 
 ```json
 {
@@ -68,7 +66,7 @@ Success: 201, message `SeaweedFS S3 presigned upload URL generated successfully`
   "message": "SeaweedFS S3 presigned upload URL generated successfully",
   "data": {
     "object_key": "workspaces/wks_sineva_hq/1792547075000_q3_board_deck.pdf",
-    "upload_url": "http://seaweedfs-s3:8333/sineva-assets/workspaces/wks_sineva_hq/1792547075000_q3_board_deck.pdf?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Expires=900&X-Amz-Signature=...",
+    "upload_url": "http://localhost:8333/sineva-assets/workspaces/wks_sineva_hq/1792547075000_q3_board_deck.pdf?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Expires=900&X-Amz-Signature=...",
     "bucket_name": "sineva-assets",
     "expires_in_seconds": 900,
     "storage_provider": "seaweedfs_s3"
@@ -82,18 +80,15 @@ Errors:
 
 | Status | Code | When |
 | :--- | :--- | :--- |
-| 422 | `VALIDATION_ERROR` | a field fails its constraint (for example `file_size_bytes` over 100 MiB) |
-| 500 | `INTERNAL_SERVER_ERROR` | bad JSON |
-
-Unsigned URL on error (Current, debt): if `getSignedUrl` throws, the repository catches everything and returns `upload_url: "<S3_ENDPOINT>/<bucket>/<object_key>?X-Amz-Expires=900"` with the same 201 envelope. Nothing in the response says the URL is unsigned. Target: let the failure surface as a typed error (a 5xx through `handleRouteError`) so the caller sees a failure, as the AI gateway does ([ADR-0008](../decisions/0008-no-silent-fallbacks.md)).
-
-Not present: a download URL, required upload headers in the response, a bucket-exists check, a per-user quota.
+| 422 | `validation_failed` | empty or invalid JSON, or field fails its constraint |
+| 502 | `model_unavailable` | S3 signing failure (`UpstreamServiceError`); never returns an unsigned URL |
+| 500 | `internal_error` | unexpected server error |
 
 ## `GET /api/v1/health`
 
-Reports four subsystems. No query, no body, no authentication.
+Inspects real infrastructure readiness. No query parameters, no body required.
 
-Success: 200, message `Sineva platform and shared infrastructure health verified`. The example is a stack where every dependency answers.
+Public Success (all dependencies healthy): HTTP 200
 
 ```json
 {
@@ -101,45 +96,49 @@ Success: 200, message `Sineva platform and shared infrastructure health verified
   "status": 200,
   "message": "Sineva platform and shared infrastructure health verified",
   "data": {
-    "service_name": "sineva-platform",
-    "environment": "production",
-    "uptime_seconds": 3842,
-    "subsystems": {
-      "postgresql_prisma": { "status": "healthy", "orm_driver": "@prisma/adapter-pg" },
-      "redis_cache": { "status": "healthy", "client": "ioredis" },
-      "seaweedfs_s3": { "status": "healthy", "bucket_name": "sineva-assets" },
-      "sineva_ai_engine": {
-        "status": "healthy",
-        "internal_url": "http://sineva-ai:8000",
-        "network_mode": "sineva_internal_bridge_only",
-        "latency_ms": 12
-      }
-    }
+    "status": "healthy"
   },
-  "meta": { "request_id": "req_1792547075000_k3j9x2ab", "timestamp": "2026-10-21T01:44:35.000Z" },
+  "meta": {
+    "request_id": "9cc54e07-7d44-4a7c-885e-d5c8b487f068",
+    "timestamp": "2026-10-21T12:00:00.000Z"
+  },
   "errors": null
 }
 ```
 
-`status` is `healthy` or `standby`. There is no `unhealthy` or `degraded` value, so `standby` also means "failed".
+Public Degraded (one or more dependencies failed): HTTP 503
 
-What each status really checks (Current):
+```json
+{
+  "success": false,
+  "status": 503,
+  "code": "dependency_unavailable",
+  "message": "One or more required infrastructure subsystems are in standby or unavailable",
+  "data": {
+    "status": "standby"
+  },
+  "meta": {
+    "request_id": "9cc54e07-7d44-4a7c-885e-d5c8b487f068",
+    "timestamp": "2026-10-21T12:00:00.000Z"
+  },
+  "errors": [
+    {
+      "code": "dependency_unavailable",
+      "field": null,
+      "detail": "System health probe detected degraded subsystem status"
+    }
+  ]
+}
+```
 
-| Subsystem | `healthy` means | Real check |
+Real dependency checks:
+
+| Subsystem | `healthy` means | Real probe |
 | :--- | :--- | :--- |
-| `postgresql_prisma` | `process.env.DATABASE_URL` is set | None. No query is sent. |
-| `redis_cache` | `CacheRepository.ping()` returned true | None. The adapter is an in-memory `Map` and `ping()` always returns `true`. The `client: "ioredis"` label is a string constant: no ioredis client is created. |
-| `seaweedfs_s3` | `S3_ENDPOINT` is non-empty | None. `checkHealth()` returns `Boolean(endpoint)`, and `getEnvConfig()` has a default endpoint, so it is always true. |
-| `sineva_ai_engine` | `GET {AI_ENGINE_INTERNAL_URL}/api/v1/health` answered 2xx within 1200 ms | Real HTTP call with `X-Internal-Api-Key`. `latency_ms` is at least 1. |
-
-Consequences:
-
-- A stopped Postgres, Redis or SeaweedFS does not change the health response. Only `sineva_ai_engine` can show `standby` for a real reason.
-- The route cannot return a non-200 status in normal operation: the use case does not throw, and the AI gateway swallows its own failures.
-- The response exposes the `sineva-ai` internal URL and the bucket name to any caller. Target: restrict detail to authenticated callers and keep a minimal public probe.
-- `InternalAiEngineGateway.checkHealth()` also computes an `engine_version` (hardcoded `1.0.0`, or `1.0.0-standby` on failure). The use case drops it, so the response never shows it.
-
-Errors: 500 only if something throws while building the use case. Target: real Postgres (`SELECT 1`), Redis (`PING`) and S3 (`HeadBucket`) probes with short timeouts, and a non-200 status when a required dependency is down (see the [roadmap](../development/roadmap.md)).
+| `postgresql_prisma` | Postgres connection and query succeed | Real `SELECT 1` query via `@prisma/adapter-pg` with 2000 ms timeout |
+| `redis_cache` | Redis server answers `PONG` | Real `PING` command via `ioredis` with 1500 ms timeout and no offline queuing |
+| `seaweedfs_s3` | SeaweedFS S3 bucket exists and is accessible | Real `HeadBucketCommand` via `@aws-sdk/client-s3` with 1500 ms timeout |
+| `sineva_ai_engine` | `sineva-ai` liveness endpoint answers 2xx | Real HTTP call with `X-Internal-Api-Key` and timeout; extracts real `version` from body |
 
 ## Related
 

@@ -35,16 +35,18 @@ Steps, in order:
 5. `npm run typecheck`.
 6. `npm run test`.
 7. `npm run build`.
+8. `npm run bundle:report --workspace=@sineva/web` reads `.next` after the build, records every client chunk's raw and gzip size, and fails when three.js, GSAP, Recharts, Tiptap or dnd-kit appear in the chunk every page loads (FR-UX-43). The next step uploads `bundle-report.json` as the `bundle-report` artifact. The check looks for each library's fingerprint strings (minification hides module names), so it can miss a library; `architecture.test.ts` also fails a static import of these libraries outside `*.lazy.*` modules.
 
-All four commands go through turbo (`lint`, `typecheck`, `test`, `build`) and must pass before merge. `typecheck` and `build` run `prisma generate` first, which needs no database, so CI has no `DATABASE_URL`.
+`npm run lint` and `npm run test` also run the `@sineva/ui` workspace: its ESLint design rules (no hex, `rgb(`, `dark:`, `z-[n]`, physical-direction classes, motion imports or `dangerouslySetInnerHTML`) and its Vitest suite (token drift against the compro snapshot, contrast in both themes, lint rule fixtures). All four commands go through turbo (`lint`, `typecheck`, `test`, `build`) and must pass before merge. `typecheck` and `build` run `prisma generate` first, which needs no database, so CI has no `DATABASE_URL`.
 
 Gaps:
 
-- The `test` step is named "Run Unit & Integration Tests" but runs `npm run test`, which excludes `src/__tests__/integration/`. CI has no Postgres, so integration tests never run there.
+- The `verify` job runs `npm run test`, which excludes `src/__tests__/integration/`. Those run in the separate `integration` job (Postgres 17 and Redis 7 service containers, database `sineva_platform_test`). The `security` job runs `npm audit --omit=dev --audit-level=high`, TruffleHog, a scan for `snv_pat_` tokens and private key blocks, and an SBOM (`npm sbom`).
 - There is no deploy job, no image build or push, and no migration job. Deployment is manual.
-- Dependabot, security scanning and a Docker build check are not configured.
+- Dependabot and a Docker build check are not configured.
+- The SBOM is generated and checked for content but not uploaded as an artifact.
 
-Target: a Postgres service container in `verify` (or a second job), a database whose name contains `test`, `TEST_DATABASE_URL` set to it, and `npm run test:integration` as a step ([ADR-0007](../decisions/0007-tdd-fakes-integration-containers.md)). Until then, run integration tests locally for any database change and report the result in the PR.
+The integration job follows [ADR-0007](../decisions/0007-tdd-fakes-integration-containers.md): the database name contains `test` and `TEST_DATABASE_URL` points at the service container. Never point it at a shared database.
 
 ## Dockerfile
 
@@ -73,7 +75,7 @@ Migrations are an explicit release step. They are not in `CMD` and not in compos
 
 1. Merge to `main` after CI passes.
 2. Build the image.
-3. Run `db:migrate:deploy` with `?schema=platform` on the database URL ([migrations workflow](../engineering/database_migrations_workflow.md)). On a new environment, also run `db:seed`.
+3. Run `db:migrate:deploy` with `?schema=platform` on the database URL ([migrations workflow](../engineering/database_migrations_workflow.md)). On a new development environment, also run `db:seed` (two test tenants; there are no specialist rows).
 4. Run `sineva-ai`'s own `alembic upgrade head` if its release changed its schema.
 5. Start or recreate `sineva-platform`.
 
@@ -85,6 +87,6 @@ Order matters in one direction: apply the migration before the code that needs i
 - [ ] `docker compose ps` shows `0.0.0.0:3000->3000/tcp` for `sineva-platform` and `8000/tcp` with no host address for `sineva-ai`. Decide on purpose what to do with the published Postgres, Redis, Qdrant and SeaweedFS ports ([topology](docker_compose_topology.md)).
 - [ ] `db:migrate:deploy` ran with `?schema=platform`, and `platform._prisma_migrations` exists (not `public._prisma_migrations`).
 - [ ] `GET /api/v1/health` returns 200 and `data.subsystems.sineva_ai_engine.status` is `healthy`. This is the only real check in that response: the Postgres entry reports `healthy` whenever `DATABASE_URL` is set, Redis always reports `healthy`, and S3 reports `healthy` whenever an endpoint is configured.
-- [ ] `GET /api/v1/agents` returns the six companions. This reaches Postgres, so it proves the database, the schema and the seed.
+- [ ] `GET /api/v1/workspaces/{workspace_id}/agents` returns the six companions. This reaches sineva-ai (503 when it is down) and the membership lookup, so it proves the engine catalog and the database together. If a deployment may have used the removed `POST /api/v1/agents`, run the check in `20261022120000_drop_agent_configs` before migrating.
 - [ ] A chat request to one companion returns 200. A 502 or 503 here points at the key, the slug or the engine ([troubleshooting](../troubleshooting/docker_and_internal_network.md)).
 - [ ] `/api/openapi.json` loads and lists every route.

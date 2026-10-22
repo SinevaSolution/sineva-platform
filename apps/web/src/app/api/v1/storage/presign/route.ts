@@ -2,22 +2,28 @@ import type { NextRequest } from 'next/server';
 import { presignStorageDtoSchema } from '@/server/application/dtos/chat_dto';
 import { getPresignStorageUploadUseCase } from '@/server/container';
 import {
-  handleRouteError,
+  extractRequestId,
+  parseJsonBody,
   sendSuccessJson,
 } from '@/server/http/response_helper';
+import { withAuth } from '@/server/http/with_auth';
 
-export async function POST(request: NextRequest) {
-  try {
-    const rawBody: unknown = await request.json();
+export const POST = withAuth(
+  async (request: NextRequest, { requestContext }) => {
+    const requestId = extractRequestId(request);
+    const rawBody = await parseJsonBody(request);
     const validated = presignStorageDtoSchema.parse(rawBody);
-    const result = await getPresignStorageUploadUseCase().execute(validated);
+    const result = await getPresignStorageUploadUseCase().execute(validated, requestContext);
 
     return sendSuccessJson({
       data: result,
       message: 'SeaweedFS S3 presigned upload URL generated successfully',
       status: 201,
+      request_id: requestId,
     });
-  } catch (error) {
-    return handleRouteError(error);
-  }
-}
+  },
+  {
+    scope: 'workspace',
+    permission: 'storage.upload',
+  },
+);

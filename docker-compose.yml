@@ -5,7 +5,7 @@ services:
     restart: unless-stopped
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-sineva_user}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-sineva_secret_password}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
       POSTGRES_DB: ${POSTGRES_DB:-sineva_platform}
     ports:
       - "5432:5432"
@@ -96,6 +96,17 @@ services:
     networks:
       - sineva_internal
 
+  # Dev mailbox container (Mailpit) for local transactional email inspection (WP-M0-24)
+  mailpit:
+    image: axllent/mailpit:latest
+    container_name: sineva-mailpit
+    restart: unless-stopped
+    ports:
+      - "1025:1025" # SMTP port
+      - "8025:8025" # Web UI port
+    networks:
+      - sineva_internal
+
   # Strictly internal FastAPI AI Engine — NO host ports exposed!
   # Only reachable from sineva-platform via http://sineva-ai:8000 on sineva_internal network.
   sineva-ai:
@@ -108,13 +119,11 @@ services:
       - "8000"
     environment:
       APP_ENV: production
-      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-sineva_user}:${POSTGRES_PASSWORD:-sineva_secret_password}@postgres:5432/${POSTGRES_DB:-sineva_platform}
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-sineva_user}:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}@postgres:5432/${POSTGRES_DB:-sineva_platform}
       REDIS_URL: redis://redis:6379/1
       QDRANT_URL: http://qdrant:6333
       S3_ENDPOINT: http://seaweedfs-s3:8333
-      # Same variable and default as sineva-platform's AI_ENGINE_INTERNAL_API_KEY
-      # below, so both sides always agree on the shared secret.
-      INTERNAL_API_KEY: ${AI_ENGINE_INTERNAL_API_KEY:-sineva_internal_service_token_dev}
+      INTERNAL_API_KEY: ${AI_ENGINE_INTERNAL_API_KEY:?AI_ENGINE_INTERNAL_API_KEY is required}
     depends_on:
       postgres:
         condition: service_healthy
@@ -137,16 +146,20 @@ services:
       NODE_ENV: production
       NEXT_PUBLIC_APP_URL: http://localhost:3000
       NEXT_PUBLIC_API_BASE_URL: http://localhost:3000/api/v1
-      DATABASE_URL: postgresql://${POSTGRES_USER:-sineva_user}:${POSTGRES_PASSWORD:-sineva_secret_password}@postgres:5432/${POSTGRES_DB:-sineva_platform}
+      DATABASE_URL: postgresql://${POSTGRES_USER:-sineva_user}:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}@postgres:5432/${POSTGRES_DB:-sineva_platform}
       REDIS_URL: redis://redis:6379/0
       S3_ENDPOINT: http://seaweedfs-s3:8333
+      S3_PUBLIC_ENDPOINT: ${S3_PUBLIC_ENDPOINT:-http://localhost:8333}
       S3_REGION: us-east-1
-      S3_ACCESS_KEY_ID: sineva_s3_key
-      S3_SECRET_ACCESS_KEY: sineva_s3_secret
+      S3_ACCESS_KEY_ID: ${S3_ACCESS_KEY_ID:?S3_ACCESS_KEY_ID is required}
+      S3_SECRET_ACCESS_KEY: ${S3_SECRET_ACCESS_KEY:?S3_SECRET_ACCESS_KEY is required}
       S3_BUCKET_NAME: sineva-assets
       S3_FORCE_PATH_STYLE: "true"
       AI_ENGINE_INTERNAL_URL: http://sineva-ai:8000
-      AI_ENGINE_INTERNAL_API_KEY: ${AI_ENGINE_INTERNAL_API_KEY:-sineva_internal_service_token_dev}
+      AI_ENGINE_INTERNAL_API_KEY: ${AI_ENGINE_INTERNAL_API_KEY:?AI_ENGINE_INTERNAL_API_KEY is required}
+      AUTH_SECRET: ${AUTH_SECRET:?AUTH_SECRET is required}
+      INTERNAL_CONTEXT_SIGNING_KEY: ${INTERNAL_CONTEXT_SIGNING_KEY:?INTERNAL_CONTEXT_SIGNING_KEY is required}
+      INTERNAL_CONTEXT_KID: ${INTERNAL_CONTEXT_KID:-k1}
     depends_on:
       postgres:
         condition: service_healthy

@@ -26,10 +26,10 @@ related_docs:
 ## Gotchas first
 
 - Current: there is no authentication or authorization on any route. `user_id` and `workspace_id` come from the request body. Anyone who can reach the port can register an agent, chat as any user, and presign an upload into any workspace prefix.
-- A malformed or empty JSON body returns 500, not 400 or 422. `request.json()` throws a `SyntaxError` that no handler catches as a validation problem, so `handleRouteError` falls through to the generic 500 branch.
-- A 500 carries the raw `error.message` of whatever was thrown. A database or driver error text can reach the client.
+- A malformed or empty JSON body returns 422 `validation_failed` (`parseJsonBody` in `response_helper`). Handlers must not call `request.json()` directly.
+- A 500 carries a fixed message and the `request_id`. The cause is logged server-side with that id and never sent to the client. Upstream (`sineva-ai`) error text is never forwarded either: 502 and 503 messages are fixed.
 - Unknown keys in a request body are silently dropped (Zod `z.object` strips them). A misspelled optional field is ignored, not rejected.
-- `meta.request_id` is generated per response by `Math.random`. It is not read from a request header, not sent to `sineva-ai`, and not returned as a header.
+- `meta.request_id` is the request's `X-Request-Id` when the caller sent a safe one (8 to 128 characters of `A-Za-z0-9._-`), otherwise a generated UUID. It is returned as the `X-Request-Id` response header and forwarded to `sineva-ai`.
 - The health route returns 200 even when every subsystem is `standby`.
 
 ## Entry points
@@ -46,14 +46,16 @@ related_docs:
 
 | Method | Path | Handler | Use case | Success | Error statuses |
 | :--- | :--- | :--- | :--- | :--- | :--- |
-| `GET` | `/api/v1/health` | `app/api/v1/health/route.ts` | `GetSystemHealthUseCase` | 200 | 500 |
-| `GET` | `/api/v1/agents` | `app/api/v1/agents/route.ts` | `GetAgentsUseCase.execute` | 200 | 422, 500 |
-| `POST` | `/api/v1/agents` | `app/api/v1/agents/route.ts` | `GetAgentsUseCase.registerAgent` | 201 | 409, 422, 500 |
+| `GET` | `/api/v1/health` | `app/api/v1/health/route.ts` | `GetSystemHealthUseCase` | 200 | 503, 500 |
+| `GET` | `/api/v1/workspaces/{workspace_id}/agents` | `app/api/v1/workspaces/[workspace_id]/agents/route.ts` | `ListWorkspaceSpecialistsUseCase` | 200 | 401, 404, 422, 502, 503, 500 |
 | `POST` | `/api/v1/agents/{agent_slug}/chat` | `app/api/v1/agents/[agent_slug]/chat/route.ts` | `SendAgentMessageUseCase` | 200 | 404, 422, 500, 502, 503 |
-| `POST` | `/api/v1/storage/presign` | `app/api/v1/storage/presign/route.ts` | `PresignStorageUploadUseCase` | 201 | 422, 500 |
+| `POST` | `/api/v1/storage/presign` | `app/api/v1/storage/presign/route.ts` | `PresignStorageUploadUseCase` | 201 | 422, 502, 500 |
 | `GET` | `/api/openapi.json` | `app/api/openapi.json/route.ts` | none (static) | 200 | none |
+| `POST` | `/internal/v1/audit-events` (alias `/api/internal/v1/audit-events`) | `app/internal/v1/audit-events/route.ts` | `IngestAuditEventUseCase` | 201 | 401, 404, 422, 500 |
 
-`/api/v1/agents` keeps the word "agent" in the path, the JSON keys and the types. User-facing copy says "companion" and "product" ([ADR-0011](../decisions/0011-user-facing-wording.md), [product model](../product/product_model_and_wording.md)).
+This table is not complete (the auth, workspace and conversation routes are listed in the OpenAPI document; the profile family is in [profile and preferences](profile_and_preferences_endpoints.md)). The audit ingest route is internal: `X-Internal-Api-Key` only, `actor_type` limited to `specialist` or `system`, a `workspace_id` must exist, and sensitive metadata keys are redacted. Every route that changes state is listed in `server/http/route_policy.ts` with the audit events it emits (or a reasoned `none`) and, for create and run paths, its entitlement key; `route_policy_inventory.test.ts` fails when a mutating route is missing there.
+
+`/api/v1/workspaces/{workspace_id}/agents` keeps the word "agent" in the path, the JSON keys and the types. User-facing copy says "companion" and "product" ([ADR-0011](../decisions/0011-user-facing-wording.md), [product model](../product/product_model_and_wording.md)).
 
 ## The envelope
 
@@ -64,6 +66,7 @@ interface ApiResponse<T> {
   success: boolean;
   status: number;            // same number as the HTTP status
   message: string;
+  code?: string;             // stable machine error code (FR-UX-31)
   data: T | null;            // null on errors
   meta: ResponseMeta | null; // always an object today
   errors: ErrorDetail[] | null; // null on success
@@ -86,7 +89,7 @@ Success:
 }
 ```
 
-Paginated (`GET /api/v1/agents`) adds to `meta`: `page`, `per_page`, `total_items`, `total_pages`, `has_next`, `has_prev`. `total_pages` is at least 1, even for an empty list, so an empty result has `total_pages: 1` and `has_next: false`.
+Paginated routes add to `meta`: `page`, `per_page`, `total_items`, `total_pages`, `has_next`, `has_prev`. `total_pages` is at least 1, even for an empty list, so an empty result has `total_pages: 1` and `has_next: false`.
 
 Error:
 
@@ -103,23 +106,24 @@ Error:
 
 ### Request id and timestamp
 
-- `request_id` is `req_<Date.now()>_<up to 8 base36 characters>`, from `generateRequestId()` in `packages/shared/src/response.ts`. It is not cryptographically random and not guaranteed unique. Do not use it as a security token or a database key.
+- `request_id` is a UUID generated via `crypto.randomUUID()` (or accepted from `X-Request-Id`).
 - `timestamp` is `new Date().toISOString()` at the moment the envelope is built (UTC, millisecond precision).
-- There is no `X-Request-Id` handling and no response header. Target: accept an incoming id, echo it in a header and forward it to `sineva-ai`, so one request can be traced across both services.
+- Handlers accept an incoming `X-Request-Id` request header, echo it in the `X-Request-Id` response header, and forward it to `sineva-ai` to ensure single-trace end-to-end observability (API-5).
 
 ## Errors
 
 `handleRouteError` maps what a handler throws:
 
-| Thrown | Status | `errors[].code` | `message` |
-| :--- | :--- | :--- | :--- |
-| `ZodError` | 422 | `VALIDATION_ERROR` (one entry per issue) | `Request payload validation failed` |
-| `NotFoundError` | 404 | `RESOURCE_NOT_FOUND` | `<Resource> '<id>' was not found` |
-| `ConflictError` | 409 | `RESOURCE_CONFLICT` | `<Resource> '<id>' already exists` |
-| `UpstreamServiceError` | 502 | `UPSTREAM_ERROR` | `The AI engine returned an unexpected response` |
-| `UpstreamUnavailableError` | 503 | `UPSTREAM_UNAVAILABLE` | `The AI engine is unavailable` |
-| any other `DomainError` | its own `status` (default 400) | its own `code` | its own message |
-| anything else (including `SyntaxError`) | 500 | `INTERNAL_SERVER_ERROR` | the raw `error.message`, or `Unexpected server error` |
+| Thrown | Status | `code` | `errors[].code` | `message` |
+| :--- | :--- | :--- | :--- | :--- |
+| `MalformedJsonError` | 422 | `validation_failed` | `validation_failed` | `Request payload validation failed` |
+| `ZodError` | 422 | `validation_failed` | `validation_failed` | `Request payload validation failed` |
+| `NotFoundError` | 404 | `not_found` | `RESOURCE_NOT_FOUND` | `<Resource> '<id>' was not found` |
+| `ConflictError` | 409 | `conflict` | `RESOURCE_CONFLICT` | `<Resource> '<id>' already exists` |
+| `UpstreamServiceError` | 502 | `model_unavailable` | `UPSTREAM_ERROR` | `The AI engine returned an unexpected response` |
+| `UpstreamUnavailableError` | 503 | `dependency_unavailable` | `UPSTREAM_UNAVAILABLE` | `The AI engine is unavailable` |
+| any other `DomainError` | its own `status` | mapped code | its own `code` | its own message |
+| anything else | 500 | `internal_error` | `internal_error` | `Internal server error` (cause logged server-side with request_id, never leaked to client) |
 
 - Validation: `errors[].field` is the Zod path joined with `.` (for example `capabilities.0`), or `null` for a root-level problem. `detail` is Zod's default message text, which can change when Zod is upgraded. Clients should key on `code` and `field`, not on `detail`.
 - 502 and 503 messages are fixed and client-safe. The upstream status and body go to the server log only ([ADR-0016](../decisions/0016-upstream-failures-return-502-503.md)).
@@ -131,7 +135,7 @@ Error:
 - `snake_case` for every JSON key, query parameter, path parameter and `meta` field (R-23, [ADR-0003](../decisions/0003-snake-case-wire-contract.md)). `assertSnakeCaseKeys` in `@sineva/shared` checks one level of keys and is only used by the tests in `packages/shared`; no route test calls it today, so the convention is held by review and by the typed views. Free-form maps such as `context_metadata`, `token_usage` and `tool_calls[].arguments` hold whatever keys the caller or `sineva-ai` put in them.
 - Timestamps are ISO 8601 strings. Agent ids are UUIDs generated by the database ([ADR-0014](../decisions/0014-uuid-primary-keys.md)).
 - Pagination: `page` (from 1) and `per_page` (1 to 100, default 10) in the query.
-- Content type: `application/json` in and out. The handlers do not check the request `Content-Type`; they call `request.json()`.
+- Content type: `application/json` in and out. The handlers do not check the request `Content-Type`; they read the body through `parseJsonBody`.
 
 ## What the API does not have yet
 

@@ -26,9 +26,9 @@ Frontend code is `src/client` (components, store), the routing files in `src/app
 ## 1. The boundary
 
 - `src/client/**` never imports `@/server/**` or `server-only`. ESLint (`no-restricted-imports`) and `architecture.test.ts` both fail on it.
-- Types the browser reads come from `src/shared` (`AgentView`, `ChatReplyView`). `server/http/*_contract.ts` guards them against the server types.
+- Types the browser reads come from `src/shared` (`WorkspaceSpecialistRosterView`, `ChatReplyView`; the shell's `ShellSpecialistView` is built from the static manifest). `server/http/*_contract.ts` guards them against the server types.
 - Server components in `src/app` may call use cases from `@/server/container` directly. `app/page.tsx` does. Props passed to a client component must be serializable and typed with a `src/shared` view.
-- Shared presentation primitives (`Button`, `Card`, `Badge`, `Container`, `StatusPill`) come from `@sineva/ui`.
+- Shared presentation components come from `@sineva/ui` and all start with `SN` (`SNButton`, `SNSelect`, `SNDialog`, ...; [ADR-0028](../decisions/0028-sn-component-prefix-and-form-controls.md)). The Sino pieces `SNSinoFigure`, `SNSinoLoop` and `SNSpecialistTile` live in `client/components/ui/`. Dropdown fields use `SNSelect` or `SNCombobox`, never a native `<select>`.
 
 ## 2. Current
 
@@ -38,9 +38,9 @@ Frontend code is `src/client` (components, store), the routing files in `src/app
 | UI | One client component, `client/components/sineva_dashboard.tsx` (777 lines, `'use client'`). It holds the agent list, category filter, chat transcript, presign demo, API envelope viewer and status bar. `command_palette.tsx` and `theme_toggle.tsx` are the only other components. |
 | Hydration | `useEffect` dispatches `setAgentsCatalog(initialAgents)` into Redux after mount. Until it runs, the component falls back to the `initialAgents` prop. |
 | Selection | `selected_agent_slug` (default `sinofinance`) and `active_category_filter` live in Redux. Nothing is in the URL, so a reload loses the selected companion, the filter and every transcript, and a view cannot be linked. |
-| Providers | `AppProviders` (`client/store/provider.tsx`) wraps the whole app in the Redux `Provider`, `next-themes` (`attribute="data-theme"`, `defaultTheme="light"`, `enableSystem={false}`) and the sonner `Toaster`. The store is created with `makeStore()` once per mount. |
+| Providers | `AppProviders` (`client/store/provider.tsx`) wraps the whole app in the Redux `Provider`, the `ThemeFollowSystem` listener, the tooltip provider and the sonner `Toaster`. The theme itself is set before paint by `ThemeScript` in the root layout. The store is created with `makeStore()` once per mount. |
 | Route states | None. `src/app` has no `loading.tsx`, `error.tsx` or `not-found.tsx`. |
-| Theming | Token variables switch on `[data-theme="dark"]` in `globals.css`. The Tailwind `dark:` variant is not tied to `data-theme` (no `@custom-variant`), and the dashboard uses `dark:` in a few places. |
+| Theming | The sineva-compro tokens are vendored in `packages/ui/src/styles` ([ADR-0027](../decisions/0027-design-token-source-and-vendoring.md)) and switch on `:root[data-theme='dark']`. No component uses `dark:` (lint bans it). |
 | Identity | The chat call sends `user_id: 'usr_executive_01'` hardcoded. The workspace slice is seeded with constants (`wks_sineva_enterprise_01`, a token quota and a consumed count). |
 
 ### Debt in the current UI
@@ -75,6 +75,13 @@ Frontend code is `src/client` (components, store), the routing files in `src/app
 9. A failed call renders an error state. It never renders invented content.
 10. Keep new components small and single-purpose. Do not grow `sineva_dashboard.tsx`.
 
+## 4a. Language (i18n)
+
+- Locale: profile `locale`, then the `sineva_locale` cookie, then `Accept-Language`, then `en`. No URL prefix. Resolved once per request in `src/i18n/server.ts` and handed to client components by `I18nProvider` in the root layout ([ADR-0023](../decisions/0023-locale-preference-and-i18n-architecture.md)).
+- Code: `packages/i18n/` (registry, resolution, ICU-subset formatter, copy lint, key-usage check, pseudo-locale), `apps/web/src/i18n/` (provider, server helpers, catalog loader), `apps/web/messages/` (catalogs), `apps/web/eslint-rules/` (hardcoded-string rule).
+- `packages/i18n` is consumed through the `@sineva/i18n` path alias (tsconfig and vitest), not a workspace link, so it needs no `npm install`.
+- Specialist names, role titles and descriptions are data from the specialist registry and are not translated here yet.
+
 ## 5. Chat UI and upstream failures
 
 `sendToCompanion` in `sineva_dashboard.tsx` posts to `/api/v1/agents/{slug}/chat`.
@@ -90,6 +97,17 @@ Gotchas:
 - A 500 shows the server's `message`. `handleRouteError` puts the raw `Error.message` of an unknown error in the envelope (see [error handling](../engineering/error_handling_and_failure_modes.md)).
 - Retry state lives in a closure inside one call. Closing the toast discards it.
 - The first turn sends no `session_id`, so a retry of the first turn also sends none. If the first request reached sineva-ai before failing on the way back, the retry can create a second session.
+
+### Chat thread streaming (WP-M0-30)
+
+`ChatThread` (`src/client/components/chat/chat_thread.tsx`) shows replies as they stream. After a send it calls `openRunStream` (`src/client/lib/event_stream.ts`) with the run handle that `POST .../messages` returned. The state machine is `live_reply_model.ts` (pure, unit tested).
+
+- Streamed text renders as plain text in the existing `RoomBubble`. It is never HTML. The room mood is `working` while streaming, `done` on done, `error` on error.
+- A Stop button (with a Tooltip) calls `POST .../runs/{run_id}/cancel`; the partial text stays.
+- An error shows a friendly message from the error code (`stream_errors.ts`) and a Try again button. If nothing was produced, Try again attaches to the same run; if the run ended, it sends the same words again as a new message.
+- On opening a chat, if the last message is the person's, has a run handle, has no reply and is under 15 minutes old, the thread attaches to that run. That is how a new chat gets its reply (`StartChat` only creates the chat and navigates) and how a reload mid-reply resumes. Older unanswered messages are not started automatically.
+- The log region does not announce tokens; completion is announced once through a status line.
+- The English strings live in `stream_errors.ts` and the component until the message catalogs land (WP-M0-42).
 
 ## 6. Markdown rendering (debt)
 

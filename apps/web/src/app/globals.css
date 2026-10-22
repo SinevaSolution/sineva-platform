@@ -1,105 +1,147 @@
 @import "tailwindcss";
+@import "../../../../packages/ui/src/styles/tokens.css";
+@import "../../../../packages/ui/src/styles/theme-dark.css";
+@import "../../../../packages/ui/src/styles/product-accents.css";
+@import "../../../../packages/ui/src/styles/product-accents-proposed.css";
+@import "../../../../packages/ui/src/styles/app-density.css";
 
-/* ============================================================================
- * SINEVA 3-LAYER DESIGN TOKEN SYSTEM
- * Layer 1: Primitive Tokens (Brand Teal, Warm Sand/Ink, Aqua, Warm Sun)
- * Layer 2: Semantic Tokens (Light Editorial Warm Sand & Dark Deep Teal Slate)
- * Layer 3: Component & Motion Tokens (WCAG 2.2 AA & Reduced Motion)
- * ============================================================================ */
+/* Tailwind only scans the app by default; the shared components live in
+   packages/ui and their utility classes must be generated too. */
+@source "../../../../packages/ui/src";
 
-:root {
-  /* Layer 1: Primitive Palette */
-  --teal-50: #effaf8;
-  --teal-100: #d7f3ee;
-  --teal-200: #b2e6de;
-  --teal-500: #0fa38c;
-  --teal-600: #0b8471;
-  --teal-700: #0a6b5c;
-  --teal-800: #0b554a;
-  --teal-900: #093b34;
-
-  --aqua-400: #3dd9c3;
-  --sun-100: #fef3c7;
-  --sun-500: #f59e0b;
-
-  --ink-50: #fbf9f5;
-  --ink-100: #f4f0e8;
-  --ink-200: #e8e2d5;
-  --ink-300: #d5ccb8;
-  --ink-500: #6e6a61;
-  --ink-600: #524e46;
-  --ink-800: #262420;
-  --ink-900: #181714;
-  --ink-950: #0b1516;
-
-  /* Layer 2: Semantic Tokens — Light Mode (Warm Editorial Sand) */
-  --color-canvas: var(--ink-50);
-  --color-surface: #ffffff;
-  --color-surface-elevated: #ffffff;
-  --color-surface-muted: var(--ink-100);
-
-  --color-text: var(--ink-900);
-  --color-text-muted: var(--ink-600);
-  --color-text-subtle: var(--ink-500);
-  --color-text-inverse: #ffffff;
-
-  --color-border: var(--ink-200);
-  --color-border-strong: var(--ink-300);
-
-  --color-action-primary: var(--teal-700);
-  --color-action-primary-hover: var(--teal-800);
-  --color-accent-highlight: var(--aqua-400);
-
-  /* Layer 3: Motion & Elevation */
-  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-[data-theme="dark"] {
-  /* Layer 2: Semantic Tokens — Dark Mode (Deep Teal Slate) */
-  --color-canvas: #0b1516;
-  --color-surface: #112022;
-  --color-surface-elevated: #16292c;
-  --color-surface-muted: #1b3236;
-
-  --color-text: #f3f7f6;
-  --color-text-muted: #a6bdbb;
-  --color-text-subtle: #789492;
-  --color-text-inverse: #081213;
-
-  --color-border: #213b3f;
-  --color-border-strong: #2e5257;
-
-  --color-action-primary: var(--aqua-400);
-  --color-action-primary-hover: var(--teal-200);
-  --color-accent-highlight: var(--sun-500);
-}
+/*
+ * Design tokens come from packages/ui/src/styles (ADR-0027): the vendored
+ * sineva-compro set (primitives in :root, semantic tokens in @theme static,
+ * dark swaps under :root[data-theme="dark"]) plus app-density.css for what the
+ * app adds. This file holds no token values of its own, only base styles and
+ * the motion keyframes. Dark mode is driven by `data-theme` on <html>, set
+ * before first paint by the inline theme script; components use semantic tokens, never a Tailwind dark variant.
+ */
 
 html,
 body {
-  background-color: var(--color-canvas);
+  background-color: var(--color-canvas-alt);
   color: var(--color-text);
-  font-family:
-    var(--font-jakarta),
-    -apple-system,
-    BlinkMacSystemFont,
-    "Segoe UI",
-    Roboto,
-    sans-serif;
+  font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
-code,
-pre,
-kbd {
-  font-family:
-    var(--font-geist-mono),
-    ui-monospace,
-    SFMono-Regular,
-    Menlo,
-    Monaco,
-    Consolas,
-    monospace;
+/* App body text is 15 px (FR-UX-08), one step below the marketing 17 px. */
+body {
+  font-size: 0.9375rem;
+  line-height: 1.5;
+}
+
+/* In @layer base on purpose: unlayered CSS beats every Tailwind utility, so
+   a field that draws its own focus state (composer, Field) could not opt out
+   with `outline-none` and showed a square outline inside its rounded box. */
+@layer base {
+  :focus-visible {
+    outline: 2px solid var(--color-focus);
+    outline-offset: 2px;
+  }
+}
+
+::selection {
+  background: var(--teal-200);
+  color: var(--ink-950);
+}
+
+/*
+ * Motion. One staggered entrance per screen (set --d for the delay) and a
+ * slow idle float for Sino. Exponential ease-out only (the compro --ease-out),
+ * transform and opacity only. The reduced-motion block below flattens all of it.
+ */
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+}
+
+@keyframes float {
+  50% {
+    transform: translateY(-5px);
+  }
+}
+
+.anim-rise {
+  animation: rise 560ms var(--ease-out) both;
+  animation-delay: var(--d, 0ms);
+}
+
+/* Auth showcase: specialists orbit Sino. The ring spins, each figure
+   counter-spins by the same amount so it stays upright. */
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes spin-reverse {
+  to {
+    transform: rotate(-360deg);
+  }
+}
+
+@keyframes drift {
+  33% {
+    transform: translate(6%, -4%) scale(1.06);
+  }
+  66% {
+    transform: translate(-5%, 5%) scale(0.96);
+  }
+}
+
+@keyframes fade-swap {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+    filter: blur(4px);
+  }
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+}
+
+.anim-fade {
+  animation: fade-in 700ms var(--ease-out) both;
+}
+
+@keyframes dash {
+  to {
+    stroke-dashoffset: -120;
+  }
+}
+
+.anim-dash {
+  animation: dash 4s linear infinite;
+}
+
+.anim-orbit {
+  animation: spin var(--orbit-duration, 64s) linear infinite;
+}
+
+.anim-orbit-upright {
+  animation: spin-reverse var(--orbit-duration, 64s) linear infinite;
+}
+
+.anim-drift {
+  animation: drift var(--drift-duration, 22s) ease-in-out infinite;
+}
+
+.anim-swap {
+  animation: fade-swap 640ms var(--ease-out) both;
+}
+
+.anim-float {
+  animation: float 5.5s ease-in-out infinite;
+  animation-delay: var(--d, 0ms);
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -110,5 +152,86 @@ kbd {
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
+  }
+}
+
+/*
+ * SNGlow: the light around the main "Ask Sino" inputs. A conic gradient turns
+ * through the brand teal, aqua and mint tokens; ::before draws it as a 1px
+ * ring (masked to the border), ::after as a blurred aurora behind the input.
+ * The wrapper is the stacking context, so the aurora stays under the input's
+ * own background. @property lets the angle animate; browsers without it show
+ * a still gradient.
+ */
+@property --sn-glow-angle {
+  syntax: '<angle>';
+  inherits: false;
+  initial-value: 0deg;
+}
+
+@keyframes sn-glow-turn {
+  to {
+    --sn-glow-angle: 360deg;
+  }
+}
+
+.sn-glow {
+  position: relative;
+  isolation: isolate;
+  border-radius: var(--sn-glow-radius);
+}
+
+.sn-glow::before,
+.sn-glow::after {
+  content: '';
+  position: absolute;
+  border-radius: inherit;
+  pointer-events: none;
+  background: conic-gradient(
+    from var(--sn-glow-angle),
+    var(--teal-400),
+    var(--aqua-400),
+    var(--mint-200),
+    var(--teal-600),
+    var(--teal-400)
+  );
+  animation: sn-glow-turn 6s linear infinite;
+  transition: opacity 300ms var(--ease-out);
+}
+
+.sn-glow::before {
+  inset: -1px;
+  z-index: 1;
+  padding: 1px;
+  opacity: 0.55;
+  mask:
+    linear-gradient(black 0 0) content-box,
+    linear-gradient(black 0 0);
+  mask-composite: exclude;
+}
+
+.sn-glow::after {
+  inset: -10px;
+  z-index: -1;
+  filter: blur(22px);
+  opacity: 0.32;
+}
+
+.sn-glow:hover::after {
+  opacity: 0.45;
+}
+
+.sn-glow:focus-within::before {
+  opacity: 0.95;
+}
+
+.sn-glow:focus-within::after {
+  opacity: 0.6;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sn-glow::before,
+  .sn-glow::after {
+    animation: none;
   }
 }

@@ -25,9 +25,10 @@ The repo is an npm workspaces monorepo (`"workspaces": ["apps/*", "packages/*"]`
 | :--- | :--- | :--- |
 | `@sineva/web` | `apps/web` | The Next.js 16.4 app and BFF: routes, backend layers, client UI, Prisma. See [overview](overview.md). |
 | `@sineva/shared` | `packages/shared` | `ApiResponse<T>` and helpers (`createSuccessResponse`, `createPaginatedResponse`, `createErrorResponse`, `generateRequestId`), the `ErrorDetail`, `ResponseMeta` and `PaginationMeta` types, and the `snake_case` helpers (`toSnakeCase`, `isSnakeCaseKey`, `assertSnakeCaseKeys`). One test file: `response.test.ts`. |
-| `@sineva/ui` | `packages/ui` | `cn`, `Button`, `Card`, `Badge`, `Container`, `StatusPill`, built with Radix Slot, class-variance-authority and tailwind-merge. No tests of its own. |
+| `@sineva/card-schemas` | `packages/card-schemas` | Typed result card registry (ADR-0025): JSON Schema 2020-12 files in `schemas/{card_type}/v{n}.json`, an Ajv validator with the FR-AX-09 rules, pure upcasters, generated TypeScript types (`npm run generate`), and the drift test against the sineva-ai copy. Server only: the browser never imports it. Apps consume it through the `@sineva/card-schemas` path alias, like `@sineva/i18n`. |
+| `@sineva/ui` | `packages/ui` | The design system: vendored compro tokens (`src/styles`), `lib/` (`cx`, `focus`, `format`, `theme`), the component folders `primitives/`, `shell/`, `chat/`, `domain/`, `cards/` (static card registry and the fallback renderer) and a named-export `index.ts`. Every exported component starts with `SN` ([ADR-0028](../decisions/0028-sn-component-prefix-and-form-controls.md)); one folder per component under `primitives/` (`sn_button/sn_button.tsx`, `.test.tsx`, `.gallery.tsx`). Static class maps with `cx`, no tailwind-merge or cva. Radix (select, popover, dialog, dropdown-menu, tooltip, switch, avatar), cmdk, Sonner and lucide-react are its dependencies. Vitest with Testing Library and jsdom, and its own ESLint config (design rules). |
 
-Both packages are consumed as TypeScript source: `main`, `types` and `exports` point at `src/index.ts` (`src/index.tsx` for ui). `apps/web/next.config.ts` lists them in `transpilePackages`, so Next compiles them. Their `build` script is `tsc --noEmit`, which only type-checks and produces no `dist`.
+Both packages are consumed as TypeScript source: `main`, `types` and `exports` point at `src/index.ts`. `@sineva/ui` also exports `./format` and `./theme`; `apps/web` resolves `@sineva/ui`, `@sineva/ui/format` and `@sineva/ui/theme` through `paths` in its tsconfig and aliases in `vitest.config.ts`, so a linked worktree never resolves them to another checkout. `apps/web/next.config.ts` lists them in `transpilePackages`, so Next compiles them. Their `build` script is `tsc --noEmit`, which only type-checks and produces no `dist`.
 
 ## 2. Dependency graph
 
@@ -67,12 +68,12 @@ What each workspace runs for those tasks:
 | `test` | `vitest run` | `tsc --noEmit` | `vitest run` |
 | `test:integration` | none | none | `npm run db:generate && vitest run -c vitest.integration.config.ts` |
 
-Root scripts: `dev`, `build`, `lint`, `typecheck`, `test`, `test:integration` (all through turbo), `format` and `format:check` (prettier), `docker:up` and `docker:down`.
+Root scripts: `dev`, `build`, `lint`, `typecheck`, `test`, `test:integration` (all through turbo), `format` and `format:check` (prettier), `docker:up`, `docker:down` and `docker:reset`.
 
 Gotchas:
 
 - `@sineva/shared` and `@sineva/ui` have no real lint step: their `lint` is a type check. ESLint runs only in `@sineva/web`.
-- `npm run docker:down` runs `docker compose down -v` and deletes volumes, including the shared Postgres data. Use `docker compose down` to keep data.
+- `npm run docker:down` keeps volumes. `npm run docker:reset` runs `docker compose down -v`, deletes volumes including the shared Postgres data, and refuses to run without `CONFIRM_RESET=yes`.
 - Prisma commands (`db:generate`, `db:migrate:dev`, `db:migrate:deploy`, `db:seed`) are scripts of `@sineva/web`. From the root, run them as `npm --workspace=@sineva/web run <script>`.
 - `build`, `typecheck` and `test:integration` run `prisma generate` first, and `dev` does too. The generated client is gitignored build output.
 - `format:check` is not part of CI, and the code does not pass it today. See [coding standards](../engineering/coding_standards.md).
@@ -87,9 +88,10 @@ Gotchas:
 
 `@sineva/ui`:
 
-1. Create `packages/ui/src/<name>.tsx`, or add to `index.tsx` (the current components all live there).
-2. Style with semantic tokens (`var(--color-surface)`), not hex (R-30).
-3. Export it from `packages/ui/src/index.tsx`.
-4. The package has no test runner. Run `npm run typecheck`, and exercise the component through the web app.
+1. Write the failing Testing Library test first, in `packages/ui/src/<group>/<name>/<name>.test.tsx` (group: `primitives`, `shell`, `chat` or `domain`).
+2. Create `<name>.tsx` and `<name>.gallery.tsx` in the same folder. Style with semantic tokens as utilities, static class maps through `lib/cx.ts` (no `tailwind-merge`), logical properties, `focusRing` from `lib/focus.ts`. `npm run lint` fails on a hex, `rgb(`, `dark:`, `z-[n]` or physical-direction class in this package.
+3. Export it by name from the group's `index.ts` and from `src/index.ts`. No default exports, no `export *`.
+4. No import from `apps/web` and no server code (`architecture.test.ts` checks it). Data and callbacks come in as props.
+5. Token values are never edited here: see [design tokens](../design-context/design_tokens.md).
 
 A new workspace needs `build`, `lint`, `typecheck` and `test` scripts so turbo can run them, and an entry in the table above.

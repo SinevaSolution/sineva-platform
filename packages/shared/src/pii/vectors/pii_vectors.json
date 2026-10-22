@@ -1,0 +1,305 @@
+{
+  "version": 1,
+  "placeholders": {
+    "nik": "[NIK]",
+    "npwp": "[NPWP]",
+    "phone": "[PHONE]",
+    "bank_account": "[BANK_ACCOUNT]",
+    "email": "[EMAIL]",
+    "secret": "[SECRET]"
+  },
+  "cases": [
+    {
+      "id": "nik_valid_male",
+      "description": "Structurally valid NIK (province 32, day 15, month 08) without context",
+      "input": "Data pelanggan 3273011508900001 sudah dicek",
+      "expected_matches": [{ "kind": "nik", "text": "3273011508900001" }],
+      "expected_masked": "Data pelanggan [NIK] sudah dicek"
+    },
+    {
+      "id": "nik_valid_female_day_plus_40",
+      "description": "Female NIKs encode the birth day plus 40 (55 means day 15)",
+      "input": "3273015508900002",
+      "expected_matches": [{ "kind": "nik", "text": "3273015508900002" }],
+      "expected_masked": "[NIK]"
+    },
+    {
+      "id": "nik_context_overrides_structure",
+      "description": "A 16 digit run after a NIK keyword is masked even when the structure check fails (typos, test data)",
+      "input": "NIK: 1234567890123456",
+      "expected_matches": [{ "kind": "nik", "text": "1234567890123456" }],
+      "expected_masked": "NIK: [NIK]"
+    },
+    {
+      "id": "nik_context_ktp_keyword",
+      "description": "KTP is accepted as a context keyword",
+      "input": "No KTP 9999888877776666 atas nama Budi",
+      "expected_matches": [{ "kind": "nik", "text": "9999888877776666" }],
+      "expected_masked": "No KTP [NIK] atas nama Budi"
+    },
+    {
+      "id": "nik_negative_order_number_no_context",
+      "description": "16 digit order number, structure invalid (day 90), no context",
+      "input": "Order 1234567890123456 dikirim kemarin",
+      "expected_matches": [],
+      "expected_masked": "Order 1234567890123456 dikirim kemarin"
+    },
+    {
+      "id": "nik_negative_invalid_province",
+      "description": "16 digit run with province code 99, no context",
+      "input": "Invoice 9999888877776666",
+      "expected_matches": [],
+      "expected_masked": "Invoice 9999888877776666"
+    },
+    {
+      "id": "nik_negative_card_like",
+      "description": "Test card style number is not a NIK (province 41)",
+      "input": "4111111111111111",
+      "expected_matches": [],
+      "expected_masked": "4111111111111111"
+    },
+    {
+      "id": "nik_negative_17_digit_run",
+      "description": "A longer digit run is not sliced into a NIK",
+      "input": "32730115089000012",
+      "expected_matches": [],
+      "expected_masked": "32730115089000012"
+    },
+    {
+      "id": "npwp_formatted_with_context",
+      "description": "Formatted 15 digit NPWP after its keyword",
+      "input": "NPWP 01.234.567.8-091.000 PT Maju",
+      "expected_matches": [{ "kind": "npwp", "text": "01.234.567.8-091.000" }],
+      "expected_masked": "NPWP [NPWP] PT Maju"
+    },
+    {
+      "id": "npwp_formatted_without_context",
+      "description": "The dotted NPWP layout is distinctive enough to mask alone",
+      "input": "Dokumen 01.234.567.8-091.000 terlampir",
+      "expected_matches": [{ "kind": "npwp", "text": "01.234.567.8-091.000" }],
+      "expected_masked": "Dokumen [NPWP] terlampir"
+    },
+    {
+      "id": "npwp_plain_15_with_context",
+      "description": "Plain 15 digit NPWP needs the keyword",
+      "input": "NPWP: 012345678091000",
+      "expected_matches": [{ "kind": "npwp", "text": "012345678091000" }],
+      "expected_masked": "NPWP: [NPWP]"
+    },
+    {
+      "id": "npwp_plain_16_with_context",
+      "description": "16 digit NPWP (NIK based) with the keyword",
+      "input": "NPWP 0123456789012345",
+      "expected_matches": [{ "kind": "npwp", "text": "0123456789012345" }],
+      "expected_masked": "NPWP [NPWP]"
+    },
+    {
+      "id": "npwp_negative_plain_15_no_context",
+      "description": "Plain 15 digit run without keyword stays",
+      "input": "Nomor referensi 012345678091000",
+      "expected_matches": [],
+      "expected_masked": "Nomor referensi 012345678091000"
+    },
+    {
+      "id": "phone_plus62_separators",
+      "description": "+62 form with spaces and dashes",
+      "input": "Hubungi +62 812-3456-7890 besok",
+      "expected_matches": [{ "kind": "phone", "text": "+62 812-3456-7890" }],
+      "expected_masked": "Hubungi [PHONE] besok"
+    },
+    {
+      "id": "phone_62_plain",
+      "description": "62 form without plus",
+      "input": "WA 6281234567890",
+      "expected_matches": [{ "kind": "phone", "text": "6281234567890" }],
+      "expected_masked": "WA [PHONE]"
+    },
+    {
+      "id": "phone_08_trailing_dot",
+      "description": "08 form, sentence punctuation stays outside the match",
+      "input": "telp 081234567890.",
+      "expected_matches": [{ "kind": "phone", "text": "081234567890" }],
+      "expected_masked": "telp [PHONE]."
+    },
+    {
+      "id": "phone_08_space_and_dash_groups",
+      "description": "08 form with grouping",
+      "input": "0812 3456 7890 atau 0813-9876-5432",
+      "expected_matches": [
+        { "kind": "phone", "text": "0812 3456 7890" },
+        { "kind": "phone", "text": "0813-9876-5432" }
+      ],
+      "expected_masked": "[PHONE] atau [PHONE]"
+    },
+    {
+      "id": "phone_negative_short",
+      "description": "Too short to be a mobile number",
+      "input": "kode 08123 dan 0812345",
+      "expected_matches": [],
+      "expected_masked": "kode 08123 dan 0812345"
+    },
+    {
+      "id": "phone_negative_timestamp_and_money",
+      "description": "Millisecond timestamp and rupiah amount",
+      "input": "ts=1700000000000 total Rp 1.500.000",
+      "expected_matches": [],
+      "expected_masked": "ts=1700000000000 total Rp 1.500.000"
+    },
+    {
+      "id": "phone_negative_inside_longer_digit_run",
+      "description": "A phone-shaped tail of a longer number is not a phone",
+      "input": "20240812345678901",
+      "expected_matches": [],
+      "expected_masked": "20240812345678901"
+    },
+    {
+      "id": "bank_account_rek_keyword",
+      "description": "Account digits after a rekening keyword and bank name",
+      "input": "No rek BCA 1234567890 a.n. Budi",
+      "expected_matches": [{ "kind": "bank_account", "text": "1234567890" }],
+      "expected_masked": "No rek BCA [BANK_ACCOUNT] a.n. Budi"
+    },
+    {
+      "id": "bank_account_grouped_digits",
+      "description": "Grouped digits after Rekening Mandiri",
+      "input": "Rekening Mandiri: 123-00-1234567-8",
+      "expected_matches": [{ "kind": "bank_account", "text": "123-00-1234567-8" }],
+      "expected_masked": "Rekening Mandiri: [BANK_ACCOUNT]"
+    },
+    {
+      "id": "bank_account_english_keyword",
+      "description": "English keyword",
+      "input": "Account number: 9876543210",
+      "expected_matches": [{ "kind": "bank_account", "text": "9876543210" }],
+      "expected_masked": "Account number: [BANK_ACCOUNT]"
+    },
+    {
+      "id": "bank_negative_no_context",
+      "description": "Same digit run without a bank keyword is an order number",
+      "input": "No. pesanan 1234567890",
+      "expected_matches": [],
+      "expected_masked": "No. pesanan 1234567890"
+    },
+    {
+      "id": "bank_negative_too_short",
+      "description": "Keyword followed by a short number",
+      "input": "rekening koran periode 2024",
+      "expected_matches": [],
+      "expected_masked": "rekening koran periode 2024"
+    },
+    {
+      "id": "email_basic",
+      "description": "Email with plus tag and multi-label domain, trailing period",
+      "input": "Email budi.santoso+promo@contoh.co.id ya.",
+      "expected_matches": [{ "kind": "email", "text": "budi.santoso+promo@contoh.co.id" }],
+      "expected_masked": "Email [EMAIL] ya."
+    },
+    {
+      "id": "email_negative_mention_and_fragments",
+      "description": "Mentions and incomplete addresses are not emails",
+      "input": "@SinoHelp tolong cek user@ dan a@b",
+      "expected_matches": [],
+      "expected_masked": "@SinoHelp tolong cek user@ dan a@b"
+    },
+    {
+      "id": "secret_platform_pat",
+      "description": "Platform personal access token",
+      "input": "token snv_pat_abcdef1234567890abcdef dipakai",
+      "expected_matches": [{ "kind": "secret", "text": "snv_pat_abcdef1234567890abcdef" }],
+      "expected_masked": "token [SECRET] dipakai"
+    },
+    {
+      "id": "secret_bearer",
+      "description": "Authorization header value",
+      "input": "Authorization: Bearer abcdefghijklmnop1234567890.-_",
+      "expected_matches": [{ "kind": "secret", "text": "Bearer abcdefghijklmnop1234567890.-_" }],
+      "expected_masked": "Authorization: [SECRET]"
+    },
+    {
+      "id": "secret_pem_block",
+      "description": "Complete PEM private key block",
+      "input": "key=-----BEGIN PRIVATE KEY-----\nMC4CAQAwBQYDK2VwBCIEIFAKEFAKEFAKEFAKE\n-----END PRIVATE KEY----- end",
+      "expected_matches": [
+        {
+          "kind": "secret",
+          "text": "-----BEGIN PRIVATE KEY-----\nMC4CAQAwBQYDK2VwBCIEIFAKEFAKEFAKEFAKE\n-----END PRIVATE KEY-----"
+        }
+      ],
+      "expected_masked": "key=[SECRET] end"
+    },
+    {
+      "id": "secret_pem_block_truncated",
+      "description": "A truncated log line cut inside the PEM block still masks everything after BEGIN",
+      "input": "key=-----BEGIN PRIVATE KEY-----\nMC4CAQAwBQYDK2VwBCIEIFAKE",
+      "expected_matches": [
+        {
+          "kind": "secret",
+          "text": "-----BEGIN PRIVATE KEY-----\nMC4CAQAwBQYDK2VwBCIEIFAKE"
+        }
+      ],
+      "expected_masked": "key=[SECRET]"
+    },
+    {
+      "id": "secret_anthropic_key",
+      "description": "Provider key prefix sk-ant-",
+      "input": "ANTHROPIC=sk-ant-api03-FAKEFAKEFAKEFAKEFAKEFAKE",
+      "expected_matches": [{ "kind": "secret", "text": "sk-ant-api03-FAKEFAKEFAKEFAKEFAKEFAKE" }],
+      "expected_masked": "ANTHROPIC=[SECRET]"
+    },
+    {
+      "id": "secret_openai_style_key",
+      "description": "Provider key prefix sk-",
+      "input": "sk-proj-FAKEFAKEFAKEFAKEFAKEFAKE1234",
+      "expected_matches": [{ "kind": "secret", "text": "sk-proj-FAKEFAKEFAKEFAKEFAKEFAKE1234" }],
+      "expected_masked": "[SECRET]"
+    },
+    {
+      "id": "secret_github_token",
+      "description": "GitHub personal token prefix ghp_ with 36 characters",
+      "input": "gh ghp_abcdefghijklmnopqrstuvwxyz0123456789 ok",
+      "expected_matches": [{ "kind": "secret", "text": "ghp_abcdefghijklmnopqrstuvwxyz0123456789" }],
+      "expected_masked": "gh [SECRET] ok"
+    },
+    {
+      "id": "secret_aws_access_key",
+      "description": "AWS access key id",
+      "input": "AKIAABCDEFGHIJKLMNOP",
+      "expected_matches": [{ "kind": "secret", "text": "AKIAABCDEFGHIJKLMNOP" }],
+      "expected_masked": "[SECRET]"
+    },
+    {
+      "id": "secret_google_api_key",
+      "description": "Google API key prefix AIza with 35 characters",
+      "input": "key=AIzaabcdefghijklmnopqrstuvwxyz0123456_-",
+      "expected_matches": [{ "kind": "secret", "text": "AIzaabcdefghijklmnopqrstuvwxyz0123456_-" }],
+      "expected_masked": "key=[SECRET]"
+    },
+    {
+      "id": "secret_negative_plain_words",
+      "description": "Ordinary text that resembles prefixes",
+      "input": "Bearer of bad news, sk-8 skate, snv_pat_ only",
+      "expected_matches": [],
+      "expected_masked": "Bearer of bad news, sk-8 skate, snv_pat_ only"
+    },
+    {
+      "id": "mixed_all_kinds",
+      "description": "Several kinds in one line, positions independent",
+      "input": "NIK 3273011508900001 telp 081234567890 email a.b@contoh.id rek BCA 1234567890 token snv_pat_abcdef1234567890abcdef",
+      "expected_matches": [
+        { "kind": "nik", "text": "3273011508900001" },
+        { "kind": "phone", "text": "081234567890" },
+        { "kind": "email", "text": "a.b@contoh.id" },
+        { "kind": "bank_account", "text": "1234567890" },
+        { "kind": "secret", "text": "snv_pat_abcdef1234567890abcdef" }
+      ],
+      "expected_masked": "NIK [NIK] telp [PHONE] email [EMAIL] rek BCA [BANK_ACCOUNT] token [SECRET]"
+    },
+    {
+      "id": "negative_plain_indonesian_sentence",
+      "description": "Ordinary Indonesian business text is untouched",
+      "input": "Halo kak, pesanan #4521 sudah dikirim jam 14.30, total Rp 250.000. Terima kasih!",
+      "expected_matches": [],
+      "expected_masked": "Halo kak, pesanan #4521 sudah dikirim jam 14.30, total Rp 250.000. Terima kasih!"
+    }
+  ]
+}

@@ -9,9 +9,15 @@ async function truncatePlatformTables(): Promise<void> {
   // One statement: Postgres truncates the listed tables atomically, and
   // CASCADE covers any dependent table that is not listed.
   await prisma.$executeRawUnsafe(
-    'TRUNCATE TABLE "platform"."chat_messages", "platform"."chat_sessions", ' +
-      '"platform"."storage_objects", "platform"."agent_configs", ' +
-      '"platform"."users", "platform"."workspaces" CASCADE',
+    'TRUNCATE TABLE "platform"."chat_runs", "platform"."messages", "platform"."conversations", ' +
+      '"platform"."storage_objects", ' +
+      '"platform"."workspace_member_specialists", "platform"."workspace_members", ' +
+      '"platform"."workspace_invitations", "platform"."ownership_transfers", "platform"."sessions", "platform"."accounts", ' +
+      '"platform"."verifications", "platform"."platform_staff", "platform"."auth_login_attempts", ' +
+      '"platform"."workspaces", "platform"."users", ' +
+      // No foreign key links these to the tables above (audit rows outlive
+      // their workspace by design), so CASCADE does not reach them.
+      '"platform"."audit_events", "platform"."signing_keys" CASCADE',
   );
 }
 

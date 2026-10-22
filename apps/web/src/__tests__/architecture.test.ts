@@ -137,6 +137,31 @@ describe('Architecture: backend/frontend split', () => {
     expect(violations(client, ['@/server', 'server-only'])).toEqual([]);
   });
 
+  it('the card validator stays on the server: the client never imports @sineva/card-schemas', () => {
+    // Ajv compiles schemas with `new Function`, which a CSP without
+    // unsafe-eval blocks, and the validator is the authority only on the
+    // server anyway (ADR-0025). The browser renders what the relay forwarded.
+    expect(violations(collect('client'), ['@sineva/card-schemas'])).toEqual([]);
+    expect(violations(collect('shared'), ['@sineva/card-schemas'])).toEqual([]);
+  });
+
+  it('packages/ui cards and packages/card-schemas import no app code', () => {
+    const PACKAGES_ROOT = resolve(SRC_ROOT, '..', '..', '..', 'packages');
+    const files = [
+      ...walk(join(PACKAGES_ROOT, 'ui', 'src', 'cards')),
+      ...walk(join(PACKAGES_ROOT, 'card-schemas', 'src')),
+    ].filter((file) => /\.(ts|tsx)$/.test(file));
+    expect(files.length).toBeGreaterThan(0);
+    // parseImports rewrites relative specifiers to `@/../..`; only a real
+    // `@/` alias (app code) counts here.
+    const offenders = files.flatMap((file) =>
+      parseImports(file, readFileSync(file, 'utf8'))
+        .filter((specifier) => /^@\/(?!\.\.\/)|^server-only$/.test(specifier))
+        .map((specifier) => `${relative(PACKAGES_ROOT, file)} -> ${specifier}`),
+    );
+    expect(offenders).toEqual([]);
+  });
+
   it('domain layer is framework- and ORM-free and depends on nothing outward', () => {
     const domain = collect('server/domain');
     expect(domain.length).toBeGreaterThan(0);
@@ -208,5 +233,109 @@ describe('Architecture: backend/frontend split', () => {
         ['@/server/infrastructure/openapi'],
       ),
     ).toEqual([]);
+  });
+});
+
+// packages/ui is imported by apps/web and never the other way round (R-08,
+// FR-DS-02). It holds no server code and no shared state: it takes props and
+// callbacks. Relative imports must stay inside the package.
+describe('Architecture: packages/ui boundary', () => {
+  const UI_ROOT = resolve(SRC_ROOT, '../../../packages/ui');
+  const uiFiles = walk(join(UI_ROOT, 'src')).filter(
+    (file) =>
+      /\.(ts|tsx)$/.test(file) &&
+      // Lint fixtures are broken on purpose and contain the banned imports.
+      !file.includes('/__tests__/lint_fixtures/'),
+  );
+
+  function importsOf(file: string): string[] {
+    return [...stripComments(readFileSync(file, 'utf8')).matchAll(IMPORT_PATTERN)].map(
+      (match) => match[1]!,
+    );
+  }
+
+  it('has source to check', () => {
+    expect(uiFiles.length).toBeGreaterThan(5);
+  });
+
+  it('never imports from apps/web, the @ alias or server-only', () => {
+    const offenders = uiFiles.flatMap((file) =>
+      importsOf(file)
+        .filter(
+          (specifier) =>
+            specifier.startsWith('@/') ||
+            specifier === '@sineva/web' ||
+            specifier.startsWith('@sineva/web/') ||
+            specifier === 'server-only',
+        )
+        .map((specifier) => `${relative(UI_ROOT, file)} -> ${specifier}`),
+    );
+    expect(offenders).toEqual([]);
+  });
+
+  it('keeps every relative import inside packages/ui', () => {
+    const offenders = uiFiles.flatMap((file) =>
+      importsOf(file)
+        .filter((specifier) => specifier.startsWith('.'))
+        .filter((specifier) => {
+          const target = resolve(dirname(file), specifier);
+          return target !== UI_ROOT && !target.startsWith(`${UI_ROOT}/`);
+        })
+        .map((specifier) => `${relative(UI_ROOT, file)} -> ${specifier}`),
+    );
+    expect(offenders).toEqual([]);
+  });
+
+  it('does not depend on the store, next or the router', () => {
+    const offenders = uiFiles
+      .filter((file) => !file.includes('/__tests__/'))
+      .flatMap((file) =>
+        importsOf(file)
+          .filter((specifier) => /^(?:next|next\/.*|react-redux|@reduxjs\/toolkit)$/.test(specifier))
+          .map((specifier) => `${relative(UI_ROOT, file)} -> ${specifier}`),
+      );
+    expect(offenders).toEqual([]);
+  });
+});
+
+// FR-UX-43: heavy libraries load only where they are used. A static import in
+// a shared module drags the library into the shared client chunk; the post-build
+// bundle report (scripts/bundle_report.mjs) catches what slips through, this
+// catches it at the source.
+describe('Architecture: heavy libraries are lazy', () => {
+  const HEAVY =
+    /^(?:three(?:\/.*)?|gsap(?:\/.*)?|recharts|@tiptap\/.*|@dnd-kit\/.*|@react-three\/.*)$/;
+  const STATIC_IMPORT =
+    /(?:^|\n)\s*(?:import|export)\s+(?!type\b)[^'"\n;]*?(?:from\s*)?['"]([^'"]+)['"]/g;
+
+  /** Static (not dynamic) import specifiers of heavy libraries in a source text. */
+  function heavyStaticImports(source: string): string[] {
+    return [...stripComments(source).matchAll(STATIC_IMPORT)]
+      .map((match) => match[1]!)
+      .filter((specifier) => HEAVY.test(specifier));
+  }
+
+  const isLazyModule = (rel: string) =>
+    /\.lazy\.(ts|tsx)$/.test(rel) || /(^|\/)lazy\//.test(rel);
+
+  it('detects a static heavy import and ignores a dynamic one', () => {
+    expect(heavyStaticImports("import gsap from 'gsap';\n")).toEqual(['gsap']);
+    expect(heavyStaticImports("import { LineChart } from 'recharts';\n")).toEqual(['recharts']);
+    expect(heavyStaticImports("const gsap = await import('gsap');\n")).toEqual([]);
+    expect(heavyStaticImports("import type { Core } from 'gsap';\n")).toEqual([]);
+  });
+
+  it('keeps three, GSAP, Recharts, Tiptap and dnd-kit out of every non-lazy module', () => {
+    const files = [
+      ...collect('client'),
+      ...collect('app').filter((file) => !file.rel.startsWith('app/api/')),
+    ];
+    expect(files.length).toBeGreaterThan(0);
+    const offenders = files
+      .filter((file) => !isLazyModule(file.rel))
+      .flatMap((file) =>
+        heavyStaticImports(file.content).map((specifier) => `${file.rel} -> ${specifier}`),
+      );
+    expect(offenders).toEqual([]);
   });
 });

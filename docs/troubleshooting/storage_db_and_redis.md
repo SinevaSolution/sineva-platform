@@ -48,9 +48,9 @@ The runtime client has a 5 second connect timeout, so an unreachable database fa
 
 Check, in order: the host part of the container's `DATABASE_URL` is `postgres` and not `localhost`; the password matches the volume; `docker compose ps` shows `sineva-postgres` healthy. If `DATABASE_URL` was never set in a deployed container, `getEnvConfig()` falls back to `localhost` with the dev credentials and fails to connect ([environment variables](../deployment/environment_variables.md)).
 
-The health endpoint does not help here: it reports Postgres `healthy` whenever `DATABASE_URL` is set. Test the database with `GET /api/v1/agents`, which queries it on a cache miss.
+The health endpoint does not help here: it reports Postgres `healthy` whenever `DATABASE_URL` is set. Test the database with a call that queries it, such as signing in, or with `psql`.
 
-### `relation "platform.agent_configs" does not exist`
+### `relation "platform.users" does not exist`
 
 Cause: migrations were not applied to this database. Compose starts services but does not migrate.
 
@@ -60,17 +60,9 @@ Fix: run the release step with `?schema=platform` on the URL ([migrations workfl
 docker exec sineva-postgres psql -U sineva_user -d sineva_platform -c '\dt platform.*'
 ```
 
-### Dashboard or `/api/v1/agents` is empty
+### The specialist list is missing or empty
 
-The tables exist but hold no rows. Run `npm --workspace=@sineva/web run db:seed` against the database. It is idempotent. If rows exist but are duplicated or the slugs start with `sino-`, see [stale slugs](docker_and_internal_network.md#stale-sino--rows).
-
-### `Agent 'x' has unknown category` (or status, or capabilities)
-
-Symptom: `GET /api/v1/agents` returns 500 with a message like `Agent 'x' has unknown category 'y'`.
-
-Cause: a row has a value the domain does not accept. Columns are free text, so any writer can store one. The adapter throws on purpose, and one bad row fails the whole page.
-
-Fix: correct the row (valid categories are `people_hr`, `finance_ops`, `sales_growth`, `social_marketing`, `customer_support`, `data_insights`; statuses are `online`, `standby`, `busy`, `maintenance`; `capabilities` must be an array of strings) or delete it. Find who wrote it.
+The specialists in the app come from a static manifest in code, not from the database, so an empty list is not a database problem. If the sidebar or Home shows none, check `src/shared/specialists/manifest.ts`. If `GET /api/v1/workspaces/{workspace_id}/agents` fails, it is sineva-ai: 503 means it is unreachable, 502 means it answered badly or its catalog does not list a specialist the manifest presents (`catalog_drift`) ([agents endpoint](../api-spec/agents_and_chat_endpoints.md)).
 
 ### Migration history in `public`
 
@@ -82,7 +74,7 @@ Prisma says it needs to reset the schema, or reports drift. Never accept it on a
 
 ### Data disappeared after a restart or a "cleanup"
 
-`npm run docker:down` runs `docker compose down -v` and deletes the Postgres volume, including `sineva-ai`'s data. After it, both services need their migrations again (the platform's `migrate deploy` and `seed`, and the engine's `alembic upgrade head`). Use `docker compose down` to keep data.
+`npm run docker:reset` (`docker compose down -v`, guarded by `CONFIRM_RESET=yes`) deletes the Postgres volume, including `sineva-ai`'s data. `npm run docker:down` keeps it. After it, both services need their migrations again (the platform's `migrate deploy` and `seed`, and the engine's `alembic upgrade head`). Use `docker compose down` to keep data.
 
 ## SeaweedFS and presigned uploads
 
@@ -90,13 +82,13 @@ Prisma says it needs to reset the schema, or reports drift. Never accept it on a
 
 `SignatureDoesNotMatch`, `NoSuchBucket`, `AccessDenied`, or a hostname the browser cannot resolve.
 
-1. Look at the URL the presign call returned. A valid one carries `X-Amz-Signature`. If it has only `X-Amz-Expires`, signing threw inside `SeaweedStorageRepository.createPresignedUploadUrl`, which returns an unsigned URL instead of failing (known debt). Look for the cause in the container's logs and in the S3 variables.
-2. Check the host in the URL. It comes from `S3_ENDPOINT`, which compose sets to `http://seaweedfs-s3:8333`, a name only containers can resolve. A browser outside Docker needs an endpoint it can reach ([ADR-0002](../decisions/0002-seaweedfs-presigned-uploads.md)).
+1. A signing failure never produces a URL: the presign route answers 502. Look for `[storage] presigned upload url generation failed` in the container's logs and check the S3 variables.
+2. Check the host in the URL. It comes from `S3_PUBLIC_ENDPOINT`, which must be an address the browser can reach. `S3_ENDPOINT` (the Docker name `http://seaweedfs-s3:8333`) is only used for server-to-storage calls such as the health probe ([ADR-0002](../decisions/0002-seaweedfs-presigned-uploads.md)).
 3. Path-style addressing must be on (`S3_FORCE_PATH_STYLE` unset or `true`): `http://host:8333/sineva-assets/<key>`.
 4. The `PUT` must send the same `Content-Type` that was passed to presign (`content_type`).
 5. Check the S3 gateway: `docker logs sineva-seaweedfs-s3 --tail 50`.
 
-The health endpoint reports S3 `healthy` whenever an endpoint is configured, without contacting it.
+The health endpoint reports S3 `standby` when `HeadBucket` fails or takes longer than 1.5 seconds.
 
 ## Redis and the cache
 
@@ -104,6 +96,6 @@ Current: the platform does not use Redis. `RedisCacheRepository` keeps entries i
 
 - `redis-cli KEYS "sineva:platform:*"` finds nothing from the platform. Do not conclude Redis is broken.
 - The health endpoint shows Redis `healthy` even when Redis is stopped.
-- The cache is per process and lost on restart. List results are cached for 30 seconds. After `POST /api/v1/agents`, only the page-1 key for 10 per page is cleared, so the dashboard (20 per page) can show the old list for up to 30 seconds.
+- The cache is per process and lost on restart. The specialist roster is not cached here: it is fetched from sineva-ai on every request.
 
 Compose points `sineva-ai` at Redis database 1 (`redis://redis:6379/1`) and the platform's configured database is 0. Whether `sineva-ai` currently writes to it is not checked here.

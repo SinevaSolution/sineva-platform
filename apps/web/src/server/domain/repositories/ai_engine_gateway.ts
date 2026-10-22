@@ -1,14 +1,47 @@
-// The chat shapes below mirror what sineva-ai returns (sineva-ai owns that
-// contract), so field names are sineva-ai's. `latency_ms` is the only field the
-// platform adds: it is measured around the upstream call.
+import type { AgentCatalog } from '@/server/domain/specialists/agent_catalog';
+import type {
+  ChatTurnRequestV2,
+  ChatTurnResultV2,
+  ParsedSseMessage,
+} from '@/server/domain/chat/chat_v2';
 
+// Contract v2 Gateway Call Types (WP-M0-28, FR-AIR-05 to FR-AIR-09)
+export interface ChatTurnCallOptions {
+  agentSlug: string;
+  request: ChatTurnRequestV2;
+  contextToken: string;
+  requestId?: string;
+  traceparent?: string;
+}
+
+export interface StreamCallOptions {
+  agentSlug: string;
+  request: ChatTurnRequestV2;
+  contextToken: string;
+  requestId?: string;
+  traceparent?: string;
+}
+
+export interface RunEventsResult {
+  run_id: string;
+  events: ParsedSseMessage[];
+  has_more: boolean;
+}
+
+export interface CancelRunResult {
+  run_id: string;
+  status: string;
+  cancelled_at: string;
+}
+
+// Legacy Contract v1 shapes (retained for backward compatibility during transition)
 export interface AiEngineChatRequest {
   agent_slug: string;
-  // Optional: sineva-ai creates a session when it is omitted.
   session_id?: string;
   user_id: string;
   message_text: string;
   context_metadata?: Record<string, unknown>;
+  request_id?: string;
 }
 
 export interface AiEngineToolCall {
@@ -49,13 +82,31 @@ export interface AiEngineHealthResult {
 }
 
 export interface AiEngineGateway {
-  /**
-   * @throws UpstreamServiceError when sineva-ai answers with a non-2xx status
-   *   or a body that does not match its contract.
-   * @throws UpstreamUnavailableError when sineva-ai cannot be reached.
-   */
-  dispatchAgentChat(
-    payload: AiEngineChatRequest,
-  ): Promise<AiEngineChatResponse>;
+  // Contract v2 methods
+  chatTurn(options: ChatTurnCallOptions): Promise<ChatTurnResultV2 & { latency_ms: number }>;
+  chatStream(options: StreamCallOptions): Promise<ReadableStream<Uint8Array>>;
+  listAgents(options: {
+    contextToken?: string;
+    requestId?: string;
+    traceparent?: string;
+  }): Promise<AgentCatalog>;
+  getRunEvents(options: {
+    runId: string;
+    afterSeq?: number;
+    contextToken?: string;
+    requestId?: string;
+    traceparent?: string;
+  }): Promise<RunEventsResult>;
+  cancelRun(options: {
+    runId: string;
+    contextToken?: string;
+    requestId?: string;
+    traceparent?: string;
+  }): Promise<CancelRunResult>;
+
+  // Health probe
   checkHealth(): Promise<AiEngineHealthResult>;
+
+  // Legacy v1 interface
+  dispatchAgentChat(payload: AiEngineChatRequest): Promise<AiEngineChatResponse>;
 }

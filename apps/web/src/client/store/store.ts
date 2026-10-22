@@ -1,12 +1,10 @@
 import { configureStore } from '@reduxjs/toolkit';
-import agentReducer from './slices/agent_slice';
-import workspaceReducer from './slices/workspace_slice';
+import uiReducer from './slices/ui_slice';
 
 export function makeStore() {
   return configureStore({
     reducer: {
-      agent_companion: agentReducer,
-      workspace: workspaceReducer,
+      ui: uiReducer,
     },
   });
 }

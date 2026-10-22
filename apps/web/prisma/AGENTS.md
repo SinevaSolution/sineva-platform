@@ -31,14 +31,14 @@ Print the host and database name of `DATABASE_URL`. If it is not a local throwaw
 | `db:generate` | rebuild the client; needs no DB | not needed |
 | `db:migrate:dev` | create and apply a migration | throwaway DB, plain URL, no `?schema` |
 | `db:migrate:deploy` | apply committed migrations (release step) | `...?schema=platform` |
-| `db:seed` | upsert the six companions by `agent_slug` | the target DB |
+| `db:seed` | upsert two development tenants by natural key (no specialist rows) | the target DB |
 
 Why the URL differs: with a plain URL, Prisma puts `_prisma_migrations` in `public`. With `?schema=platform` it goes to `platform`, but `migrate dev` then writes SQL without schema prefixes. So `migrate dev` uses the plain URL on a throwaway DB, and `migrate deploy` on a shared DB uses `?schema=platform`. Deploying with the wrong form fails with P3005 or splits the history across two schemas.
 
 ## Seed
 
-`seed.ts` is idempotent: it upserts by `agent_slug`, and a re-run refreshes only catalogue columns (name, description, capabilities, model, accent). It never overwrites status, latency, session or token counters. Keep new seed data keyed by a natural unique column. It runs outside Next.js and must not import `prisma_client.ts` (`server-only`).
+`seed.ts` is idempotent: it upserts development tenants, users and memberships by natural key. It seeds no specialists: the roster is sineva-ai's catalog presented through the static manifest in `src/shared/specialists/manifest.ts` (ADR-0024), and the old `agent_configs` table is dropped. Keep new seed data keyed by a natural unique column. It runs outside Next.js and must not import `prisma_client.ts` (`server-only`).
 
 ## Slugs
 
-Canonical: `sinopeople`, `sinofinance`, `sinosales`, `sinosocial`, `sinohelp`, `sinoinsights`. A database seeded with old `sino-*` slugs keeps those rows after a re-seed. See the workflow doc for the data fix.
+Canonical: `sinopeople`, `sinofinance`, `sinosales`, `sinosocial`, `sinohelp`, `sinoinsights`. The platform stores no specialist rows, so stale `sino-*` rows went with `agent_configs` (migration `20261022120000_drop_agent_configs`).

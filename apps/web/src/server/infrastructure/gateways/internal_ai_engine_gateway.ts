@@ -1,6 +1,10 @@
 import 'server-only';
+import crypto from 'node:crypto';
 import { z } from 'zod';
 import {
+  ContextInvalidError,
+  DependencyUnavailableError,
+  ModelUnavailableError,
   UpstreamServiceError,
   UpstreamUnavailableError,
 } from '@/server/domain/errors/domain_error';
@@ -9,19 +13,41 @@ import type {
   AiEngineChatResponse,
   AiEngineGateway,
   AiEngineHealthResult,
+  CancelRunResult,
+  ChatTurnCallOptions,
+  RunEventsResult,
+  StreamCallOptions,
 } from '@/server/domain/repositories/ai_engine_gateway';
+import {
+  agentCatalogEnvelopeV2Schema,
+  agentCatalogV2Schema,
+  chatTurnResultEnvelopeV2Schema,
+  chatTurnResultV2Schema,
+  parseSseTranscript,
+} from './ai_engine_v2_schemas';
+import type { ChatTurnResultV2 } from '@/server/domain/chat/chat_v2';
+import type { AgentCatalog } from '@/server/domain/specialists/agent_catalog';
 import { getEnvConfig } from '../config/env';
+import { logger, utf8ByteLength } from '../logging/logger';
 
 const INTERNAL_API_KEY_HEADER = 'X-Internal-Api-Key';
-const HEALTH_TIMEOUT_MS = 1200;
-// Enough to diagnose a failure from logs without dumping a whole page.
-const LOGGED_BODY_MAX_CHARS = 500;
+const SINEVA_CONTEXT_HEADER = 'X-Sineva-Context';
+const REQUEST_ID_HEADER = 'X-Request-Id';
 
-// Mirrors sineva-ai's ChatResponseDTO and its success envelope. The schema is
-// not `.strict()`: unknown fields are dropped so sineva-ai can add fields
-// without breaking the platform, while a missing or mistyped field still fails
-// loudly. `z.string().datetime({ offset: true })` accepts both `Z` and
-// `+00:00`, since the Python side may emit either.
+// Machine-code shape accepted from an upstream error body.
+const SAFE_UPSTREAM_CODE = /^[A-Za-z][A-Za-z0-9_]{0,63}$/;
+const TRACEPARENT_HEADER = 'traceparent';
+
+const HEALTH_TIMEOUT_MS = 1200;
+const STANDARD_CALL_TIMEOUT_MS = 5000;
+
+export function generateTraceparent(): string {
+  const traceId = crypto.randomBytes(16).toString('hex');
+  const spanId = crypto.randomBytes(8).toString('hex');
+  return `00-${traceId}-${spanId}-01`;
+}
+
+// Legacy v1 schema
 const citationSchema = z.object({
   document_id: z.string().uuid(),
   title: z.string(),
@@ -57,18 +83,403 @@ const chatEnvelopeSchema = z.object({
 });
 
 export class InternalAiEngineGateway implements AiEngineGateway {
-  async dispatchAgentChat(
-    payload: AiEngineChatRequest,
-  ): Promise<AiEngineChatResponse> {
+  /**
+   * Contract v2 Chat Turn (WP-M0-28, FR-AIR-07, FR-AIR-08)
+   */
+  async chatTurn(
+    options: ChatTurnCallOptions,
+  ): Promise<ChatTurnResultV2 & { latency_ms: number }> {
+    const env = getEnvConfig();
+    const startedAt = Date.now();
+    const url = `${env.ai_engine_internal_url}/api/v2/agents/${encodeURIComponent(options.agentSlug)}/chat`;
+
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), env.ai_engine_timeout_ms);
+
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+      [INTERNAL_API_KEY_HEADER]: env.ai_engine_internal_api_key,
+      [SINEVA_CONTEXT_HEADER]: options.contextToken,
+      [TRACEPARENT_HEADER]: options.traceparent || generateTraceparent(),
+      [REQUEST_ID_HEADER]: options.requestId || crypto.randomUUID(),
+    };
+
+    let status: number;
+    let rawBody: string;
+
+    try {
+      const response = await fetch(url, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify(options.request),
+        signal: controller.signal,
+      });
+      status = response.status;
+      rawBody = await response.text();
+    } catch (error) {
+      logger.error('ai_engine.request_failed', {
+        reason: error instanceof Error ? error.name : 'unknown',
+        aborted: controller.signal.aborted,
+      });
+      throw new UpstreamUnavailableError();
+    } finally {
+      clearTimeout(timeout);
+    }
+
+    if (status < 200 || status >= 300) {
+      this.handleUpstreamError(status, rawBody);
+    }
+
+    let json: unknown;
+    try {
+      json = JSON.parse(rawBody);
+    } catch {
+      logger.error('ai_engine.non_json', {
+        status,
+        byte_length: utf8ByteLength(rawBody),
+      });
+      throw new UpstreamServiceError();
+    }
+
+    // Try envelope first, then direct
+    const envelopeParsed = chatTurnResultEnvelopeV2Schema.safeParse(json);
+    if (envelopeParsed.success) {
+      return {
+        ...envelopeParsed.data.data,
+        latency_ms: Date.now() - startedAt,
+      };
+    }
+
+    const directParsed = chatTurnResultV2Schema.safeParse(json);
+    if (directParsed.success) {
+      return {
+        ...directParsed.data,
+        latency_ms: Date.now() - startedAt,
+      };
+    }
+
+    logger.error('ai_engine.contract_violation', {
+      status,
+      byte_length: utf8ByteLength(rawBody),
+    });
+    throw new UpstreamServiceError();
+  }
+
+  /**
+   * Contract v2 SSE Stream (WP-M0-28, FR-AIR-10)
+   */
+  async chatStream(options: StreamCallOptions): Promise<ReadableStream<Uint8Array>> {
+    const env = getEnvConfig();
+    const url = `${env.ai_engine_internal_url}/api/v2/agents/${encodeURIComponent(options.agentSlug)}/chat/stream`;
+
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), env.ai_engine_timeout_ms);
+
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+      Accept: 'text/event-stream',
+      [INTERNAL_API_KEY_HEADER]: env.ai_engine_internal_api_key,
+      [SINEVA_CONTEXT_HEADER]: options.contextToken,
+      [TRACEPARENT_HEADER]: options.traceparent || generateTraceparent(),
+      [REQUEST_ID_HEADER]: options.requestId || crypto.randomUUID(),
+    };
+
+    try {
+      const response = await fetch(url, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify(options.request),
+        signal: controller.signal,
+      });
+
+      if (!response.ok) {
+        const rawBody = await response.text();
+        this.handleUpstreamError(response.status, rawBody);
+      }
+
+      if (!response.body) {
+        throw new UpstreamServiceError('Stream body is empty');
+      }
+
+      return response.body;
+    } catch (error) {
+      if (
+        error instanceof UpstreamServiceError ||
+        error instanceof UpstreamUnavailableError ||
+        error instanceof ModelUnavailableError ||
+        error instanceof DependencyUnavailableError ||
+        error instanceof ContextInvalidError
+      ) {
+        throw error;
+      }
+      logger.error('ai_engine.request_failed', {
+        reason: error instanceof Error ? error.name : 'unknown',
+      });
+      throw new UpstreamUnavailableError();
+    } finally {
+      clearTimeout(timeout);
+    }
+  }
+
+  /**
+   * The specialist catalog (`GET /api/v2/agents`). Called with the internal key
+   * only: the catalog is not tenant data, so no signed context is needed.
+   * Unreachable is 503; a non-2xx, non-JSON or off-contract answer is 502.
+   * Never cached here, so a down sineva-ai cannot be hidden behind a stale list.
+   */
+  async listAgents(options: {
+    contextToken?: string;
+    requestId?: string;
+    traceparent?: string;
+  }): Promise<AgentCatalog> {
+    const env = getEnvConfig();
+    const url = `${env.ai_engine_internal_url}/api/v2/agents`;
+
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), STANDARD_CALL_TIMEOUT_MS);
+
+    const headers: Record<string, string> = {
+      [INTERNAL_API_KEY_HEADER]: env.ai_engine_internal_api_key,
+      [TRACEPARENT_HEADER]: options.traceparent || generateTraceparent(),
+      [REQUEST_ID_HEADER]: options.requestId || crypto.randomUUID(),
+    };
+    if (options.contextToken) {
+      headers[SINEVA_CONTEXT_HEADER] = options.contextToken;
+    }
+
+    let status: number;
+    let rawBody: string;
+    try {
+      const response = await fetch(url, {
+        method: 'GET',
+        headers,
+        signal: controller.signal,
+      });
+      status = response.status;
+      rawBody = await response.text();
+    } catch (error) {
+      logger.error('ai_engine.request_failed', {
+        reason: error instanceof Error ? error.name : 'unknown',
+        aborted: controller.signal.aborted,
+      });
+      throw new UpstreamUnavailableError();
+    } finally {
+      clearTimeout(timeout);
+    }
+
+    if (status < 200 || status >= 300) {
+      this.handleUpstreamError(status, rawBody);
+    }
+
+    let json: unknown;
+    try {
+      json = JSON.parse(rawBody);
+    } catch {
+      logger.error('ai_engine.non_json', { status, byte_length: utf8ByteLength(rawBody) });
+      throw new UpstreamServiceError();
+    }
+
+    // Envelope first, then the bare body, as for the chat turn.
+    const parsed = agentCatalogEnvelopeV2Schema.safeParse(json);
+    if (parsed.success) {
+      return parsed.data.data;
+    }
+    const direct = agentCatalogV2Schema.safeParse(json);
+    if (direct.success) {
+      return direct.data;
+    }
+
+    // Paths only: a Zod message can quote the offending value.
+    logger.error('ai_engine.contract_violation', {
+      status,
+      issue_paths: direct.error.issues.map((issue) => issue.path.join('.')),
+    });
+    throw new UpstreamServiceError();
+  }
+
+  /**
+   * Retrieves events for a run (replay)
+   */
+  async getRunEvents(options: {
+    runId: string;
+    afterSeq?: number;
+    contextToken?: string;
+    requestId?: string;
+    traceparent?: string;
+  }): Promise<RunEventsResult> {
+    const env = getEnvConfig();
+    const query = options.afterSeq !== undefined ? `?after=${options.afterSeq}` : '';
+    const url = `${env.ai_engine_internal_url}/api/v2/runs/${encodeURIComponent(options.runId)}/events${query}`;
+
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), STANDARD_CALL_TIMEOUT_MS);
+
+    const headers: Record<string, string> = {
+      [INTERNAL_API_KEY_HEADER]: env.ai_engine_internal_api_key,
+      [TRACEPARENT_HEADER]: options.traceparent || generateTraceparent(),
+      [REQUEST_ID_HEADER]: options.requestId || crypto.randomUUID(),
+    };
+    if (options.contextToken) {
+      headers[SINEVA_CONTEXT_HEADER] = options.contextToken;
+    }
+
+    try {
+      const response = await fetch(url, {
+        method: 'GET',
+        headers,
+        signal: controller.signal,
+      });
+
+      const rawBody = await response.text();
+      if (!response.ok) {
+        this.handleUpstreamError(response.status, rawBody);
+      }
+
+      const events = parseSseTranscript(rawBody);
+      return {
+        run_id: options.runId,
+        events,
+        has_more: false,
+      };
+    } catch (error) {
+      if (
+        error instanceof UpstreamServiceError ||
+        error instanceof UpstreamUnavailableError ||
+        error instanceof ModelUnavailableError ||
+        error instanceof DependencyUnavailableError ||
+        error instanceof ContextInvalidError
+      ) {
+        throw error;
+      }
+      logger.error('ai_engine.request_failed', { reason: 'getRunEvents' });
+      throw new UpstreamUnavailableError();
+    } finally {
+      clearTimeout(timeout);
+    }
+  }
+
+  /**
+   * Cancels a running agent task
+   */
+  async cancelRun(options: {
+    runId: string;
+    contextToken?: string;
+    requestId?: string;
+    traceparent?: string;
+  }): Promise<CancelRunResult> {
+    const env = getEnvConfig();
+    const url = `${env.ai_engine_internal_url}/api/v2/runs/${encodeURIComponent(options.runId)}/cancel`;
+
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), STANDARD_CALL_TIMEOUT_MS);
+
+    const headers: Record<string, string> = {
+      [INTERNAL_API_KEY_HEADER]: env.ai_engine_internal_api_key,
+      [TRACEPARENT_HEADER]: options.traceparent || generateTraceparent(),
+      [REQUEST_ID_HEADER]: options.requestId || crypto.randomUUID(),
+    };
+    if (options.contextToken) {
+      headers[SINEVA_CONTEXT_HEADER] = options.contextToken;
+    }
+
+    try {
+      const response = await fetch(url, {
+        method: 'POST',
+        headers,
+        signal: controller.signal,
+      });
+
+      const rawBody = await response.text();
+      if (!response.ok) {
+        this.handleUpstreamError(response.status, rawBody);
+      }
+
+      const json = JSON.parse(rawBody);
+      return {
+        run_id: options.runId,
+        status: json?.status || 'cancelled',
+        cancelled_at: json?.cancelled_at || new Date().toISOString(),
+      };
+    } catch (error) {
+      if (
+        error instanceof UpstreamServiceError ||
+        error instanceof UpstreamUnavailableError ||
+        error instanceof ModelUnavailableError ||
+        error instanceof DependencyUnavailableError ||
+        error instanceof ContextInvalidError
+      ) {
+        throw error;
+      }
+      logger.error('ai_engine.request_failed', { reason: 'cancelRun' });
+      throw new UpstreamUnavailableError();
+    } finally {
+      clearTimeout(timeout);
+    }
+  }
+
+  /**
+   * Health check for internal AI engine
+   */
+  async checkHealth(): Promise<AiEngineHealthResult> {
+    const env = getEnvConfig();
+    const startedAt = Date.now();
+
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), HEALTH_TIMEOUT_MS);
+    try {
+      const response = await fetch(`${env.ai_engine_internal_url}/api/v1/health`, {
+        method: 'GET',
+        headers: { [INTERNAL_API_KEY_HEADER]: env.ai_engine_internal_api_key },
+        signal: controller.signal,
+      });
+
+      if (!response.ok) {
+        return {
+          is_reachable: false,
+          internal_url: env.ai_engine_internal_url,
+          latency_ms: Math.max(1, Date.now() - startedAt),
+          engine_version: 'standby',
+        };
+      }
+
+      let engineVersion = 'unknown';
+      try {
+        const json = await response.json();
+        if (typeof json?.data?.version === 'string') {
+          engineVersion = json.data.version;
+        } else if (typeof json?.version === 'string') {
+          engineVersion = json.version;
+        }
+      } catch {
+        // Fallback to 'unknown' if non-JSON
+      }
+
+      return {
+        is_reachable: true,
+        internal_url: env.ai_engine_internal_url,
+        latency_ms: Math.max(1, Date.now() - startedAt),
+        engine_version: engineVersion,
+      };
+    } catch {
+      return {
+        is_reachable: false,
+        internal_url: env.ai_engine_internal_url,
+        latency_ms: Math.max(1, Date.now() - startedAt),
+        engine_version: 'standby',
+      };
+    } finally {
+      clearTimeout(timeout);
+    }
+  }
+
+  /**
+   * Legacy Contract v1 dispatchAgentChat (retained for backward compatibility)
+   */
+  async dispatchAgentChat(payload: AiEngineChatRequest): Promise<AiEngineChatResponse> {
     const env = getEnvConfig();
     const startedAt = Date.now();
     const url = `${env.ai_engine_internal_url}/api/v1/agents/${encodeURIComponent(payload.agent_slug)}/chat`;
 
-    // sineva-ai's ChatRequestDTO forbids unknown keys, so the body is built
-    // field by field. `agent_slug` travels in the path only. `tenant_id` is
-    // not sent: the public chat request carries no workspace yet and
-    // sineva-ai applies its own default. JSON.stringify drops the undefined
-    // optionals.
     const body = JSON.stringify({
       user_message: payload.message_text,
       session_id: payload.session_id,
@@ -82,24 +493,28 @@ export class InternalAiEngineGateway implements AiEngineGateway {
     let status: number;
     let rawBody: string;
     try {
-      // The timer must outlive the body read: an LLM reply can stall after the
-      // headers arrive, and the abort should cover that too.
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+        [INTERNAL_API_KEY_HEADER]: env.ai_engine_internal_api_key,
+      };
+      if (payload.request_id) {
+        headers[REQUEST_ID_HEADER] = payload.request_id;
+      }
+
       const response = await fetch(url, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          [INTERNAL_API_KEY_HEADER]: env.ai_engine_internal_api_key,
-        },
+        headers,
         body,
         signal: controller.signal,
       });
       status = response.status;
       rawBody = await response.text();
     } catch (error) {
-      console.error('[ai-engine] chat request failed', {
-        url,
+      logger.error('ai_engine.request_failed', {
+        agent_slug: payload.agent_slug,
         reason: error instanceof Error ? error.name : 'unknown',
         aborted: controller.signal.aborted,
+        latency_ms: Date.now() - startedAt,
       });
       throw new UpstreamUnavailableError();
     } finally {
@@ -107,35 +522,30 @@ export class InternalAiEngineGateway implements AiEngineGateway {
     }
 
     if (status < 200 || status >= 300) {
-      console.error('[ai-engine] chat returned non-2xx', {
-        url,
-        status,
-        body: rawBody.slice(0, LOGGED_BODY_MAX_CHARS),
-      });
-      throw new UpstreamServiceError();
+      this.handleUpstreamError(status, rawBody);
     }
 
     let json: unknown;
     try {
       json = JSON.parse(rawBody);
     } catch {
-      console.error('[ai-engine] chat returned non-JSON body', {
-        url,
+      logger.error('ai_engine.non_json', {
+        agent_slug: payload.agent_slug,
         status,
-        body: rawBody.slice(0, LOGGED_BODY_MAX_CHARS),
+        byte_length: utf8ByteLength(rawBody),
+        latency_ms: Date.now() - startedAt,
       });
       throw new UpstreamServiceError();
     }
 
     const parsed = chatEnvelopeSchema.safeParse(json);
     if (!parsed.success) {
-      console.error('[ai-engine] chat body failed contract validation', {
-        url,
+      // Paths only. Zod messages can quote the offending value, and that
+      // value is model or user content.
+      logger.error('ai_engine.contract_violation', {
+        agent_slug: payload.agent_slug,
         status,
-        issues: parsed.error.issues.map((issue) => ({
-          path: issue.path.join('.'),
-          message: issue.message,
-        })),
+        issue_paths: parsed.error.issues.map((issue) => issue.path.join('.')),
       });
       throw new UpstreamServiceError();
     }
@@ -143,37 +553,64 @@ export class InternalAiEngineGateway implements AiEngineGateway {
     return { ...parsed.data.data, latency_ms: Date.now() - startedAt };
   }
 
-  async checkHealth(): Promise<AiEngineHealthResult> {
-    const env = getEnvConfig();
-    const startedAt = Date.now();
+  /**
+   * Maps upstream 4xx and 5xx to typed platform errors (WP-M0-28, ADR-0016, SEC-6)
+   * Enforces log hygiene: never logs prompt, reply, or tool call payloads.
+   */
+  private handleUpstreamError(status: number, rawBody: string): never {
+    let upstreamCode: string | undefined;
+    // Used to classify only. Upstream text can echo user content or internals, so
+    // it is never copied into a thrown error: those messages reach the client.
+    let upstreamMessage: string | undefined;
 
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), HEALTH_TIMEOUT_MS);
     try {
-      const response = await fetch(
-        `${env.ai_engine_internal_url}/api/v1/health`,
-        {
-          method: 'GET',
-          headers: { [INTERNAL_API_KEY_HEADER]: env.ai_engine_internal_api_key },
-          signal: controller.signal,
-        },
-      );
-
-      return {
-        is_reachable: response.ok,
-        internal_url: env.ai_engine_internal_url,
-        latency_ms: Math.max(1, Date.now() - startedAt),
-        engine_version: '1.0.0',
-      };
+      const json = JSON.parse(rawBody);
+      // sineva-ai's envelope uses errors[].error_code; `code` is kept for the
+      // v2 contract fixtures and other shapes (sineva-ai contract gap G-12).
+      upstreamCode =
+        json?.errors?.[0]?.error_code || json?.errors?.[0]?.code || json?.code || json?.error?.code;
+      upstreamMessage = json?.errors?.[0]?.detail || json?.message || json?.error?.message;
     } catch {
-      return {
-        is_reachable: false,
-        internal_url: env.ai_engine_internal_url,
-        latency_ms: Math.max(1, Date.now() - startedAt),
-        engine_version: '1.0.0-standby',
-      };
-    } finally {
-      clearTimeout(timeout);
+      // Body not JSON
     }
+
+    // Only a machine token may travel to the client; anything else is dropped.
+    const code =
+      typeof upstreamCode === 'string' && SAFE_UPSTREAM_CODE.test(upstreamCode)
+        ? upstreamCode
+        : undefined;
+    const lowered = typeof upstreamMessage === 'string' ? upstreamMessage.toLowerCase() : '';
+
+    logger.error('ai_engine.non_2xx', {
+      status,
+      byte_length: utf8ByteLength(rawBody),
+      code,
+    });
+
+    // Upstream context rejection -> internal error 500 (since platform minted it)
+    if (status === 401 || status === 403 || code === 'context_invalid') {
+      if (
+        code === 'context_invalid' ||
+        lowered.includes('context') ||
+        lowered.includes('signature')
+      ) {
+        throw new ContextInvalidError();
+      }
+      throw new UpstreamServiceError('The AI engine rejected the request', code, 502);
+    }
+
+    // Upstream unavailable / model overloaded
+    if (status === 503 || code === 'model_unavailable') {
+      if (code === 'model_unavailable' || lowered.includes('model')) {
+        throw new ModelUnavailableError();
+      }
+      if (code === 'dependency_unavailable') {
+        throw new DependencyUnavailableError();
+      }
+      throw new UpstreamUnavailableError(undefined, code);
+    }
+
+    // Generic upstream service error 502
+    throw new UpstreamServiceError(undefined, code || 'UPSTREAM_ERROR');
   }
 }
