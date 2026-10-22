@@ -1,6 +1,6 @@
 # Sineva Platform Implementation Checkpoint
 
-> **Last Updated:** 2026-10-22 (checkpoint continuation and React runtime fixes)  
+> **Last Updated:** 2026-10-22 (checkpoint continuation, React runtime fixes and local migration deployment)
 > **Branch:** `main` (PR #1 merged `feat/m0-platform`, see section 0); keep integrating on `feat/m0-platform` and open a PR per batch  
 > **Current Milestone:** M0 Foundations, with M1 items pulled forward  
 > **Resume here:** section 0
@@ -9,11 +9,11 @@
 
 ## 0. Resume here (continued 2026-10-22)
 
-**Current checkout:** `feat/m0-platform`. PR #1 is confirmed merged. [Draft PR #2](https://github.com/SinevaSolution/sineva-platform/pull/2) contains this integration batch; CI was running when this note was written. The three saved branches in the paused checkpoint are now integrated locally:
+**Current checkout:** `feat/m0-platform`. PR #1 is confirmed merged. [Draft PR #2](https://github.com/SinevaSolution/sineva-platform/pull/2) contains this integration batch. All CI checks passed for `e0870df` ([run](https://github.com/SinevaSolution/sineva-platform/actions/runs/39718628686)). The three saved branches in the paused checkpoint are now integrated locally:
 
 | Work                                        | Integration                     | Current status                                                                                           |
 | :------------------------------------------ | :------------------------------ | :------------------------------------------------------------------------------------------------------- |
-| WP-M1-40 Inbox backend                      | `4ed6d85`                       | Integrated; unit and real PostgreSQL tests pass. Deployment and expiry scheduler pending.                |
+| WP-M1-40 Inbox backend                      | `4ed6d85`                       | Integrated; unit and real PostgreSQL tests pass. Local migration deployed; expiry scheduler pending.                |
 | WP-M1-32 Library backend                    | `c09fcdc`                       | Integrated; contract, route and repository tests pass. AI ingest remains a proposal.                     |
 | WP-M1-35/36 Business Profile and onboarding | `44f586d` plus completion fixes | Integrated; missing OpenAPI/policy registrations and route tests repaired. Member welcome now completes. |
 | React context boundary error                | `4fe4b5a`                       | Fixed in FieldContext, SNField and fallback card, with regression guard.                                 |
@@ -21,13 +21,14 @@
 
 **UI now implemented:** members and invitations at `/w/{slug}/settings/members`, public `/invite/{token}` and `/ownership/{token}`, Inbox, Library, first-workspace creation, saved onboarding and Business Profile at `/w/{slug}/settings/business`. These are functional screens; full design acceptance is still open. See [the integration report](docs/development/resume-batch-2026-10-22.md) for implemented behavior, verification and exact gaps.
 
+**Local release:** completed with Founder approval: moved `_prisma_migrations` from `public` to `platform`, then deployed the Library, Business Profile/onboarding and Inbox migrations with `?schema=platform`. All 15 migrations succeeded; Prisma reports up to date. Existing counts remain 2 users, 2 workspaces and 1 conversation. Future status/deploy commands must use `?schema=platform`.
+
 **Next work, in order**
 
-1. Complete the local release step after the requested database confirmation. A read-only query confirmed local history in `public`; proposed recovery moves `_prisma_migrations` to `platform`, then uses `migrate deploy` with `?schema=platform`. All 15 migrations passed on a disposable PostgreSQL database. Never reset the shared database.
-2. Browser-check the two runtime fixes and new flows on the Founder-run server at port 3001. No dev server was started. Port 3001 had no listener when checked.
-3. Finish design acceptance: members detail/acceptance journeys, Inbox row/filter/diff/mobile behavior, Library multi-upload/folder tree/filter/usage UI, onboarding About you and in-wizard scan review. The integration report lists the remaining items; do not call WP-M1-29/33/38/41 fully accepted yet.
-4. Coordinate acceptance of the proposed approval, Library and scan fixtures with the sineva-ai team. No files outside `sineva-platform` were edited.
-5. Finish M0: WP-M0-35 real repository/Qdrant canaries (the 71-route platform lane is now in CI), WP-M0-41 gallery and browser harness, WP-M0-43..46 audits, WP-M0-47 integration gate.
+1. Browser-check the two runtime fixes and new flows on the Founder-run server at port 3001. No dev server was started. Port 3001 had no listener when checked.
+2. Finish design acceptance: members detail/acceptance journeys, Inbox row/filter/diff/mobile behavior, Library multi-upload/folder tree/filter/usage UI, onboarding About you and in-wizard scan review. The integration report lists the remaining items; do not call WP-M1-29/33/38/41 fully accepted yet.
+3. Coordinate acceptance of the proposed approval, Library and scan fixtures with the sineva-ai team. No files outside `sineva-platform` were edited.
+4. Finish M0: WP-M0-35 real repository/Qdrant canaries (the 71-route platform lane is now in CI), WP-M0-41 gallery and browser harness, WP-M0-43..46 audits, WP-M0-47 integration gate.
 
 **CI**
 
@@ -124,10 +125,10 @@ The database has been migrated and seeded (`npm run db:seed`):
 
 ## 4. Pending integrator actions
 
-- Deployed on the local dev DB: every migration up to `20261022140000_members_invitations_ownership_transfer` (chat_runs, audit_events, message_cards, drop_agent_configs, user_preferences, members). Earlier note: `chat_runs` and `audit_events` deployed to the shared DB; `test:integration` green (5 files, 33 tests) on a throwaway DB, since dropped.
-- Gotcha for this local DB: `_prisma_migrations` lives in `public` (the DB was first migrated with a plain URL) while every table is in `platform`. Run `migrate status`/`deploy` with the plain `DATABASE_URL` from `.env`; adding `?schema=platform` makes Prisma look for `platform._prisma_migrations`, see nothing applied and try to re-run `init`. All migration SQL is schema-qualified, so tables still land in `platform`.
+- Deployed on the persistent local `sineva_platform` database: all 15 migrations through `20261022170000_inbox_items_and_approvals`, including Library and Business Profile/onboarding. Founder approved this release on 2026-10-22; Prisma reports up to date.
+- Migration history recovery completed: `_prisma_migrations` now exists only in `platform`, with 15 successful entries. Use `?schema=platform` for every future `migrate status`/`deploy` command. The previous plain-URL workaround is obsolete.
 - Add `ENTITLEMENTS_MODE=open` to `.env.example`.
-- WP-M1-40: deploy migration `20261022170000_inbox_items_and_approvals`; schedule `POST /internal/v1/inbox/expire` (header `X-Internal-Api-Key`) every minute or so, there is no job runner yet.
+- WP-M1-40: schedule `POST /internal/v1/inbox/expire` (header `X-Internal-Api-Key`) every minute or so, there is no job runner yet.
 - Blocked on sineva-ai team: WP-M0-13..20 (v2 contract, SSE, catalog), PII vectors copy, audit publisher.
 
 ## 5. Next Tasks (superseded list below kept for history)

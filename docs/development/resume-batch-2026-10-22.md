@@ -69,10 +69,10 @@ These screens are a functional implementation batch, not completion of every des
 - WP-M0-41 and WP-M0-43 through 47: gallery, Playwright/axe/screenshot infrastructure, full shell/auth/settings audits and the final integration gate remain. Do not mark M0 complete.
 - The proposed `approval_*.json`, `library_*.json` and `scan_*.json` contracts are locally documented and tested. No sineva-ai files were edited. Acceptance and the cross-repository integration document belong to that team under the checkpoint's platform-only scope.
 
-## Local release prerequisites
+## Local release and remaining prerequisites
 
-The persistent local database is `sineva_platform`, user `sineva_user`, in the `sineva-postgres` container. A read-only inspection confirmed `_prisma_migrations` exists in `public`, as the checkpoint warned. Applying the three pending migrations requires the confirmation mandated by `apps/web/prisma/AGENTS.md`. The proposed recovery is to move that bookkeeping table to `platform`, then deploy with `?schema=platform`; do not reset either schema.
+The Founder explicitly approved the persistent local release on 2026-10-22. On `localhost:5432/sineva_platform` (`sineva_user`, container `sineva-postgres`), the release moved `_prisma_migrations` from `public` to `platform` in a transaction and ran Prisma 7.10.1 `migrate deploy` with `?schema=platform`. All three pending migrations applied successfully. The final `migrate status` reports up to date, and SQL confirms that all 15 history entries succeeded and the history table exists only in `platform`. Existing row counts remained 2 users, 2 workspaces and 1 conversation. The release used no reset or seed.
 
-New migration prefixes: `20261022150000`, `20261022160000`, `20261022170000`. The new workspace pages and shell badge need these tables before use.
+Applied migration prefixes: `20261022150000`, `20261022160000`, `20261022170000`. SQL confirms the new Library, Business Profile/onboarding and Inbox tables exist. Future status/deploy commands must use `?schema=platform`. Browser behavior remains unverified.
 
 Other prerequisites remain: storage CORS for app-origin PUT, Founder-managed `.env.example` addition of `ENTITLEMENTS_MODE=open`, and an authenticated scheduler calling `POST /internal/v1/inbox/expire` every minute. This batch does not install a scheduler or change the environment file.
