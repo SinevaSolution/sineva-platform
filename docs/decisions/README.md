@@ -45,6 +45,7 @@ Items marked "cross-service" are mirrored in `sineva-ai` (`docs/decisions/` ther
 | [0019](0019-role-and-permission-model.md) | Four static roles, permission registry, specialist scoping | You add or check route permissions |
 | [0020](0020-multi-tenancy-isolation-and-lifecycle.md) | Seven isolation layers, seven workspace lifecycle states | You implement tenancy, isolation or limits |
 | [0021](0021-signed-internal-context.md) | EdDSA compact JWS internal context token (cross-service) | You call or verify sineva-ai internal requests |
+| [0022](0022-locale-preference-and-i18n-architecture.md) | Locale from profile, cookie, Accept-Language; one registry; catalogs; copy lint | You add or change user-facing text or a language |
 
 ## Suggested reading order
 
