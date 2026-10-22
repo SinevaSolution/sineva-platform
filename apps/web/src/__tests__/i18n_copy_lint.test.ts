@@ -257,6 +257,11 @@ describe('system-authored content: email templates', () => {
       other_name: 'Sari',
       new_role: 'owner',
     },
+    connection_needs_reconnect: {
+      recipient_name: 'Budi',
+      provider_name: 'Google Calendar',
+      url: 'https://app.sineva.id/w/warung-sari/connections',
+    },
   } as const;
 
   for (const name of Object.keys(params) as EmailTemplateName[]) {

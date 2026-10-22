@@ -434,7 +434,9 @@
     "sentence": {
       "draft_review": "{name} menulis {kind} untuk kamu cek. Belum ada yang dikirim.",
       "input_request": "{name} punya pertanyaan untuk kamu.",
-      "result": "{name} sudah menyelesaikan sesuatu untuk kamu."
+      "result": "{name} sudah menyelesaikan sesuatu untuk kamu.",
+      "connection_needs_reconnect": "{provider} perlu dihubungkan ulang supaya kamu dan para Spesialis bisa memakainya lagi.",
+      "connection_rotation_due": "{provider} memakai kunci yang sama selama 90 hari. Ganti supaya sambunganmu tetap aman."
     },
     "approve_note": {
       "draft_review": "Menyetujui akan menandai draf ini siap. Sineva belum mengirimnya."

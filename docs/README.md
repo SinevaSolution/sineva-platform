@@ -90,6 +90,7 @@ Folder guide: [README](api-spec/README.md).
 - [Agents and Chat Endpoints](api-spec/agents_and_chat_endpoints.md)
 - [Storage and Health Endpoints](api-spec/storage_and_health_endpoints.md)
 - [Sino Library Endpoints](api-spec/library_endpoints.md)
+- [Connections Endpoints](api-spec/connections_endpoints.md)
 - [Swagger and OpenAPI](api-spec/swagger_and_openapi.md): how `/api/openapi.json` and `/api-docs` work, and how to register a route.
 
 - [Onboarding and Business Profile](api-spec/onboarding_and_business_profile_endpoints.md): first workspace, resumable onboarding, confirmed profile, versions and scan proposal.
@@ -116,6 +117,7 @@ Folder guide: [README](deployment/README.md).
 - [Docker Compose Topology](deployment/docker_compose_topology.md)
 - [Internal Network Security](deployment/internal_network_security.md)
 - [CI/CD Pipeline](deployment/ci_cd_pipeline.md)
+- [Connections Runbook](deployment/connections_runbook.md)
 - [Environment Variables](deployment/environment_variables.md)
 
 ## Development (`development/`)

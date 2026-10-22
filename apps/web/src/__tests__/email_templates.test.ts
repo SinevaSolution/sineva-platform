@@ -17,6 +17,7 @@ describe('Email Templates (WP-M0-24, FR-AUTH-03, FR-AUTH-04, FR-AUTH-05, FR-UX-3
     'workspace_invitation',
     'ownership_transfer_request',
     'ownership_transferred_notice',
+    'connection_needs_reconnect',
   ];
 
   const SAMPLE_PARAMS: Record<EmailTemplateName, Record<string, unknown>> = {
@@ -65,6 +66,11 @@ describe('Email Templates (WP-M0-24, FR-AUTH-03, FR-AUTH-04, FR-AUTH-05, FR-UX-3
       workspace_name: 'Warung Sari',
       other_name: 'Sari',
       new_role: 'owner',
+    },
+    connection_needs_reconnect: {
+      recipient_name: 'Budi',
+      provider_name: 'Google Calendar',
+      url: 'https://app.sineva.id/w/warung-sari/connections',
     },
   };
 

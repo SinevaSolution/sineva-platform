@@ -1,7 +1,11 @@
+import redactionPatterns from '../redaction/redaction_patterns.json';
+
 export type PiiKind = 'nik' | 'npwp' | 'phone' | 'bank_account' | 'email' | 'secret';
 
 export interface PiiMatch {
   kind: PiiKind;
+  /** Which secret pattern matched (`bearer`, `snv_pat`, an id from the redaction list). Secrets only. */
+  pattern_id?: string;
   /** Inclusive start offset in the scanned text. */
   start: number;
   /** Exclusive end offset in the scanned text. */
@@ -10,6 +14,7 @@ export interface PiiMatch {
 
 interface Rule {
   kind: PiiKind;
+  id?: string;
   pattern: RegExp;
   /** Extra check on the matched text; false drops the candidate. */
   accept?: (matched: string) => boolean;
@@ -55,6 +60,12 @@ export function hasPlausibleNikStructure(digits: string): boolean {
 const NIK_KEYWORD = String.raw`(?:nik|ktp|nomor\s+induk\s+kependudukan)`;
 const BANK_KEYWORD = String.raw`(?:no\.?\s*rek(?:ening)?|rek(?:ening)?|norek|account\s*(?:number|no\.?|num(?:ber)?)|acc(?:ount)?\.?\s*no\.?|a\/c|virtual\s+account|bca|bni|bri|mandiri|cimb|permata|btn|bsi)`;
 
+const DATA_SECRET_RULES: Rule[] = redactionPatterns.patterns.map((entry) => ({
+  kind: 'secret' as const,
+  id: entry.id,
+  pattern: new RegExp(entry.pattern, `${entry.flags.replace('g', '')}g`),
+}));
+
 // Secrets come first in priority: a token that happens to contain a digit run
 // must be reported as a secret, not as a phone number.
 const RULES: Rule[] = [
@@ -62,24 +73,31 @@ const RULES: Rule[] = [
   // the end of the text, because leaving the tail would leak key material.
   {
     kind: 'secret',
+    id: 'pem_private_key',
     pattern:
       /-----BEGIN [A-Z0-9 ]*PRIVATE KEY(?: BLOCK)?-----[\s\S]*?(?:-----END [A-Z0-9 ]*PRIVATE KEY(?: BLOCK)?-----|$)/g,
   },
-  { kind: 'secret', pattern: /\bBearer\s+[A-Za-z0-9._~+/=-]{16,}/gi },
-  { kind: 'secret', pattern: /\bsnv_pat_[A-Za-z0-9_-]{8,}/g },
+  { kind: 'secret', id: 'bearer', pattern: /\bBearer\s+[A-Za-z0-9._~+/=-]{16,}/gi },
+  { kind: 'secret', id: 'snv_pat', pattern: /\bsnv_pat_[A-Za-z0-9_-]{8,}/g },
   // `sk-` covers Anthropic (`sk-ant-`) and OpenAI style keys. The 20 character
   // floor keeps ordinary hyphenated words out.
-  { kind: 'secret', pattern: /\bsk-[A-Za-z0-9_-]{20,}/g },
-  { kind: 'secret', pattern: /\bAKIA[0-9A-Z]{16}\b/g },
-  { kind: 'secret', pattern: /\bAIza[0-9A-Za-z_-]{35}(?![0-9A-Za-z_-])/g },
-  { kind: 'secret', pattern: /\bgh[pousr]_[A-Za-z0-9]{36,}/g },
-  { kind: 'secret', pattern: /\bgithub_pat_[A-Za-z0-9_]{22,}/g },
-  { kind: 'secret', pattern: /\bglpat-[A-Za-z0-9_-]{20,}/g },
-  { kind: 'secret', pattern: /\bxox[abprs]-[A-Za-z0-9-]{10,}/g },
+  { kind: 'secret', id: 'model_key_sk', pattern: /\bsk-[A-Za-z0-9_-]{20,}/g },
+  { kind: 'secret', id: 'aws_access_key', pattern: /\bAKIA[0-9A-Z]{16}\b/g },
+  { kind: 'secret', id: 'google_api_key', pattern: /\bAIza[0-9A-Za-z_-]{35}(?![0-9A-Za-z_-])/g },
+  { kind: 'secret', id: 'github_token', pattern: /\bgh[pousr]_[A-Za-z0-9]{36,}/g },
+  { kind: 'secret', id: 'github_pat', pattern: /\bgithub_pat_[A-Za-z0-9_]{22,}/g },
+  { kind: 'secret', id: 'gitlab_pat', pattern: /\bglpat-[A-Za-z0-9_-]{20,}/g },
+  { kind: 'secret', id: 'slack_token', pattern: /\bxox[abprs]-[A-Za-z0-9-]{10,}/g },
   {
     kind: 'secret',
+    id: 'jwt',
     pattern: /\beyJ[A-Za-z0-9_-]{8,}\.eyJ[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}/g,
   },
+  // Credential shapes kept as data (redaction/redaction_patterns.json): provider
+  // keys, token endpoint bodies, OAuth callback values, Basic credentials and
+  // webhook signatures. They sit with the other secret rules, before the PII
+  // rules, so a token that happens to contain digits is a secret and not a phone.
+  ...DATA_SECRET_RULES,
   {
     kind: 'email',
     // Local part and labels are length-bounded (RFC 5321: 64 and 63). An
@@ -141,12 +159,17 @@ export function detectPii(text: string): PiiMatch[] {
       // Rules run in priority order, so an overlap means a higher priority
       // rule already claimed this text.
       if (!overlaps) {
-        accepted.push({ kind: rule.kind, start, end, priority });
+        accepted.push({ kind: rule.kind, start, end, priority, ...(rule.id ? { pattern_id: rule.id } : {}) });
       }
     }
   });
 
   return accepted
     .sort((a, b) => a.start - b.start)
-    .map(({ kind, start, end }) => ({ kind, start, end }));
+    .map(({ kind, start, end, pattern_id }) => ({
+      kind,
+      start,
+      end,
+      ...(kind === 'secret' && pattern_id ? { pattern_id } : {}),
+    }));
 }

@@ -49,6 +49,18 @@ export async function parseJsonBody(request: Request | NextRequest): Promise<unk
   }
 }
 
+/**
+ * Like `parseJsonBody` for routes whose body is optional (a scheduler calling
+ * a trigger endpoint): an empty body is `{}`, malformed JSON is still a typed 422.
+ */
+export async function parseOptionalJsonBody(request: Request | NextRequest): Promise<unknown> {
+  const text = await request.clone().text();
+  if (!text || text.trim().length === 0) {
+    return {};
+  }
+  return parseJsonBody(request);
+}
+
 /** Query string as a plain object for a Zod schema (a repeated key keeps its last value). */
 export function searchParamsToObject(request: Request | NextRequest): Record<string, string> {
   const query: Record<string, string> = {};

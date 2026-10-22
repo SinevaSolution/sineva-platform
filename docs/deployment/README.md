@@ -27,6 +27,7 @@ How the Sineva stack is run and released: the Docker Compose topology, how `sine
 | [environment_variables.md](environment_variables.md) | Every variable: required or default, where it is read, secret defaults that are debt | You add, rename or debug configuration |
 | [secret_inventory.md](secret_inventory.md) | Inventory of production secrets, rotation policies, and injection methods | You deploy, rotate secrets, or configure production |
 | [ci_cd_pipeline.md](ci_cd_pipeline.md) | What CI runs, the Dockerfile stages, release order, rollout checklist | You change CI, the image or a release |
+| [connections_runbook.md](connections_runbook.md) | Job tick schedule, vault database roles, key rotation, restore sweep, provider mass revoke | You operate Connected tools or the vault |
 
 - [Node.js security patch, 22 October 2026](node-security-2026-10-22.md): runtime baseline, CVE evidence and rollout verification.
 

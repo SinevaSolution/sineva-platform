@@ -10,6 +10,11 @@ import { escapeHtml, originOf, renderLayout } from '@/server/application/email/t
 const APP = 'https://app.sineva.id';
 
 const SAMPLES: Record<EmailTemplateName, Record<string, unknown>> = {
+  connection_needs_reconnect: {
+    recipient_name: 'Budi',
+    provider_name: 'Google Calendar',
+    url: `${APP}/w/kopi-senja/tools`,
+  },
   verify_email: {
     recipient_name: 'Budi',
     url: `${APP}/verify-email?token=a&next=%2Finvite%2Fx`,
