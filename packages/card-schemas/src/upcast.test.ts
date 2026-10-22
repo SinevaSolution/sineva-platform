@@ -80,6 +80,18 @@ describe('upcast on read (FR-AX-13: N and N-1)', () => {
     });
   });
 
+  it('answers supportsVersion the same way validateDisplay does', () => {
+    const withUpcaster = createCardRegistry({ schemas: TEST_ONLY_SCHEMAS, upcasters: [noteToBody] });
+    const without = createCardRegistry({ schemas: TEST_ONLY_SCHEMAS });
+    expect(withUpcaster.supportsVersion('test_only_card', 2)).toBe(true);
+    expect(withUpcaster.supportsVersion('test_only_card', 1)).toBe(true);
+    expect(withUpcaster.supportsVersion('test_only_card', '2.0.0')).toBe(true);
+    expect(without.supportsVersion('test_only_card', 1)).toBe(false);
+    expect(without.supportsVersion('test_only_card', 3)).toBe(false);
+    expect(without.supportsVersion('nope', 1)).toBe(false);
+    expect(without.supportsVersion('test_only_card', 'x')).toBe(false);
+  });
+
   it('production registry has an empty upcaster set today', async () => {
     const { PRODUCTION_UPCASTERS } = await import('./index');
     expect(PRODUCTION_UPCASTERS).toEqual([]);

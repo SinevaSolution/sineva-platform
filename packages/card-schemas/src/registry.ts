@@ -93,6 +93,8 @@ export type CardValidationResult =
 
 export interface CardRegistry {
   validateDisplay(input: unknown, options?: { now?: Date }): CardValidationResult;
+  /** Whether a card of this type and version would pass the type and version checks. */
+  supportsVersion(cardType: string, schemaVersion: unknown): boolean;
   /** Newest version for a type, or null when the type is unknown. */
   latestVersion(cardType: string): number | null;
   cardTypes(): string[];
@@ -230,6 +232,27 @@ export function createCardRegistry(options: {
     return versions ? Math.max(...versions.keys()) : null;
   };
 
+  /**
+   * N, or N-1 with a pure upcaster to N. Anything older, newer or unknown is
+   * unsupported: chaining upcasters across several versions would let an old
+   * row depend on code nobody exercises.
+   */
+  function resolveVersion(
+    cardType: string,
+    raw: unknown,
+  ): { version: number; latest: number; upcaster?: CardUpcaster } | null {
+    const versions = byType.get(cardType);
+    const latest = latestOf(cardType);
+    const version = parseVersion(raw);
+    if (!versions || latest === null || version === null) return null;
+    if (version === latest) return { version, latest };
+    if (version !== latest - 1 || !versions.has(version)) return null;
+    const upcaster = options.upcasters?.find(
+      (u) => u.card_type === cardType && u.from === version && u.to === latest,
+    );
+    return upcaster ? { version, latest, upcaster } : null;
+  }
+
   /** Sanitise, validate and typed-check data against one schema version. */
   function checkData(
     entry: CompiledEntry,
@@ -272,21 +295,9 @@ export function createCardRegistry(options: {
     const versions = typeof cardType === 'string' ? byType.get(cardType) : undefined;
     if (typeof cardType !== 'string' || !versions) return reject('unknown_card_type', usableFallback);
 
-    const version = parseVersion(input['schema_version']);
-    const latest = latestOf(cardType) as number;
-    if (version === null) return reject('unsupported_version', usableFallback);
-
-    let upcaster: CardUpcaster | undefined;
-    if (version !== latest) {
-      // N-1 only, and only with a pure upcaster to N.
-      upcaster =
-        version === latest - 1
-          ? options.upcasters?.find(
-              (u) => u.card_type === cardType && u.from === version && u.to === latest,
-            )
-          : undefined;
-      if (!upcaster || !versions.has(version)) return reject('unsupported_version', usableFallback);
-    }
+    const resolved = resolveVersion(cardType, input['schema_version']);
+    if (!resolved) return reject('unsupported_version', usableFallback);
+    const { version, upcaster, latest } = resolved;
 
     if (usableFallback === null) return reject('fallback_missing', null);
 
@@ -344,6 +355,7 @@ export function createCardRegistry(options: {
 
   return {
     validateDisplay,
+    supportsVersion: (cardType, schemaVersion) => resolveVersion(cardType, schemaVersion) !== null,
     latestVersion: latestOf,
     cardTypes: () => [...byType.keys()].sort(),
   };

@@ -26,6 +26,7 @@ export const LOG_EVENTS = [
   'http.unhandled_error',
   'run.relay_failed',
   'run.metrics',
+  'card.rejected',
   'entitlement.checked',
   'entitlement.would_block',
 ] as const;

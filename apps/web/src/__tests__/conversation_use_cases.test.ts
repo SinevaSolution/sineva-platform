@@ -597,6 +597,8 @@ describe('Conversation & Message Use Cases (WP-M0-29, FR-HUB-20, FR-HUB-32, D-M0
       const useCase = new ListMessagesUseCase(
         mockConversationRepo as unknown as ConversationRepository,
         mockMessageRepo as unknown as MessageRepository,
+        { createMany: vi.fn(), listByMessageIds: vi.fn().mockResolvedValue([]) },
+        { validate: vi.fn(), supports: vi.fn() },
       );
 
       const result = await useCase.execute(
@@ -632,6 +634,8 @@ describe('Conversation & Message Use Cases (WP-M0-29, FR-HUB-20, FR-HUB-32, D-M0
       const useCase = new ListMessagesUseCase(
         mockConversationRepo as unknown as ConversationRepository,
         mockMessageRepo as unknown as MessageRepository,
+        { createMany: vi.fn(), listByMessageIds: vi.fn().mockResolvedValue([]) },
+        { validate: vi.fn(), supports: vi.fn() },
       );
 
       await expect(
