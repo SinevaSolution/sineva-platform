@@ -18,7 +18,7 @@ supersedes: []
 
 # Architecture Decision Records
 
-An ADR records one decision: what was chosen, why, and what it costs. All 22 are Accepted. This folder holds decisions only. How-to guides, current-state descriptions and the rules derived from the decisions live elsewhere ([agent rules](../governance/agent_rules.md), [engineering](../engineering/README.md)). When a rule and its ADR disagree, the ADR wins and the rule gets fixed.
+An ADR records one decision: what was chosen, why, and what it costs. All 24 are Accepted. This folder holds decisions only. How-to guides, current-state descriptions and the rules derived from the decisions live elsewhere ([agent rules](../governance/agent_rules.md), [engineering](../engineering/README.md)). When a rule and its ADR disagree, the ADR wins and the rule gets fixed.
 
 Items marked "cross-service" are mirrored in `sineva-ai` (`docs/decisions/` there, a sineva-ai ADR of the same title). Change both repos together.
 
@@ -47,6 +47,7 @@ Items marked "cross-service" are mirrored in `sineva-ai` (`docs/decisions/` ther
 | [0021](0021-signed-internal-context.md) | EdDSA compact JWS internal context token (cross-service) | You call or verify sineva-ai internal requests |
 | [0022](0022-run-handle-and-sse-relay.md) | Run handle, `chat_runs`, SSE relay with resume and cancel (cross-service) | You touch streaming, run ids or the stream routes |
 | [0023](0023-locale-preference-and-i18n-architecture.md) | Locale from profile, cookie, Accept-Language; one registry; catalogs; copy lint | You add or change user-facing text or a language |
+| [0025](0025-card-schema-registry.md) | Card schema registry, validation, `message_cards`, fallback renderer (cross-service) | You add a card type or touch card validation |
 
 ## Suggested reading order
 
