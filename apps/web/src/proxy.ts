@@ -1,5 +1,11 @@
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
+import {
+  buildCspReportOnly,
+  CSP_REPORT_ONLY_HEADER,
+  generateNonce,
+  NONCE_REQUEST_HEADER,
+} from '@/server/http/csp';
 
 /**
  * Sanitizes the `next` redirect parameter to prevent open-redirect phishing attacks.
@@ -67,8 +73,19 @@ export function proxyPageGuard(request: NextRequest): NextResponse | null {
 }
 
 export function proxy(request: NextRequest): NextResponse {
-  const result = proxyPageGuard(request);
-  return result ?? NextResponse.next();
+  const nonce = generateNonce();
+  const csp = buildCspReportOnly(nonce, { production: process.env.NODE_ENV === 'production' });
+
+  // Next.js reads the nonce from the request's CSP header to tag its own inline
+  // scripts; the root layout reads `x-nonce` for the theme script.
+  const requestHeaders = new Headers(request.headers);
+  requestHeaders.set(NONCE_REQUEST_HEADER, nonce);
+  requestHeaders.set(CSP_REPORT_ONLY_HEADER, csp);
+
+  const response =
+    proxyPageGuard(request) ?? NextResponse.next({ request: { headers: requestHeaders } });
+  response.headers.set(CSP_REPORT_ONLY_HEADER, csp);
+  return response;
 }
 
 export default proxy;

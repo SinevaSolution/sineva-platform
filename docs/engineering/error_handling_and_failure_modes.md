@@ -104,8 +104,6 @@ Acceptable degradation: a health check may report `is_reachable: false` after ca
 
 These break R-26 or its neighbours. Do not copy them. Removing one needs a failing test first and, where the user sees it, a UI error state.
 
-- `getEnvConfig()` has hardcoded default secrets and hosts (database URL and password, S3 keys, the internal API key). `docker-compose.yml` has defaults too.
-- `AI_ENGINE_TIMEOUT_MS` is parsed with `Number(process.env.AI_ENGINE_TIMEOUT_MS ?? '15000')`. A non-numeric value gives `NaN`, and Node's `setTimeout` then fires after about 1 ms, so every chat call would abort and return 503.
 - `DomainError` carries an HTTP `status` and imports a type from `@sineva/shared`, so the domain knows about HTTP.
 
 ## 6. UI behavior

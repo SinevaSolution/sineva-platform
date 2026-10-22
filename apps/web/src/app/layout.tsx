@@ -1,6 +1,8 @@
 import type { Metadata, Viewport } from 'next';
+import { headers } from 'next/headers';
 import { Plus_Jakarta_Sans, Geist_Mono } from 'next/font/google';
 import { AppProviders } from '@/client/store/provider';
+import { NONCE_REQUEST_HEADER } from '@/server/http/csp';
 import './globals.css';
 
 const plusJakartaSans = Plus_Jakarta_Sans({
@@ -28,9 +30,13 @@ export const viewport: Viewport = {
   ],
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
+  // Reading the request headers makes every page render per request, which a
+  // per-request nonce requires anyway.
+  const nonce = (await headers()).get(NONCE_REQUEST_HEADER) ?? undefined;
+
   return (
     <html
       lang="en"
@@ -38,7 +44,7 @@ export default function RootLayout({
       className={`${plusJakartaSans.variable} ${geistMono.variable}`}
     >
       <body>
-        <AppProviders>{children}</AppProviders>
+        <AppProviders nonce={nonce}>{children}</AppProviders>
       </body>
     </html>
   );

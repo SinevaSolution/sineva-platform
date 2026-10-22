@@ -44,6 +44,6 @@ Only `NEXT_PUBLIC_*` variables ship to the client, and no secret belongs in one 
 
 ## Gaps
 
-- Hardcoded default secrets. The internal key, the Postgres password and the S3 key pair have defaults in code and in `docker-compose.yml` (`sineva_internal_service_token_dev` and friends). Anyone who reads the repo knows them. Set real values in every shared environment.
+- Development credentials in `.env.example`. The platform refuses to start in production with any of them, and compose refuses to start without real values, but `sineva-ai` has its own settings and defaults that this repo does not control. Set real values in every shared environment.
 - Published data-store ports. Postgres (5432), Redis (6379, no password), Qdrant (6333) and the SeaweedFS master, filer and S3 ports are published on all host interfaces. See the [topology](docker_compose_topology.md). Network isolation protects `sineva-ai` only.
 - No user authentication. The platform has no login, `user_id` is trusted from the request body, and `POST /api/v1/storage/presign` takes `workspace_id` from the body. Anyone who can reach port 3000 can call chat and presign (R-27).

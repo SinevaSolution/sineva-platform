@@ -41,12 +41,10 @@ export function verifyCsrf(request: Request): void {
     throw new ForbiddenError('Malformed request origin or referer header');
   }
 
-  if (host) {
-    const hostWithoutPort = host.split(':')[0];
-    const originHostWithoutPort = originUrl.hostname;
-    if (originUrl.host === host || originHostWithoutPort === hostWithoutPort) {
-      return;
-    }
+  // Compare host and port together. Matching on hostname alone would accept a
+  // page served from another port of the same machine, which is a different origin.
+  if (host && originUrl.host === host) {
+    return;
   }
 
   const env = getEnvConfig();
