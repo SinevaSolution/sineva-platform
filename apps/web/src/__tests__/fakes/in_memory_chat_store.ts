@@ -2,6 +2,11 @@ import { randomUUID } from 'node:crypto';
 import type { ConversationEntity } from '@/server/domain/entities/conversation';
 import type { MessageEntity } from '@/server/domain/entities/message';
 import type { ChatRunEntity, ChatRunStatus } from '@/server/domain/entities/chat_run';
+import type { MessageCardEntity } from '@/server/domain/entities/message_card';
+import type {
+  MessageCardRepository,
+  NewMessageCard,
+} from '@/server/domain/repositories/message_card_repository';
 import type { ConversationRepository } from '@/server/domain/repositories/conversation_repository';
 import type {
   CreateMessageInput,
@@ -180,5 +185,39 @@ export class InMemoryChatRuns implements ChatRunRepository {
     const row = this.rows.get(handle);
     if (!row) throw new Error(`no run ${handle}`);
     return row;
+  }
+}
+
+export class InMemoryMessageCards implements MessageCardRepository {
+  readonly rows: MessageCardEntity[] = [];
+  /** Set to make the next createMany throw, like a database outage. */
+  failure: Error | null = null;
+
+  async createMany(cards: NewMessageCard[]): Promise<MessageCardEntity[]> {
+    if (this.failure) throw this.failure;
+    const positions = new Set(
+      this.rows.map((r) => `${r.message_id}:${r.position}`),
+    );
+    for (const card of cards) {
+      if (positions.has(`${card.message_id}:${card.position}`)) {
+        throw new Error('unique violation on (message_id, position)');
+      }
+    }
+    const now = new Date().toISOString();
+    const created = cards.map((card) => ({
+      ...card,
+      id: randomUUID(),
+      version: 1,
+      created_at: now,
+      updated_at: now,
+    }));
+    this.rows.push(...created);
+    return created;
+  }
+
+  async listByMessageIds(workspaceId: string, messageIds: string[]): Promise<MessageCardEntity[]> {
+    return this.rows
+      .filter((r) => r.workspace_id === workspaceId && messageIds.includes(r.message_id))
+      .sort((a, b) => a.message_id.localeCompare(b.message_id) || a.position - b.position);
   }
 }

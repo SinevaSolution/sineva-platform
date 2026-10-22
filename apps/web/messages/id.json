@@ -328,6 +328,17 @@
       }
     }
   },
+  "cards": {
+    "title": {
+      "generic": "Hasil",
+      "guardrail_notice": "Yang tidak bisa aku lakukan"
+    },
+    "rejected_notice": "Hasil ini tidak bisa ditampilkan sebagai kartu.",
+    "no_text": "Hasil ini tidak bisa ditampilkan.",
+    "copy": "Salin",
+    "copied": "Tersalin",
+    "copy_failed": "Gagal menyalin"
+  },
   "chat": {
     "composer": {
       "message_label": "Pesan",

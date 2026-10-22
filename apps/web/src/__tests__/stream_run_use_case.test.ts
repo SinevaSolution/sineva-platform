@@ -5,7 +5,9 @@ import { RunHub } from '@/server/application/chat/run_hub';
 import { CancelRunUseCase } from '@/server/application/use-cases/chat/cancel_run_use_case';
 import { StreamRunUseCase } from '@/server/application/use-cases/chat/stream_run_use_case';
 import { CountingAuditLogger } from '@/server/domain/audit/audit_logger';
+import { CardFrameGuard } from '@/server/application/chat/card_frame_guard';
 import type { RunFrameGuard } from '@/server/domain/chat/run_frame_guard';
+import { CardSchemaValidator } from '@/server/infrastructure/cards/card_schema_validator';
 import { passThroughFrameGuard } from '@/server/domain/chat/run_frame_guard';
 import type { RunLatencySample } from '@/server/domain/chat/run_metrics';
 import type { RequestContext } from '@/server/domain/context/request_context';
@@ -23,6 +25,7 @@ import { FakeAiEngineGateway } from './fakes/fake_ai_engine_gateway';
 import {
   InMemoryChatRuns,
   InMemoryConversations,
+  InMemoryMessageCards,
   InMemoryMessages,
 } from './fakes/in_memory_chat_store';
 
@@ -99,7 +102,13 @@ const fixtureFrames = (name: string): SseFrame[] => {
   return framesOf([...parser.push(fixture(name)), ...parser.flush()]);
 };
 
-async function harness(over: { guard?: RunFrameGuard; now?: () => number } = {}) {
+async function harness(
+  over: {
+    guard?: RunFrameGuard;
+    now?: () => number;
+    log?: { failed: (step: string, detail: unknown) => void };
+  } = {},
+) {
   const conversations = new InMemoryConversations();
   const conversation: ConversationEntity = {
     id: CONV,
@@ -131,6 +140,7 @@ async function harness(over: { guard?: RunFrameGuard; now?: () => number } = {})
   });
 
   const chatRuns = new InMemoryChatRuns();
+  const cards = new InMemoryMessageCards();
   const gateway = new FakeAiEngineGateway();
   const hub = new RunHub({ retention_ms: 60_000 });
   const samples: RunLatencySample[] = [];
@@ -142,13 +152,14 @@ async function harness(over: { guard?: RunFrameGuard; now?: () => number } = {})
   const stream = new StreamRunUseCase({
     conversations,
     messages,
+    cards,
     chatRuns,
     gateway,
     contextSigner: signer,
     hub,
     guard: over.guard ?? passThroughFrameGuard,
     metrics: { record: (s) => samples.push(s) },
-    log: noopLog,
+    log: over.log ?? noopLog,
     now: over.now,
     sleep: async () => undefined,
     poll_interval_ms: 1,
@@ -164,7 +175,7 @@ async function harness(over: { guard?: RunFrameGuard; now?: () => number } = {})
     audit,
   });
 
-  return { conversations, messages, chatRuns, gateway, hub, samples, signer, audit, stream, cancel, userMessage };
+  return { conversations, messages, cards, chatRuns, gateway, hub, samples, signer, audit, stream, cancel, userMessage };
 }
 
 describe('StreamRunUseCase relay (WP-M0-30, FR-AIR-11, FR-AIR-12, FR-HUB-20)', () => {
@@ -318,6 +329,7 @@ describe('StreamRunUseCase relay (WP-M0-30, FR-AIR-11, FR-AIR-12, FR-HUB-20)', (
       const useCase = new StreamRunUseCase({
         conversations: h.conversations,
         messages: h.messages,
+        cards: h.cards,
         chatRuns: h.chatRuns,
         gateway: real,
         contextSigner: h.signer,
@@ -509,6 +521,7 @@ describe('StreamRunUseCase relay (WP-M0-30, FR-AIR-11, FR-AIR-12, FR-HUB-20)', (
       const restarted = new StreamRunUseCase({
         conversations: h.conversations,
         messages: h.messages,
+        cards: h.cards,
         chatRuns: h.chatRuns,
         gateway: h.gateway,
         contextSigner: h.signer,
@@ -535,6 +548,7 @@ describe('StreamRunUseCase relay (WP-M0-30, FR-AIR-11, FR-AIR-12, FR-HUB-20)', (
       const restarted = new StreamRunUseCase({
         conversations: h.conversations,
         messages: h.messages,
+        cards: h.cards,
         chatRuns: h.chatRuns,
         gateway: h.gateway,
         contextSigner: h.signer,
@@ -568,6 +582,132 @@ describe('StreamRunUseCase relay (WP-M0-30, FR-AIR-11, FR-AIR-12, FR-HUB-20)', (
       const out = framesOf(await collect(await h.stream.execute(HANDLE, {}, context())));
       expect(out.map((f) => f.event)).toEqual(['token', 'done']);
       expect(h.messages.assistantMessages()).toHaveLength(1);
+    });
+  });
+
+  describe('typed cards (WP-M0-32, FR-AX-09, FR-AX-13, ADR-0025)', () => {
+    const cardGuard = (rejections: unknown[] = []) =>
+      new CardFrameGuard(new CardSchemaValidator(), { rejected: (d) => rejections.push(d) });
+    const doneData = () => fixtureFrames('sse_transcript_text_only.txt').at(-1)!.data;
+    const display = {
+      card_type: 'guardrail_notice',
+      schema_version: 1,
+      data: { specialist: 'sinofinance', limit_key: 'no_money_moves', offer_key: 'prepare_details' },
+      actions: [{ id: 'prepare', kind: 'send_to_chat', label_key: 'cards.guardrail.prepare' }],
+      provider: null,
+      fallback_text: 'I cannot move money. I can prepare the details for you.',
+    };
+    const cardTranscript = (completed: unknown) =>
+      [
+        'id: 1\nevent: token\ndata: {"token":"Halo"}\n\n',
+        `id: 2\nevent: card_started\ndata: ${JSON.stringify({ card_id: 'crd_1', card_type: 'guardrail_notice', schema_version: 1 })}\n\n`,
+        `id: 3\nevent: card_patch\ndata: ${JSON.stringify({ card_id: 'crd_1', patch: { x: 1 } })}\n\n`,
+        `id: 4\nevent: card_completed\ndata: ${JSON.stringify(completed)}\n\n`,
+        `id: 5\nevent: done\ndata: ${doneData()}\n\n`,
+      ].join('');
+
+    it('persists the validated card with the assistant message and forwards only validated frames', async () => {
+      const h = await harness({ guard: cardGuard() });
+      h.gateway.streamFactory = async () =>
+        bodyOf(cardTranscript({ card_id: 'crd_1', state: 'ready', display }));
+
+      const out = framesOf(await collect(await h.stream.execute(HANDLE, {}, context())));
+
+      // The patch is dropped; the other frames keep their ids.
+      expect(out.map((f) => [f.id, f.event])).toEqual([
+        ['1', 'token'],
+        ['2', 'card_started'],
+        ['4', 'card_completed'],
+        ['5', 'done'],
+      ]);
+      const message = h.messages.assistantMessages()[0]!;
+      expect(h.cards.rows).toHaveLength(1);
+      expect(h.cards.rows[0]).toMatchObject({
+        message_id: message.id,
+        conversation_id: CONV,
+        workspace_id: WS,
+        run_id: HANDLE,
+        position: 0,
+        card_type: 'guardrail_notice',
+        schema_version: 1,
+        state: 'ready',
+        validation_status: 'valid',
+        rejected_code: null,
+        data: display.data,
+        fallback_text: display.fallback_text,
+      });
+      expect(h.cards.rows[0]!.payload_hash).toMatch(/^[0-9a-f]{64}$/);
+    });
+
+    it('turns the contract fixture card (no display, unknown type) into a failed frame and a code-only row, and the reply still completes', async () => {
+      const rejections: unknown[] = [];
+      const h = await harness({ guard: cardGuard(rejections) });
+      h.gateway.streamFactory = async () => bodyOf(fixture('sse_transcript_with_card.txt'));
+
+      const out = framesOf(await collect(await h.stream.execute(HANDLE, {}, context())));
+
+      expect(out.map((f) => f.event)).toEqual(['token', 'card_completed', 'done']);
+      expect(JSON.parse(out[1]!.data)).toMatchObject({ state: 'failed', rejected_code: 'display_missing' });
+      expect(out[1]!.data).not.toContain('runway_months');
+      expect(h.messages.assistantMessages()).toHaveLength(1);
+      expect(h.cards.rows).toHaveLength(1);
+      expect(h.cards.rows[0]).toMatchObject({
+        validation_status: 'rejected',
+        rejected_code: 'display_missing',
+        state: 'failed',
+        data: {},
+        actions: [],
+        payload_hash: null,
+      });
+      expect(rejections).toEqual([{ code: 'display_missing', run_handle: HANDLE }]);
+    });
+
+    it('stores nothing for a reply without cards', async () => {
+      const h = await harness({ guard: cardGuard() });
+      h.gateway.streamFactory = async () => bodyOf(fixture('sse_transcript_text_only.txt'));
+      await collect(await h.stream.execute(HANDLE, {}, context()));
+      expect(h.cards.rows).toEqual([]);
+    });
+
+    it('logs and still completes the reply when the cards cannot be saved', async () => {
+      const steps: string[] = [];
+      const h = await harness({ guard: cardGuard(), log: { failed: (step) => steps.push(step) } });
+      h.cards.failure = new Error('db down');
+      h.gateway.streamFactory = async () =>
+        bodyOf(cardTranscript({ card_id: 'crd_1', state: 'ready', display }));
+
+      const out = framesOf(await collect(await h.stream.execute(HANDLE, {}, context())));
+
+      expect(out.at(-1)!.event).toBe('done');
+      expect(h.messages.assistantMessages()).toHaveLength(1);
+      expect(steps).toContain('store_cards_failed');
+    });
+
+    it('persists the cards of a run adopted through replay after the draining process died', async () => {
+      const h = await harness({ guard: cardGuard() });
+      const run = await h.chatRuns.findOrCreate({
+        workspace_id: WS,
+        conversation_id: CONV,
+        user_message_id: h.userMessage.id,
+        run_handle: HANDLE,
+        agent_slug: 'sinofinance',
+      });
+      await h.chatRuns.claimStart(run.id);
+      await h.chatRuns.recordUpstream(run.id, { upstream_run_id: UPSTREAM_RUN });
+      h.gateway.runEvents = parseSseTranscript(
+        cardTranscript({ card_id: 'crd_1', state: 'needs_review', display }),
+      );
+
+      const out = framesOf(await collect(await h.stream.execute(HANDLE, {}, context())));
+
+      expect(out.map((f) => f.event)).toEqual(['token', 'card_started', 'card_completed', 'done']);
+      expect(h.messages.assistantMessages()).toHaveLength(1);
+      expect(h.cards.rows).toHaveLength(1);
+      expect(h.cards.rows[0]).toMatchObject({
+        message_id: h.messages.assistantMessages()[0]!.id,
+        state: 'needs_review',
+        validation_status: 'valid',
+      });
     });
   });
 

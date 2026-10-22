@@ -54,6 +54,28 @@ export interface MentionView {
   handle?: string;
 }
 
+/**
+ * A typed result card as the browser reads it (ADR-0025). `data` is validated
+ * and, if it was stored at an older version, upcast. A rejected card carries
+ * `{}` as data, its code and its fallback text only.
+ */
+export interface MessageCardView {
+  id: string;
+  message_id: string;
+  position: number;
+  card_type: string;
+  schema_version: number;
+  state: 'drafting' | 'ready' | 'needs_review' | 'done' | 'failed' | 'disconnected' | 'cancelled' | 'expired';
+  validation_status: 'valid' | 'rejected';
+  rejected_code: string | null;
+  provider_slug: string | null;
+  approval_id: string | null;
+  data: Record<string, unknown>;
+  actions: unknown[];
+  fallback_text: string | null;
+  version: number;
+}
+
 export interface MessageView {
   id: string;
   conversation_id: string;
@@ -74,6 +96,8 @@ export interface MessageView {
   run_id: string | null;
   channel: string | null;
   client_message_id: string | null;
+  /** Absent on a message the browser built itself (a live reply before reload). */
+  cards?: MessageCardView[];
   created_at: string;
   updated_at: string;
 }

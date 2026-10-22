@@ -10,6 +10,7 @@ export type RunRelayStep =
   | 'release_run_failed'
   | 'bad_frame'
   | 'store_reply_failed'
+  | 'store_cards_failed'
   | 'deferred_cancel_failed'
   | 'cancel_before_delete_failed';
 

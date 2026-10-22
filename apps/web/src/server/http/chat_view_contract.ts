@@ -6,6 +6,7 @@ import type {
 import type { AiEngineChatResponse } from '../domain/repositories/ai_engine_gateway';
 import type { ConversationEntity } from '../domain/entities/conversation';
 import type { MessageEntity } from '../domain/entities/message';
+import type { MessageWithCards } from '../application/use-cases/chat/list_messages_use_case';
 
 // Compile-time drift guard: ensures domain entities are assignable to shared views
 type AssertAssignable<Sub extends Super, Super> = Sub;
@@ -22,5 +23,10 @@ export type ConversationServedAsView = AssertAssignable<
 
 export type MessageServedAsView = AssertAssignable<
   MessageEntity,
+  MessageView
+>;
+
+export type MessageWithCardsServedAsView = AssertAssignable<
+  MessageWithCards,
   MessageView
 >;

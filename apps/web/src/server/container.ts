@@ -57,8 +57,14 @@ import { generateOAuthState, verifyOAuthState } from './infrastructure/security/
 import { ValidationError } from './domain/errors/domain_error';
 import type { ConversationRepository } from './domain/repositories/conversation_repository';
 import type { MessageRepository } from './domain/repositories/message_repository';
+import type { MessageCardRepository } from './domain/repositories/message_card_repository';
+import type { CardValidator } from './domain/chat/card_validator';
 import { PrismaConversationRepository } from './infrastructure/database/prisma_conversation_repository';
 import { PrismaMessageRepository } from './infrastructure/database/prisma_message_repository';
+import { PrismaMessageCardRepository } from './infrastructure/database/prisma_message_card_repository';
+import { CardSchemaValidator } from './infrastructure/cards/card_schema_validator';
+import { LoggerCardRejectionLog } from './infrastructure/logging/log_card_rejection_log';
+import { CardFrameGuard } from './application/chat/card_frame_guard';
 import { CreateConversationUseCase } from './application/use-cases/chat/create_conversation_use_case';
 import { GetConversationUseCase } from './application/use-cases/chat/get_conversation_use_case';
 import { ListConversationsUseCase } from './application/use-cases/chat/list_conversations_use_case';
@@ -68,7 +74,6 @@ import type { ChatRunRepository } from './domain/repositories/chat_run_repositor
 import { PrismaChatRunRepository } from './infrastructure/database/prisma_chat_run_repository';
 import { LoggerRunRelayLog } from './infrastructure/logging/log_run_relay_log';
 import { LogRunMetricsRecorder } from './infrastructure/metrics/log_run_metrics_recorder';
-import { passThroughFrameGuard } from './domain/chat/run_frame_guard';
 import { RunHub } from './application/chat/run_hub';
 import { StreamRunUseCase } from './application/use-cases/chat/stream_run_use_case';
 import { CancelRunUseCase } from './application/use-cases/chat/cancel_run_use_case';
@@ -364,8 +369,20 @@ export const getListConversationsUseCase = memoize(
   () => new ListConversationsUseCase(getConversationRepository()),
 );
 
+export const getMessageCardRepository = memoize<MessageCardRepository>(
+  () => new PrismaMessageCardRepository(getPrismaClient()),
+);
+
+export const getCardValidator = memoize<CardValidator>(() => new CardSchemaValidator());
+
 export const getListMessagesUseCase = memoize(
-  () => new ListMessagesUseCase(getConversationRepository(), getMessageRepository()),
+  () =>
+    new ListMessagesUseCase(
+      getConversationRepository(),
+      getMessageRepository(),
+      getMessageCardRepository(),
+      getCardValidator(),
+    ),
 );
 
 export const getCreateMessageUseCase = memoize(
@@ -388,12 +405,14 @@ export const getStreamRunUseCase = memoize(
     new StreamRunUseCase({
       conversations: getConversationRepository(),
       messages: getMessageRepository(),
+      cards: getMessageCardRepository(),
       chatRuns: getChatRunRepository(),
       gateway: getAiEngineGateway(),
       contextSigner: getContextSigner(),
       hub: getRunHub(),
-      // M0 emits no card events; the card validator plugs in here (FR-AX-09).
-      guard: passThroughFrameGuard,
+      // The platform is the authority on cards: every card frame is validated
+      // here before it is stored or forwarded (FR-AX-09, ADR-0025).
+      guard: new CardFrameGuard(getCardValidator(), new LoggerCardRejectionLog()),
       metrics: new LogRunMetricsRecorder(),
       log: new LoggerRunRelayLog(),
     }),

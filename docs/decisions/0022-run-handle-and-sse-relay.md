@@ -42,7 +42,7 @@ At the time of writing the sineva-ai v2 stream endpoints (WP-M0-18) do not exist
 7. **Cancel.** `POST /api/v1/workspaces/{workspace_id}/runs/{run_id}/cancel` calls sineva-ai cancel with the same ownership check. The partial text is kept and the assistant message is stored with status `cancelled`.
 8. **Failures are events.** If sineva-ai cannot be reached or answers badly, the relay emits a typed `error` event (for example `upstream_unavailable`, status 503) and ends the stream. It never ends a 200 stream silently and never invents text (ADR-0008, ADR-0016). A start failure leaves the run `pending`, so Retry attaches to the same handle. A failure after the stream started stores the assistant message with status `error` and the code in `finish_reason`.
 9. **No content in logs.** Latency (first token, total) is recorded per specialist and reply language as a metric without text (FR-AIR-31).
-10. **Card hook.** Every frame passes a `RunFrameGuard` before it is stored or forwarded. M0 wires a pass-through; WP-M0-32 plugs the card validator.
+10. **Card hook.** Every frame passes a `RunFrameGuard` before it is stored or forwarded. Card frames are validated there (ADR-0025); every other frame passes through.
 
 ### `chat_runs` (proposal, platform schema)
 

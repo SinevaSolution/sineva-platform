@@ -16,10 +16,22 @@ import { openRunStream, type RunDoneResult, type RunStreamEvent, type RunStreamH
 import { streamErrorText } from '@/client/lib/stream_errors';
 import { useApiErrorText } from '@/client/lib/use_api_error';
 import { useTranslations } from '@/i18n/provider';
-import type { ConversationView, MessageView, SendMessageResultView } from '@/shared/chat_view';
+import type {
+  ConversationView,
+  MessageCardView,
+  MessageView,
+  SendMessageResultView,
+} from '@/shared/chat_view';
 import type { ShellSpecialistView } from '@/shared/shell_view';
 import { Composer } from './composer';
-import { moodForLive, pendingRunToAttach, reduceLiveReply, type LiveReply } from './live_reply_model';
+import { MessageCards } from './message_cards';
+import {
+  liveCardFromFrame,
+  moodForLive,
+  pendingRunToAttach,
+  reduceLiveReply,
+  type LiveReply,
+} from './live_reply_model';
 import { splitMentions } from './mention_segments';
 
 const IDLE: LiveReply = { phase: 'idle' };
@@ -33,7 +45,12 @@ const FINAL_STATUSES: ReadonlyArray<MessageView['status']> = [
   'cancelled',
 ];
 
-function assistantFromDone(result: RunDoneResult, runId: string, conversationId: string): MessageView {
+function assistantFromDone(
+  result: RunDoneResult,
+  runId: string,
+  conversationId: string,
+  cards: MessageCardView[],
+): MessageView {
   const cancelled = result.finish_reason === 'cancelled';
   const status = cancelled
     ? 'cancelled'
@@ -51,6 +68,7 @@ function assistantFromDone(result: RunDoneResult, runId: string, conversationId:
     run_id: runId,
     channel: 'web',
     client_message_id: null,
+    cards,
     created_at: now,
     updated_at: now,
   };
@@ -89,6 +107,10 @@ export function ChatThread({
   const [live, dispatchLive] = React.useReducer(reduceLiveReply, IDLE);
   const bottomRef = React.useRef<HTMLLIElement>(null);
   const streamRef = React.useRef<RunStreamHandle | null>(null);
+  // Cards that finished while the reply streams. The ref is what the done
+  // handler reads (it runs inside a stream callback); the state is what renders.
+  const liveCardsRef = React.useRef<MessageCardView[]>([]);
+  const [liveCards, setLiveCards] = React.useState<MessageCardView[]>([]);
   // Which load already looked for a run to attach to (see the effect below).
   const autoAttachKey = React.useRef<string | null>(null);
   const base = `/api/v1/workspaces/${workspaceId}/conversations/${conversationId}`;
@@ -105,6 +127,7 @@ export function ChatThread({
 
   function attach(runId: string) {
     streamRef.current?.close();
+    liveCardsRef.current = [];
     dispatchLive({ type: 'start', run_id: runId });
     streamRef.current = openRunStream({
       workspaceId,
@@ -112,15 +135,26 @@ export function ChatThread({
       onEvent: (event: RunStreamEvent) => {
         if (event.type === 'token') {
           dispatchLive({ type: 'token', token: event.token });
+        } else if (event.type === 'other' && event.event === 'card_completed') {
+          const card = liveCardFromFrame(event.data, runId, liveCardsRef.current.length);
+          if (card) {
+            liveCardsRef.current = [...liveCardsRef.current, card];
+            setLiveCards(liveCardsRef.current);
+          }
         } else if (event.type === 'done') {
-          const reply = assistantFromDone(event.result, runId, conversationId);
+          const reply = assistantFromDone(event.result, runId, conversationId, liveCardsRef.current);
           setState((prev) =>
-            prev.status !== 'ready' || !reply.content
+            prev.status !== 'ready' || (!reply.content && (reply.cards ?? []).length === 0)
               ? prev
               : { ...prev, messages: [...prev.messages, reply] },
           );
+          // The stored reply now carries the cards; the live bubble goes away.
+          liveCardsRef.current = [];
+          setLiveCards([]);
           dispatchLive({ type: 'done', cancelled: reply.status === 'cancelled' });
         } else if (event.type === 'error') {
+          liveCardsRef.current = [];
+          setLiveCards([]);
           dispatchLive({ type: 'error', code: event.code, retryable: event.retryable });
         }
       },
@@ -363,6 +397,7 @@ export function ChatThread({
               <span className="block text-xs font-semibold text-fg-brand">{companionName}</span>
               {/* Plain text on purpose: model output is never rendered as HTML. */}
               {live.text || <span className="text-fg-secondary">{t('thread.working', { name: companionName })}</span>}
+              <MessageCards cards={liveCards} />
             </RoomBubble>
           </li>
         ) : null}
@@ -435,6 +470,7 @@ function MessageRow({
         <span className="block text-xs font-semibold text-fg-brand">{name}</span>
         {/* Plain text until the sanitized markdown renderer lands (M1). */}
         {message.content}
+        <MessageCards cards={message.cards} />
         {message.status === 'error' ? (
           <span className="mt-1 block text-[13px] text-fg-secondary">
             {streamErrorText(tFull, message.finish_reason ?? 'upstream_interrupted', name)}
