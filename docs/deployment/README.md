@@ -29,6 +29,7 @@ How the Sineva stack is run and released: the Docker Compose topology, how `sine
 | [ci_cd_pipeline.md](ci_cd_pipeline.md) | What CI runs, the Dockerfile stages, release order, rollout checklist | You change CI, the image or a release |
 | [connections_runbook.md](connections_runbook.md) | Job tick schedule, vault database roles, key rotation, restore sweep, provider mass revoke | You operate Connected tools or the vault |
 
+- [vercel.md](vercel.md): step-by-step Vercel deployment for the Founder: services, project, variables, cron, migrations in the build, domain, OAuth URLs, smoke checklist, rollback ([ADR-0047](../decisions/0047-hosting-on-vercel.md)).
 - [Node.js security patch, 22 October 2026](node-security-2026-10-22.md): runtime baseline, CVE evidence and rollout verification.
 
 ## Suggested reading order

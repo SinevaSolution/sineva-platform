@@ -92,6 +92,15 @@ Migrations are an explicit release step, separate from starting the app. The Doc
    The runtime `DATABASE_URL` in `docker-compose.yml` has no `?schema=`, so it must be overridden for this one command.
 3. Start or restart `sineva-platform`.
 
+### Vercel: migrations run in the production build
+
+On Vercel the order above is automated (Founder decision, [ADR-0047](../decisions/0047-hosting-on-vercel.md)): the Build Command `node scripts/vercel_build.mjs` runs `migrate status`, a destructive-change gate and `migrate deploy` before `next build`, but only for `VERCEL_ENV=production` (or a preview build that has its own `PREVIEW_DATABASE_URL`). Docker and local builds are unchanged. Details, variables and the manual fallback are in [vercel.md](../deployment/vercel.md#7-migrations-during-the-build). What this means when you write a migration:
+
+- The gate fails the build when a pending migration contains `DROP TABLE`, `DROP COLUMN`, `DROP SCHEMA`, `TRUNCATE` or a `DELETE FROM` without `WHERE`, unless its folder has `APPROVED_DESTRUCTIVE.md` with a written reason. Applied migrations are never rescanned. Add the marker in the same reviewed commit as the migration.
+- **Expand, then contract.** The previous deployment keeps serving while the build migrates, and a failed build leaves the new schema under the old code, so a migration must work with the release before it. Release N adds (tables, nullable or defaulted columns, indexes); release N+1 switches the code; release N+2 or later drops the old shape, with the marker and a backup. Never rename a column in one step.
+- The script migrates over a direct (non-pooled) connection with `?schema=platform`; Prisma's advisory lock serializes concurrent builds. A failed migration fails the build and the old deployment stays live. Its log prints migration names, never connection details.
+- A migration that recreates `platform.vault_secrets` needs `apps/web/prisma/ops/vault_roles.sql` run right after the deploy ([connections runbook](../deployment/connections_runbook.md)).
+
 `migrate deploy` only applies pending migrations. It never resets and never creates new ones. Before a migration that drops or rewrites data, take a `pg_dump` of the `platform` schema. This repo documents no backup procedure yet.
 
 On a fresh database both services need their release step before they take traffic: the platform's `migrate deploy` (the init migration runs `CREATE SCHEMA IF NOT EXISTS "platform"`), and `sineva-ai`'s `alembic upgrade head`.
