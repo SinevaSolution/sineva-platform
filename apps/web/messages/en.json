@@ -13,7 +13,8 @@
     "normal": "Normal text",
     "width": "Preview width",
     "sample": "Sample data",
-    "components": "Components"
+    "components": "Components",
+    "empty_states": "Empty states"
   },
   "common": {
     "loading": "Loading",
@@ -25,6 +26,99 @@
       "aria_to_dark": "Switch to dark theme",
       "title_to_light": "Switch to light mode",
       "title_to_dark": "Switch to dark mode"
+    }
+  },
+  "empty": {
+    "sidebar_recent": {
+      "title": "No chats yet",
+      "description": "Start one and it will wait for you here."
+    },
+    "home_recent": {
+      "title": "No chats to pick up yet",
+      "description": "Start a chat with Sino and it will be waiting for you here next time.",
+      "action": "Start a chat"
+    },
+    "home_ideas": {
+      "title": "No ideas for today yet",
+      "description": "Ideas show up as soon as your team is ready."
+    },
+    "chat_thread_empty": {
+      "title": "Start the conversation",
+      "description": "Write your first message below and the reply shows up right here."
+    },
+    "chat_deleted": {
+      "title": "This chat is gone",
+      "description": "It may have been deleted. You can start a new one any time.",
+      "action": "Start a new chat"
+    },
+    "chat_load_failed": {
+      "title": "Sino couldn't open this chat",
+      "description": "Your messages are safe. Try again in a moment.",
+      "action": "Try again"
+    },
+    "new_chat_starters": {
+      "title": "No ideas to start with",
+      "description": "Just write what you need in the box and send it."
+    },
+    "mention_no_match": {
+      "title": "No specialist matches “{query}”",
+      "description": "Try another name, or delete the @ to keep writing."
+    },
+    "members_list": {
+      "title": "No members yet",
+      "description": "Invite your team and they will show up here."
+    },
+    "members_invitations": {
+      "title": "No pending invitations",
+      "description": "Invite someone and their invitation waits here until they accept."
+    },
+    "business_offerings": {
+      "title": "No products or services yet",
+      "description": "Add what you sell so Sino can describe it the right way."
+    },
+    "business_policies": {
+      "title": "No policies yet",
+      "description": "Add your returns, shipping or payment rules so Sino answers the way you would."
+    },
+    "onboarding_tasks": {
+      "title": "No first task right now",
+      "description": "Open your workspace and ask Sino anything to get going."
+    },
+    "sign_in_methods_none": {
+      "title": "No other sign-in methods",
+      "description": "Google and GitHub are not linked to this account yet."
+    },
+    "coming_soon": {
+      "title": "Sino is still building {title}",
+      "description": "It is on the way. Until then, a chat with Sino is a good place to start.",
+      "action": "Start a chat instead"
+    },
+    "not_found": {
+      "title": "Sino can't find this page",
+      "description": "It may have moved, or you may not have access to it.",
+      "action": "Go to Home"
+    },
+    "workspace_error": {
+      "title": "Something went wrong on our side",
+      "description": "Nothing you did caused this. Try again in a moment.",
+      "action": "Try again"
+    },
+    "connections_none": {
+      "title": "No tools connected yet",
+      "description": "Connect one and your specialists can use it with your approval."
+    },
+    "connections_filtered": {
+      "title": "No tools match \"{query}\"",
+      "description": "Try another name or clear the search.",
+      "action": "Clear search"
+    },
+    "connections_activity": {
+      "title": "No activity yet",
+      "description": "When a specialist uses this tool, it shows here."
+    },
+    "specialist_tools_none": {
+      "title": "No tools for {name} yet",
+      "description": "Connect a tool in Connected tools, then choose who can use it."
     }
   },
   "conversation": {
@@ -41,15 +135,6 @@
     "deleted": "Chat deleted"
   },
   "errors": {
-    "not_found": {
-      "title": "Sino can't find this page",
-      "body": "It may have moved, or you may not have access to it.",
-      "cta": "Go to Home"
-    },
-    "workspace_error": {
-      "title": "Something went wrong on our side",
-      "body": "Nothing you did caused this. Try again in a moment."
-    },
     "api": {
       "network": "We couldn't reach the server. Check your connection and try again.",
       "unauthenticated": "Your session ended. Sign in again to continue.",
@@ -69,7 +154,40 @@
       "unsupported_image": "Use a JPG, PNG or WebP image.",
       "image_too_large": "That photo is over 2 MB. Choose a smaller one.",
       "invalid_image": "We couldn't read that image. Try another one.",
-      "upload_failed": "The photo didn't upload. Try again in a moment."
+      "upload_failed": "The photo didn't upload. Try again in a moment.",
+      "already_in_library": "That file is already in your Library.",
+      "folder_not_empty": "Move or delete what is inside this collection first.",
+      "folder_depth_exceeded": "Collections can be nested three levels deep.",
+      "unsupported_file_type": "Choose a PDF, Word, Excel, CSV, slides, text or image file.",
+      "file_too_large": "That file is over 25 MB.",
+      "entitlement_required": "This is more than your plan includes.",
+      "already_member": "That person is already in this workspace.",
+      "last_owner": "A workspace needs an owner. Hand over ownership to an admin first.",
+      "invitation_expired": "This invitation has expired. Ask the owner to send a new one.",
+      "invitation_used": "This invitation was already used.",
+      "invitation_revoked": "This invitation was cancelled. Ask the owner to send a new one.",
+      "invitation_not_found": "We could not find this invitation. Ask the owner for a new link.",
+      "invitation_email_mismatch": "This invitation was sent to a different email address. Switch to the account that received it.",
+      "email_not_verified": "Verify your email first, then open the invitation again.",
+      "ownership_transfer_expired": "This ownership request has expired. Ask the owner to start a new one.",
+      "ownership_transfer_used": "This ownership request was already accepted.",
+      "ownership_transfer_cancelled": "This ownership request was cancelled by the owner.",
+      "ownership_transfer_stale": "The workspace changed since this request was sent. Ask the owner to start a new one.",
+      "fresh_session_required": "For your security, confirm it's you first.",
+      "cannot_remove_last_sign_in_method": "Add another way to sign in first.",
+      "account_in_use": "That account is already connected to another Sineva user.",
+      "provider_already_linked": "A different account of that provider is already connected. Disconnect it first.",
+      "target_must_be_admin": "Choose someone who is an admin.",
+      "allowlist_required": "Choose at least one specialist.",
+      "scope_not_applicable": "Specialist access only applies to members.",
+      "unknown_specialist": "One of those specialists does not exist.",
+      "oauth_account_mismatch": "That is not the account linked to you. Use the one connected to your Sineva account."
+    },
+    "not_found": {
+      "title": "Sino can't find this page"
+    },
+    "workspace_error": {
+      "title": "Something went wrong on our side"
     }
   },
   "meta": {
@@ -82,7 +200,8 @@
     "home": "Home",
     "new_chat": "New chat",
     "chat": "Chat",
-    "not_found": "Not found"
+    "not_found": "Not found",
+    "library": "Sino Library"
   },
   "auth": {
     "sign_in": {
@@ -189,16 +308,6 @@
     }
   },
   "account": {
-    "settings": {
-      "title": "Settings",
-      "edit_profile": "Edit your profile"
-    },
-    "tabs": {
-      "label": "Account settings",
-      "profile": "Profile",
-      "preferences": "Preferences",
-      "sign_in": "Sign-in methods"
-    },
     "save_bar": {
       "label": "Unsaved changes",
       "unsaved": "You have unsaved changes",
@@ -255,7 +364,11 @@
       "email": "Email",
       "email_helper": "Your sign-in email. It cannot be changed here yet.",
       "phone": "Phone number",
-      "phone_helper": "Optional. We save it as +62..., for example 0812 3456 7890 becomes +6281234567890.",
+      "phone_helper": "Optional. Pick a country code, then type your number. A leading 0 is fine.",
+      "phone_country": "Country code",
+      "phone_country_search": "Search country or code",
+      "phone_country_not_found": "No country found",
+      "phone_country_not_found_hint": "Try a name, a code like ID or a dial code like +62.",
       "section_region": "Language and region",
       "language": "Language",
       "language_helper": "The language of the app. Sino's replies follow your messages.",
@@ -274,7 +387,7 @@
         "name_length": "Use between 2 and 100 characters.",
         "name_chars": "Use letters, spaces, apostrophes, periods or hyphens only.",
         "preferred_name_length": "Use 40 characters or fewer.",
-        "phone_invalid": "Enter a valid phone number, for example 0812 3456 7890.",
+        "phone_invalid": "Enter a valid phone number for the selected country.",
         "about_me_length": "Use 280 characters or fewer.",
         "job_title_length": "Use 60 characters or fewer."
       }
@@ -308,13 +421,39 @@
       "password_set": "Set",
       "password_not_set": "Not set",
       "not_linked_helper": "Not linked to your account",
-      "linked_helper": "Linked to your account"
+      "linked_helper": "Linked to your account",
+      "connect_google": "Connect Google",
+      "connect_github": "Connect GitHub",
+      "disconnect": "Disconnect",
+      "disconnect_title": "Disconnect {provider}?",
+      "disconnect_body": "You will no longer be able to sign in with {provider}. You can connect it again any time.",
+      "disconnect_blocked": "Add another way to sign in first",
+      "disconnected": "{provider} was disconnected.",
+      "not_configured": "Sign in with {provider} is not available yet.",
+      "set_password": "Set a password",
+      "set_password_helper": "Add a password so you can sign in even without Google or GitHub.",
+      "set_password_sent": "We sent a link to {email}. Open it to choose a password.",
+      "cancel": "Cancel",
+      "dismiss": "Dismiss",
+      "notice": {
+        "linked": "Connected. You can use it to sign in from now on.",
+        "account_in_use": "That account is already connected to another Sineva user.",
+        "provider_already_linked": "A different account of that provider is already connected. Disconnect it first.",
+        "fresh_required": "Your sign-in is a bit old for this. Press Connect again and confirm it's you.",
+        "not_configured": "That sign-in option is not available yet.",
+        "mismatch": "Your sign-in changed while you were connecting. Try again.",
+        "cancelled": "You cancelled, so nothing was changed.",
+        "failed": "We could not finish that. Try again."
+      }
     }
   },
   "inbox": {
     "sentence": {
-      "draft_review": "{name} drafted this {kind}. Nothing is sent.",
-      "input_request": "{name} needs your answer to keep going."
+      "draft_review": "{name} wrote a {kind} for you to check. Nothing is sent.",
+      "input_request": "{name} has a question for you.",
+      "result": "{name} finished something for you.",
+      "connection_needs_reconnect": "{provider} needs to be reconnected before your specialists can use it again.",
+      "connection_rotation_due": "{provider} has used the same key for 90 days. Replace it to keep your connection safe."
     },
     "approve_note": {
       "draft_review": "Approving marks this draft ready. Sineva does not send it yet."
@@ -397,14 +536,11 @@
     },
     "recent": {
       "load_failed": "Couldn't load your chats.",
-      "empty": "Your chats will show up here.",
       "untitled": "New chat",
       "with": "with"
     },
     "coming_soon": {
-      "badge": "Coming soon",
-      "heading": "Sino is still building {title}",
-      "cta": "Start a chat instead"
+      "badge": "Coming soon"
     }
   },
   "specialists": {
@@ -431,8 +567,6 @@
       "coming_heading": "Coming to your workspace",
       "recent_loading": "Loading chats",
       "recent_failed": "Couldn't load your chats. Refresh to try again.",
-      "recent_empty": "No chats yet. Pick someone from your team above, or {link}.",
-      "recent_empty_link": "ask Sino",
       "chat_team": "Team chat",
       "chat_with": "With {name}"
     }
@@ -484,8 +618,7 @@
     },
     "mention_menu": {
       "heading": "Bring in a specialist",
-      "list_label": "Specialists",
-      "empty": "No specialist matches “{query}”"
+      "list_label": "Specialists"
     },
     "thread": {
       "loading": "Loading chat",
@@ -517,20 +650,18 @@
       "generic": "Something went wrong while {name} was replying. Try again."
     }
   },
-  "mcp": {},
   "members": {
     "title": "Members",
     "description": "Manage who can work in this workspace.",
     "join_title": "Workspace invitation",
     "ownership_title": "Workspace ownership",
-    "join_description": "You have been invited to {workspace}. Use the email address that received the invitation.",
+    "join_description": "You have been invited to {workspace} as {role}. Use the email address that received the invitation.",
     "ownership_description": "You have been asked to own {workspace}.",
     "join": "Join workspace",
     "accept_ownership": "Accept ownership",
     "ownership_warning": "Accepting makes you the owner. The current owner becomes an admin.",
-    "link_inactive": "This link is no longer active. Ask the workspace owner for a new link.",
-    "wrong_account": "This invitation belongs to another account. Sign in with the invited email.",
-    "switch_account": "Sign out and switch account",
+    "wrong_account": "This link was sent to a different account. Switch to the account it was meant for.",
+    "switch_account": "Switch account",
     "sign_in": "Sign in",
     "create_account": "Create account",
     "invite": "Invite member",
@@ -552,7 +683,6 @@
     "invitations": "Pending invitations",
     "resend": "Resend invitation",
     "revoke": "Revoke invitation",
-    "empty_invites": "There are no pending invitations.",
     "expires": "Expires {date}",
     "copy": "Copy invitation link",
     "email_failed": "The email could not be sent. Copy the link and share it with the invited person.",
@@ -563,173 +693,430 @@
     "send_transfer": "Send ownership invitation",
     "pending_transfer": "Ownership invitation sent to {name}.",
     "cancel_transfer": "Cancel ownership transfer",
-    "reauth": "Confirm your password",
-    "password": "Password",
-    "reauth_body": "Confirm your password before removing members or transferring ownership.",
     "confirm": "Confirm",
     "roles": {
       "owner": "Owner",
       "admin": "Admin",
       "member": "Member",
       "viewer": "Viewer"
-    }
+    },
+    "invite_state": {
+      "expired": "This invitation has expired. Ask the owner to send a new one.",
+      "used": "This invitation was already used.",
+      "revoked": "This invitation was cancelled. Ask the owner to send a new one."
+    },
+    "ownership_state": {
+      "expired": "This ownership request has expired. Ask the owner to start a new one.",
+      "used": "This ownership request was already accepted.",
+      "cancelled": "This ownership request was cancelled by the owner."
+    },
+    "go_home": "Go to Sineva",
+    "signed_out_hint_invite": "Sign in, or create an account with the email address that received the invitation.",
+    "signed_out_hint_ownership": "Sign in with the admin account this request was sent to.",
+    "reauth_done": "Confirmed. Press the button below to finish.",
+    "invite_sent": "We emailed {email}. You can also copy the link and share it yourself.",
+    "invite_created": "Invitation created.",
+    "link_copied": "Link copied.",
+    "copy_failed": "Could not copy. Select the link and copy it by hand.",
+    "copy_link": "Copy link",
+    "dismiss": "Dismiss",
+    "col_name": "Name",
+    "col_role": "Role",
+    "col_access": "Specialist access",
+    "col_last_active": "Last active",
+    "col_actions": "Actions",
+    "never_active": "Not yet",
+    "scope_count": "{count} selected",
+    "edit_member": "Edit access for {name}",
+    "remove_member": "Remove {name}",
+    "expired_label": "Expired",
+    "resent": "Invitation sent again to {email}.",
+    "revoke_title": "Revoke this invitation?",
+    "revoke_body": "{email} will no longer be able to join with this link.",
+    "revoked": "Invitation revoked.",
+    "transfer_cancelled": "Ownership transfer cancelled.",
+    "left": "You left the workspace.",
+    "changes_saved": "Changes saved.",
+    "transfer_needs_admin": "Make someone an admin first. Ownership can only go to an admin.",
+    "member_removed": "{name} was removed."
   },
   "inbox_ui": {
     "title": "Inbox",
     "tabs": "Inbox views",
-    "empty": "Nothing here yet. Items that need your attention will appear here.",
-    "select_item": "Choose an item to review its details.",
-    "unread": "Unread",
-    "next": "Next page",
-    "mark_read": "Mark as read",
-    "draft_title": "Draft title",
-    "draft_body": "Draft text",
-    "draft_only": "Approving marks this draft ready. It does not publish or send anything.",
-    "awaiting_revision": "Waiting for a revised draft.",
-    "decided_by": "Reviewed by {name}",
-    "private_note": "Private review note (optional)",
-    "approve": "Approve draft",
-    "reject": "Reject draft",
-    "edit": "Edit draft",
-    "cancel_edit": "Keep original draft",
-    "change_instruction": "What should change?",
-    "request_changes": "Request changes",
-    "yes": "Yes",
-    "no": "No",
-    "send_answer": "Send answer",
-    "dismiss": "Dismiss request",
-    "open_chat": "Open source chat",
-    "revisions": "Revision history",
-    "revision": "Revision {number}",
     "views": {
-      "needs_review": "Needs review",
-      "needs_input": "Needs input",
+      "needs_you": "Needs you",
+      "updates": "Updates",
       "done": "Done"
     },
-    "back_to_list": "Back to Inbox list",
-    "empty_caught_up": "You are all caught up.",
-    "specialist_filter": "Filter by specialist",
-    "all_specialists": "All specialists",
-    "source_filter": "Filter by source",
-    "all_sources": "All sources",
+    "search_label": "Search the Inbox",
+    "search_placeholder": "Search",
+    "filter_specialist": "Filter by specialist",
+    "filter_kind": "Filter by kind",
+    "filter_source": "Where it came from",
+    "source_any": "From anywhere",
     "from_chat": "From a chat",
     "from_room": "From a room",
     "from_system": "System",
-    "expired_title": "This item has expired.",
+    "chip_drafts": "Drafts",
+    "chip_questions": "Questions",
+    "team_name": "Sino",
+    "sentence_fallback": "{name} has an update for you.",
+    "draft_kinds": {
+      "post": "post",
+      "reply": "reply",
+      "email": "email",
+      "message": "message",
+      "caption": "caption",
+      "report": "report",
+      "document": "document",
+      "proposal": "proposal",
+      "other": "draft"
+    },
+    "kind_approval": "Sino needs your OK",
+    "kind_question": "Sino has a question",
+    "kind_result": "Update",
+    "expires_in_hours": "Expires in {count} h",
+    "expires_in_minutes": "Expires in {count} min",
+    "expired_short": "Expired",
+    "unread": "Unread",
+    "show_more": "Show more",
+    "try_again": "Try again",
+    "list_error_title": "Could not load your Inbox",
+    "list_error_body": "Check your connection and try again.",
+    "clear_filters": "Clear filters",
+    "empty_search_title": "Nothing found for {query}",
+    "empty_search_body": "Check the spelling or try fewer words.",
+    "empty_filtered_title": "Nothing matches",
+    "empty_filtered_body": "Try another filter, or clear them all.",
+    "caught_up_title": "All caught up",
+    "caught_up_body": "Nothing needs you right now. When Sino has a draft to check or a question, it shows up here.",
+    "empty_updates_title": "No updates yet",
+    "empty_updates_body": "Finished work and news from your companions will show up here.",
+    "empty_done_title": "Nothing done yet",
+    "empty_done_body": "Drafts and questions you have handled are kept here.",
+    "first_run_title": "Your Inbox is ready",
+    "first_run_body": "Sino checks with you here before anything goes out, and asks when it is stuck.",
+    "first_run_cta": "Start a chat",
+    "first_run_drafts_title": "Drafts to approve",
+    "first_run_drafts_body": "Read it, change it if you like, and say OK. Nothing goes out until you do.",
+    "first_run_questions_title": "Questions from Sino",
+    "first_run_questions_body": "When Sino needs a detail to carry on, it asks here.",
+    "first_run_done_title": "Finished work",
+    "first_run_done_body": "Results and news land here, so you can catch up when you want.",
+    "pick_title": "Pick something to read",
+    "pick_body": "Use J and K to move and Enter to open.",
+    "back_to_inbox": "Back to Inbox",
+    "open_chat": "Open the chat",
+    "draft_label": "Draft {kind}",
+    "reassure_approval": "Sino will not do anything until you approve.",
+    "reassure_question": "Your answer goes straight back to {name}.",
+    "field_title": "Title",
+    "field_text": "Text",
+    "diff_hint": "{count, plural, one {You changed # word} other {You changed # words}}",
+    "show_changes": "Show changes",
+    "hide_changes": "Hide changes",
+    "diff_original": "Original",
+    "diff_edited": "Your version",
+    "approve": "Approve",
+    "edit": "Edit",
+    "discard_edits": "Discard edits",
+    "changes": "Ask for changes",
+    "reject": "Reject",
+    "cancel": "Cancel",
+    "changes_label": "What should change?",
+    "changes_hint": "Keep it short. Sino writes a new draft and asks you again.",
+    "send_request": "Send request",
+    "reject_label": "Note (optional)",
+    "reject_hint": "Only your team sees this.",
+    "reject_confirm": "Reject draft",
+    "next_item": "Next item",
+    "awaiting_new_draft": "Waiting for a new draft from {name}.",
+    "you_asked": "You asked: {text}",
+    "result_expired_draft": "This draft expired",
+    "result_expired_question": "This question expired",
+    "expired_body": "Nothing was sent. Ask for it again in the chat.",
     "draft_again": "Draft again",
-    "original_draft": "Original draft",
-    "edited_draft": "Edited draft",
-    "show_diff": "Show changes",
-    "hide_diff": "Hide changes",
-    "needs_review_badge": "Needs review",
-    "needs_input_badge": "Needs input"
+    "result_approved_you": "You approved this draft",
+    "result_approved_other": "{name} approved this draft",
+    "result_rejected_you": "You rejected this draft",
+    "result_rejected_other": "{name} rejected this draft",
+    "someone": "Someone on your team",
+    "conflict_title": "{name} got there first",
+    "conflict_body": "Nothing changed from your side.",
+    "after_approved": "The draft is marked ready. Nothing was sent.",
+    "after_rejected": "{name} was told. Nothing was sent.",
+    "result_answered_you": "You answered this question",
+    "result_answered_other": "Someone on your team answered this question",
+    "result_skipped_you": "You skipped this question",
+    "result_skipped_other": "Someone on your team skipped this question",
+    "after_answered": "Your answer went back to {name}.",
+    "after_skipped": "{name} was told you skipped it.",
+    "result_cancelled": "This was cancelled",
+    "edited_before_approval": "Edited before it was approved",
+    "earlier_versions": "Earlier versions",
+    "version_by_you": "Version {number}, edited by you",
+    "version_by_sino": "Version {number}, written by {name}",
+    "yes": "Yes",
+    "no": "No",
+    "choose": "Choose",
+    "send": "Send",
+    "skip_question": "Skip this question",
+    "detail_error_title": "Could not open this",
+    "toast_conflict": "{name} already decided this.",
+    "toast_conflict_unknown": "Someone already decided this.",
+    "toast_changed": "This changed while you were looking. Here is the latest.",
+    "press_enter_approve": "Press Enter to approve",
+    "press_enter_reject": "Press Enter to reject",
+    "shortcut_then_enter": "{key} then Enter"
   },
   "library_ui": {
-    "title": "Sino Library",
-    "description": "Keep the documents and notes Sino can use for your business.",
-    "upload": "Upload file",
-    "add_note": "Add note",
-    "new_folder": "New folder",
-    "usage": "{documents} documents · {bytes} bytes stored · {pages} OCR pages this month",
-    "search": "Search documents",
-    "status": "Status",
-    "all_statuses": "All statuses",
-    "refresh": "Refresh status",
-    "folders": "Folders",
-    "all_documents": "All documents",
-    "root": "Outside folders",
-    "empty": "No documents match this view. Upload a file or add a note to get started.",
-    "queued_hint": "Waiting to be read. Sino can use this document after its status becomes Ready.",
-    "attention_hint": "This document needs checking. Check that it is readable and not password protected, then retry.",
-    "scope_pending": "The access change is waiting to sync. Check the status before relying on the new access.",
-    "personal_data": "This document may contain personal data. Review who can access it.",
-    "preview": "Preview extracted text",
-    "edit": "Edit document",
-    "retry": "Read again",
-    "delete": "Delete",
-    "delete_title": "Delete this item?",
-    "delete_body": "Delete {title}? This cannot be undone. Nonempty folders cannot be deleted.",
-    "next": "Next page",
-    "try_title": "Check what Sino can find",
-    "question": "Question about your documents",
-    "try_search": "Search Library",
-    "abstained": "No reliable answer was found in the selected documents.",
-    "scope": "Who can use this?",
-    "workspace_scope": "Workspace",
-    "file": "File",
-    "file_hint": "PDF, Office documents, CSV, TXT, Markdown or images. Maximum 25 MB.",
-    "dropzone_label": "Drop a file here or click to browse",
-    "upload_queue": "Upload queue",
-    "remove_file": "Remove {name}",
-    "upload_received": "Uploaded; waiting to be read",
-    "upload_failed": "Upload failed",
-    "upload_in_progress": "Uploading",
-    "upload_waiting": "Waiting to upload",
-    "uploading_file": "Uploading {name}",
-    "retry_uploads": "Retry failed uploads",
-    "file_type_error": "Choose a PDF, Office document, CSV, TXT, Markdown, JPG, PNG or WebP file.",
-    "file_size_error": "Choose a nonempty file up to 25 MB.",
-    "file_count_error": "Choose up to 10 files per upload batch.",
-    "usage_action": "Usage & limits",
-    "quota_title": "Storage & limits",
-    "quota_documents": "Documents",
-    "quota_storage": "Storage",
-    "quota_ocr": "Monthly OCR",
-    "storage_bytes_count": "{bytes} bytes",
-    "pages_count": "{pages} pages",
-    "limit_ok": "Within plan limits",
-    "limit_reached": "Limit reached",
-    "documents_limit_reached": "Document limit reached",
-    "storage_limit_reached": "Storage limit reached",
-    "ocr_limit_reached": "OCR monthly limit reached",
-    "reading_progress": "Reading page {current} of {total}",
-    "flagged_pages": "Pages needing attention: {pages}",
-    "rename": "Rename",
-    "rename_folder": "Rename folder",
-    "folder_name": "Folder name",
-    "move": "Move",
-    "move_folder": "Move folder",
-    "destination_folder": "Destination folder",
-    "scope_filter": "Scope filter",
-    "all_scopes": "All scopes",
-    "source_type": "Source type",
-    "all_sources": "All sources",
-    "source_upload": "Upload",
-    "source_note": "Note",
-    "source_chat_save": "Saved from chat",
-    "language": "Language",
-    "all_languages": "All languages",
-    "lang_id": "Bahasa Indonesia",
-    "lang_en": "English",
-    "lang_mixed": "Mixed",
-    "reason_codes": {
-      "password_protected": "This PDF is password protected. Remove the password and upload again.",
-      "unreadable_pages": "Some pages could not be read clearly. Check the file and retry.",
-      "no_text_found": "No readable text was found in this document.",
-      "hidden_text_detected": "Hidden or suspicious text was detected in this document.",
-      "unsupported_content": "This document contains content that cannot be processed.",
-      "parse_failed": "Could not parse this document. Check the file and retry.",
-      "ocr_failed": "Could not read text from this document.",
-      "embedding_failed": "Could not index this document. Try reading it again.",
-      "too_many_pages": "This document exceeds the maximum page limit.",
-      "storage_object_missing": "The stored file could not be found.",
-      "ingest_service_unavailable": "The reading service is temporarily unavailable. Try again in a moment.",
-      "ingest_service_error": "An error occurred while reading the document. Try again in a moment."
-    },
-    "name": "Name",
-    "note": "Note text",
+    "reason_codes": {},
     "save": "Save",
     "cancel": "Cancel",
     "close": "Close",
-    "page": "Page {number}",
-    "review_days": "Review every (days, optional)",
-    "statuses": {
-      "queued": "Queued",
-      "processing": "Processing",
+    "statuses": {},
+    "hero": {
+      "eyebrow": "Sino Library",
+      "title": "Teach Sino about your business",
+      "body": "Add the files Sino should know, like your price list, SOPs and FAQs. Sino reads them and uses them when it helps you.",
+      "summary_label": "Library summary",
+      "chip_ready": "{count} ready",
+      "chip_reading": "{count} being read",
+      "chip_attention": "{count, plural, one {# needs a look} other {# need a look}}",
+      "storage": "{used} of {limit} used",
+      "storage_only": "{used} used",
+      "storage_label": "Storage used",
+      "storage_details": "Storage details"
+    },
+    "add": {
+      "menu": "Add",
+      "file": "Upload files",
+      "link": "Web link",
+      "note": "Written note"
+    },
+    "soon": "Soon",
+    "zone": {
+      "section": "Add files",
+      "label": "Drop files here, or click to choose",
+      "hint": "For example a price list, an SOP, a product catalog or an FAQ. PDF, Word, Excel, slides and images, up to 25 MB each.",
+      "into": "Adding to {name}. New files can be used by the same people as the collection.",
+      "into_top": "Adding to your Library. New files can be used by everyone.",
+      "type_error": "Choose a PDF, Word, Excel, CSV, slides, text or image file.",
+      "size_error": "Choose a file that is not empty and up to 25 MB.",
+      "count_error": "Choose up to 10 files at a time."
+    },
+    "queue": {
+      "label": "Files being added",
+      "waiting": "Waiting",
+      "uploading": "Uploading",
+      "sent": "Sent. Sino is reading it.",
+      "failed": "Couldn't upload",
+      "retry": "Try again",
+      "remove": "Remove from the list",
+      "remove_named": "Remove {name} from the list",
+      "progress": "Uploading {name}"
+    },
+    "collections": {
+      "title": "Collections",
+      "all": "All files",
+      "top": "Not in a collection",
+      "new": "New collection",
+      "new_inside": "New collection inside",
+      "settings": "Collection settings",
+      "delete": "Delete collection",
+      "options": "Options for {name}",
+      "options_tip": "Options",
+      "collapse": "Collapse {name}",
+      "expand": "Expand {name}",
+      "collapse_tip": "Collapse",
+      "expand_tip": "Expand"
+    },
+    "dialog": {
+      "create_title": "New collection",
+      "edit_title": "Collection settings",
+      "name": "Name",
+      "inside": "Inside",
+      "top": "Top level",
+      "create": "Create collection",
+      "access_note": "Files that follow this collection switch too. Files with their own access keep it."
+    },
+    "access": {
+      "label": "Who can use this",
+      "everyone": "Everyone",
+      "everyone_hint": "Sino in your team chats, every specialist, and later Squads and Workflows.",
+      "specialists": "Specialists",
+      "squads": "Squads",
+      "workflows": "Workflows",
+      "none_error": "Pick at least one specialist, or turn on Everyone.",
+      "same": "Same as the collection",
+      "same_hint_top": "Follows the Library's default: everyone can use it.",
+      "same_hint_everyone": "Follows {name}, which is open to everyone. If that changes, so does this file.",
+      "same_hint_chosen": "Follows {name}. If its access changes, so does this file's.",
+      "own_hint": "This file has its own access. Turn this on to follow the collection again.",
+      "save": "Save who can use this"
+    },
+    "toolbar": {
+      "collections": "Collections",
+      "search": "Search your files",
+      "search_placeholder": "Search by name",
+      "clear_search": "Clear search",
+      "used_by": "Used by",
+      "used_by_anyone": "Used by anyone",
+      "sort": "Sort",
+      "status": "Status",
+      "view": "View",
+      "view_list": "List",
+      "view_cards": "Cards"
+    },
+    "filter": {
+      "all": "All",
       "ready": "Ready",
-      "needs_attention": "Needs attention",
-      "failed": "Could not process",
-      "deleting": "Deleting"
+      "reading": "Reading",
+      "needs_look": "Needs a look",
+      "cant_read": "Couldn't read"
+    },
+    "sort": {
+      "newest": "Newest first",
+      "oldest": "Oldest first",
+      "name": "Name",
+      "size": "Largest first"
+    },
+    "used_by": {
+      "everyone": "Everyone"
+    },
+    "list": {
+      "label": "Your files",
+      "more": "Show more"
+    },
+    "row": {
+      "open": "Open {name}",
+      "top": "Not in a collection",
+      "updated": "Updated {date}",
+      "needs_look_hint": "Some pages could not be read.",
+      "cant_read_hint": "Sino could not read this file."
+    },
+    "status": {
+      "reading": "Reading",
+      "ready": "Ready",
+      "needs_look": "Needs a look",
+      "cant_read": "Couldn't read",
+      "uploading": "Uploading",
+      "reading_progress": "Reading page {current} of {total}"
+    },
+    "status_help": {
+      "reading": "Sino is reading this file. It can use it as soon as it is ready.",
+      "ready": "Sino can use this file.",
+      "needs_look_title": "Needs a look",
+      "cant_read_title": "Couldn't read this file",
+      "needs_look": "Some pages could not be read. Replace the file or try again.",
+      "cant_read": "Sino could not read this file. Replace it or try again.",
+      "pages": "Pages to check: {pages}",
+      "personal_data": "This looks like personal data. Add it only if you need it.",
+      "access_updating": "Updating who can use this."
+    },
+    "reason": {
+      "password_protected": "This PDF is password protected. Remove the password and upload it again.",
+      "unreadable_pages": "Some pages could not be read clearly. Replace the file with a clearer copy or try again.",
+      "no_text_found": "Sino found no readable text in this file.",
+      "hidden_text_detected": "This file has hidden or suspicious text. Check it before you add it again.",
+      "unsupported_content": "This file has content Sino cannot read.",
+      "parse_failed": "Sino could not open this file. Check it and try again.",
+      "ocr_failed": "Some pages are photos or scans that Sino could not read.",
+      "embedding_failed": "Sino could not finish reading this file. Try again.",
+      "too_many_pages": "This file has more pages than Sino can read at once. Split it and upload the parts.",
+      "storage_object_missing": "The file could not be found. Upload it again.",
+      "ingest_service_unavailable": "Sino can't read files right now. Try again in a moment.",
+      "ingest_service_error": "Something went wrong while Sino was reading this file. Try again in a moment."
+    },
+    "kind": {
+      "pdf": "PDF document",
+      "word": "Word document",
+      "excel": "Spreadsheet",
+      "slides": "Slide deck",
+      "image": "Image",
+      "text": "Text file",
+      "note": "Note"
+    },
+    "drawer": {
+      "title": "File details",
+      "status": "Status",
+      "ask": "Try asking Sino about this file",
+      "ask_prompt": "What is in “{title}”?",
+      "see_text": "See what Sino read",
+      "replace": "Replace file",
+      "try_again": "Try again",
+      "delete": "Delete file",
+      "name": "Name",
+      "save_name": "Save name",
+      "collection": "Collection",
+      "uploaded": "Uploaded",
+      "uploaded_by": "{name}, {date}",
+      "size": "Size",
+      "pages": "Pages",
+      "pages_count": "{count, plural, one {# page} other {# pages}}"
+    },
+    "replace": {
+      "title": "Replace file",
+      "body": "Upload a new version. It keeps this file's collection and access, and the old file is deleted once the new one is received.",
+      "label": "Drop the new file here, or click to choose",
+      "hint": "PDF, Word, Excel, CSV, slides, text or image, up to 25 MB.",
+      "working": "Replacing the file",
+      "delete_failed": "The new file was added, but the old one could not be deleted. Delete it yourself from the list."
+    },
+    "delete": {
+      "file_title": "Delete this file?",
+      "file_body": "Sino will stop using “{title}”. Chats that used it will show “Source deleted”.",
+      "collection_title": "Delete this collection?",
+      "collection_body": "“{name}” will be deleted. A collection with files or collections inside can't be deleted: move or delete them first.",
+      "confirm": "Delete",
+      "pending": "Deleting"
+    },
+    "preview": {
+      "title": "What Sino read",
+      "page": "Page {number}",
+      "unreadable": "Sino could not read this page.",
+      "more": "Show more pages"
+    },
+    "usage": {
+      "title": "Storage and limits",
+      "files": "Files",
+      "storage": "Storage",
+      "pages": "Pages read from photos and scans this month",
+      "ok": "Within your plan",
+      "reached": "Limit reached",
+      "files_reached": "You've reached the file limit. Delete files you no longer need to add more.",
+      "storage_reached": "You've reached the storage limit. Delete files you no longer need to add more.",
+      "pages_reached": "You've reached this month's limit for pages read from photos and scans."
+    },
+    "empty": {
+      "library_title": "Your Library is empty",
+      "library_body": "Add a price list, an SOP or an FAQ and Sino can start using it.",
+      "library_viewer_body": "Nobody has added files yet. Ask an owner or admin to add some.",
+      "upload": "Upload files",
+      "collection_title": "This collection is empty",
+      "collection_body": "Drop files into the zone above to add them here.",
+      "collection_viewer_body": "Nothing is in this collection yet.",
+      "search_title": "No files match “{query}”",
+      "search_body": "Check the spelling or try a shorter word.",
+      "search_action": "Clear search",
+      "filter_title": "Nothing matches these filters",
+      "filter_body": "Try a different status or specialist.",
+      "filter_action": "Clear filters"
+    },
+    "toast": {
+      "saved": "Saved",
+      "moved": "Moved",
+      "access_saved": "Who can use this was updated",
+      "reading_again": "Sino is reading it again",
+      "replaced": "File replaced. Sino is reading the new one.",
+      "file_deleted": "File deleted",
+      "collection_created": "Collection created",
+      "collection_deleted": "Collection deleted"
+    },
+    "knows": {
+      "chip": "{count, plural, =0 {Knows no documents yet} one {Knows # document} other {Knows # documents}}",
+      "tip_specialist": "See the files {name} can use",
+      "tip_team": "See the files Sino uses in team chats"
     }
   },
   "onboarding_ui": {
@@ -769,7 +1156,6 @@
     "start_task": "Review task",
     "dismiss_task": "Show another task",
     "go_home": "Go to workspace",
-    "resume": "Continue setup",
     "types": {
       "online_shop": "Online shop",
       "food_beverage": "Food and beverage",
@@ -809,10 +1195,8 @@
     "discard_scan": "Discard suggestions",
     "offerings": "Products and services",
     "add_offering": "Add product or service",
-    "empty_offerings": "No products or services added.",
     "policies": "Business policies",
     "add_policy": "Add policy",
-    "empty_policies": "No business policies added.",
     "entry_name": "Name or title",
     "entry_body": "Description",
     "policy_kind": "Policy type",
@@ -859,6 +1243,339 @@
       "never": "Never",
       "sometimes": "Sometimes",
       "often": "Often"
+    }
+  },
+  "settings_ui": {
+    "title": "Settings",
+    "nav_label": "Settings sections",
+    "soon": "Soon",
+    "groups": {
+      "account": "Your account",
+      "workspace": "Workspace"
+    },
+    "items": {
+      "profile": {
+        "label": "Profile",
+        "description": "Your name, photo and how Sino greets you."
+      },
+      "preferences": {
+        "label": "Preferences",
+        "description": "Language, time zone and theme."
+      },
+      "sign_in": {
+        "label": "Sign-in methods",
+        "description": "Password and linked Google or GitHub accounts."
+      },
+      "business": {
+        "label": "Business profile",
+        "description": "The business details Sino can use in its work."
+      },
+      "members": {
+        "label": "Members",
+        "description": "Invite people and choose what each person can do."
+      },
+      "usage": {
+        "label": "Usage & plan",
+        "description": "How much your team uses Sino and what your plan includes."
+      },
+      "tools": {
+        "label": "Connected tools",
+        "description": "Connect the tools you already use."
+      },
+      "models": {
+        "label": "AI setup",
+        "description": "Choose which AI does the thinking for your team."
+      },
+      "billing": {
+        "label": "Billing",
+        "description": "Invoices, payment method and receipts."
+      },
+      "security": {
+        "label": "Security & audit",
+        "description": "Active sign-ins and a record of who changed what."
+      }
+    },
+    "hub": {
+      "signed_in_as": "Signed in as {name}",
+      "members_one": "1 member",
+      "members_other": "{count} members",
+      "profile_complete": "{percent}% complete",
+      "email_verified": "Email verified",
+      "email_unverified": "Email not verified",
+      "resume_title": "Resume setup",
+      "resume_body": "Your workspace setup is not finished. Pick up where you left off, it only takes a few minutes.",
+      "resume_action": "Continue setup"
+    }
+  },
+  "mcp": {},
+  "reauth": {
+    "title": "Confirm it's you",
+    "body": "For your security, confirm it's you before you continue. It only takes a moment.",
+    "password_label": "Password",
+    "continue_google": "Continue with Google",
+    "continue_github": "Continue with GitHub",
+    "or_password": "Or use your password",
+    "confirm": "Confirm",
+    "cancel": "Cancel",
+    "wrong_password": "That password is not right. Try again.",
+    "no_method": "None of your sign-in methods can confirm this right now. Sign out, sign in again, then try once more.",
+    "notice": {
+      "mismatch": "That was a different account. Use the one connected to your Sineva account.",
+      "cancelled": "You cancelled, so nothing was changed.",
+      "failed": "We could not confirm it's you. Try again.",
+      "not_configured": "That sign-in option is not available yet."
+    }
+  },
+  "connections": {
+    "title": "Connected tools",
+    "hero": "Connect the tools you already use so your specialists can work inside them.",
+    "common": {
+      "close": "Close",
+      "cancel": "Cancel",
+      "retry": "Try again",
+      "loading": "Loading",
+      "saving": "Saving...",
+      "load_error_title": "We could not load this",
+      "view_only": "View only. Ask an admin to make changes."
+    },
+    "catalog": {
+      "search_label": "Search tools",
+      "search_placeholder": "Search tools",
+      "filter_label": "Filter by category",
+      "result_count": "{count, plural, one {# tool} other {# tools}}"
+    },
+    "category": {
+      "all": "All",
+      "calendar": "Calendar",
+      "docs": "Docs",
+      "payments": "Payments",
+      "accounting": "Accounting",
+      "messaging": "Messaging",
+      "marketplace": "Marketplaces"
+    },
+    "section": {
+      "connected": "Connected",
+      "available": "Available",
+      "coming_soon": "Coming soon ({count})"
+    },
+    "status": {
+      "connected": "Connected",
+      "partial": "Partly connected",
+      "needs_reconnect": "Needs reconnecting",
+      "error": "Problem",
+      "connecting": "Connecting",
+      "revoked": "Disconnected",
+      "beta": "Beta",
+      "not_available": "Not available yet",
+      "paused": "Paused"
+    },
+    "card": {
+      "connect": "Connect {app}",
+      "reconnect": "Reconnect {app}",
+      "fix_access": "Fix access",
+      "manage": "Manage",
+      "only_you": "Only you",
+      "shared": "Shared",
+      "ask_admin_connect": "Ask an admin to connect",
+      "ask_admin_reconnect": "Ask an admin to reconnect",
+      "open_label": "{app}, {status}"
+    },
+    "providers": {
+      "generic": "Lets your specialists work inside this tool, with your approval.",
+      "google_calendar": "Lets Sino see your schedule and find free time.",
+      "gmail": "Read and search email, and prepare replies for you to send.",
+      "notion": "Lets Sino read your notes and pages, so answers use what you already wrote.",
+      "xendit": "Lets Sino read your payments and balance. It can never move money.",
+      "midtrans": "Lets Sino read your payments and balance. It can never move money.",
+      "mekari_jurnal": "Lets Sino read your invoices and contacts, so SinoFinance can answer from your books.",
+      "whatsapp_business": "Lets SinoHelp draft replies to your customers from your approved answers."
+    },
+    "access": {
+      "can_read": "Can read",
+      "can_change": "Can make changes (asks you first)",
+      "can_change_short": "Can make changes",
+      "sino_can_read": "Sino can read",
+      "sino_can_change": "Sino can make changes (asks you first)"
+    },
+    "consent": {
+      "title": "Connect {app} to {workspace}",
+      "reconnect_title": "Reconnect {app}",
+      "owner_scope": "Connect for",
+      "scope_workspace": "{workspace}, shared with your team",
+      "scope_personal": "Only me",
+      "scope_workspace_fixed": "Shared with your team in {workspace}.",
+      "scope_personal_fixed": "This is your own connection. Only you can see it.",
+      "allow_changes": "Also let specialists make changes (you approve each one)",
+      "nothing": "Nothing",
+      "technical": "Technical details",
+      "who_gets_access": "Who gets access",
+      "personal_note": "Only you can see and use this connection.",
+      "none_use_it": "No specialist uses this tool yet. You choose who gets access after connecting.",
+      "changes_off_yet": "No one can make changes yet.",
+      "trust_password": "Sineva never sees your password.",
+      "trust_disconnect": "Disconnect any time in Connected tools. We also remove access at {app}.",
+      "cta": "Connect {app}",
+      "reconnect_cta": "Reconnect {app}",
+      "starting": "Connecting...",
+      "error_start": "We could not start the connection. Nothing was changed. Try again.",
+      "error_rate_limited": "Too many tries. Wait a moment and try again.",
+      "error_unavailable": "{app} is not available yet. Nothing was changed."
+    },
+    "handoff": {
+      "title": "Taking you to {app}",
+      "body": "Sign in there and choose Allow. You will come back here afterwards.",
+      "slow": "Still here? Continue to {app} manually.",
+      "continue": "Continue to {app}"
+    },
+    "form": {
+      "title": "Connect {app}",
+      "replace_title": "Replace key for {app}",
+      "intro": "Paste your key here. Sineva tests it first, stores it encrypted and never shows it again. If the test fails, nothing is saved.",
+      "show_key": "Show key",
+      "hide_key": "Hide key",
+      "paste": "Paste",
+      "advice": "Create a key that can only read.",
+      "save": "Test and save",
+      "reminder": "We will remind you in {days} days to replace this key.",
+      "read_only_note": "Sineva only reads payments. It cannot move money, even if this key could.",
+      "production": "Production",
+      "sandbox": "Sandbox",
+      "error_blank": "Enter your key to continue.",
+      "error_rejected": "{app} did not accept this key. Check that you copied all of it.",
+      "error_unreachable": "We could not reach {app}. Your key was not saved. Try again.",
+      "error_duplicate": "This account is already connected. Replace its key instead.",
+      "error_rate_limited": "Too many tries. Wait a moment and try again.",
+      "error_generic": "We could not save this. Nothing was changed. Try again.",
+      "discard_title": "Discard what you typed?",
+      "discard_body": "Your key has not been saved.",
+      "discard_confirm": "Discard",
+      "discard_keep": "Keep editing",
+      "saving": "Testing your key..."
+    },
+    "toast": {
+      "connected": "{app} is connected."
+    },
+    "detail": {
+      "connected_as": "Connected as {account}",
+      "allow_missing": "Allow missing access",
+      "reconnect": "Reconnect {app}",
+      "connect_again": "Connect {app} again",
+      "revoked": "Disconnected on {date}. Sineva no longer has access.",
+      "banner_needs_reconnect": "{app} needs to be reconnected. Specialists cannot use it until you do.",
+      "banner_partial": "{app} is partly connected. Some things will not work yet.",
+      "banner_error": "We could not reach {app} the last time we checked. We will try again.",
+      "health": "Health",
+      "health_working": "Working",
+      "last_checked": "Last checked {time}",
+      "never_checked": "Not checked yet",
+      "test": "Test connection",
+      "testing": "Testing...",
+      "test_ok": "Connection works. Checked just now.",
+      "test_failed": "The test failed. Reconnect {app} to fix it.",
+      "what_sino_can_do": "What Sino can do",
+      "changes_not_allowed": "Not allowed yet",
+      "not_allowed_yet": "Not allowed yet",
+      "allow": "Allow",
+      "details": "Details",
+      "shared_with": "Shared with",
+      "only_you": "Only you",
+      "connected_by": "Connected by",
+      "connected_on": "Connected on",
+      "used_by": "Used by",
+      "settings": "Settings",
+      "replace_key": "Replace key",
+      "disconnect": "Disconnect",
+      "key_due": "Replace the key by"
+    },
+    "matrix": {
+      "title": "Who can use {app}",
+      "specialist": "Specialist",
+      "read_label": "{name} can read {app}",
+      "write_label": "{name} can make changes in {app}",
+      "view_only_tip": "Only owners and admins can change access.",
+      "write_admin_only_tip": "Only owners and admins can allow changes.",
+      "read_only_by_design": "Read only by design",
+      "others": "Other specialists ({count})",
+      "save": "Save access",
+      "discard": "Discard changes",
+      "saved": "Access saved."
+    },
+    "allow": {
+      "title": "Let {name} make changes in {app}?",
+      "body": "{name} will be able to: {items}. It will still ask you before each change.",
+      "body_generic": "{name} will still ask you before each change.",
+      "cta": "Allow changes"
+    },
+    "disconnect": {
+      "title": "Disconnect {app}?",
+      "body": "Sineva will stop using {app} and ask it to remove its access. Access ends for {names}. If that request fails, you can remove Sineva in your {app} settings.",
+      "body_nobody": "Sineva will stop using {app} and ask it to remove its access. Nothing depends on it right now. If that request fails, you can remove Sineva in your {app} settings.",
+      "cta": "Disconnect {app}",
+      "pending": "Disconnecting...",
+      "done": "{app} is disconnected.",
+      "done_not_revoked": "Disconnected. We could not ask {app} to remove access. You can remove Sineva in your {app} settings."
+    },
+    "activity": {
+      "title": "Recent activity",
+      "allowed": "Allowed",
+      "denied": "Denied",
+      "error": "Failed",
+      "more": "Show more",
+      "started": "Started connecting",
+      "created": "Connected",
+      "reconnected": "Reconnected",
+      "fewer_permissions": "Fewer permissions were given",
+      "renewed": "Access renewed",
+      "renew_failed": "Could not renew access",
+      "needs_reconnect": "Needs reconnecting",
+      "access_changed": "Access changed",
+      "key_replaced": "Key replaced",
+      "disconnected": "Disconnected",
+      "generic": "Something changed"
+    },
+    "result": {
+      "this_tool": "this tool",
+      "connected_title": "{app} is connected",
+      "connected_body": "Your specialists can use it now. Any change still asks you first.",
+      "partial_title": "{app} is partly connected",
+      "partial_body": "Some permissions were not given, so some things will not work yet.",
+      "cancelled_title": "You cancelled",
+      "cancelled_body": "Nothing was connected.",
+      "expired_title": "That took too long",
+      "expired_body": "The connection took too long, so we stopped it. Start again.",
+      "provider_title": "{app} could not finish",
+      "provider_body": "{app} could not finish the connection. Try again in a few minutes.",
+      "duplicate_title": "Already connected",
+      "duplicate_body": "This account is already connected as {app}. Reconnect instead?",
+      "different_title": "This is a different account",
+      "different_body": "Connect it as a new tool or cancel.",
+      "back": "Back to Connected tools",
+      "review": "Review access",
+      "allow_missing": "Allow missing access",
+      "keep": "Keep as is",
+      "start_again": "Start again",
+      "try_again": "Try again",
+      "reconnect": "Reconnect {app}",
+      "keep_existing": "Keep existing",
+      "connect_new": "Connect as new tool",
+      "connected_as": "Connected as {account}",
+      "shared_with": "Shared with",
+      "specialists_access": "Specialists with access",
+      "changes_off": "Changes are off. You can allow them for each specialist."
+    },
+    "banner": {
+      "needs_reconnect": "{app} needs to be reconnected. Specialists cannot use it until you do.",
+      "partial": "{app} is partly connected. Some things will not work yet.",
+      "cta": "Reconnect {app}",
+      "more": "and {count} more",
+      "hide": "Hide for today",
+      "region_label": "Connection needs attention"
+    },
+    "tools": {
+      "button": "Tools",
+      "title": "What {name} can use",
+      "not_connected": "{name} could also use",
+      "manage": "Manage connected tools"
     }
   }
 }

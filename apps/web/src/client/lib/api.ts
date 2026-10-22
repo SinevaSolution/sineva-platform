@@ -88,6 +88,32 @@ const DETAIL_KEYS: Record<string, string> = {
   image_too_large: 'api.image_too_large',
   invalid_image: 'api.invalid_image',
   upload_failed: 'api.upload_failed',
+  already_in_library: 'api.already_in_library',
+  folder_not_empty: 'api.folder_not_empty',
+  folder_depth_exceeded: 'api.folder_depth_exceeded',
+  unsupported_file_type: 'api.unsupported_file_type',
+  file_too_large: 'api.file_too_large',
+  already_member: 'api.already_member',
+  last_owner: 'api.last_owner',
+  invitation_expired: 'api.invitation_expired',
+  invitation_used: 'api.invitation_used',
+  invitation_revoked: 'api.invitation_revoked',
+  invitation_not_found: 'api.invitation_not_found',
+  invitation_email_mismatch: 'api.invitation_email_mismatch',
+  email_not_verified: 'api.email_not_verified',
+  ownership_transfer_expired: 'api.ownership_transfer_expired',
+  ownership_transfer_used: 'api.ownership_transfer_used',
+  ownership_transfer_cancelled: 'api.ownership_transfer_cancelled',
+  ownership_transfer_stale: 'api.ownership_transfer_stale',
+  fresh_session_required: 'api.fresh_session_required',
+  cannot_remove_last_sign_in_method: 'api.cannot_remove_last_sign_in_method',
+  account_in_use: 'api.account_in_use',
+  provider_already_linked: 'api.provider_already_linked',
+  target_must_be_admin: 'api.target_must_be_admin',
+  allowlist_required: 'api.allowlist_required',
+  scope_not_applicable: 'api.scope_not_applicable',
+  unknown_specialist: 'api.unknown_specialist',
+  oauth_account_mismatch: 'api.oauth_account_mismatch',
 };
 
 const CODE_KEYS: Record<string, string> = {
@@ -101,6 +127,7 @@ const CODE_KEYS: Record<string, string> = {
   internal_error: 'api.internal_error',
   model_unavailable: 'api.model_unavailable',
   dependency_unavailable: 'api.dependency_unavailable',
+  entitlement_required: 'api.entitlement_required',
 };
 
 // Used when the envelope had no code (a proxy page, a dropped body).

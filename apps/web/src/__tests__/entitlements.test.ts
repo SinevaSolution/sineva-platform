@@ -30,6 +30,21 @@ function service(
   return { svc, events };
 }
 
+describe('EntitlementService.numericLimit (ADR-0033)', () => {
+  it('is null in open mode, whatever the provider holds, and logs nothing', async () => {
+    const { svc, events } = service('open', { 'library.storage_mb': { limit: 500 } });
+    expect(await svc.numericLimit(WS, ENTITLEMENT_KEYS.STORAGE_MB)).toBeNull();
+    expect(events).toEqual([]);
+  });
+
+  it('returns the ceiling of a counted key, and null for a feature flag or a missing entry', async () => {
+    const { svc } = service('enforced', { 'library.storage_mb': { limit: 500 }, 'squads.enabled': { limit: true } });
+    expect(await svc.numericLimit(WS, ENTITLEMENT_KEYS.STORAGE_MB)).toBe(500);
+    expect(await svc.numericLimit(WS, ENTITLEMENT_KEYS.SQUADS)).toBeNull();
+    expect(await svc.numericLimit(WS, ENTITLEMENT_KEYS.DOCUMENTS)).toBeNull();
+  });
+});
+
 describe('EntitlementService.check (FR-BILL-34, FR-AUTH-33)', () => {
   it('open mode always allows and logs entitlement.checked', async () => {
     const { svc, events } = service('open');
@@ -149,6 +164,7 @@ describe('workspace creation calls the entitlement check', () => {
       assert: async (workspaceId: string | null, key: string, quantity?: number) => {
         asked.push([workspaceId, key, quantity]);
       },
+      numericLimit: async () => null,
     };
     const created = {
       id: WS,

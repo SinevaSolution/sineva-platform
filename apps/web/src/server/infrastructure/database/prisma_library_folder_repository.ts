@@ -1,6 +1,7 @@
 import 'server-only';
 import { Prisma, type PrismaClient } from '@/server/infrastructure/database/generated/client';
 import { ConflictError } from '@/server/domain/errors/domain_error';
+import type { ScopeRef } from '@/server/domain/library/library_access';
 import type { LibraryFolderEntity } from '@/server/domain/library/library_entities';
 import type { LibraryFolderRepository, NewLibraryFolder } from '@/server/domain/repositories/library_repository';
 import { activeClient } from './prisma_transaction_runner';
@@ -13,6 +14,7 @@ function mapFolder(row: {
   created_by: string | null;
   created_at: Date;
   updated_at: Date;
+  scopes: Array<{ scope_type: string; scope_ref: string }>;
 }): LibraryFolderEntity {
   return {
     id: row.id,
@@ -22,6 +24,9 @@ function mapFolder(row: {
     created_by: row.created_by,
     created_at: row.created_at.toISOString(),
     updated_at: row.updated_at.toISOString(),
+    scopes: row.scopes
+      .map((scope) => ({ scope_type: scope.scope_type as ScopeRef['scope_type'], scope_ref: scope.scope_ref }))
+      .sort((a, b) => `${a.scope_type}:${a.scope_ref}`.localeCompare(`${b.scope_type}:${b.scope_ref}`)),
   };
 }
 
@@ -42,7 +47,15 @@ export class PrismaLibraryFolderRepository implements LibraryFolderRepository {
           parent_key: input.parent_id ?? input.workspace_id,
           name: input.name,
           created_by: input.created_by,
+          scopes: {
+            create: input.scopes.map((scope) => ({
+              workspace_id: input.workspace_id,
+              scope_type: scope.scope_type,
+              scope_ref: scope.scope_ref,
+            })),
+          },
         },
+        include: { scopes: true },
       });
       return mapFolder(row);
     } catch (error) {
@@ -54,13 +67,17 @@ export class PrismaLibraryFolderRepository implements LibraryFolderRepository {
   }
 
   async findById(workspaceId: string, id: string): Promise<LibraryFolderEntity | null> {
-    const row = await activeClient(this.prisma).libraryFolder.findFirst({ where: { id, workspace_id: workspaceId } });
+    const row = await activeClient(this.prisma).libraryFolder.findFirst({
+      where: { id, workspace_id: workspaceId },
+      include: { scopes: true },
+    });
     return row ? mapFolder(row) : null;
   }
 
   async listAll(workspaceId: string): Promise<LibraryFolderEntity[]> {
     const rows = await activeClient(this.prisma).libraryFolder.findMany({
       where: { workspace_id: workspaceId },
+      include: { scopes: true },
       orderBy: [{ name: 'asc' }, { id: 'asc' }],
     });
     return rows.map(mapFolder);
@@ -94,6 +111,24 @@ export class PrismaLibraryFolderRepository implements LibraryFolderRepository {
       }
       throw error;
     }
+  }
+
+  async replaceScopes(workspaceId: string, id: string, scopes: ScopeRef[]): Promise<void> {
+    const client = activeClient(this.prisma);
+    const owned = await client.libraryFolder.findFirst({ where: { id, workspace_id: workspaceId }, select: { id: true } });
+    if (!owned) {
+      throw new Error('Library folder not found for access change');
+    }
+    await client.libraryFolderScope.deleteMany({ where: { folder_id: id, workspace_id: workspaceId } });
+    await client.libraryFolderScope.createMany({
+      data: scopes.map((scope) => ({
+        folder_id: id,
+        workspace_id: workspaceId,
+        scope_type: scope.scope_type,
+        scope_ref: scope.scope_ref,
+      })),
+    });
+    await client.libraryFolder.updateMany({ where: { id, workspace_id: workspaceId }, data: { updated_at: new Date() } });
   }
 
   async delete(workspaceId: string, id: string): Promise<void> {

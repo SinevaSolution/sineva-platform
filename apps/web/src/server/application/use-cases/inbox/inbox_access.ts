@@ -5,8 +5,8 @@ import { hasPermission } from '@/server/domain/permissions/registry';
 
 // Visibility by role (FR-INBOX-05), decided here and applied in the repository
 // query, not only in the UI. Owner and admin see everything in the workspace;
-// a member sees what is addressed to them; a viewer sees Done summaries only
-// (OQ-INBOX-5 default).
+// a member sees what is addressed to them; a viewer sees summaries of finished work (Updates and
+// Done, OQ-INBOX-5 default, ADR-0034).
 
 export type InboxScope =
   | { kind: 'all' }
@@ -30,7 +30,8 @@ export function canSee(item: Pick<InboxItemEntity, 'kind' | 'state' | 'recipient
   const scope = scopeOf(context);
   if (scope.kind === 'all') return true;
   if (scope.kind === 'own') return item.recipient_user_id === scope.user_id;
-  return tabOf(item) === 'done';
+  const tab = tabOf(item);
+  return tab === 'done' || tab === 'updates';
 }
 
 /** Whether this person may decide or answer the item: any for owner and admin, own for a member. */

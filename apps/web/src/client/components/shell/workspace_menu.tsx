@@ -3,6 +3,7 @@
 import { Check, ChevronDown } from 'lucide-react';
 import Link from 'next/link';
 import {
+  SNBadge,
   SNDropdownMenu,
   SNDropdownMenuContent,
   SNDropdownMenuItem,
@@ -25,6 +26,13 @@ export function WorkspaceMenu({
   compact?: boolean;
 }) {
   const t = useTranslations('shell');
+  const tRoles = useTranslations('members');
+  const roleLabels = {
+    owner: tRoles('roles.owner'),
+    admin: tRoles('roles.admin'),
+    member: tRoles('roles.member'),
+    viewer: tRoles('roles.viewer'),
+  } as const;
   return (
     <SNDropdownMenu>
       <SNTooltip label={t('workspace_menu.switch')} side={compact ? 'right' : 'bottom'}>
@@ -51,7 +59,14 @@ export function WorkspaceMenu({
           {workspaces.map((ws) => (
             <SNDropdownMenuItem key={ws.id} asChild>
               <Link href={`/w/${ws.slug}`}>
+                <span
+                  aria-hidden="true"
+                  className="flex size-5 shrink-0 items-center justify-center rounded-xs bg-action-primary text-[10px] font-semibold text-text-inverse"
+                >
+                  {ws.name.charAt(0).toUpperCase()}
+                </span>
                 <span className="flex-1 truncate">{ws.name}</span>
+                <SNBadge tone="neutral">{roleLabels[ws.role as keyof typeof roleLabels] ?? ws.role}</SNBadge>
                 {ws.id === workspace.id ? (
                   <Check aria-label={t('workspace_menu.current')} className="size-4 text-text-brand" />
                 ) : null}

@@ -33,7 +33,35 @@ export interface AppEnvConfig {
   google_client_secret?: string;
   github_client_id?: string;
   github_client_secret?: string;
+  /**
+   * Browser-test stack only: base URL of a fake identity provider that stands
+   * in for Google and GitHub (authorize, token and profile endpoints).
+   */
+  oauth_test_idp_url?: string;
   entitlements_mode: EntitlementMode;
+  /**
+   * Shared secret Vercel Cron sends as `Authorization: Bearer <value>`. Unset
+   * on deployments with no Vercel cron (Docker), which disables that path.
+   */
+  cron_secret?: string;
+  /** Upper bound of the pg pool of one app instance (see `buildPoolConfig`). */
+  database_pool_max: number;
+  // Connection layer (ADR-0036, ADR-0037). All optional at boot: a provider
+  // without credentials is listed as unavailable, and the vault fails typed
+  // when it is used without a key. Separate from the sign-in OAuth variables.
+  vault_kms_provider?: 'local' | 'cloud';
+  vault_local_kek?: string;
+  vault_local_kek_previous?: string;
+  vault_database_url?: string;
+  google_connect_client_id?: string;
+  google_connect_client_secret?: string;
+  notion_client_id?: string;
+  notion_client_secret?: string;
+}
+
+function optional(raw: Record<string, string | undefined>, key: string): string | undefined {
+  const value = raw[key]?.trim();
+  return value ? value : undefined;
 }
 
 // SHA-256 hashes of dev secrets from .env.example.
@@ -59,7 +87,7 @@ function matchesDevDefault(candidate: string): boolean {
   return KNOWN_DEV_SECRET_HASHES.has(hash) || DEV_MARKER.test(candidate);
 }
 
-function isDevDefaultSecret(value: string | undefined): boolean {
+export function isDevDefaultSecret(value: string | undefined): boolean {
   if (!value) {
     return false;
   }
@@ -181,6 +209,56 @@ export function validateEnvConfig(
     );
   }
 
+  // A real provider can never be swapped for another host by one stray
+  // variable: like `enforced` above, production needs a second explicit flag.
+  const oauthTestIdpUrl = raw.OAUTH_TEST_IDP_URL?.trim() || undefined;
+  if (isProduction && oauthTestIdpUrl && raw.OAUTH_TEST_IDP_ALLOW !== 'true') {
+    throw new Error(
+      'Configuration error: OAUTH_TEST_IDP_URL in production requires OAUTH_TEST_IDP_ALLOW=true',
+    );
+  }
+
+  // Vercel recommends at least 16 characters; a shorter value is rejected in
+  // every environment because a weak one would sit in front of a job route.
+  const cronSecret = raw.CRON_SECRET?.trim() || undefined;
+  if (cronSecret !== undefined && cronSecret.length < 16) {
+    throw new Error('Configuration error: CRON_SECRET must be at least 16 characters');
+  }
+
+  // One pool per app instance. 10 is the pg default and suits a long-lived
+  // container; serverless hosting sets it lower (docs/deployment/vercel.md).
+  const poolMaxRaw = raw.DATABASE_POOL_MAX?.trim();
+  const databasePoolMax = poolMaxRaw ? Number(poolMaxRaw) : 10;
+  if (!Number.isInteger(databasePoolMax) || databasePoolMax < 1 || databasePoolMax > 50) {
+    throw new Error('Configuration error: DATABASE_POOL_MAX must be an integer from 1 to 50');
+  }
+
+  const vaultKmsProvider = (optional(raw, 'VAULT_KMS_PROVIDER') ?? 'local') as 'local' | 'cloud';
+  if (vaultKmsProvider !== 'local' && vaultKmsProvider !== 'cloud') {
+    throw new Error('Configuration error: VAULT_KMS_PROVIDER must be local or cloud');
+  }
+  const vaultKek = optional(raw, 'VAULT_LOCAL_KEK');
+  const vaultDatabaseUrl = optional(raw, 'VAULT_DATABASE_URL');
+  if (isProduction) {
+    // The key id carries the marker word of a development default (for
+    // example `dev-local-1:...`), so the check needs no plaintext copy of any
+    // key. Checked here as well as in the KMS adapter so the process fails at
+    // startup, not at the first connection.
+    for (const [name, value] of [
+      ['VAULT_LOCAL_KEK', vaultKek],
+      ['VAULT_LOCAL_KEK_PREVIOUS', optional(raw, 'VAULT_LOCAL_KEK_PREVIOUS')],
+    ] as const) {
+      if (value && isDevDefaultSecret(value.split(':')[0])) {
+        throw new Error(`Configuration error: ${name} cannot be a development default in production (SEC-4)`);
+      }
+    }
+    // Role separation (G4) is the point of a second URL: the same URL would
+    // hand the vault table to the application role.
+    if (vaultDatabaseUrl && vaultDatabaseUrl === raw.DATABASE_URL) {
+      throw new Error('Configuration error: VAULT_DATABASE_URL must use a different role than DATABASE_URL (ADR-0036)');
+    }
+  }
+
   return {
     node_env: nodeEnv,
     next_public_app_url:
@@ -217,7 +295,18 @@ export function validateEnvConfig(
     google_client_secret: raw.GOOGLE_CLIENT_SECRET,
     github_client_id: raw.GITHUB_CLIENT_ID,
     github_client_secret: raw.GITHUB_CLIENT_SECRET,
+    oauth_test_idp_url: oauthTestIdpUrl,
     entitlements_mode: entitlementsMode,
+    cron_secret: cronSecret,
+    database_pool_max: databasePoolMax,
+    vault_kms_provider: vaultKmsProvider,
+    vault_local_kek: vaultKek,
+    vault_local_kek_previous: optional(raw, 'VAULT_LOCAL_KEK_PREVIOUS'),
+    vault_database_url: vaultDatabaseUrl,
+    google_connect_client_id: optional(raw, 'GOOGLE_CONNECT_CLIENT_ID'),
+    google_connect_client_secret: optional(raw, 'GOOGLE_CONNECT_CLIENT_SECRET'),
+    notion_client_id: optional(raw, 'NOTION_CLIENT_ID'),
+    notion_client_secret: optional(raw, 'NOTION_CLIENT_SECRET'),
   };
 }
 

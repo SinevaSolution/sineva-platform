@@ -354,6 +354,100 @@ describe('JwtAuthService (Custom JWT Auth Engine)', () => {
     expect(auditLogger.getEvents().some((e) => e.action === 'user.password_reset_completed')).toBe(true);
   });
 
+  it('sets a first password for an account that only signed in through a provider', async () => {
+    // Root cause of the "Set a password" dead end: the reset used updateMany on
+    // the credential account, which matches nothing for an OAuth-only user, so
+    // the link was consumed, every session revoked and no password existed.
+    const mockPrisma = {
+      verification: {
+        findFirst: vi.fn().mockResolvedValue({
+          id: 'ver-123',
+          identifier: 'oauth.only@example.com',
+          value: 'valid-reset-token',
+        }),
+        deleteMany: vi.fn().mockResolvedValue({ count: 1 }),
+      },
+      user: {
+        findUnique: vi.fn().mockResolvedValue({ id: 'usr-oauth', email: 'oauth.only@example.com' }),
+      },
+      account: {
+        updateMany: vi.fn().mockResolvedValue({ count: 0 }),
+        create: vi.fn().mockResolvedValue({ id: 'acc-new' }),
+      },
+      session: { updateMany: vi.fn().mockResolvedValue({ count: 1 }) },
+    };
+    const authService = new JwtAuthService({
+      prisma: mockPrisma as unknown as PrismaClient,
+      emailSender,
+      auditLogger,
+      breachedChecker,
+      authSecret: secret,
+      appUrl,
+    });
+
+    await authService.resetPassword({
+      token: 'valid-reset-token',
+      new_password: 'newSuperSecretPassword123!',
+    });
+
+    expect(mockPrisma.account.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        user_id: 'usr-oauth',
+        provider_id: 'credential',
+        account_id: 'usr-oauth',
+        password: expect.stringMatching(/^scrypt:/),
+      }),
+    });
+  });
+
+  it('does not create a second credential account when one exists', async () => {
+    const mockPrisma = {
+      verification: {
+        findFirst: vi.fn().mockResolvedValue({ id: 'v', identifier: 'a@example.com', value: 't' }),
+        deleteMany: vi.fn().mockResolvedValue({ count: 1 }),
+      },
+      user: { findUnique: vi.fn().mockResolvedValue({ id: 'usr-1', email: 'a@example.com' }) },
+      account: {
+        updateMany: vi.fn().mockResolvedValue({ count: 1 }),
+        create: vi.fn(),
+      },
+      session: { updateMany: vi.fn().mockResolvedValue({ count: 0 }) },
+    };
+    const authService = new JwtAuthService({
+      prisma: mockPrisma as unknown as PrismaClient,
+      emailSender,
+      auditLogger,
+      breachedChecker,
+      authSecret: secret,
+      appUrl,
+    });
+    await authService.resetPassword({ token: 't', new_password: 'newSuperSecretPassword123!' });
+    expect(mockPrisma.account.create).not.toHaveBeenCalled();
+  });
+
+  it('marks only the caller\'s own live session fresh', async () => {
+    const mockPrisma = {
+      session: { updateMany: vi.fn().mockResolvedValue({ count: 0 }) },
+      user: { findUnique: vi.fn() },
+    };
+    const authService = new JwtAuthService({
+      prisma: mockPrisma as unknown as PrismaClient,
+      emailSender,
+      auditLogger,
+      breachedChecker,
+      authSecret: secret,
+      appUrl,
+    });
+    await expect(authService.markFresh('usr-1', 'sess-of-someone-else')).rejects.toMatchObject({
+      status: 401,
+    });
+    expect(mockPrisma.session.updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: 'sess-of-someone-else', user_id: 'usr-1', revoked_at: null },
+      }),
+    );
+  });
+
   it('verifies email with valid verification token and marks user verified', async () => {
     const mockPrisma = {
       verification: {
@@ -409,7 +503,7 @@ describe('JwtAuthService (Custom JWT Auth Engine)', () => {
         }),
       },
       session: {
-        update: vi.fn().mockResolvedValue({ id: 'sess-1' }),
+        updateMany: vi.fn().mockResolvedValue({ count: 1 }),
       },
       user: {
         findUnique: vi.fn().mockResolvedValue({

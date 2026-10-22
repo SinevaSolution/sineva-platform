@@ -64,6 +64,12 @@ export interface EntitlementService {
   ): Promise<EntitlementCheckResult>;
   /** Resolves when the action may proceed; throws `EntitlementRequiredError` when blocked. */
   assert(workspaceId: string | null, key: EntitlementKey, quantity?: number): Promise<void>;
+  /**
+   * The ceiling of a counted entitlement, for screens that show "used of
+   * limit". Null when there is none to show: `open` mode, an unknown key, or a
+   * feature flag. Purely informational; it never blocks and is not logged.
+   */
+  numericLimit(workspaceId: string | null, key: EntitlementKey): Promise<number | null>;
 }
 
 export class EntitlementRequiredError extends DomainError {

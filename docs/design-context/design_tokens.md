@@ -86,7 +86,7 @@ Specialist accents: put `data-product-accent="<key>"` on a wrapper and read only
 
 ## z-index
 
-`--z-base` 0, `--z-raised` 1, `--z-sticky` 10, `--z-nav` 20, `--z-dropdown` 40, `--z-drawer` 60, `--z-modal` 100, `--z-toast` 110, `--z-tooltip` 120, `--z-skip` 130, in `app-density.css`. Strictly increasing (tested). Negative stacking inside an isolated scene (`-z-10`) is fine.
+`--z-base` 0, `--z-raised` 1, `--z-sticky` 10, `--z-nav` 20, `--z-dropdown` 40, `--z-drawer` 60, `--z-modal` 100, `--z-popover` 105 (select, combobox, popover and menu lists, so they open above a dialog), `--z-toast` 110, `--z-tooltip` 120, `--z-skip` 130, in `app-density.css`. Strictly increasing (tested). Negative stacking inside an isolated scene (`-z-10`) is fine.
 
 ## Typography
 

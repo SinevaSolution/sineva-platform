@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { cleanup, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it } from 'vitest';
+import { Inbox } from 'lucide-react';
 import { SNEmptyState } from './sn_empty_state';
 
 afterEach(cleanup);
@@ -39,4 +40,27 @@ describe('SNEmptyState', () => {
     for (const c of ['flex', 'flex-col', 'items-center', 'text-center']) expect(cls.split(' ')).toContain(c);
     expect(cls.endsWith('py-8')).toBe(true);
   });
+
+  it('shows an icon in a tinted circle instead of Sino when `icon` is given', () => {
+    const { container } = render(<SNEmptyState title="T" description="D" icon={Inbox} />);
+    expect(container.querySelector('img')).toBeNull();
+    const badge = container.querySelector('[data-slot="empty-icon"]');
+    expect(badge).toBeTruthy();
+    expect(badge?.querySelector('svg')?.getAttribute('aria-hidden')).toBe('true');
+  });
+
+  it('has three sizes; sm is a compact row-friendly stack', () => {
+    const { container, rerender } = render(<SNEmptyState title="T" description="D" icon={Inbox} size="sm" />);
+    expect((container.firstElementChild as HTMLElement).dataset.size).toBe('sm');
+    rerender(<SNEmptyState title="T" description="D" size="lg" />);
+    expect((container.firstElementChild as HTMLElement).dataset.size).toBe('lg');
+    rerender(<SNEmptyState title="T" description="D" />);
+    expect((container.firstElementChild as HTMLElement).dataset.size).toBe('md');
+  });
+
+  it('announces itself as a status region for assistive tech', () => {
+    const { container } = render(<SNEmptyState title="T" description="D" />);
+    expect((container.firstElementChild as HTMLElement).getAttribute('role')).toBe('status');
+  });
 });
+

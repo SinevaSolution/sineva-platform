@@ -1,12 +1,14 @@
 import { z } from 'zod';
+import { CANONICAL_SPECIALIST_SLUGS } from '@/server/domain/chat/specialist_catalog';
 import {
   LIBRARY_FOLDER_NAME_MAX,
   LIBRARY_LANGUAGES,
   LIBRARY_MAX_BYTES,
   LIBRARY_NOTE_MAX_CHARS,
   LIBRARY_REVIEW_INTERVAL_MAX_DAYS,
+  LIBRARY_SORTS,
   LIBRARY_SOURCE_TYPES,
-  LIBRARY_STATUSES,
+  LIBRARY_STATUS_FILTERS,
   LIBRARY_TITLE_MAX,
   LIBRARY_TRY_QUERY_MAX,
   LIBRARY_TRY_TOP_K_MAX,
@@ -15,7 +17,7 @@ import {
 // Public request schemas of the Library routes. Identity and workspace come
 // from the session and the URL; no schema here names them.
 
-// A squad scope is deliberately not accepted: squads arrive in M4.
+// Squad (M4) and workflow (M3) scopes are reserved and deliberately not accepted here: the API answers 422 until those features ship (ADR-0033).
 export const LibraryScopeInputSchema = z.discriminatedUnion('scope_type', [
   z.object({ scope_type: z.literal('workspace') }).strict(),
   z.object({ scope_type: z.literal('specialist'), scope_ref: z.string().trim().min(1).max(32) }).strict(),
@@ -71,15 +73,24 @@ export const UpdateLibraryDocumentSchema = z
     folder_id: uuid.nullable().optional(),
     scopes: z.array(LibraryScopeInputSchema).min(1).max(8).optional(),
     review_interval_days: reviewInterval.nullable().optional(),
+    /** Put the document back on its collection's access ("Same as the collection"). */
+    inherit_access: z.literal(true).optional(),
   })
   .strict()
-  .refine((value) => Object.keys(value).length > 0, 'Send at least one field to change');
+  .refine((value) => Object.keys(value).length > 0, 'Send at least one field to change')
+  .refine((value) => !(value.inherit_access && value.scopes), 'Send scopes or inherit_access, not both');
 export type UpdateLibraryDocumentDto = z.infer<typeof UpdateLibraryDocumentSchema>;
 
 export const ListLibraryDocumentsQuerySchema = z.object({
-  status: z.enum(LIBRARY_STATUSES).optional(),
+  status: z.enum(LIBRARY_STATUS_FILTERS).optional(),
   scope_type: z.enum(['workspace', 'specialist']).optional(),
   scope_ref: z.string().max(32).optional(),
+  // Documents a specialist can use: Everyone's and the ones scoped to it. Sino has no scope of its own.
+  used_by: z
+    .string()
+    .refine((slug) => slug !== 'sino' && CANONICAL_SPECIALIST_SLUGS.has(slug), 'Unknown specialist')
+    .optional(),
+  sort: z.enum(LIBRARY_SORTS).optional(),
   source_type: z.enum(LIBRARY_SOURCE_TYPES).optional(),
   language: z.enum(LIBRARY_LANGUAGES).optional(),
   // `root` selects documents outside every folder; omitting it selects all.
@@ -115,12 +126,17 @@ export type TryLibraryDto = z.infer<typeof TryLibrarySchema>;
 const folderName = z.string().trim().min(1).max(LIBRARY_FOLDER_NAME_MAX).regex(/^[^/\\\u0000-\u001f]+$/, 'Folder name cannot contain slashes');
 
 export const CreateLibraryFolderSchema = z
-  .object({ name: folderName, parent_id: uuid.nullish() })
+  // Omitting `scopes` takes the parent's access, or Everyone at the top level.
+  .object({ name: folderName, parent_id: uuid.nullish(), scopes: scopesField })
   .strict();
 export type CreateLibraryFolderDto = z.infer<typeof CreateLibraryFolderSchema>;
 
 export const UpdateLibraryFolderSchema = z
-  .object({ name: folderName.optional(), parent_id: uuid.nullable().optional() })
+  .object({
+    name: folderName.optional(),
+    parent_id: uuid.nullable().optional(),
+    scopes: z.array(LibraryScopeInputSchema).min(1).max(8).optional(),
+  })
   .strict()
   .refine((value) => Object.keys(value).length > 0, 'Send at least one field to change');
 export type UpdateLibraryFolderDto = z.infer<typeof UpdateLibraryFolderSchema>;

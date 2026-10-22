@@ -72,26 +72,40 @@ export class MalformedJsonError extends DomainError {
 }
 
 export class ConflictError extends DomainError {
-  constructor(resource: string, identifier: string) {
+  constructor(resource: string, identifier: string, details?: ErrorDetail[]) {
     super({
       message: `${resource} '${identifier}' already exists`,
       code: 'RESOURCE_CONFLICT',
       status: 409,
       field: null,
+      details,
     });
     this.name = 'ConflictError';
   }
 }
 
 export class ForbiddenError extends DomainError {
-  constructor(message = 'Access forbidden') {
+  constructor(message = 'Access forbidden', details?: ErrorDetail[]) {
     super({
       message,
       code: 'forbidden',
       status: 403,
       field: null,
+      details,
     });
     this.name = 'ForbiddenError';
+  }
+}
+
+/**
+ * A sensitive action was attempted on a session older than the fresh window
+ * (FR-AUTH-06). It is still a plain 403, but the detail code lets the client
+ * open the re-confirm dialog instead of showing "you cannot do this".
+ */
+export class FreshSessionRequiredError extends ForbiddenError {
+  constructor(message = 'A fresh session is required for this action. Please re-authenticate.') {
+    super(message, [{ code: 'fresh_session_required', field: null, detail: message }]);
+    this.name = 'FreshSessionRequiredError';
   }
 }
 

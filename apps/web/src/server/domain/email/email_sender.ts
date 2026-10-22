@@ -8,7 +8,8 @@ export type EmailTemplateName =
   | 'email_change_notice'
   | 'workspace_invitation'
   | 'ownership_transfer_request'
-  | 'ownership_transferred_notice';
+  | 'ownership_transferred_notice'
+  | 'connection_needs_reconnect';
 
 export interface RenderedEmail {
   subject: string;
@@ -17,24 +18,32 @@ export interface RenderedEmail {
 }
 
 export interface VerifyEmailParams {
+  /** Origin of the app, for images in the email. Filled in by the sender; falls back to the link's origin. */
+  app_url?: string;
   url: string;
   recipient_name?: string;
   expires_in_minutes?: number;
 }
 
 export interface ResetPasswordParams {
+  /** Origin of the app, for images in the email. Filled in by the sender; falls back to the link's origin. */
+  app_url?: string;
   url: string;
   recipient_name?: string;
   expires_in_minutes?: number;
 }
 
 export interface LockoutNoticeParams {
+  /** Origin of the app, for images in the email. Filled in by the sender; falls back to the link's origin. */
+  app_url?: string;
   recipient_name?: string;
   lockout_duration_minutes: number;
   attempt_time?: string;
 }
 
 export interface EmailChangeConfirmParams {
+  /** Origin of the app, for images in the email. Filled in by the sender; falls back to the link's origin. */
+  app_url?: string;
   url: string;
   recipient_name?: string;
   new_email: string;
@@ -42,12 +51,16 @@ export interface EmailChangeConfirmParams {
 }
 
 export interface EmailChangeNoticeParams {
+  /** Origin of the app, for images in the email. Filled in by the sender; falls back to the link's origin. */
+  app_url?: string;
   recipient_name?: string;
   new_email: string;
   revert_url?: string;
 }
 
 export interface WorkspaceInvitationParams {
+  /** Origin of the app, for images in the email. Filled in by the sender; falls back to the link's origin. */
+  app_url?: string;
   url: string;
   workspace_name: string;
   inviter_name: string;
@@ -57,6 +70,8 @@ export interface WorkspaceInvitationParams {
 }
 
 export interface OwnershipTransferRequestParams {
+  /** Origin of the app, for images in the email. Filled in by the sender; falls back to the link's origin. */
+  app_url?: string;
   url: string;
   recipient_name?: string;
   workspace_name: string;
@@ -65,12 +80,22 @@ export interface OwnershipTransferRequestParams {
 }
 
 export interface OwnershipTransferredNoticeParams {
+  /** Origin of the app, for images in the email. Filled in by the sender; falls back to the link's origin. */
+  app_url?: string;
   recipient_name?: string;
   workspace_name: string;
   /** The other party of the transfer. */
   other_name: string;
   /** The role this recipient holds now. */
   new_role: 'owner' | 'admin';
+}
+
+export interface ConnectionNeedsReconnectParams {
+  recipient_name?: string;
+  /** A proper name such as "Google Calendar". */
+  provider_name: string;
+  /** Link to the Connected tools page of the workspace. */
+  url: string;
 }
 
 export type EmailParamsMap = {
@@ -82,6 +107,7 @@ export type EmailParamsMap = {
   workspace_invitation: WorkspaceInvitationParams;
   ownership_transfer_request: OwnershipTransferRequestParams;
   ownership_transferred_notice: OwnershipTransferredNoticeParams;
+  connection_needs_reconnect: ConnectionNeedsReconnectParams;
 };
 
 export interface EmailSendOptions<T extends EmailTemplateName = EmailTemplateName> {

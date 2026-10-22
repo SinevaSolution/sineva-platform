@@ -253,7 +253,16 @@ export class InMemoryInboxRepository implements InboxRepository {
       .filter((i) => i.workspace_id === query.workspace_id)
       .filter((i) => !query.recipient_user_id || i.recipient_user_id === query.recipient_user_id)
       .filter((i) => !query.agent_slug || i.agent_slug === query.agent_slug)
-      .filter((i) => !query.tab || tabOf(i) === query.tab)
+      .filter((i) => !query.kind || i.kind === query.kind)
+      .filter((i) => !query.source_type || i.source_type === query.source_type)
+      .filter((i) => !query.q || i.title.toLowerCase().includes(query.q.toLowerCase()))
+      .filter((i) => {
+        if (!query.tab) return true;
+        const tab = tabOf(i);
+        if (query.tab === 'needs_you') return tab === 'needs_review' || tab === 'needs_input';
+        if (query.tab === 'finished') return tab === 'updates' || tab === 'done';
+        return tab === query.tab;
+      })
       .sort((a, b) => (a.created_at === b.created_at ? (a.id < b.id ? 1 : -1) : a.created_at < b.created_at ? 1 : -1));
     const start = query.cursor ? rows.findIndex((r) => r.id === query.cursor) + 1 : 0;
     const page = rows.slice(start, start + query.limit);
@@ -270,9 +279,11 @@ export class InMemoryInboxRepository implements InboxRepository {
     return {
       needs_review: tab('needs_review').length,
       needs_input: tab('needs_input').length,
+      updates: tab('updates').length,
       done: tab('done').length,
       unread_needs_review: unread('needs_review'),
       unread_needs_input: unread('needs_input'),
+      unread_updates: unread('updates'),
     };
   }
 

@@ -90,6 +90,7 @@ Folder guide: [README](api-spec/README.md).
 - [Agents and Chat Endpoints](api-spec/agents_and_chat_endpoints.md)
 - [Storage and Health Endpoints](api-spec/storage_and_health_endpoints.md)
 - [Sino Library Endpoints](api-spec/library_endpoints.md)
+- [Connections Endpoints](api-spec/connections_endpoints.md)
 - [Swagger and OpenAPI](api-spec/swagger_and_openapi.md): how `/api/openapi.json` and `/api-docs` work, and how to register a route.
 
 - [Onboarding and Business Profile](api-spec/onboarding_and_business_profile_endpoints.md): first workspace, resumable onboarding, confirmed profile, versions and scan proposal.
@@ -116,7 +117,9 @@ Folder guide: [README](deployment/README.md).
 - [Docker Compose Topology](deployment/docker_compose_topology.md)
 - [Internal Network Security](deployment/internal_network_security.md)
 - [CI/CD Pipeline](deployment/ci_cd_pipeline.md)
+- [Connections Runbook](deployment/connections_runbook.md)
 - [Environment Variables](deployment/environment_variables.md)
+- [Deploying on Vercel](deployment/vercel.md): project settings, variables for Production and Preview, cron, migrations in the build, domain, OAuth URLs, smoke checklist, rollback.
 
 ## Development (`development/`)
 
@@ -136,6 +139,7 @@ Folder guide: [README](troubleshooting/README.md).
 - [Storage, Database and Redis](troubleshooting/storage_db_and_redis.md)
 
 - [Checkpoint resume batch](development/resume-batch-2026-10-22.md): integrated M1 backends, functional UI, runtime fixes and outstanding acceptance work.
+- [Manual test: invitations and sign-in methods](development/manual_test_invitations.md): try the people flows by hand with Mailpit and two browsers.
 
 ## Keeping the docs true
 

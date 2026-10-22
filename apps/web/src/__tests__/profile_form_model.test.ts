@@ -117,6 +117,27 @@ describe('validateDraft (mirrors the server rules)', () => {
     expect(validateDraft({ ...saved, phone_number: '' }).phone_number).toBeUndefined();
   });
 
+  it('accepts valid numbers of other countries in E.164, as the phone picker emits them', () => {
+    for (const phone of ['+447400123456', '+14155552671', '+6591234567']) {
+      expect(validateDraft({ ...saved, phone_number: phone }).phone_number, phone).toBeUndefined();
+    }
+  });
+
+  it('rejects numbers that are E.164-shaped but cannot exist (unfinished input from the picker)', () => {
+    // Pass the server's shape check (8 to 15 digits) but not the country's rules.
+    for (const phone of ['+62812345', '+6212345678', '+447400', '+1415555']) {
+      expect(validateDraft({ ...saved, phone_number: phone }).phone_number, phone).toBe('phone_invalid');
+    }
+  });
+
+  it('does not block saving other fields over a stored number the stricter check rejects', () => {
+    const legacy = { ...saved, phone_number: '+62812345678' };
+    expect(validateDraft(legacy, legacy).phone_number).toBeUndefined();
+    expect(isDraftSavable(legacy, { ...legacy, about_me: 'Hello' })).toBe(true);
+    // Touching the number brings the check back.
+    expect(isDraftSavable(legacy, { ...legacy, phone_number: '+62812345', about_me: 'Hello' })).toBe(false);
+  });
+
   it('counts about_me in characters, 280 at most', () => {
     expect(validateDraft({ ...saved, about_me: '😀'.repeat(280) }).about_me).toBeUndefined();
     expect(validateDraft({ ...saved, about_me: 'a'.repeat(281) }).about_me).toBe('about_me_length');

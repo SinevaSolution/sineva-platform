@@ -200,6 +200,17 @@ describe('Architecture: backend/frontend split', () => {
     ).toEqual([]);
   });
 
+  it('job code reaches storage only through ports: no container, Prisma or driver in application/jobs or domain/jobs', () => {
+    // ADR-0038: handlers and the runner get repositories injected, so a unit
+    // test can run them against fakes and a worker process can host them
+    // without Next.js.
+    const jobs = [...collect('server/application/jobs'), ...collect('server/domain/jobs')];
+    expect(jobs.length).toBeGreaterThan(0);
+    expect(
+      violations(jobs, ['@/server/container', ...ORM_AND_DRIVER_PACKAGES, '@/server/infrastructure']),
+    ).toEqual([]);
+  });
+
   it("marks every infrastructure file and the container with import 'server-only'", () => {
     const guarded = [
       // The Prisma client under `database/generated` is emitted by

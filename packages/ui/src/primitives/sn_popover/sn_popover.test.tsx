@@ -63,7 +63,7 @@ describe('SNPopover', () => {
     setup({ className: 'w-72' });
     fireEvent.click(screen.getByRole('button', { name: 'Open' }));
     const cls = screen.getByRole('dialog').className;
-    expect(cls).toContain('z-(--z-dropdown)');
+    expect(cls).toContain('z-(--z-popover)');
     expect(cls).toContain('bg-surface');
     expect(cls).toContain('shadow-md');
     expect(cls.endsWith('w-72')).toBe(true);

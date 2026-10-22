@@ -16,7 +16,7 @@ export interface RetrievalScope {
 }
 
 export interface ScopeRef {
-  scope_type: 'workspace' | 'specialist' | 'squad';
+  scope_type: 'workspace' | 'specialist' | 'squad' | 'workflow';
   scope_ref: string;
 }
 
@@ -73,6 +73,13 @@ export function canAccessScopes(access: DocumentAccess, scopes: ScopeRef[]): boo
   );
 }
 
+/** Whether a companion (null for Sino in a team chat) may use a document with these scopes. */
+export function usableBy(scopes: ScopeRef[], slug: string | null): boolean {
+  return scopes.some(
+    (scope) => scope.scope_type === 'workspace' || (slug !== null && scope.scope_type === 'specialist' && scope.scope_ref === slug),
+  );
+}
+
 export function principalsForScopes(scopes: ScopeRef[]): string[] {
   const principals = scopes.map((scope) => {
     switch (scope.scope_type) {
@@ -82,6 +89,8 @@ export function principalsForScopes(scopes: ScopeRef[]): string[] {
         return `agent:${scope.scope_ref}`;
       case 'squad':
         return `squad:${scope.scope_ref}`;
+      case 'workflow':
+        return `workflow:${scope.scope_ref}`;
     }
   });
   return [...new Set(principals)].sort();

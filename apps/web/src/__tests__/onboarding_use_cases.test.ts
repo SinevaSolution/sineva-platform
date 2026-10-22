@@ -45,6 +45,7 @@ const denyEntitlements: EntitlementService = {
   assert: async (_ws, key) => {
     throw new EntitlementRequiredError(key);
   },
+  numericLimit: async () => null,
 };
 
 function ctx(

@@ -2,6 +2,7 @@ import 'server-only';
 import { businessProfilePaths } from './business_profile_paths';
 import { membersPaths } from './members_paths';
 import { getInboxPaths } from './inbox_paths';
+import { getConnectionsPaths } from './connections_paths';
 import { LIBRARY_COMPONENT_SCHEMAS, libraryOpenApiPaths } from './library_paths';
 
 // Response object of the standard envelope, for the profile family below.
@@ -99,6 +100,11 @@ export function getOpenApiSpec(): Record<string, unknown> {
           'Sino Library: documents, folders, scopes, uploads, quotas and retrieval tests (ADR-0030)',
       },
       {
+        name: 'Connections',
+        description:
+          'Connected tools: provider catalog, OAuth and pasted-key connections, the access matrix, disconnect (ADR-0036 to ADR-0039)',
+      },
+      {
         name: 'Internal',
         description: 'Internal service-to-service endpoints guarded by X-Internal-Api-Key',
       },
@@ -106,6 +112,7 @@ export function getOpenApiSpec(): Record<string, unknown> {
     paths: {
       ...membersPaths(),
       ...getInboxPaths(),
+      ...getConnectionsPaths(),
       ...libraryOpenApiPaths(),
       ...businessProfilePaths(),
       '/api/internal/v1/keys': {
@@ -586,6 +593,8 @@ export function getOpenApiSpec(): Record<string, unknown> {
         get: {
           tags: ['Auth'],
           summary: 'Initiate OAuth 2.0 / OIDC authorization flow with PKCE S256',
+          description:
+            'intent=sign_in (default) signs in or up. intent=link adds the provider to the signed-in person; intent=reauth re-confirms them (marks the session fresh) when they have no password. Both need a session: without one the answer redirects to /sign-in. The state is bound to the signed-in user, so a browser that changed hands cannot finish it. return_to must be a same-origin path; the callback appends oauth=<linked|reauthenticated|mismatch|account_in_use|provider_already_linked|fresh_required|not_configured|cancelled|failed> to it.',
           operationId: 'auth_oauth_initiate',
           parameters: [
             {
@@ -599,6 +608,12 @@ export function getOpenApiSpec(): Record<string, unknown> {
               in: 'query',
               required: false,
               schema: { type: 'string' },
+            },
+            {
+              name: 'intent',
+              in: 'query',
+              required: false,
+              schema: { type: 'string', enum: ['sign_in', 'link', 'reauth'], default: 'sign_in' },
             },
           ],
           responses: {

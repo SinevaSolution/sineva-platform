@@ -36,6 +36,7 @@ Steps, in order:
 6. `npm run test`.
 7. `npm run build`.
 8. `npm run bundle:report --workspace=@sineva/web` reads `.next` after the build, records every client chunk's raw and gzip size, and fails when three.js, GSAP, Recharts, Tiptap or dnd-kit appear in the chunk every page loads (FR-UX-43). The next step uploads `bundle-report.json` as the `bundle-report` artifact. The check looks for each library's fingerprint strings (minification hides module names), so it can miss a library; `architecture.test.ts` also fails a static import of these libraries outside `*.lazy.*` modules.
+9. Vercel-style build: from `apps/web`, `rm -rf .next && node scripts/vercel_build.mjs` with `VERCEL=1`, no `VERCEL_ENV` and no secrets. It proves the app builds the way Vercel builds it (Root Directory `apps/web`, no turbo, no root hooks) and that `next build` needs no production secrets. It never migrates in CI because `VERCEL_ENV` is unset ([vercel.md](vercel.md), [ADR-0047](../decisions/0047-hosting-on-vercel.md)). Runs last because it replaces `.next`.
 
 `npm run lint` and `npm run test` also run the `@sineva/ui` workspace: its ESLint design rules (no hex, `rgb(`, `dark:`, `z-[n]`, physical-direction classes, motion imports or `dangerouslySetInnerHTML`) and its Vitest suite (token drift against the compro snapshot, contrast in both themes, lint rule fixtures). All four commands go through turbo (`lint`, `typecheck`, `test`, `build`) and must pass before merge. `typecheck` and `build` run `prisma generate` first, which needs no database, so CI has no `DATABASE_URL`.
 
@@ -71,7 +72,7 @@ Facts to know:
 
 ## Release order
 
-Migrations are an explicit release step. They are not in `CMD` and not in compose, so a starting container never changes the schema, and several replicas never race to apply one migration.
+Migrations are an explicit release step. They are not in `CMD` and not in compose, so a starting container never changes the schema, and several replicas never race to apply one migration. On Vercel the production build runs them itself, behind a gate ([vercel.md](vercel.md#7-migrations-during-the-build)).
 
 1. Merge to `main` after CI passes.
 2. Build the image.

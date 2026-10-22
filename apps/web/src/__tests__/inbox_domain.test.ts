@@ -41,12 +41,12 @@ describe('inbox tab mapping (FR-INBOX-02)', () => {
     expect(tabOf(item({ kind: 'input_request', state: 'open' }))).toBe('needs_input');
   });
 
-  it('maps everything resolved, dismissed or expired, and every result, to done', () => {
+  it('maps every approval or question that is no longer open to done, and every result to updates (ADR-0034)', () => {
     for (const state of ['resolved', 'dismissed', 'expired'] as const) {
       expect(tabOf(item({ kind: 'approval', state }))).toBe('done');
       expect(tabOf(item({ kind: 'input_request', state }))).toBe('done');
     }
-    expect(tabOf(item({ kind: 'result', state: 'resolved' }))).toBe('done');
+    expect(tabOf(item({ kind: 'result', state: 'resolved' }))).toBe('updates');
   });
 });
 

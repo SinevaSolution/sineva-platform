@@ -26,6 +26,8 @@ export interface LibraryFolderEntity {
   created_by: string | null;
   created_at: string;
   updated_at: string;
+  /** Who can use what is in this collection (ADR-0033). Never empty. */
+  scopes: ScopeRef[];
 }
 
 export interface LibraryDocumentEntity {
@@ -62,6 +64,8 @@ export interface LibraryDocumentEntity {
   created_at: string;
   updated_at: string;
   scopes: ScopeRef[];
+  /** True while the document follows its collection's access; false once someone chose its own. */
+  access_inherited: boolean;
 }
 
 export interface LibraryIngestEventEntity {

@@ -43,8 +43,17 @@ export const LIBRARY_CREATABLE_SOURCE_TYPES = ['upload', 'note', 'chat_save'] as
 export const LIBRARY_LANGUAGES = ['id', 'en', 'mixed', 'unknown'] as const;
 export type LibraryLanguage = (typeof LIBRARY_LANGUAGES)[number];
 
-export const LIBRARY_SCOPE_TYPES = ['workspace', 'specialist', 'squad'] as const;
+// `squad` (M4) and `workflow` (M3) are reserved: stored and understood by the
+// domain, rejected by the request schemas until those features ship (ADR-0033).
+export const LIBRARY_SCOPE_TYPES = ['workspace', 'specialist', 'squad', 'workflow'] as const;
 export type LibraryScopeType = (typeof LIBRARY_SCOPE_TYPES)[number];
+
+/** Filter values for the list: every status, plus `reading` for queued and processing together. */
+export const LIBRARY_STATUS_FILTERS = [...LIBRARY_STATUSES, 'reading'] as const;
+export type LibraryStatusFilter = (typeof LIBRARY_STATUS_FILTERS)[number];
+
+export const LIBRARY_SORTS = ['newest', 'oldest', 'name', 'size'] as const;
+export type LibrarySort = (typeof LIBRARY_SORTS)[number];
 
 /** Review intervals offered by the "Remind me to check this" control. */
 export const LIBRARY_REVIEW_INTERVAL_MAX_DAYS = 730;

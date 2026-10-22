@@ -60,6 +60,17 @@ Gotchas:
 - Patterns are length-bounded. An unbounded character class rescans from every start position and is quadratic on a long run of digits or address characters; `pii.test.ts` has timing guards for this.
 - Trace and eval writers must call `mask` before writing. They do not exist yet; the hook is the exported function.
 
+## 3a. Credential redaction list
+
+Credential shapes (provider keys, token endpoint bodies, OAuth `code` and `state` in callback URLs, Basic credentials, Telegram tokens in URL paths, webhook signatures) are data in `packages/shared/src/redaction/redaction_patterns.json`, not code. `detectPii` and `mask` load the list, so the logger and every other caller of `mask` pick a new pattern up with no code change; each pattern reports its id through `scanForSecrets(text)` (`containsSecret(text)` for output lint). Rules:
+
+- A pattern needs at least one positive row (the exact credential that must be masked) and one negative row (ordinary text that must stay unchanged) in the same entry. `redaction.test.ts` walks the data, so a pattern without rows fails.
+- `provenance` says `documented` or `recalled`. A recalled prefix (Xendit, Midtrans, Notion, several model providers) must be checked against the provider's documentation before it is relied on (OQ-CONN-8, OQ-MDL-10).
+- Audit rows get the same masking on every string leaf of `metadata` and `change` (`RepositoryAuditLogger`), on top of the key-name redaction in the domain, so a token stored under an innocent key like `note` does not reach the table.
+- `src/__tests__/secret_canary_scan.test.ts` is the token scan (plan gate G1): it seeds credential-shaped canaries into the logger, error handler, job runner, vault and audit logger and searches every capture for the marker. Later flows add cases through `helpers/canary_secrets.ts`. It runs in `npm run test`, so it blocks merge in CI.
+- The reply-side check (FR-SEC-10) is `containsSecret(reply)`; it is not wired into the chat path yet.
+- `sineva-ai` must copy `redaction_patterns.json` byte for byte for its log and trace writers; no drift test exists yet because that repo has no copy.
+
 ## 4. Test vectors and the sineva-ai copy
 
 `packages/shared/src/pii/vectors/pii_vectors.json` is shared with `sineva-ai`, whose filter must pass the same cases. `sineva-ai` must copy it byte for byte; `vectors_drift.test.ts` compares the two once the copy exists and is visibly skipped until then. Details and the lookup path are in `vectors/README.md`.

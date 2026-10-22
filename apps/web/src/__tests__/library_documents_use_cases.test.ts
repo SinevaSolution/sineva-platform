@@ -247,10 +247,10 @@ describe('updating a document: scope, folder, review interval (FR-LIB-14, FR-LIB
   it('renames, moves into a folder and refuses a folder of another workspace', async () => {
     const h = buildHarness();
     const doc = await uploadAndComplete(h);
-    const folder = await h.folders.create({ workspace_id: WS, parent_id: null, name: 'SOP', created_by: USER });
+    const folder = await h.folders.create({ workspace_id: WS, parent_id: null, name: 'SOP', created_by: USER, scopes: [{ scope_type: 'workspace', scope_ref: WS }] });
     const moved = await new UpdateLibraryDocumentUseCase(h.deps).execute(doc.id, { title: 'Harga baru', folder_id: folder.id }, ctx());
     expect(moved).toMatchObject({ title: 'Harga baru', folder_id: folder.id });
-    const foreign = await h.folders.create({ workspace_id: OTHER_WS, parent_id: null, name: 'Theirs', created_by: OTHER_USER });
+    const foreign = await h.folders.create({ workspace_id: OTHER_WS, parent_id: null, name: 'Theirs', created_by: OTHER_USER, scopes: [{ scope_type: 'workspace', scope_ref: OTHER_WS }] });
     await expect(
       new UpdateLibraryDocumentUseCase(h.deps).execute(doc.id, { folder_id: foreign.id }, ctx()),
     ).rejects.toBeInstanceOf(NotFoundError);

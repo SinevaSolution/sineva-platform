@@ -12,6 +12,7 @@ related_docs:
   - 'future_features_template.md'
   - 'roadmap.md'
   - 'known_issues_and_tech_debt.md'
+  - 'manual_test_invitations.md'
   - '../README.md'
   - '../governance/agent_rules.md'
 ---
@@ -28,6 +29,7 @@ This folder is for the person about to change the platform: the order to build a
 | [future_features_template.md](future_features_template.md)         | A feature spec template with sections for guardrails and wording, database migration, contract impact with `sineva-ai`, failure behavior and the ADR link | You propose a feature that changes a contract, the schema, a product's behavior, identity or failure handling |
 | [roadmap.md](roadmap.md)                                           | What is real and what is a stub today, then hardening, one chat, and uncommitted ideas, each with exit evidence                                           | You pick what to build next, or check if work is already planned                                              |
 | [known_issues_and_tech_debt.md](known_issues_and_tech_debt.md)     | Every known deviation, grouped by area with security first: symptom, root cause, location, severity, what not to copy, suggested fix                      | You work in an area, and before you copy any pattern you did not write                                        |
+| [manual_test_invitations.md](manual_test_invitations.md) | Step-by-step manual test of invitations, roles, ownership transfer and sign-in methods on the dev server with Mailpit and two browsers | You want to try the people flows yourself, or check what each step should show |
 
 ## Reading order
 

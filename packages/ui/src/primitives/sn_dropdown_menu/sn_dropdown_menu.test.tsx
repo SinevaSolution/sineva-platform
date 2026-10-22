@@ -101,7 +101,7 @@ describe('SNDropdownMenu', () => {
     setup();
     open();
     const cls = screen.getByRole('menu').className;
-    for (const part of ['anim-swap', 'z-(--z-dropdown)', 'rounded-md', 'border-border', 'bg-surface', 'p-1', 'shadow-md']) {
+    for (const part of ['anim-swap', 'z-(--z-popover)', 'rounded-md', 'border-border', 'bg-surface', 'p-1', 'shadow-md']) {
       expect(cls).toContain(part);
     }
     expect(cls.endsWith('w-40')).toBe(true);

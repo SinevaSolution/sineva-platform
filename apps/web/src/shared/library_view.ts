@@ -7,7 +7,8 @@ export type LibrarySourceTypeView = 'upload' | 'url' | 'crawl' | 'sync' | 'chat_
 export type LibraryLanguageView = 'id' | 'en' | 'mixed' | 'unknown';
 
 export interface LibraryScopeView {
-  scope_type: 'workspace' | 'specialist' | 'squad';
+  /** `squad` and `workflow` are reserved: the API does not accept them yet. */
+  scope_type: 'workspace' | 'specialist' | 'squad' | 'workflow';
   /** The agent slug or squad id; null for the workspace scope. */
   scope_ref: string | null;
 }
@@ -40,6 +41,8 @@ export interface LibraryDocumentView {
   scopes: LibraryScopeView[];
   /** True while a scope change has not reached sineva-ai: retrieval may still use the old labels. */
   acl_sync_pending: boolean;
+  /** True while the document follows its collection's access ("Same as the collection"). */
+  access_inherited: boolean;
   created_by: string;
   created_at: string;
   updated_at: string;
@@ -54,6 +57,8 @@ export interface LibraryFolderView {
   id: string;
   parent_id: string | null;
   name: string;
+  /** Who can use what is in this collection. */
+  scopes: LibraryScopeView[];
   created_at: string;
   updated_at: string;
 }
@@ -72,6 +77,23 @@ export interface LibraryUsageView {
   storage_bytes: number;
   ocr_pages_month: number;
   within_limits: { documents: boolean; storage: boolean; ocr_pages: boolean };
+  /** Null when the workspace has no storage limit, so the page shows usage without a bar. */
+  storage_limit_bytes: number | null;
+}
+
+export interface LibrarySummaryView {
+  total: number;
+  by_status: { ready: number; reading: number; needs_attention: number; failed: number };
+  /** Documents per collection id; empty collections are absent. */
+  by_folder: Record<string, number>;
+  in_root: number;
+}
+
+export interface LibraryKnowledgeView {
+  /** Ready documents everyone can use, which is all Sino reads in team chats. */
+  everyone: number;
+  /** Per specialist the caller may use: Everyone's plus the ones chosen for it. */
+  specialists: Record<string, number>;
 }
 
 export interface LibraryTryResultView {

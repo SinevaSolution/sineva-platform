@@ -36,11 +36,23 @@ const internalErrors = {
   '422': response('Body failed validation (the schema is strict: a user_id key is refused)'),
 };
 
-function internalPaths(path: string, post: Record<string, unknown>): Array<[string, unknown]> {
-  return [path, `/api${path}`].map((p) => [
-    p,
-    { post: { ...post, operationId: p.startsWith('/api') ? `${post.operationId as string}_api_alias` : post.operationId } },
-  ]);
+function internalPaths(
+  path: string,
+  post: Record<string, unknown>,
+  // A scheduler that can only issue GET (Vercel Cron) triggers the same job.
+  options: { alsoGet?: boolean } = {},
+): Array<[string, unknown]> {
+  return [path, `/api${path}`].map((p) => {
+    const operationId = (suffix: string) =>
+      p.startsWith('/api') ? `${post.operationId as string}${suffix}_api_alias` : `${post.operationId as string}${suffix}`;
+    return [
+      p,
+      {
+        post: { ...post, operationId: operationId('') },
+        ...(options.alsoGet ? { get: { ...post, operationId: operationId('_get') } } : {}),
+      },
+    ];
+  });
 }
 
 export function getInboxPaths(): Record<string, unknown> {
@@ -50,12 +62,15 @@ export function getInboxPaths(): Record<string, unknown> {
       get: {
         tags: ['Inbox'],
         summary: 'List Inbox items',
-        description: `Filter by tab (needs_review, needs_input, done), agent_slug and cursor. Owner and admin see every item, a member sees items addressed to them, a viewer sees Done only. ${ITEM_VIEW_NOTE}`,
+        description: `Filter by tab (needs_review, needs_input, needs_you, updates, done), agent_slug, kind, source_type, q (part of the title, 80 characters at most) and cursor. needs_you is needs_review and needs_input together; results are in updates, not done. Owner and admin see every item, a member sees items addressed to them, a viewer sees Updates and Done summaries only. ${ITEM_VIEW_NOTE}`,
         operationId: 'list_inbox',
         parameters: [
           WS,
-          { name: 'tab', in: 'query', schema: { type: 'string', enum: ['needs_review', 'needs_input', 'done'] } },
+          { name: 'tab', in: 'query', schema: { type: 'string', enum: ['needs_review', 'needs_input', 'needs_you', 'updates', 'done'] } },
           { name: 'agent_slug', in: 'query', schema: { type: 'string' } },
+          { name: 'kind', in: 'query', schema: { type: 'string', enum: ['approval', 'input_request', 'result'] } },
+          { name: 'source_type', in: 'query', schema: { type: 'string', enum: ['chat', 'room', 'system'] } },
+          { name: 'q', in: 'query', schema: { type: 'string', minLength: 1, maxLength: 80 } },
           { name: 'cursor', in: 'query', schema: { type: 'string' } },
           { name: 'limit', in: 'query', schema: { type: 'integer', minimum: 1, maximum: 50, default: 20 } },
         ],
@@ -66,7 +81,7 @@ export function getInboxPaths(): Record<string, unknown> {
       get: {
         tags: ['Inbox'],
         summary: 'Inbox counts and the rail badge',
-        description: 'needs_review, needs_input, done, unread counts and badge (needs_review + needs_input). Poll every 30 seconds and on tab focus. Costs no points.',
+        description: 'needs_review, needs_input, updates, done, unread counts and badge (needs_review + needs_input). Poll every 30 seconds and on tab focus. Costs no points.',
         operationId: 'get_inbox_counts',
         parameters: [WS],
         responses: { '200': response('Counts'), ...COMMON_ERRORS },
@@ -249,10 +264,10 @@ export function getInboxPaths(): Record<string, unknown> {
         tags: ['Internal'],
         summary: 'Run the Inbox expiry job',
         description:
-          'Guarded by X-Internal-Api-Key. Expires due approvals and input requests (never approves), resumes the runs with "expired", retries failed resumes, releases stale claims and reports approvals within 24 hours of expiry. Safe to call repeatedly.',
+          'Guarded by X-Internal-Api-Key or by Authorization: Bearer CRON_SECRET (the form Vercel Cron sends; GET exists because Vercel Cron only issues GET). Expires due approvals and input requests (never approves), resumes the runs with "expired", retries failed resumes, releases stale claims and reports approvals within 24 hours of expiry. Safe to call repeatedly.',
         operationId: 'run_inbox_expiry',
-        responses: { '200': response('Job result counts'), '401': response('Missing or invalid X-Internal-Api-Key header') },
-      }),
+        responses: { '200': response('Job result counts'), '401': response('Missing or invalid X-Internal-Api-Key header or cron bearer token') },
+      }, { alsoGet: true }),
     ]),
   };
 }

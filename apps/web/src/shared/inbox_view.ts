@@ -2,7 +2,10 @@
 // may import this file but never `@/server/*`. A guard in
 // `server/http/inbox_view_contract.ts` keeps the server types assignable.
 
-export type InboxTabView = 'needs_review' | 'needs_input' | 'done';
+export type InboxTabView = 'needs_review' | 'needs_input' | 'updates' | 'done';
+/** The tabs the screen asks for. `needs_you` is both waiting-for-a-person tabs in one list. */
+export type InboxListTabView = InboxTabView | 'needs_you';
+export type InboxKindView = 'approval' | 'input_request' | 'result';
 export type InboxStateView = 'open' | 'resolved' | 'dismissed' | 'expired';
 
 /** A catalog key plus structured params; the client localizes it. Never model text. */
@@ -47,6 +50,8 @@ export interface InboxInputRequestView {
   fields: InboxInputFieldView[];
   version: number;
   due_at: string | null;
+  /** Who answered or skipped it; the screen says "You" when it is the viewer of the screen. */
+  answered_by: string | null;
   answered_at: string | null;
   /** Hidden from viewers. */
   answer?: Record<string, unknown> | null;
@@ -70,7 +75,12 @@ export interface InboxItemView {
   /** Producer text: render escaped. */
   title: string;
   summary: InboxSentenceView;
-  source: { type: 'chat' | 'room' | 'system'; id: string | null };
+  source: {
+    type: 'chat' | 'room' | 'system';
+    id: string | null;
+    /** Detail only, chat sources only: the conversation to link back to. Never sent to a viewer. */
+    conversation_id?: string | null;
+  };
   unread: boolean;
   expires_at: string | null;
   resolved_at: string | null;
@@ -92,9 +102,12 @@ export interface InboxListView {
 export interface InboxCountsView {
   needs_review: number;
   needs_input: number;
+  /** Results (news); not part of `done`. */
+  updates: number;
   done: number;
   /** needs_review + needs_input: the rail badge (FR-INBOX-04). */
   badge: number;
   unread_needs_review: number;
   unread_needs_input: number;
+  unread_updates: number;
 }

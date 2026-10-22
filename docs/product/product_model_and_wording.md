@@ -95,6 +95,7 @@ User-facing text means anything a customer reads: UI text, marketing pages, emai
 | Calling a product | `@SinoHelp reply to this customer` | `@SinoHelp balas pelanggan ini` | `SinoHelp, reply...`, `@SinoHelp, reply...` |
 | Product actions | drafts, prepares, suggests, flags, summarizes | membuat draf, menyiapkan, menyarankan, menandai, merangkum | hires, rejects, pays, transfers, publishes on its own |
 | Integrations | the tools you already use | aplikasi yang sudah kamu pakai | a named platform, unless a real, shipped integration exists and the Founder approved the claim |
+| Engineering words | what it means for the person: "Sino is reading your file", "pages read from photos and scans", "Ready", "Needs a look" | the same, in plain Indonesian: "Sino sedang membaca file kamu", "halaman dibaca dari foto dan pindaian" | OCR, embedding, chunk, vector, index and indexing, ingest, token, RAG, payload, webhook, JSON, BFF; ID: indeks, mengindeks, pengindeksan, vektor, tokenisasi, penyematan. Also "queued", "processing" and raw byte counts: sizes read KB, MB or GB ([ADR-0033](../decisions/0033-library-collections-access-and-plain-language.md)) |
 | Where "agent" is fine | code, `/api/v1/agents`, `agent_slug`, OpenAPI, developer docs | same | customer text |
 
 The Indonesian terms for Sino are fixed by the Founder. In the app, Indonesian uses "kamu" and "-mu" and Sino says "aku" (Founder decision; the marketing site `sineva-compro` stays formal "Anda" on purpose). Check `sineva-compro` for vocabulary before inventing a sentence, then write it in the app voice. The "pembantu" and "never call Sino a mascot" rules come from `sineva-compro/docs/design/copywriting.md`.
@@ -115,6 +116,7 @@ Run this on every new or changed customer-facing string.
 6. Integrations are generic (R-35).
 7. No invented number, customer, rating or claim. A number needs a real source; with no data, show none.
 8. No internal vocabulary: BFF, Docker, Prisma, upstream, 502, tenant, orchestrator. Say what happened and what the person can do.
+   The `technical_term` copy rule fails the test suite on OCR, embedding, chunk, vector, index and indexing, ingest, token, RAG, payload, webhook, JSON and BFF (and the Indonesian counterparts) in either catalog. There is no allowlist: rephrase.
 9. Dashes: no em dash and no en dash. This is the rule of the public site guide; apply it here unless the Founder says otherwise.
 10. Read it aloud. It should sound like a person wrote it.
 

@@ -3,12 +3,17 @@
 import { useRouter } from 'next/navigation';
 import * as React from 'react';
 import type { ComposerHandle } from '@/client/components/chat/composer';
+import { RoomReconnectBanner } from '@/client/components/connections/connections_attention';
+import { SpecialistToolsButton } from '@/client/components/connections/specialist_tools';
 import { StartChat } from '@/client/components/chat/start_chat';
+import { LibraryKnowsChip } from '@/client/components/library/library_knows_chip';
 import { cn } from '@/client/components/ui/cn';
+import { PresetEmptyState } from '@/client/components/ui/empty_state';
 import { SNSinoFigure } from '@/client/components/ui/sn_sino_figure';
 import { specialistPose } from '@/client/components/ui/specialist_accent';
 import { SNTooltip } from '@sineva/ui';
 import { useTranslations } from '@/i18n/provider';
+import type { LibraryKnowledgeView } from '@/shared/library_view';
 import type { ShellSpecialistView } from '@/shared/shell_view';
 import { teamStarterKeys, type RoomMood } from './room_model';
 import { RoomBubble, RoomStage } from './room_stage';
@@ -26,6 +31,7 @@ export function NewChatView({
   specialists,
   initialWith,
   initialPrompt,
+  knowledge,
 }: {
   /** Prefills the box (Home "Ideas for today"); never sent automatically. */
   initialPrompt?: string | null;
@@ -34,6 +40,8 @@ export function NewChatView({
   firstName: string;
   specialists: ShellSpecialistView[];
   initialWith: string | null;
+  /** What Sino and each specialist can use from the Library ("Knows N documents"). */
+  knowledge: LibraryKnowledgeView;
 }) {
   const router = useRouter();
   const t = useTranslations('room');
@@ -105,15 +113,26 @@ export function NewChatView({
         onPendingChange={(p) => setMood(p ? 'working' : 'idle')}
         placeholder={withSlug ? t('placeholder_specialist', { name }) : t('placeholder_team')}
       />
-      <p className="mt-2 text-center text-[11px] text-text-inverse/60">
-        {withSlug ? t('footer_specialist', { name }) : t('footer_team')}
-      </p>
+      <div className="mt-2 flex items-center justify-center gap-3">
+        <p className="text-center text-[11px] text-text-inverse/60">
+          {withSlug ? t('footer_specialist', { name }) : t('footer_team')}
+        </p>
+        {current ? (
+          <SpecialistToolsButton
+            agentSlug={current.agent_slug}
+            specialistName={current.display_name}
+            workspaceId={workspaceId}
+            workspaceSlug={workspaceSlug}
+          />
+        ) : null}
+      </div>
     </div>
   );
 
   return (
     <RoomStage slug={withSlug} mood={mood} topBar={picker} label={withSlug ? name : t('stage_team')} footer={footer}>
       <div key={withSlug ?? 'team'} className="flex min-h-full flex-col justify-end gap-3 px-4 pb-4 pt-8 sm:px-6">
+        <RoomReconnectBanner agentSlug={withSlug} workspaceSlug={workspaceSlug} />
         <div className="anim-rise flex items-end gap-2">
           <SNSinoFigure pose={specialistPose(withSlug ?? 'sino')} size={36} className="md:hidden" />
           <RoomBubble from="companion">
@@ -122,7 +141,16 @@ export function NewChatView({
             {current ? t('intro_specialist', { role: current.role_title }) : t('intro_team')}
           </RoomBubble>
         </div>
-        <ul className="flex flex-wrap gap-2" aria-label={t('starters_label')}>
+        <div className="anim-rise [--d:90ms]">
+          <LibraryKnowsChip workspaceSlug={workspaceSlug} knowledge={knowledge} agentSlug={withSlug} name={name} />
+        </div>
+                {starterTexts.length === 0 ? (
+          <PresetEmptyState
+            preset="new_chat_starters"
+            className="rounded-lg bg-surface p-3 shadow-md ring-1 ring-border"
+          />
+        ) : null}
+        <ul className="flex flex-wrap gap-2" aria-label={t('starters_label')} hidden={starterTexts.length === 0}>
           {starterTexts.map((text, i) => {
             return (
               <li key={text} className="anim-rise" style={{ '--d': `${120 + i * 70}ms` } as React.CSSProperties}>

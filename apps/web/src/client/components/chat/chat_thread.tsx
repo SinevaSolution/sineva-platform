@@ -3,13 +3,17 @@
 import { Square } from 'lucide-react';
 import * as React from 'react';
 import { SNButton, snToast, SNTooltip } from '@sineva/ui';
+import { LibraryKnowsChip } from '@/client/components/library/library_knows_chip';
+import { RoomReconnectBanner } from '@/client/components/connections/connections_attention';
+import { SpecialistToolsButton } from '@/client/components/connections/specialist_tools';
 import { ConversationActions } from '@/client/components/conversation/conversation_actions';
 import { InlineTitleEdit } from '@/client/components/conversation/inline_title_edit';
 import { useConversationActions } from '@/client/components/conversation/use_conversation_actions';
 import { RoomBubble, RoomStage } from '@/client/components/room/room_stage';
+import { PresetEmptyState } from '@/client/components/ui/empty_state';
 import { SNSinoFigure } from '@/client/components/ui/sn_sino_figure';
 import { specialistPose } from '@/client/components/ui/specialist_accent';
-import { apiRequest } from '@/client/lib/api';
+import { ApiError, apiRequest } from '@/client/lib/api';
 import { openRunStream, type RunDoneResult, type RunStreamEvent, type RunStreamHandle } from '@/client/lib/event_stream';
 import { streamErrorText } from '@/client/lib/stream_errors';
 import { useApiErrorText } from '@/client/lib/use_api_error';
@@ -20,6 +24,7 @@ import type {
   MessageView,
   SendMessageResultView,
 } from '@/shared/chat_view';
+import type { LibraryKnowledgeView } from '@/shared/library_view';
 import type { ShellSpecialistView } from '@/shared/shell_view';
 import { Composer } from './composer';
 import { MessageCards } from './message_cards';
@@ -85,11 +90,14 @@ export function ChatThread({
   workspaceSlug,
   conversationId,
   specialists,
+  knowledge,
 }: {
   workspaceId: string;
   workspaceSlug: string;
   conversationId: string;
   specialists: ShellSpecialistView[];
+  /** What Sino and each specialist can use from the Library ("Knows N documents"). */
+  knowledge: LibraryKnowledgeView;
 }) {
   const t = useTranslations('chat');
   const tCommon = useTranslations('common');
@@ -281,13 +289,22 @@ export function ChatThread({
   }
 
   if (state.status === 'error') {
+    // A 404 means the chat was deleted (or never existed for this person):
+    // retrying cannot help, so offer a new chat instead of "Try again".
+    if (state.error instanceof ApiError && state.error.status === 404) {
+      return (
+        <div className="flex flex-1 items-center justify-center p-6">
+          <PresetEmptyState preset="chat_deleted" actionHref={`/w/${workspaceSlug}/new`} />
+        </div>
+      );
+    }
     return (
-      <div className="flex flex-1 flex-col items-center justify-center gap-3 p-6 text-center">
-        <SNSinoFigure pose="confused" size={120} />
-        <p className="max-w-sm text-sm text-text-secondary">{errorText(state.error)}</p>
-        <SNButton size="sm" onClick={() => setAttempt((n) => n + 1)}>
-          {tCommon('try_again')}
-        </SNButton>
+      <div className="flex flex-1 items-center justify-center p-6">
+        <PresetEmptyState
+          preset="chat_load_failed"
+          description={errorText(state.error)}
+          onAction={() => setAttempt((n) => n + 1)}
+        />
       </div>
     );
   }
@@ -316,6 +333,7 @@ export function ChatThread({
     );
 
   const header = (
+    <>
     <div className="flex items-center gap-2 px-4 pb-2 pt-3 sm:px-6">
       <SNSinoFigure pose={specialistPose(specialist?.agent_slug ?? 'sino')} size={34} />
       <div className="min-w-0">
@@ -338,6 +356,24 @@ export function ChatThread({
         )}
         <p className="text-xs text-text-inverse/65">{isTeam ? t('thread.subtitle_team') : t('thread.subtitle_private', { name: companionName })}</p>
       </div>
+      <div className="ms-auto flex items-center gap-2">
+        <div className="hidden sm:block">
+        <LibraryKnowsChip
+          workspaceSlug={workspaceSlug}
+          knowledge={knowledge}
+          agentSlug={isTeam ? null : (specialist?.agent_slug ?? null)}
+          name={companionName}
+        />
+        </div>
+        {specialist ? (
+          <SpecialistToolsButton
+            agentSlug={specialist.agent_slug}
+            specialistName={specialist.display_name}
+            workspaceId={workspaceId}
+            workspaceSlug={workspaceSlug}
+          />
+        ) : null}
+      </div>
       {renaming ? null : (
         <ConversationActions
           title={displayTitle}
@@ -347,6 +383,8 @@ export function ChatThread({
         />
       )}
     </div>
+    <RoomReconnectBanner agentSlug={specialist?.agent_slug ?? null} workspaceSlug={workspaceSlug} />
+    </>
   );
 
   const footer = (
@@ -387,6 +425,12 @@ export function ChatThread({
       footer={footer}
     >
       <ol className="flex min-h-full flex-col justify-end gap-3 px-4 py-6 sm:px-6" aria-label={t('thread.messages_label')} role="log">
+        {messages.length === 0 && live.phase === 'idle' ? (
+          // On the room scene the state needs a surface of its own to stay readable.
+          <li className="rounded-lg bg-surface p-4 shadow-md ring-1 ring-border">
+            <PresetEmptyState preset="chat_thread_empty" />
+          </li>
+        ) : null}
         {messages.map((m) => (
           <MessageRow key={m.id} message={m} specialists={specialists} fallbackSlug={specialist?.agent_slug} />
         ))}

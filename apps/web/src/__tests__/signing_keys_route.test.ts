@@ -94,6 +94,7 @@ describe('Internal Signing Keys API (GET /internal/v1/keys, WP-M0-27 task 5)', (
       internal_context_signing_key: 'dev-signing-key',
       internal_context_kid: 'k1',
       entitlements_mode: 'open',
+      database_pool_max: 10,
     });
   });
 

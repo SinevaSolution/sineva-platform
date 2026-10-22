@@ -39,6 +39,13 @@ export const LOG_EVENTS = [
   'library.acl_sync_failed',
   'library.review_reminder_failed',
   'library.cleanup_failed',
+  'job.started',
+  'job.succeeded',
+  'job.retry_scheduled',
+  'job.failed',
+  'job.lease_reaped',
+  'connection.step_failed',
+  'connection.metric',
 ] as const;
 export type LogEvent = (typeof LOG_EVENTS)[number];
 
@@ -75,6 +82,14 @@ export interface LogFields {
   plan_required?: string;
   /** Opaque id of a Library document (a resource, not a person). */
   document_id?: string;
+  /** Job type such as `connection.refresh`, an opaque job id, the attempt number and a count (ADR-0038). */
+  job_type?: string;
+  job_id?: string;
+  attempt?: number;
+  count?: number;
+  /** Connection layer: the provider key (`google_calendar`) and the opaque id of a connection. Resources, not people. */
+  provider_id?: string;
+  connection_id?: string;
 }
 
 type FieldKind = 'number' | 'string' | 'boolean' | 'string_list';
@@ -103,6 +118,12 @@ const FIELD_KINDS: Record<keyof LogFields, FieldKind> = {
   quantity: 'number',
   plan_required: 'string',
   document_id: 'string',
+  job_type: 'string',
+  job_id: 'string',
+  attempt: 'number',
+  count: 'number',
+  provider_id: 'string',
+  connection_id: 'string',
 };
 
 // Bounds what an allowed string field can smuggle: a pasted body would be cut

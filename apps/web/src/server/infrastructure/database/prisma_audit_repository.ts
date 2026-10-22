@@ -75,6 +75,8 @@ export class PrismaAuditRepository implements AuditEventRepository {
         workspace_id: query.workspace_id,
         ...(query.action ? { action: query.action } : {}),
         ...(query.actor_id ? { actor_id: query.actor_id } : {}),
+        ...(query.target_type ? { target_type: query.target_type } : {}),
+        ...(query.target_id ? { target_id: query.target_id } : {}),
         ...(query.before ? { occurred_at: { lt: query.before } } : {}),
       },
       orderBy: { occurred_at: 'desc' },

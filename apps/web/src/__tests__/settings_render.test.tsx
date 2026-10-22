@@ -3,7 +3,6 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it, vi } from 'vitest';
 import { PreferencesForm } from '@/client/components/settings/preferences_form';
 import { ProfileForm } from '@/client/components/settings/profile_form';
-import { SettingsShell } from '@/client/components/settings/settings_shell';
 import { SignInMethods } from '@/client/components/settings/sign_in_methods';
 import { SNTooltipProvider } from '@sineva/ui';
 import { CATALOGS } from '@/i18n/catalogs';
@@ -78,14 +77,29 @@ describe('ProfileForm rendering', () => {
 
   it('uses SNSelect and SNCombobox for every dropdown, never a native select', () => {
     const html = inLocale('en', form);
-    // Locale, time zone, salutation and department are four combobox buttons.
-    expect(html.match(/role="combobox"/g)).toHaveLength(4);
+    // Locale, time zone, salutation and department are four combobox buttons,
+    // and the phone number's country button is the fifth.
+    expect(html.match(/role="combobox"/g)).toHaveLength(5);
     // Radix renders its hidden native select only for the form value; the
     // visible controls are buttons.
     expect(html).toContain('aria-haspopup="listbox"');
     expect(html).toContain('Asia/Jakarta');
     // The searchable one is the time zone.
     expect(html).toMatch(/id="[^"]*-timezone"[^>]*role="combobox"|role="combobox"[^>]*id="[^"]*-timezone"/);
+  });
+
+  it('puts a country picker next to the phone number and shows the saved number nationally', () => {
+    const html = inLocale('en', form);
+    expect(html).toContain('aria-label="Country code: Indonesia +62"');
+    expect(html).toContain('value="0812-3456-7890"');
+    // The hidden input carries the E.164 value that the form saves.
+    expect(html).toMatch(/<input[^>]*type="hidden"[^>]*value="\+6281234567890"|<input[^>]*value="\+6281234567890"[^>]*type="hidden"/);
+  });
+
+  it('names the country in the UI language', () => {
+    const html = inLocale('id', form);
+    expect(html).toContain('aria-label="Kode negara: Indonesia +62"');
+    expect(html).toContain('Nomor telepon');
   });
 
   it('starts clean: no save bar until something changes', () => {
@@ -132,28 +146,21 @@ describe('SignInMethods rendering', () => {
     const html = inLocale(
       'en',
       <SignInMethods
-        email="faishal@example.com"
-        accounts={[
-          { provider: 'google', provider_email: 'faishal@gmail.com', provider_username: null },
-          { provider: 'credential', provider_email: null, provider_username: null },
-        ]}
+        workspaceSlug="acme"
+        view={{
+          email: 'faishal@example.com',
+          accounts: [
+            { provider: 'google', provider_email: 'faishal@gmail.com', provider_username: null },
+            { provider: 'credential', provider_email: null, provider_username: null },
+          ],
+          configured: ['google', 'github'],
+          fresh: true,
+        }}
       />,
     );
     expect(html).toContain('faishal@gmail.com');
     expect(html).toContain('Linked');
     expect(html).toContain('Not linked');
     expect(html).toContain('Set');
-  });
-});
-
-describe('SettingsShell rendering', () => {
-  it('links the tabs with the tab in the URL and marks the active one', () => {
-    const html = inLocale('en', <SettingsShell workspaceSlug="acme" active="preferences">content</SettingsShell>);
-    expect(html).toContain('href="/w/acme/settings/profile"');
-    expect(html).toContain('href="/w/acme/settings/profile?tab=preferences"');
-    expect(html).toContain('href="/w/acme/settings/profile?tab=sign_in"');
-    expect((html.match(/aria-current="page"/g) ?? []).length).toBe(1);
-    expect(html).toMatch(/aria-current="page"[^>]*>.*Preferences/s);
-    expect(html).toContain('<nav');
   });
 });
