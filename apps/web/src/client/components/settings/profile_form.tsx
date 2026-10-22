@@ -6,6 +6,7 @@ import {
   SNBanner,
   SNCombobox,
   SNInput,
+  SNPhoneInput,
   SNPill,
   SNSelect,
   snToast,
@@ -15,7 +16,7 @@ import {
 import { SNSinoFigure } from '@/client/components/ui/sn_sino_figure';
 import { apiRequest } from '@/client/lib/api';
 import { useApiErrorText } from '@/client/lib/use_api_error';
-import { useTranslations } from '@/i18n/provider';
+import { useLocale, useTranslations } from '@/i18n/provider';
 import { LOCALE_COOKIE } from '@sineva/i18n';
 import type { MeView, MemberProfileView, ProfileView } from '@/shared/profile_view';
 import { AvatarEditor } from './avatar_editor';
@@ -61,6 +62,9 @@ export function ProfileForm({
 }) {
   const router = useRouter();
   const t = useTranslations('account');
+  // Country names follow the language on screen, which stays the saved one
+  // until Save, not the language picked in the draft.
+  const locale = useLocale();
   const errorText = useApiErrorText();
   const [profile, setProfile] = React.useState(initialProfile);
   const [member, setMember] = React.useState(initialMember);
@@ -77,7 +81,7 @@ export function ProfileForm({
   );
   const patch = React.useMemo(() => buildProfilePatch(saved, draft), [saved, draft]);
   const dirty = hasChanges(patch);
-  const clientErrors = validateDraft(draft);
+  const clientErrors = validateDraft(draft, saved);
   const canSave = isDraftSavable(saved, draft);
 
   function set<K extends keyof ProfileDraft>(key: K, value: ProfileDraft[K]) {
@@ -299,17 +303,20 @@ export function ProfileForm({
           htmlFor={`${id}-phone`}
           error={fieldError('phone_number')}
         >
-          <SNInput
+          <SNPhoneInput
             id={`${id}-phone`}
             name="phone_number"
-            type="tel"
-            inputMode="tel"
-            autoComplete="tel"
+            locale={locale}
             value={draft.phone_number}
             aria-invalid={fieldError('phone_number') ? true : undefined}
             aria-describedby={`${id}-phone-helper`}
-            onChange={(e) => set('phone_number', e.target.value)}
+            onValueChange={(value) => set('phone_number', value)}
             onBlur={touch('phone_number')}
+            countryLabel={t('profile.phone_country')}
+            searchPlaceholder={t('profile.phone_country_search')}
+            searchLabel={t('profile.phone_country_search')}
+            emptyTitle={t('profile.phone_country_not_found')}
+            emptyDescription={t('profile.phone_country_not_found_hint')}
           />
         </SettingsRow>
       </SettingsSection>

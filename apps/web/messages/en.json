@@ -319,7 +319,11 @@
       "email": "Email",
       "email_helper": "Your sign-in email. It cannot be changed here yet.",
       "phone": "Phone number",
-      "phone_helper": "Optional. We save it as +62..., for example 0812 3456 7890 becomes +6281234567890.",
+      "phone_helper": "Optional. Pick a country code, then type your number. A leading 0 is fine.",
+      "phone_country": "Country code",
+      "phone_country_search": "Search country or code",
+      "phone_country_not_found": "No country found",
+      "phone_country_not_found_hint": "Try a name, a code like ID or a dial code like +62.",
       "section_region": "Language and region",
       "language": "Language",
       "language_helper": "The language of the app. Sino's replies follow your messages.",
@@ -338,7 +342,7 @@
         "name_length": "Use between 2 and 100 characters.",
         "name_chars": "Use letters, spaces, apostrophes, periods or hyphens only.",
         "preferred_name_length": "Use 40 characters or fewer.",
-        "phone_invalid": "Enter a valid phone number, for example 0812 3456 7890.",
+        "phone_invalid": "Enter a valid phone number for the selected country.",
         "about_me_length": "Use 280 characters or fewer.",
         "job_title_length": "Use 60 characters or fewer."
       }

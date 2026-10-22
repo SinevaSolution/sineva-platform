@@ -319,7 +319,11 @@
       "email": "Email",
       "email_helper": "Email untuk masukmu. Belum bisa diubah di sini.",
       "phone": "Nomor telepon",
-      "phone_helper": "Opsional. Disimpan sebagai +62..., misalnya 0812 3456 7890 menjadi +6281234567890.",
+      "phone_helper": "Opsional. Pilih kode negara, lalu ketik nomormu. Angka 0 di depan tidak masalah.",
+      "phone_country": "Kode negara",
+      "phone_country_search": "Cari negara atau kode",
+      "phone_country_not_found": "Negara tidak ditemukan",
+      "phone_country_not_found_hint": "Coba nama negara, kode seperti ID, atau kode telepon seperti +62.",
       "section_region": "Bahasa dan wilayah",
       "language": "Bahasa",
       "language_helper": "Bahasa aplikasi. Balasan Sino mengikuti pesanmu.",
@@ -338,7 +342,7 @@
         "name_length": "Pakai 2 sampai 100 karakter.",
         "name_chars": "Pakai huruf, spasi, apostrof, titik, atau tanda hubung saja.",
         "preferred_name_length": "Pakai maksimal 40 karakter.",
-        "phone_invalid": "Masukkan nomor telepon yang valid, misalnya 0812 3456 7890.",
+        "phone_invalid": "Masukkan nomor telepon yang valid untuk negara yang dipilih.",
         "about_me_length": "Pakai maksimal 280 karakter.",
         "job_title_length": "Pakai maksimal 60 karakter."
       }

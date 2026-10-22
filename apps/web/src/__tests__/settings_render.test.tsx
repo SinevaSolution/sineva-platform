@@ -77,14 +77,29 @@ describe('ProfileForm rendering', () => {
 
   it('uses SNSelect and SNCombobox for every dropdown, never a native select', () => {
     const html = inLocale('en', form);
-    // Locale, time zone, salutation and department are four combobox buttons.
-    expect(html.match(/role="combobox"/g)).toHaveLength(4);
+    // Locale, time zone, salutation and department are four combobox buttons,
+    // and the phone number's country button is the fifth.
+    expect(html.match(/role="combobox"/g)).toHaveLength(5);
     // Radix renders its hidden native select only for the form value; the
     // visible controls are buttons.
     expect(html).toContain('aria-haspopup="listbox"');
     expect(html).toContain('Asia/Jakarta');
     // The searchable one is the time zone.
     expect(html).toMatch(/id="[^"]*-timezone"[^>]*role="combobox"|role="combobox"[^>]*id="[^"]*-timezone"/);
+  });
+
+  it('puts a country picker next to the phone number and shows the saved number nationally', () => {
+    const html = inLocale('en', form);
+    expect(html).toContain('aria-label="Country code: Indonesia +62"');
+    expect(html).toContain('value="0812-3456-7890"');
+    // The hidden input carries the E.164 value that the form saves.
+    expect(html).toMatch(/<input[^>]*type="hidden"[^>]*value="\+6281234567890"|<input[^>]*value="\+6281234567890"[^>]*type="hidden"/);
+  });
+
+  it('names the country in the UI language', () => {
+    const html = inLocale('id', form);
+    expect(html).toContain('aria-label="Kode negara: Indonesia +62"');
+    expect(html).toContain('Nomor telepon');
   });
 
   it('starts clean: no save bar until something changes', () => {
