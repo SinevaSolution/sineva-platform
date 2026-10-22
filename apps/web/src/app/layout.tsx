@@ -41,10 +41,9 @@ export default async function RootLayout({
       suppressHydrationWarning
       className={`${plusJakartaSans.variable} ${geistMono.variable}`}
     >
-      <head>
-        <ThemeScript nonce={nonce} />
-      </head>
       <body>
+        {/* beforeInteractive: Next lifts it into <head> ahead of hydration. */}
+        <ThemeScript nonce={nonce} />
         <I18nProvider locale={locale} messages={messages}>
           <AppProviders>{children}</AppProviders>
         </I18nProvider>
