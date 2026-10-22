@@ -89,6 +89,7 @@ Folder guide: [README](api-spec/README.md).
 - [Overview](api-spec/overview.md): versioning, envelope, errors, conventions.
 - [Agents and Chat Endpoints](api-spec/agents_and_chat_endpoints.md)
 - [Storage and Health Endpoints](api-spec/storage_and_health_endpoints.md)
+- [Sino Library Endpoints](api-spec/library_endpoints.md)
 - [Swagger and OpenAPI](api-spec/swagger_and_openapi.md): how `/api/openapi.json` and `/api-docs` work, and how to register a route.
 
 ## Product (`product/`)

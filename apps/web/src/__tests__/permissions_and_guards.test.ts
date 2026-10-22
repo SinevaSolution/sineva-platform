@@ -95,6 +95,8 @@ describe('Route Inventory Guard Verification (WP-M0-22)', () => {
       'app/api/v1/health/route.ts',
       'app/api/auth/[...all]/route.ts',
       'app/api/internal/v1/keys/route.ts',
+      // Guarded by X-Internal-Api-Key (verifyInternalApiKey), not by a session: sineva-ai has none.
+      'app/api/internal/v1/library/ingest-events/route.ts',
     ];
 
     const HTTP_METHODS = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'];

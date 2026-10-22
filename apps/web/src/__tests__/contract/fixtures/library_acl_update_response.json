@@ -1,0 +1,13 @@
+{
+  "success": true,
+  "status_code": 200,
+  "message": "OK",
+  "data": {
+    "document_id": "20000000-0000-4000-8000-000000000001",
+    "acl": [
+      "agent:sinohelp"
+    ],
+    "chunks_updated": 96,
+    "re_embedded": false
+  }
+}

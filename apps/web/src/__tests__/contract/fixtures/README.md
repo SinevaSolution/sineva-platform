@@ -28,3 +28,34 @@ side only, in `../approval_contract.test.ts`.
   handle `run_id`).
 - `approval_resume_request_*.json` and `approval_input_resume_request_*.json`:
   bodies the platform sends to `POST /api/v2/runs/{run_id}/resume`.
+## Library fixtures (`library_*.json`): proposed by the platform, pending sineva-ai
+
+These are not copies. The platform wrote them (platform ADR-0030, WP-M1-32) as a
+proposal for the Library ingest contract, because the Library work in
+`sineva-ai` (WP-M1-11 to 13) has not started. Until `sineva-ai` accepts them or
+sends changes, they are the platform's source of truth, and the platform tests
+(`../internal_knowledge_gateway.contract.test.ts`, the Library use-case tests)
+run against them through a fake upstream.
+
+When `sineva-ai` owns the contract, move these files to
+`sineva-ai/tests/contract/fixtures/`, copy them back byte for byte and delete
+this section; from then on the rule above applies and the copies here are never
+edited.
+
+| File | Direction | Call |
+| :--- | :--- | :--- |
+| `library_ingest_request.json`, `library_ingest_accepted.json` | platform to sineva-ai | `POST /api/v1/knowledge/documents` (202) |
+| `library_ingest_status.json`, `library_ingest_status_needs_attention.json` | platform to sineva-ai | `GET /api/v1/knowledge/ingest/{job_id}?tenant_id=` |
+| `library_reindex_request.json` | platform to sineva-ai | `POST /api/v1/knowledge/documents/{document_id}/reindex` (answer as accepted) |
+| `library_acl_update_request.json`, `library_acl_update_response.json` | platform to sineva-ai | `PUT /api/v1/knowledge/documents/{document_id}/acl` |
+| `library_delete_response.json`, `library_delete_response_stray_vector.json` | platform to sineva-ai | `DELETE /api/v1/knowledge/documents/{document_id}?tenant_id=` |
+| `library_search_request.json`, `library_search_response.json`, `library_search_response_abstained.json` | platform to sineva-ai | `POST /api/v1/knowledge/search` |
+| `library_text_preview_response.json` | platform to sineva-ai | `GET /api/v1/knowledge/documents/{document_id}/text?tenant_id=&page_from=&page_to=` |
+| `library_ingest_event_*.json` | sineva-ai to platform | `POST /api/internal/v1/library/ingest-events` (internal key only) |
+| `library_error_context_mismatch.json` | sineva-ai to platform | error envelope of any call |
+
+Rules the fixtures encode: every call carries `X-Internal-Api-Key`; user-started
+calls also carry `X-Sineva-Context` and `tenant_id` must equal the context's
+tenant; the platform chooses `job_id`; events carry a per-job `sequence` and an
+`event_id` for idempotency; no similarity score appears anywhere; the delete
+answer must report `vectors_remaining` and `verified`.

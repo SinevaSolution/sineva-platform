@@ -1,6 +1,7 @@
 import 'server-only';
 import { membersPaths } from './members_paths';
 import { getInboxPaths } from './inbox_paths';
+import { LIBRARY_COMPONENT_SCHEMAS, libraryOpenApiPaths } from './library_paths';
 
 // Response object of the standard envelope, for the profile family below.
 function envelopeResponse(description: string) {
@@ -81,6 +82,10 @@ export function getOpenApiSpec(): Record<string, unknown> {
         description: 'Inbox items, approvals of drafts and input requests (FR-INBOX-01 to FR-INBOX-15)',
       },
       {
+        name: 'Library',
+        description: 'Sino Library: documents, folders, scopes, uploads, quotas and retrieval tests (ADR-0030)',
+      },
+      {
         name: 'Internal',
         description: 'Internal service-to-service endpoints guarded by X-Internal-Api-Key',
       },
@@ -88,6 +93,7 @@ export function getOpenApiSpec(): Record<string, unknown> {
     paths: {
       ...membersPaths(),
       ...getInboxPaths(),
+      ...libraryOpenApiPaths(),
       '/api/internal/v1/keys': {
         get: {
           tags: ['Internal'],
@@ -1693,6 +1699,7 @@ export function getOpenApiSpec(): Record<string, unknown> {
     },
     components: {
       schemas: {
+        ...LIBRARY_COMPONENT_SCHEMAS,
         StandardEnvelope: {
           type: 'object',
           required: ['success', 'status', 'message', 'data', 'meta', 'errors'],

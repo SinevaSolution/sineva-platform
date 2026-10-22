@@ -13,6 +13,7 @@ related_docs:
   - "storage_and_health_endpoints.md"
   - "profile_and_preferences_endpoints.md"
   - "members_and_invitations_endpoints.md"
+  - "library_endpoints.md"
   - "swagger_and_openapi.md"
   - "../README.md"
 ---
@@ -31,6 +32,7 @@ This folder documents the HTTP routes under `apps/web/src/app/api` exactly as th
 | [profile_and_preferences_endpoints.md](profile_and_preferences_endpoints.md) | `/api/v1/me`, member attributes, preferences, avatar upload and its image checks | You touch the profile page, preferences or avatars |
 | [members_and_invitations_endpoints.md](members_and_invitations_endpoints.md) | Members, roles, specialist scope, invitations, leaving, ownership transfer, and the sign-up-by-invitation flow | You build the members UI, the invite or ownership pages, or touch roles |
 | [inbox_and_approvals_endpoints.md](inbox_and_approvals_endpoints.md) | The Inbox and approval routes, the internal routes and expiry job for sineva-ai, and the proposed approval contract | You touch the Inbox, approvals, input requests or the run resume call |
+| [library_endpoints.md](library_endpoints.md) | Sino Library routes, upload flow, statuses, audit events, the ingest contract proposed to sineva-ai | You touch documents, folders, uploads or the knowledge calls |
 | [swagger_and_openapi.md](swagger_and_openapi.md) | Where the OpenAPI document lives, what `/api-docs` is (and is not), how to register a route | You add a route or change a schema |
 
 ## Reading order

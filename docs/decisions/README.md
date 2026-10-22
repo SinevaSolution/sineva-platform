@@ -54,6 +54,7 @@ Items marked "cross-service" are mirrored in `sineva-ai` (`docs/decisions/` ther
 | [0028](0028-sn-component-prefix-and-form-controls.md) | Every design-system component starts with `SN`; dropdown fields are `SNSelect` and `SNCombobox`, never a native select | You add or rename a shared component, or need a dropdown |
 | [0029](0029-members-invitations-and-ownership-transfer.md) | Invitation token hashing and binding, 7-day expiry, role limits, ownership transfer by target confirmation | You touch members, invitations, roles or ownership |
 | [0032](0032-inbox-items-approvals-and-run-resume.md) | Inbox items, approvals, revisions, input requests; claim then resume then commit decisions (cross-service, proposed upstream contract) | You touch the Inbox, approvals, input requests or run resume |
+| [0030](0030-library-ownership-split-and-ingest-contract.md) | Library: platform owns metadata, scopes, quotas and retrieval scope; sineva-ai owns parsing and vectors; proposed ingest contract (cross-service) | You touch the Library, uploads of documents or the knowledge calls to sineva-ai |
 
 ## Suggested reading order
 
