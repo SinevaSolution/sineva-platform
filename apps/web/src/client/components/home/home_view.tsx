@@ -47,10 +47,10 @@ export async function HomeView({
       <div className="mx-auto max-w-[960px] px-4 pb-20 pt-[clamp(24px,6vh,56px)] sm:px-8">
         {/* Greeting + launch bar */}
         <div className="anim-rise">
-          <h1 className="text-[clamp(26px,2vw+14px,36px)] font-semibold leading-[1.1] tracking-[-0.025em] text-fg">
+          <h1 className="text-[clamp(26px,2vw+14px,36px)] font-semibold leading-[1.1] tracking-[-0.025em] text-text">
             {t(greetingKey(hour), { name: firstName })}
           </h1>
-          <p className="mt-1.5 text-[15px] text-fg-secondary">{t('home.subtitle')}</p>
+          <p className="mt-1.5 text-[15px] text-text-secondary">{t('home.subtitle')}</p>
         </div>
 
         {/* The team, on top */}
@@ -83,7 +83,7 @@ export async function HomeView({
 
         <Link
           href={`${base}/new`}
-          className="anim-rise group mt-6 flex h-14 items-center gap-3 rounded-2xl border border-line-strong bg-surface pl-2 pr-4 text-[15px] text-fg-tertiary shadow-[0_1px_2px_rgba(11,42,49,0.04)] transition-[border-color,box-shadow] duration-200 hover:border-[var(--color-focus)] hover:shadow-[0_0_0_4px_color-mix(in_oklab,var(--color-focus)_12%,transparent)]"
+          className="anim-rise group mt-6 flex h-14 items-center gap-3 rounded-lg border border-border-strong bg-surface ps-2 pe-4 text-[15px] text-text-tertiary shadow-xs transition-[border-color,box-shadow] duration-200 hover:border-focus hover:shadow-(--shadow-focus-halo)"
           style={delay(420)}
         >
           <SinoFigure pose="wave" size={40} />
@@ -93,7 +93,7 @@ export async function HomeView({
 
         <div className="mt-10 grid gap-8 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]">
           <section aria-labelledby="recent-heading" className="anim-rise" style={delay(480)}>
-            <h2 id="recent-heading" className="mb-2 text-[13px] font-medium text-fg-secondary">
+            <h2 id="recent-heading" className="mb-2 text-[13px] font-medium text-text-secondary">
               {t('home.recent_heading')}
             </h2>
             <HomeRecent workspaceId={workspaceId} workspaceSlug={workspaceSlug} specialists={specialists} />
@@ -102,7 +102,7 @@ export async function HomeView({
           <div className="space-y-8">
             {ideas.length > 0 ? (
               <section aria-labelledby="ideas-heading" className="anim-rise" style={delay(540)}>
-                <h2 id="ideas-heading" className="mb-2 text-[13px] font-medium text-fg-secondary">
+                <h2 id="ideas-heading" className="mb-2 text-[13px] font-medium text-text-secondary">
                   {t('home.ideas_heading')}
                 </h2>
                 <ul className="space-y-1.5">
@@ -110,11 +110,11 @@ export async function HomeView({
                     <li key={s.agent_slug}>
                       <Link
                         href={`${base}/new?with=${s.agent_slug}&prompt=${encodeURIComponent(text)}`}
-                        className="flex items-center gap-2.5 rounded-xl border border-line p-2 pr-3 text-[13px] text-fg transition-colors hover:border-line-strong hover:bg-hover"
+                        className="flex items-center gap-2.5 rounded-md border border-border p-2 pe-3 text-[13px] text-text transition-colors hover:border-border-strong hover:bg-(--state-hover)"
                       >
                         <SinoFigure pose={specialistPose(s.agent_slug)} size={36} />
                         <span className="min-w-0 flex-1">
-                          <span className="block text-[11px] font-medium text-fg-tertiary">{s.display_name}</span>
+                          <span className="block text-[11px] font-medium text-text-tertiary">{s.display_name}</span>
                           {text}
                         </span>
                       </Link>
@@ -125,7 +125,7 @@ export async function HomeView({
             ) : null}
 
             <section aria-labelledby="next-heading" className="anim-rise" style={delay(600)}>
-              <h2 id="next-heading" className="mb-2 text-[13px] font-medium text-fg-secondary">
+              <h2 id="next-heading" className="mb-2 text-[13px] font-medium text-text-secondary">
                 {t('home.coming_heading')}
               </h2>
               <ul className="grid grid-cols-3 gap-1.5">
@@ -137,7 +137,7 @@ export async function HomeView({
                   <li key={href}>
                     <Link
                       href={href}
-                      className="flex flex-col gap-2 rounded-xl bg-surface-alt p-3 text-[13px] font-medium text-fg-secondary transition-colors hover:bg-hover hover:text-fg"
+                      className="flex flex-col gap-2 rounded-md bg-canvas-alt p-3 text-[13px] font-medium text-text-secondary transition-colors hover:bg-(--state-hover) hover:text-text"
                     >
                       <Icon aria-hidden="true" className="size-4" strokeWidth={1.75} />
                       {label}
@@ -173,17 +173,17 @@ function TeamMember({
       <Tooltip label={hint}>
         <Link
           href={href}
-          className="group flex flex-col items-center rounded-2xl px-1.5 pb-2.5 pt-1.5 text-center transition-colors duration-150 hover:bg-hover"
+          className="group flex flex-col items-center rounded-lg px-1.5 pb-2.5 pt-1.5 text-center transition-colors duration-150 hover:bg-(--state-hover)"
         >
           <span className="relative flex w-full justify-center after:absolute after:inset-x-3 after:bottom-0 after:h-px after:bg-[linear-gradient(90deg,transparent,var(--color-border-strong),transparent)]">
             <SinoFigure
               pose={pose}
               size={84}
-              className="transition-transform duration-300 ease-[var(--ease-out-quint)] group-hover:-translate-y-1.5"
+              className="transition-transform duration-300 ease-out group-hover:-translate-y-1.5"
             />
           </span>
-          <span className="mt-2 text-[13px] font-medium text-fg transition-colors group-hover:text-fg-brand">{name}</span>
-          <span className="mt-0.5 line-clamp-2 text-[11px] leading-4 text-fg-tertiary">{role}</span>
+          <span className="mt-2 text-[13px] font-medium text-text transition-colors group-hover:text-text-brand">{name}</span>
+          <span className="mt-0.5 line-clamp-2 text-[11px] leading-4 text-text-tertiary">{role}</span>
         </Link>
       </Tooltip>
     </li>

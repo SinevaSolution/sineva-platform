@@ -53,7 +53,7 @@ export function SignInForm({
         autoComplete="current-password"
         required
         trailing={
-          <Link href="/forgot-password" className="text-[13px] text-fg-brand underline-offset-4 hover:underline">
+          <Link href="/forgot-password" className="text-[13px] text-text-brand underline-offset-4 hover:underline">
             {t('sign_in.forgot_link')}
           </Link>
         }

@@ -37,11 +37,11 @@ export function ActivityTicker() {
 
   const item = ITEMS[index];
   return (
-    <div className="inline-flex h-12 items-center gap-2 rounded-full bg-[color-mix(in_oklab,var(--color-surface)_78%,transparent)] py-1 pl-1 pr-4 shadow-[0_1px_2px_rgba(11,42,49,0.06),0_8px_24px_-12px_rgba(11,42,49,0.18)] ring-1 ring-[color-mix(in_oklab,var(--color-border)_70%,transparent)] backdrop-blur-sm">
+    <div className="inline-flex h-12 items-center gap-2 rounded-full bg-surface/78 py-1 ps-1 pe-4 shadow-md ring-1 ring-[color-mix(in_oklab,var(--color-border)_70%,transparent)] backdrop-blur-sm">
       <span key={item.name} className="anim-swap flex items-center gap-2">
         <SinoFigure pose={item.pose} size={40} />
-        <span className="text-sm text-fg-secondary">
-          <span className="font-semibold text-fg">{item.name}</span> {t(item.textKey)}
+        <span className="text-sm text-text-secondary">
+          <span className="font-semibold text-text">{item.name}</span> {t(item.textKey)}
         </span>
       </span>
     </div>

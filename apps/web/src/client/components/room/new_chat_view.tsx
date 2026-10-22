@@ -67,7 +67,7 @@ export function NewChatView({
       <div
         role="radiogroup"
         aria-label={t('picker_label')}
-        className="flex gap-1 overflow-x-auto rounded-[28px] bg-black/25 p-1.5 ring-1 ring-white/10 backdrop-blur-xl [scrollbar-width:none] lg:overflow-visible"
+        className="flex gap-1 overflow-x-auto rounded-[28px] bg-scrim p-1.5 ring-1 ring-text-inverse/10 backdrop-blur-xl [scrollbar-width:none] lg:overflow-visible"
       >
         <CastChip
           checked={withSlug === null}
@@ -105,7 +105,7 @@ export function NewChatView({
         onPendingChange={(p) => setMood(p ? 'working' : 'idle')}
         placeholder={withSlug ? t('placeholder_specialist', { name }) : t('placeholder_team')}
       />
-      <p className="mt-2 text-center text-[11px] text-white/60">
+      <p className="mt-2 text-center text-[11px] text-text-inverse/60">
         {withSlug ? t('footer_specialist', { name }) : t('footer_team')}
       </p>
     </div>
@@ -117,7 +117,7 @@ export function NewChatView({
         <div className="anim-rise flex items-end gap-2">
           <SinoFigure pose={specialistPose(withSlug ?? 'sino')} size={36} className="md:hidden" />
           <RoomBubble from="companion">
-            <span className="block text-xs font-semibold text-fg-brand">{name}</span>
+            <span className="block text-xs font-semibold text-text-brand">{name}</span>
             {t('hello', { name: firstName })}{' '}
             {current ? t('intro_specialist', { role: current.role_title }) : t('intro_team')}
           </RoomBubble>
@@ -129,7 +129,7 @@ export function NewChatView({
                 <button
                   type="button"
                   onClick={() => composer.current?.fill(text)}
-                  className="rounded-full bg-white/12 px-3 py-1.5 text-left text-[13px] text-white ring-1 ring-white/20 backdrop-blur-md transition-[background-color,transform] duration-150 hover:bg-white/20 active:scale-[0.98]"
+                  className="rounded-full bg-text-inverse/12 px-3 py-1.5 text-start text-[13px] text-text-inverse ring-1 ring-text-inverse/20 backdrop-blur-md transition-[background-color,transform] duration-150 hover:bg-text-inverse/20 active:scale-[0.98]"
                 >
                   {text}
                 </button>
@@ -166,23 +166,23 @@ function CastChip({
         aria-checked={checked}
         onClick={onSelect}
         className={cn(
-          'group flex h-14 min-w-[148px] shrink-0 items-center gap-2 rounded-full pl-1 pr-4 text-left ring-1 transition-[background-color,color,box-shadow] duration-200 lg:min-w-0 lg:flex-1',
+          'group flex h-14 min-w-[148px] shrink-0 items-center gap-2 rounded-full ps-1 pe-4 text-start ring-1 transition-[background-color,color,box-shadow] duration-200 lg:min-w-0 lg:flex-1',
           checked
-            ? 'bg-[color-mix(in_oklab,var(--color-surface)_95%,transparent)] text-fg shadow-[0_6px_20px_-8px_rgb(0_0_0/0.45)] ring-white/70'
-            : 'text-white/85 ring-transparent hover:bg-white/12 hover:text-white',
+            ? 'bg-surface/95 text-text shadow-md ring-text-inverse/70'
+            : 'text-text-inverse/85 ring-transparent hover:bg-text-inverse/12 hover:text-text-inverse',
         )}
       >
         <SinoFigure
           pose={pose}
           size={46}
-          className="transition-transform duration-300 ease-[var(--ease-out-quint)] group-hover:-translate-y-0.5"
+          className="transition-transform duration-300 ease-out group-hover:-translate-y-0.5"
         />
         <span className="min-w-0">
           <span className="block truncate text-[13px] font-semibold leading-4">{label}</span>
           <span
             className={cn(
               'mt-0.5 hidden truncate text-[11px] leading-4 xl:block',
-              checked ? 'text-fg-tertiary' : 'text-white/60',
+              checked ? 'text-text-tertiary' : 'text-text-inverse/60',
             )}
           >
             {role}

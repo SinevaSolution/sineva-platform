@@ -286,7 +286,7 @@ export function ChatThread({
     return (
       <div className="flex flex-1 flex-col items-center justify-center gap-3 p-6 text-center">
         <SinoFigure pose="confused" size={120} />
-        <p className="max-w-sm text-sm text-fg-secondary">{errorText(state.error)}</p>
+        <p className="max-w-sm text-sm text-text-secondary">{errorText(state.error)}</p>
         <Button onClick={() => setAttempt((n) => n + 1)}>{tCommon('try_again')}</Button>
       </div>
     );
@@ -334,14 +334,14 @@ export function ChatThread({
             }}
           />
         ) : (
-          <h1 className="truncate text-[15px] font-semibold text-white">{displayTitle}</h1>
+          <h1 className="truncate text-[15px] font-semibold text-text-inverse">{displayTitle}</h1>
         )}
-        <p className="text-xs text-white/65">{isTeam ? t('thread.subtitle_team') : t('thread.subtitle_private', { name: companionName })}</p>
+        <p className="text-xs text-text-inverse/65">{isTeam ? t('thread.subtitle_team') : t('thread.subtitle_private', { name: companionName })}</p>
       </div>
       {renaming ? null : (
         <ConversationActions
           title={displayTitle}
-          triggerClassName="size-8 text-white/75 hover:bg-white/15 hover:text-white data-[state=open]:bg-white/15 data-[state=open]:text-white"
+          triggerClassName="size-8 text-text-inverse/75 hover:bg-text-inverse/15 hover:text-text-inverse data-[state=open]:bg-text-inverse/15 data-[state=open]:text-text-inverse"
           onRename={() => setRenaming(true)}
           onDelete={() => actions.remove(conversation.id)}
         />
@@ -394,9 +394,9 @@ export function ChatThread({
           <li className="anim-rise flex items-end gap-2" aria-live="off" aria-busy="true">
             <SinoFigure pose={specialistPose(specialist?.agent_slug ?? 'sino')} size={32} />
             <RoomBubble from="companion">
-              <span className="block text-xs font-semibold text-fg-brand">{companionName}</span>
+              <span className="block text-xs font-semibold text-text-brand">{companionName}</span>
               {/* Plain text on purpose: model output is never rendered as HTML. */}
-              {live.text || <span className="text-fg-secondary">{t('thread.working', { name: companionName })}</span>}
+              {live.text || <span className="text-text-secondary">{t('thread.working', { name: companionName })}</span>}
               <MessageCards cards={liveCards} />
             </RoomBubble>
           </li>
@@ -407,7 +407,7 @@ export function ChatThread({
               <div className="flex items-end gap-2">
                 <SinoFigure pose={specialistPose(specialist?.agent_slug ?? 'sino')} size={32} />
                 <RoomBubble from="companion">
-                  <span className="block text-xs font-semibold text-fg-brand">{companionName}</span>
+                  <span className="block text-xs font-semibold text-text-brand">{companionName}</span>
                   {live.text}
                 </RoomBubble>
               </div>
@@ -450,7 +450,7 @@ function MessageRow({
             specialists.map((sp) => sp.display_name),
           ).map((seg, i) =>
             seg.mention ? (
-              <span key={i} className="rounded-md bg-white/20 shadow-[0_0_0_2px_rgb(255_255_255/0.2)]">
+              <span key={i} className="rounded-xs bg-text-inverse/20 shadow-[0_0_0_2px_color-mix(in_srgb,var(--color-text-inverse)_20%,transparent)]">
                 {seg.text}
               </span>
             ) : (
@@ -467,17 +467,17 @@ function MessageRow({
     <li className="anim-rise flex items-end gap-2">
       <SinoFigure pose={specialistPose(slug)} size={32} />
       <RoomBubble from="companion">
-        <span className="block text-xs font-semibold text-fg-brand">{name}</span>
+        <span className="block text-xs font-semibold text-text-brand">{name}</span>
         {/* Plain text until the sanitized markdown renderer lands (M1). */}
         {message.content}
         <MessageCards cards={message.cards} />
         {message.status === 'error' ? (
-          <span className="mt-1 block text-[13px] text-fg-secondary">
+          <span className="mt-1 block text-[13px] text-text-secondary">
             {streamErrorText(tFull, message.finish_reason ?? 'upstream_interrupted', name)}
           </span>
         ) : null}
         {message.status === 'cancelled' ? (
-          <span className="mt-1 block text-[13px] text-fg-secondary">{t('thread.you_stopped')}</span>
+          <span className="mt-1 block text-[13px] text-text-secondary">{t('thread.you_stopped')}</span>
         ) : null}
       </RoomBubble>
     </li>

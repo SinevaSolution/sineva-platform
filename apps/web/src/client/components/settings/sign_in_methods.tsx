@@ -17,7 +17,7 @@ function Mark({ children }: { children: React.ReactNode }) {
   return (
     <span
       aria-hidden="true"
-      className="flex size-9 shrink-0 items-center justify-center rounded-lg border border-line bg-surface [&_svg]:size-[18px]"
+      className="flex size-9 shrink-0 items-center justify-center rounded-sm border border-border bg-surface [&_svg]:size-[18px]"
     >
       {children}
     </span>
@@ -71,7 +71,7 @@ export function SignInMethods({
         <SettingsRow inline label={t('sign_in.password')} helper={email}>
           <span className="flex items-center gap-3">
             <Mark>
-              <Mail className="text-fg-secondary" />
+              <Mail className="text-text-secondary" />
             </Mark>
             <Pill tone={hasPassword ? 'positive' : 'neutral'}>
               {hasPassword ? t('sign_in.password_set') : t('sign_in.password_not_set')}

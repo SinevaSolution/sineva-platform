@@ -82,7 +82,7 @@ export function Sidebar({
               type="button"
               onClick={onToggleCollapsed}
               aria-label={collapsed ? t('sidebar.expand') : t('sidebar.collapse')}
-              className="flex size-7 shrink-0 items-center justify-center rounded-lg text-fg-tertiary hover:bg-hover hover:text-fg"
+              className="flex size-7 shrink-0 items-center justify-center rounded-sm text-text-tertiary hover:bg-(--state-hover) hover:text-text"
             >
               {collapsed ? (
                 <PanelLeftOpen aria-hidden="true" className="size-4" strokeWidth={1.75} />
@@ -99,7 +99,7 @@ export function Sidebar({
           const isClosed = !collapsed && section.labelKey !== null && closedSections.includes(section.id);
           const listId = `sidebar-section-${section.id}`;
           return (
-            <div key={section.id} className={cn(collapsed && section.labelKey && 'border-t border-line pt-3')}>
+            <div key={section.id} className={cn(collapsed && section.labelKey && 'border-t border-border pt-3')}>
               {section.labelKey && !collapsed ? (
                 <SectionHeader
                   label={t(section.labelKey)}
@@ -139,7 +139,7 @@ export function Sidebar({
         ) : null}
       </div>
 
-      <div className={cn('mt-2 w-full border-t border-line pt-2', collapsed && 'flex flex-col items-center gap-1')}>
+      <div className={cn('mt-2 w-full border-t border-border pt-2', collapsed && 'flex flex-col items-center gap-1')}>
         <ul className={cn(collapsed && 'flex flex-col items-center')}>{row(settings)}</ul>
         <div className="mt-1">
           <UserMenu user={user} workspaceSlug={workspace.slug} compact={collapsed} />
@@ -170,9 +170,9 @@ function NavRow({
       aria-current={active ? 'page' : undefined}
       aria-label={compact ? hint : undefined}
       className={cn(
-        'flex items-center rounded-lg text-[13px] text-fg-secondary transition-colors duration-100 hover:bg-hover hover:text-fg',
+        'flex items-center rounded-sm text-[13px] text-text-secondary transition-colors duration-100 hover:bg-(--state-hover) hover:text-text',
         compact ? 'size-9 justify-center' : 'h-7 gap-2 px-2',
-        active && 'bg-selected font-medium text-fg',
+        active && 'bg-surface-tint font-medium text-text',
       )}
     >
       <NavIcon name={item.icon} />
@@ -180,7 +180,7 @@ function NavRow({
         <>
           <span className="min-w-0 flex-1 truncate">{label}</span>
           {item.soon ? (
-            <span className="rounded-full bg-hover px-1.5 text-[10px] font-medium leading-4 text-fg-tertiary">{t('sidebar.soon_tag')}</span>
+            <span className="rounded-full bg-(--state-hover) px-1.5 text-[10px] font-medium leading-4 text-text-tertiary">{t('sidebar.soon_tag')}</span>
           ) : null}
         </>
       ) : null}
@@ -218,7 +218,7 @@ function SectionHeader({
       onClick={onToggle}
       aria-expanded={!closed}
       aria-controls={controls}
-      className="group mb-0.5 flex h-6 items-center gap-1 rounded-md px-2 text-xs font-medium text-fg-tertiary hover:text-fg-secondary"
+      className="group mb-0.5 flex h-6 items-center gap-1 rounded-xs px-2 text-xs font-medium text-text-tertiary hover:text-text-secondary"
     >
       {label}
       <ChevronRight

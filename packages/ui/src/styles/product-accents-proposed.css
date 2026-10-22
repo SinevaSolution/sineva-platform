@@ -1,0 +1,78 @@
+/*
+ * PROPOSED product accents: the 7 ramps for wave 2 and wave 3 specialists
+ * (FR-UX-17). They are NOT in sineva-compro, so they cannot live in the
+ * vendored product-accents.css without breaking the drift test. They follow
+ * the same mechanism: a wrapper sets `data-product-accent="<key>"`, and the
+ * aliases (--accent-surface, --accent-tile, --accent-text, --accent-glow) and
+ * the dark overrides come from the vendored product-accents.css, which keys
+ * on the attribute only, never on the product name.
+ *
+ * Status: pre-checked by script (-700 at least 6.5:1 on white and 5.2:1 on
+ * -100; dark -300 at least 7.8:1 on the dark canvas). The official contrast
+ * and color-vision test and the hue-adjacency review are open (OQ-UX-04,
+ * OQ-DS-6, M4). -500 is decoration only: it is below 3:1 on white for
+ * Tangerine, Olive and (borderline) Jade.
+ */
+
+/* Violet */
+[data-product-accent='desk'] {
+  --accent-50: #f5effd;
+  --accent-100: #e7dafa;
+  --accent-300: #c3a1f0;
+  --accent-500: #8e56dc;
+  --accent-700: #5e2ea8;
+}
+
+/* Tangerine */
+[data-product-accent='write'] {
+  --accent-50: #fff2e8;
+  --accent-100: #ffdfc6;
+  --accent-300: #ffb27d;
+  --accent-500: #f0762a;
+  --accent-700: #9a4208;
+}
+
+/* Ruby */
+[data-product-accent='shop'] {
+  --accent-50: #feeff1;
+  --accent-100: #fcd5da;
+  --accent-300: #f08e9b;
+  --accent-500: #d63a4e;
+  --accent-700: #a11d33;
+}
+
+/* Slate */
+[data-product-accent='guard'] {
+  --accent-50: #f0f3f6;
+  --accent-100: #dde4eb;
+  --accent-300: #a9b8c8;
+  --accent-500: #6b7f94;
+  --accent-700: #3f5163;
+}
+
+/* Jade */
+[data-product-accent='tax'] {
+  --accent-50: #e9f8f1;
+  --accent-100: #c9efdf;
+  --accent-300: #7fd3b2;
+  --accent-500: #1fa874;
+  --accent-700: #0d6b47;
+}
+
+/* Cocoa */
+[data-product-accent='legal'] {
+  --accent-50: #f8f1ec;
+  --accent-100: #eadccf;
+  --accent-300: #cba98e;
+  --accent-500: #a0744f;
+  --accent-700: #6b4529;
+}
+
+/* Olive */
+[data-product-accent='ops'] {
+  --accent-50: #f6f7e4;
+  --accent-100: #e9ecbd;
+  --accent-300: #c5cc6b;
+  --accent-500: #9aa21e;
+  --accent-700: #5a6010;
+}

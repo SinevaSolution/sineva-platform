@@ -19,29 +19,19 @@ type FlagKey = 'reduce_motion' | 'pause_character' | 'focus_mode' | 'room_view';
 const THEMES: readonly Theme[] = ['light', 'dark', 'system'];
 const DENSITIES: readonly Density[] = ['comfortable', 'compact'];
 
-// A miniature app window. The light and dark previews use fixed token layers
-// (`--ink-*` primitives for light, a nested `data-theme="dark"` for dark), so
-// each card looks the same whatever theme the page is in.
+// A miniature app window. The previews read fixed `--pv-*` tokens
+// (app-density.css), not the live semantic tokens: the dark theme only applies
+// at the root, so a nested data-theme could not show the other theme, and each
+// card must look the same whatever theme the page is in.
 function ThemePreview({ kind }: { kind: 'light' | 'dark' }) {
   return (
-    <span
-      {...(kind === 'dark' ? { 'data-theme': 'dark' } : {})}
-      className={cn(
-        'flex h-full w-full gap-1.5 p-2',
-        kind === 'dark' ? 'bg-canvas' : 'bg-[var(--ink-50)]',
-      )}
-    >
-      <span className={cn('w-4 shrink-0 rounded-sm', kind === 'dark' ? 'bg-surface-alt' : 'bg-[var(--ink-100)]')} />
-      <span
-        className={cn(
-          'flex min-w-0 flex-1 flex-col gap-1 rounded-md p-1.5',
-          kind === 'dark' ? 'bg-surface' : 'bg-[var(--color-text-inverse)]',
-        )}
-      >
-        <span className={cn('h-1.5 w-2/3 rounded-full', kind === 'dark' ? 'bg-fg' : 'bg-[var(--ink-950)]')} />
-        <span className={cn('h-1 w-full rounded-full', kind === 'dark' ? 'bg-line-strong' : 'bg-[var(--ink-200)]')} />
-        <span className={cn('h-1 w-5/6 rounded-full', kind === 'dark' ? 'bg-line-strong' : 'bg-[var(--ink-200)]')} />
-        <span className="mt-auto h-2.5 w-8 rounded-sm bg-[var(--teal-700)]" />
+    <span data-theme-preview={kind} className="flex h-full w-full gap-1.5 bg-(--pv-canvas) p-2">
+      <span className="w-4 shrink-0 rounded-xs bg-(--pv-rail)" />
+      <span className="flex min-w-0 flex-1 flex-col gap-1 rounded-sm bg-(--pv-panel) p-1.5">
+        <span className="h-1.5 w-2/3 rounded-full bg-(--pv-text)" />
+        <span className="h-1 w-full rounded-full bg-(--pv-line)" />
+        <span className="h-1 w-5/6 rounded-full bg-(--pv-line)" />
+        <span className="mt-auto h-2.5 w-8 rounded-xs bg-(--pv-action)" />
       </span>
     </span>
   );
@@ -71,9 +61,10 @@ export function PreferencesForm({ initial }: { initial: PreferencesView }) {
   const [prefs, setPrefs] = React.useState(initial);
   const id = React.useId();
 
-  // next-themes knows the device's choice only after mount; until then the
-  // account value stands in, which also keeps the server render stable.
-  const activeTheme: Theme = theme ?? prefs.theme;
+  // The hook reads `system` while rendering on the server and before the
+  // device's choice is known, so the account value stands in until a stored
+  // choice exists. That keeps the server render stable.
+  const activeTheme: Theme = theme === 'system' ? prefs.theme : theme;
 
   async function update(patch: Partial<PreferencesView>) {
     const before = prefs;
@@ -127,7 +118,7 @@ export function PreferencesForm({ initial }: { initial: PreferencesView }) {
                     choose(value);
                   }}
                   className={cn(
-                    'group flex flex-col gap-2 rounded-xl border p-1.5 text-left transition-[border-color,box-shadow]',
+                    'group flex flex-col gap-2 rounded-xl border p-1.5 text-start transition-[border-color,box-shadow]',
                     selected
                       ? 'border-[var(--color-focus)] shadow-[0_0_0_3px_color-mix(in_oklab,var(--color-focus)_18%,transparent)]'
                       : 'border-line-strong hover:border-[var(--color-text-tertiary)]',

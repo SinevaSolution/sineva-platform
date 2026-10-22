@@ -2,6 +2,7 @@ import { defineConfig, globalIgnores } from 'eslint/config';
 import nextVitals from 'eslint-config-next/core-web-vitals';
 import nextTs from 'eslint-config-next/typescript';
 import noHardcodedStrings from './eslint-rules/no-hardcoded-strings.mjs';
+import { designRulesConfig } from '../../packages/ui/eslint/design_rules.mjs';
 
 export default defineConfig([
   ...nextVitals,
@@ -80,6 +81,10 @@ export default defineConfig([
       ],
     },
   },
+  // Design-system rails (FR-DS-04, FR-UX-05): semantic tokens only, no dark:
+  // variant, no arbitrary z-index, logical properties, no motion packages, no
+  // dangerouslySetInnerHTML. The same rules guard packages/ui; they live there.
+  designRulesConfig({ files: ['src/client/**/*.{ts,tsx}'] }),
   {
     // Every string a customer reads is a message key in messages/en.json and
     // messages/id.json (FR-UX-34). API routes, the internal key route and the

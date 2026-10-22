@@ -44,7 +44,7 @@ export function SettingsShell({
     <div className="mx-auto w-full max-w-[960px] px-4 py-6 md:flex md:gap-12 md:py-10">
       <nav
         aria-label={t('tabs.label')}
-        className="mb-6 flex gap-1 overflow-x-auto rounded-xl bg-surface-alt p-1 md:sticky md:top-0 md:mb-0 md:w-44 md:shrink-0 md:flex-col md:self-start md:overflow-visible md:rounded-none md:bg-transparent md:p-0"
+        className="mb-6 flex gap-1 overflow-x-auto rounded-md bg-canvas-alt p-1 md:sticky md:top-0 md:mb-0 md:w-44 md:shrink-0 md:flex-col md:self-start md:overflow-visible md:rounded-none md:bg-transparent md:p-0"
       >
         {SETTINGS_TABS.map((tab) => {
           const Icon = ICONS[tab];
@@ -56,10 +56,10 @@ export function SettingsShell({
               scroll={false}
               aria-current={current ? 'page' : undefined}
               className={cn(
-                'flex h-11 min-w-0 flex-1 items-center justify-center gap-2 whitespace-nowrap rounded-lg px-3 text-[13px] font-medium transition-colors md:h-9 md:flex-none md:justify-start',
+                'flex h-11 min-w-0 flex-1 items-center justify-center gap-2 whitespace-nowrap rounded-sm px-3 text-[13px] font-medium transition-colors md:h-9 md:flex-none md:justify-start',
                 current
-                  ? 'bg-surface text-fg shadow-panel md:bg-selected md:shadow-none'
-                  : 'text-fg-secondary hover:bg-hover hover:text-fg',
+                  ? 'bg-surface text-text shadow-sm md:bg-surface-tint md:shadow-none'
+                  : 'text-text-secondary hover:bg-(--state-hover) hover:text-text',
               )}
             >
               <Icon aria-hidden className="size-4 shrink-0" />

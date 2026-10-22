@@ -83,8 +83,8 @@ export function AvatarEditor({
             className={cn(
               'flex size-full items-center justify-center overflow-hidden rounded-full text-2xl font-semibold',
               showImage
-                ? 'bg-surface-alt'
-                : 'bg-[color-mix(in_oklab,var(--color-focus)_22%,var(--color-surface))] text-fg-brand',
+                ? 'bg-canvas-alt'
+                : 'bg-[color-mix(in_oklab,var(--color-focus)_22%,var(--color-surface))] text-text-brand',
             )}
           >
             {showImage ? (
@@ -104,7 +104,7 @@ export function AvatarEditor({
           <span
             aria-hidden="true"
             className={cn(
-              'absolute inset-0 flex items-center justify-center rounded-full bg-[color-mix(in_oklab,var(--ink-950)_55%,transparent)] text-[var(--color-text-inverse)] transition-opacity duration-150',
+              'absolute inset-0 flex items-center justify-center rounded-full bg-scrim text-text-inverse transition-opacity duration-150',
               busy ? 'opacity-100' : 'opacity-0 group-hover:opacity-100 group-focus-visible:opacity-100',
             )}
           >
@@ -112,7 +112,7 @@ export function AvatarEditor({
           </span>
           <span
             aria-hidden="true"
-            className="absolute -bottom-0.5 -right-0.5 flex size-7 items-center justify-center rounded-full border-2 border-[var(--color-surface)] bg-primary text-fg-inverse"
+            className="absolute -bottom-0.5 -end-0.5 flex size-7 items-center justify-center rounded-full border-2 border-surface bg-action-primary text-text-inverse"
           >
             <Camera className="size-3.5" />
           </span>
@@ -131,7 +131,7 @@ export function AvatarEditor({
           type="button"
           onClick={onRemove}
           disabled={busy}
-          className="text-[12px] text-fg-tertiary underline-offset-2 hover:text-fg hover:underline disabled:opacity-45"
+          className="text-[12px] text-text-tertiary underline-offset-2 hover:text-text hover:underline disabled:opacity-45"
         >
           {t('avatar.remove')}
         </button>

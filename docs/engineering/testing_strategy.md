@@ -32,6 +32,7 @@ Tooling: Vitest (`vitest run`), Node environment, `globals: true`. Configs live 
 | Architecture | `architecture.test.ts` | Layer and client/server import rules, and `server-only` markers | nothing |
 | Contract | `contract/internal_ai_engine_gateway.contract.test.ts`, `contract/fixtures/` | The gateway sends and accepts exactly what `sineva-ai` defines | nothing (stubbed `fetch`) |
 | Route | `api_routes.test.ts` | Each route handler: Zod parse, use case, envelope, `snake_case` keys, status codes | nothing |
+| Design system | `packages/ui/src/__tests__/` (`ui-tokens`, `lint_rules`, `structure`, `theme`), `apps/web/src/__tests__/design_tokens_wiring.test.ts`, `design_lint_client.test.ts`, `bundle_report.test.ts` | Vendored tokens equal the compro snapshot, contrast in both themes and for the 13 accent ramps, z-index order, each design lint rule fails its fixture, package layout, theme script, wiring of tokens, fonts and theme in the app | nothing (Testing Library and jsdom for component tests) |
 | Integration | `integration/*.int.test.ts` | Prisma adapters against a real Postgres with the real migrations | a throwaway Postgres |
 
 The first four run in `npm run test` and need no Docker. Integration tests run separately in `npm run test:integration` so the normal suite never needs a database.

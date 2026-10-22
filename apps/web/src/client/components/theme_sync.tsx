@@ -1,11 +1,11 @@
 'use client';
 
-import { useTheme } from 'next-themes';
 import * as React from 'react';
 import { toast } from 'sonner';
 import { savePreferences } from '@/client/lib/preferences';
 import { themeToApply } from '@/client/lib/preference_sync_model';
 import { useApiErrorText } from '@/client/lib/use_api_error';
+import { useTheme } from '@/client/lib/use_theme';
 import type { PreferencesView } from '@/shared/profile_view';
 
 const SYNCED_KEY = 'sineva-theme-synced';
@@ -30,42 +30,41 @@ function writeSynced(): void {
 
 /**
  * Applies the theme stored on the account once per session, so a second
- * device picks up the choice made on the first. next-themes keeps the choice
- * in `localStorage` and sets `data-theme` before paint; this only nudges it
- * when the account says something explicit and different.
+ * device picks up the choice made on the first. The inline theme script keeps
+ * the choice in `localStorage` and sets `data-theme` before paint; this only
+ * nudges it when the account says something explicit and different.
  */
 export function ThemeSync({ stored }: { stored: PreferencesView['theme'] }) {
-  const { theme, setTheme } = useTheme();
+  const { preference, setPreference } = useTheme();
   const decided = React.useRef(false);
 
   React.useEffect(() => {
-    // `theme` is undefined on the very first render; wait for next-themes.
-    if (decided.current || theme === undefined) return;
+    if (decided.current) return;
     decided.current = true;
-    const next = themeToApply({ stored, local: theme, alreadySynced: readSynced() });
+    const next = themeToApply({ stored, local: preference, alreadySynced: readSynced() });
     writeSynced();
-    if (next) setTheme(next);
-  }, [stored, theme, setTheme]);
+    if (next) setPreference(next);
+  }, [stored, preference, setPreference]);
 
   return null;
 }
 
 /**
  * The theme, with a setter that also saves the choice to the account. The
- * local change is immediate (next-themes); a failed save is reported but does
+ * local change is immediate; a failed save is reported but does
  * not undo what the person sees, because the choice still holds on this device.
  */
 export function usePersistedTheme() {
-  const { theme, resolvedTheme, setTheme } = useTheme();
+  const { theme, preference, setPreference } = useTheme();
   const errorText = useApiErrorText();
 
   const choose = React.useCallback(
     (next: PreferencesView['theme']) => {
-      setTheme(next);
+      setPreference(next);
       savePreferences({ theme: next }).catch((error: unknown) => toast.error(errorText(error)));
     },
-    [setTheme, errorText],
+    [setPreference, errorText],
   );
 
-  return { theme: theme as PreferencesView['theme'] | undefined, isDark: resolvedTheme === 'dark', choose };
+  return { theme: preference as PreferencesView['theme'], isDark: theme === 'dark', choose };
 }

@@ -21,6 +21,10 @@ export default defineConfig({
       '@sineva/card-schemas': resolve(import.meta.dirname, '../../packages/card-schemas/src/index.ts'),
       '@sineva/ui/cards': resolve(import.meta.dirname, '../../packages/ui/src/cards/index.ts'),
       '@sineva/ui/format': resolve(import.meta.dirname, '../../packages/ui/src/lib/format.ts'),
+      '@sineva/ui/theme': resolve(import.meta.dirname, '../../packages/ui/src/lib/theme.ts'),
+      // Listed after the sub-path aliases: Vite tries aliases in order and a
+      // plain string key also matches `@sineva/ui/...`.
+      '@sineva/ui': resolve(import.meta.dirname, '../../packages/ui/src/index.ts'),
       // `server-only` resolves to a module that throws on import outside a
       // React Server Components build. Vitest runs plain Node, so without this
       // stub every test touching `server/infrastructure` or the container

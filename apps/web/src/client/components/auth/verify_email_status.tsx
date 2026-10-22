@@ -26,7 +26,7 @@ export function VerifyEmailStatus({ token }: { token: string | null }) {
 
   if (status === 'verifying') {
     return (
-      <p role="status" className="text-center text-sm text-fg-secondary">
+      <p role="status" className="text-center text-sm text-text-secondary">
         {t('verify_email.checking')}
       </p>
     );

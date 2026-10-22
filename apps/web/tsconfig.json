@@ -32,11 +32,17 @@
       "@sineva/card-schemas": [
         "../../packages/card-schemas/src/index.ts"
       ],
+      "@sineva/ui": [
+        "../../packages/ui/src/index.ts"
+      ],
       "@sineva/ui/cards": [
         "../../packages/ui/src/cards/index.ts"
       ],
       "@sineva/ui/format": [
         "../../packages/ui/src/lib/format.ts"
+      ],
+      "@sineva/ui/theme": [
+        "../../packages/ui/src/lib/theme.ts"
       ]
     }
   },

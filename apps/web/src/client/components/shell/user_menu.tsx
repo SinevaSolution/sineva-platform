@@ -14,7 +14,7 @@ import { useTranslations } from '@/i18n/provider';
 import type { ShellUserView } from '@/shared/shell_view';
 
 const itemClass =
-  'flex h-8 cursor-default select-none items-center gap-2 rounded-md px-2 text-[13px] text-fg outline-none data-[highlighted]:bg-hover';
+  'flex h-8 cursor-default select-none items-center gap-2 rounded-xs px-2 text-[13px] text-text outline-none data-[highlighted]:bg-(--state-hover)';
 
 function initials(name: string, email: string): string {
   const parts = name.trim().split(/\s+/).filter(Boolean);
@@ -53,7 +53,7 @@ export function UserMenu({
   const avatar = (
     <span
       aria-hidden="true"
-      className="flex size-7 shrink-0 items-center justify-center rounded-full bg-[color-mix(in_oklab,var(--color-focus)_22%,var(--color-surface))] text-[11px] font-semibold text-fg-brand"
+      className="flex size-7 shrink-0 items-center justify-center rounded-full bg-[color-mix(in_oklab,var(--color-focus)_22%,var(--color-surface))] text-[11px] font-semibold text-text-brand"
     >
       {initials(user.name, user.email)}
     </span>
@@ -64,7 +64,7 @@ export function UserMenu({
       <Tooltip label={t('user_menu.tooltip')} side={compact ? 'right' : 'top'}>
         <DropdownMenu.Trigger
           className={cn(
-            'flex min-w-0 items-center gap-2 rounded-lg text-left hover:bg-hover data-[state=open]:bg-hover',
+            'flex min-w-0 items-center gap-2 rounded-sm text-start hover:bg-(--state-hover) data-[state=open]:bg-(--state-hover)',
             compact ? 'size-9 justify-center' : 'h-11 w-full px-1.5',
           )}
         >
@@ -73,8 +73,8 @@ export function UserMenu({
             <span className="sr-only">{user.name}</span>
           ) : (
             <span className="min-w-0 flex-1">
-              <span className="block truncate text-[13px] font-medium text-fg">{user.name || user.email}</span>
-              <span className="block truncate text-[11px] text-fg-tertiary">{user.email}</span>
+              <span className="block truncate text-[13px] font-medium text-text">{user.name || user.email}</span>
+              <span className="block truncate text-[11px] text-text-tertiary">{user.email}</span>
             </span>
           )}
         </DropdownMenu.Trigger>
@@ -84,13 +84,13 @@ export function UserMenu({
           side={compact ? 'right' : 'top'}
           align="start"
           sideOffset={8}
-          className="anim-swap z-50 w-60 rounded-xl border border-line bg-surface p-1 shadow-popover"
+          className="anim-swap z-(--z-dropdown) w-60 rounded-md border border-border bg-surface p-1 shadow-md"
         >
           <div className="px-2 pb-1.5 pt-1">
-            <div className="truncate text-[13px] font-medium text-fg">{user.name}</div>
-            <div className="truncate text-xs text-fg-tertiary">{user.email}</div>
+            <div className="truncate text-[13px] font-medium text-text">{user.name}</div>
+            <div className="truncate text-xs text-text-tertiary">{user.email}</div>
           </div>
-          <DropdownMenu.Separator className="my-1 h-px bg-line" />
+          <DropdownMenu.Separator className="my-1 h-px bg-border" />
           <DropdownMenu.Item asChild className={itemClass}>
             <Link href={`/w/${workspaceSlug}/settings/profile`}>
               <UserRound aria-hidden="true" className="size-4" />
@@ -101,7 +101,7 @@ export function UserMenu({
             {isDark ? <Sun aria-hidden="true" className="size-4" /> : <Moon aria-hidden="true" className="size-4" />}
             {isDark ? t('user_menu.light_mode') : t('user_menu.dark_mode')}
           </DropdownMenu.Item>
-          <DropdownMenu.Separator className="my-1 h-px bg-line" />
+          <DropdownMenu.Separator className="my-1 h-px bg-border" />
           <DropdownMenu.Item className={cn(itemClass, 'text-danger')} onSelect={signOut}>
             <LogOut aria-hidden="true" className="size-4" />
             {t('user_menu.sign_out')}

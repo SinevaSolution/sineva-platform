@@ -35,6 +35,18 @@ jobs:
       - name: Build Production Bundle
         run: npm run build
 
+      # Records chunk sizes and fails when three.js, GSAP, Recharts, Tiptap or
+      # dnd-kit land in the chunk every page loads (FR-UX-43).
+      - name: Bundle size report and heavy-library gate
+        run: npm run bundle:report --workspace=@sineva/web
+
+      - name: Upload bundle report
+        uses: actions/upload-artifact@v4
+        with:
+          name: bundle-report
+          path: apps/web/.next/bundle-report.json
+          if-no-files-found: error
+
   integration:
     name: Integration Tests (Postgres & Redis)
     runs-on: ubuntu-latest

@@ -19,7 +19,7 @@ import { SIDEBAR_COOKIE } from './nav_model';
 import { Sidebar, type SidebarProps } from './sidebar';
 
 /**
- * App frame: sidebar on the canvas, content in a rounded inset panel
+ * App frame: sidebar on the canvas, content in a rounded-xs inset panel
  * (Linear pattern). On desktop the sidebar collapses to a 56 px icon rail
  * (button or the "[" key); the choice is a cookie so the server renders the
  * right width and nothing jumps on load, and it is also saved to the account
@@ -86,11 +86,11 @@ export function AppShell({
   }, [pathname, close]);
 
   return (
-    <div className="flex h-dvh overflow-hidden bg-canvas">
+    <div className="flex h-dvh overflow-hidden bg-canvas-alt">
       <ThemeSync stored={storedTheme} />
       <aside
         className={cn(
-          'hidden shrink-0 bg-sidebar transition-[width] duration-200 ease-[var(--ease-out-quint)] lg:block',
+          'hidden shrink-0 bg-canvas-alt transition-[width] duration-200 ease-out lg:block',
           collapsed ? 'w-14' : 'w-[248px]',
         )}
       >
@@ -99,13 +99,13 @@ export function AppShell({
 
       <Dialog.Root open={open} onOpenChange={(v) => dispatch(setMobileNavOpen(v))}>
         <Dialog.Portal>
-          <Dialog.Overlay className="fixed inset-0 z-40 bg-black/30 lg:hidden" />
-          <Dialog.Content className="fixed inset-y-0 left-0 z-50 w-[280px] max-w-[85vw] bg-sidebar shadow-popover lg:hidden">
+          <Dialog.Overlay className="fixed inset-0 z-(--z-drawer) bg-scrim lg:hidden" />
+          <Dialog.Content className="fixed inset-y-0 start-0 z-(--z-drawer) w-[280px] max-w-[85vw] bg-canvas-alt shadow-md lg:hidden">
             <Dialog.Title className="sr-only">{t('frame.nav_title')}</Dialog.Title>
             <Tooltip label={t('frame.close_menu')} side="left">
               <Dialog.Close
                 aria-label={t('frame.close_nav')}
-                className="absolute right-2 top-3 flex size-8 items-center justify-center rounded-lg text-fg-secondary hover:bg-hover"
+                className="absolute end-2 top-3 flex size-8 items-center justify-center rounded-sm text-text-secondary hover:bg-(--state-hover)"
               >
                 <X aria-hidden="true" className="size-4" />
               </Dialog.Close>
@@ -115,21 +115,21 @@ export function AppShell({
         </Dialog.Portal>
       </Dialog.Root>
 
-      <div className="flex min-w-0 flex-1 flex-col lg:py-2 lg:pr-2">
+      <div className="flex min-w-0 flex-1 flex-col lg:py-2 lg:pe-2">
         <div className="flex h-12 shrink-0 items-center gap-2 px-3 lg:hidden">
           <Tooltip label={t('frame.open_menu')} side="bottom">
             <button
               type="button"
               onClick={() => dispatch(setMobileNavOpen(true))}
               aria-label={t('frame.open_nav')}
-              className="flex size-9 items-center justify-center rounded-lg text-fg-secondary hover:bg-hover"
+              className="flex size-9 items-center justify-center rounded-sm text-text-secondary hover:bg-(--state-hover)"
             >
               <Menu aria-hidden="true" className="size-5" />
             </button>
           </Tooltip>
           <span className="truncate text-sm font-semibold">{sidebarProps.workspace.name}</span>
         </div>
-        <main className="flex min-h-0 flex-1 flex-col overflow-hidden bg-surface lg:rounded-xl lg:shadow-panel">
+        <main className="flex min-h-0 flex-1 flex-col overflow-hidden bg-surface lg:rounded-md lg:shadow-sm">
           {children}
         </main>
       </div>

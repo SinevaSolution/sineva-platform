@@ -17,8 +17,8 @@ export function SettingsSection({
 }) {
   return (
     <section className="anim-rise" style={{ '--d': `${delay}ms` } as React.CSSProperties}>
-      <h2 className="pb-2 text-[13px] font-semibold text-fg">{title}</h2>
-      <div className="divide-y divide-line border-y border-line">{children}</div>
+      <h2 className="pb-2 text-[13px] font-semibold text-text">{title}</h2>
+      <div className="divide-y divide-border border-y border-border">{children}</div>
     </section>
   );
 }
@@ -53,14 +53,14 @@ export function SettingsRow({
     >
       <div className="min-w-0">
         {htmlFor ? (
-          <label htmlFor={htmlFor} className="text-[14px] font-medium text-fg">
+          <label htmlFor={htmlFor} className="text-[14px] font-medium text-text">
             {label}
           </label>
         ) : (
-          <div className="text-[14px] font-medium text-fg">{label}</div>
+          <div className="text-[14px] font-medium text-text">{label}</div>
         )}
         {helper ? (
-          <p id={helperId} className="mt-0.5 text-[13px] leading-snug text-fg-tertiary">
+          <p id={helperId} className="mt-0.5 text-[13px] leading-snug text-text-tertiary">
             {helper}
           </p>
         ) : null}

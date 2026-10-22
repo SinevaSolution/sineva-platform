@@ -10,7 +10,7 @@ import { Tooltip } from '@/client/components/ui/tooltip';
 import { useTranslations } from '@/i18n/provider';
 
 const itemClass =
-  'flex h-8 cursor-default select-none items-center gap-2 rounded-md px-2 text-[13px] text-fg outline-none data-[highlighted]:bg-hover';
+  'flex h-8 cursor-default select-none items-center gap-2 rounded-xs px-2 text-[13px] text-text outline-none data-[highlighted]:bg-(--state-hover)';
 
 /**
  * The "..." menu of one chat (Rename, Delete) plus the delete confirmation.
@@ -64,7 +64,7 @@ export function ConversationActions({
             ref={triggerRef}
             aria-label={t('options_for', { title })}
             className={cn(
-              'flex size-6 shrink-0 items-center justify-center rounded-md text-fg-secondary outline-none hover:bg-hover hover:text-fg focus-visible:ring-2 focus-visible:ring-focus/50 data-[state=open]:bg-hover data-[state=open]:text-fg [&_svg]:size-4',
+              'flex size-6 shrink-0 items-center justify-center rounded-xs text-text-secondary outline-none hover:bg-(--state-hover) hover:text-text focus-visible:ring-2 focus-visible:ring-focus/50 data-[state=open]:bg-(--state-hover) data-[state=open]:text-text [&_svg]:size-4',
               triggerClassName,
             )}
           >
@@ -83,7 +83,7 @@ export function ConversationActions({
                 keepFocusAway.current = false;
               }
             }}
-            className="anim-swap z-50 w-40 rounded-xl border border-line bg-surface p-1 shadow-popover"
+            className="anim-swap z-(--z-dropdown) w-40 rounded-md border border-border bg-surface p-1 shadow-md"
           >
             <DropdownMenu.Item
               className={itemClass}
@@ -111,7 +111,7 @@ export function ConversationActions({
 
       <Dialog.Root open={confirming} onOpenChange={(open) => !deleting && setConfirming(open)}>
         <Dialog.Portal>
-          <Dialog.Overlay className="fixed inset-0 z-[60] bg-black/40" />
+          <Dialog.Overlay className="fixed inset-0 z-(--z-modal) bg-scrim" />
           <Dialog.Content
             onCloseAutoFocus={(e) => {
               // The menu item that opened the dialog is gone; the button is the
@@ -120,10 +120,10 @@ export function ConversationActions({
               e.preventDefault();
               triggerRef.current?.focus();
             }}
-            className="fixed left-1/2 top-1/2 z-[61] w-[calc(100vw-32px)] max-w-sm -translate-x-1/2 -translate-y-1/2 rounded-xl border border-line bg-surface p-5 shadow-popover"
+            className="fixed start-1/2 top-1/2 z-(--z-modal) w-[calc(100vw-32px)] max-w-sm -translate-x-1/2 -translate-y-1/2 rtl:translate-x-1/2 rounded-md border border-border bg-surface p-5 shadow-md"
           >
-            <Dialog.Title className="text-[15px] font-semibold text-fg">{t('delete_title')}</Dialog.Title>
-            <Dialog.Description className="mt-1.5 text-sm text-fg-secondary">
+            <Dialog.Title className="text-[15px] font-semibold text-text">{t('delete_title')}</Dialog.Title>
+            <Dialog.Description className="mt-1.5 text-sm text-text-secondary">
               {t('delete_body')}
             </Dialog.Description>
             <div className="mt-5 flex justify-end gap-2">
@@ -133,7 +133,7 @@ export function ConversationActions({
               <Button
                 onClick={() => void confirmDelete()}
                 disabled={deleting}
-                className="border-transparent bg-danger text-fg-inverse hover:bg-danger/90"
+                className="border-transparent bg-danger text-text-inverse hover:bg-danger/90"
               >
                 {deleting ? t('deleting') : t('delete_confirm')}
               </Button>

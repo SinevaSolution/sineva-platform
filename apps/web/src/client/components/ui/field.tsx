@@ -24,7 +24,7 @@ export function Field({
   return (
     <div className={cn('space-y-1.5', className)}>
       <div className="flex items-baseline justify-between">
-        <label htmlFor={inputId} className="text-[13px] font-medium text-fg">
+        <label htmlFor={inputId} className="text-[13px] font-medium text-text">
           {label}
         </label>
         {trailing}
@@ -33,7 +33,7 @@ export function Field({
         id={inputId}
         aria-invalid={error ? true : undefined}
         aria-describedby={[errorId, hintId].filter(Boolean).join(' ') || undefined}
-        className="h-11 w-full rounded-lg border border-line-strong bg-surface px-3 text-[15px] text-fg outline-none transition-[border-color,box-shadow] placeholder:text-fg-tertiary focus:border-[var(--color-focus)] focus:shadow-[0_0_0_3px_color-mix(in_oklab,var(--color-focus)_18%,transparent)] aria-[invalid=true]:border-danger"
+        className="h-11 w-full rounded-sm border border-border-strong bg-surface px-3 text-[15px] text-text outline-none transition-[border-color,box-shadow] placeholder:text-text-tertiary focus:border-focus focus:shadow-(--shadow-focus-halo) aria-[invalid=true]:border-danger"
         {...inputProps}
       />
       {error ? (
@@ -41,7 +41,7 @@ export function Field({
           {error}
         </p>
       ) : hint ? (
-        <p id={hintId} className="text-[13px] text-fg-tertiary">
+        <p id={hintId} className="text-[13px] text-text-tertiary">
           {hint}
         </p>
       ) : null}
@@ -60,8 +60,8 @@ export function FormAlert({
     <p
       role={tone === 'danger' ? 'alert' : 'status'}
       className={cn(
-        'rounded-lg px-3 py-2 text-[13px]',
-        tone === 'danger' ? 'bg-danger-surface text-danger' : 'bg-surface-tint text-fg',
+        'rounded-sm px-3 py-2 text-[13px]',
+        tone === 'danger' ? 'bg-danger-surface text-danger' : 'bg-surface-tint text-text',
       )}
     >
       {children}

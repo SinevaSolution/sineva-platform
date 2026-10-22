@@ -58,7 +58,7 @@ export default function ApiDocsPage() {
                   {Object.entries(methods).map(([httpVerb, meta]) => (
                     <div
                       key={httpVerb}
-                      className="flex items-center justify-between rounded-xl border border-[var(--color-border)] bg-[var(--color-surface-muted)]/60 px-3 py-2 text-xs"
+                      className="flex items-center justify-between rounded-md border border-[var(--color-border)] bg-[var(--color-surface-muted)]/60 px-3 py-2 text-xs"
                     >
                       <div className="flex items-center gap-2">
                         <Badge tone="teal">{httpVerb.toUpperCase()}</Badge>
@@ -81,7 +81,7 @@ export default function ApiDocsPage() {
               </h2>
               <Badge tone="neutral">snake_case schema</Badge>
             </div>
-            <pre className="max-h-[680px] overflow-auto rounded-xl border border-[var(--color-border)] bg-[var(--ink-950)] p-4 font-mono text-xs text-emerald-300 leading-relaxed">
+            <pre className="max-h-[680px] overflow-auto rounded-md border border-[var(--color-border)] bg-[var(--ink-950)] p-4 font-mono text-xs text-emerald-300 leading-relaxed">
               {JSON.stringify(spec, null, 2)}
             </pre>
           </Card>

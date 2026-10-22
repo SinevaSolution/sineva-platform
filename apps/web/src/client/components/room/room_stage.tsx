@@ -63,7 +63,7 @@ export function RoomStage({
   return (
     <section
       ref={ref}
-      className="relative isolate flex min-h-0 flex-1 flex-col overflow-hidden bg-[var(--ink-950,#0b2a31)] [container-type:size] [--px:0] [--py:0]"
+      className="relative isolate flex min-h-0 flex-1 flex-col overflow-hidden bg-(--room-scene-base) [container-type:size] [--px:0] [--py:0]"
     >
       {/* Room. A 16:9 box that always covers the panel (container units),
           anchored at 70% across and 60% down so Sino and the floor stay in
@@ -85,7 +85,7 @@ export function RoomStage({
           key={room.slug}
           className="anim-fade absolute inset-0 bg-cover bg-center"
           style={{
-            backgroundImage: `image-set(url("${room.background}.avif") type("image/avif"), url("${room.background}.webp") type("image/webp")), url("${room.background}-blur.webp"), radial-gradient(80% 70% at 70% 40%, #1f5c63, #0b2a31)`,
+            backgroundImage: `image-set(url("${room.background}.avif") type("image/avif"), url("${room.background}.webp") type("image/webp")), url("${room.background}-blur.webp"), var(--room-scene-fallback)`,
           }}
         />
         {/* Sino on the floor: hidden when the panel is too narrow for him
@@ -98,9 +98,9 @@ export function RoomStage({
             transform: 'translate3d(calc(var(--px) * 18px), calc(var(--py) * 6px), 0)',
           }}
         >
-          <span className="absolute bottom-[4%] left-1/2 h-[7%] w-[52%] -translate-x-1/2 rounded-[50%] bg-[radial-gradient(closest-side,rgba(0,0,0,0.5),transparent)]" />
-          <div className="anim-rise absolute left-1/2 top-[2%] flex -translate-x-1/2 items-center gap-1.5 whitespace-nowrap rounded-full bg-[color-mix(in_oklab,var(--color-surface)_90%,transparent)] px-3 py-1 text-xs font-semibold text-fg shadow-popover backdrop-blur-md [--d:300ms]">
-            <span className={cn('size-1.5 rounded-full', mood === 'working' ? 'animate-pulse bg-[#ffb547]' : 'bg-[#22c55e]')} />
+          <span className="absolute bottom-[4%] start-1/2 h-[7%] w-[52%] -translate-x-1/2 rtl:translate-x-1/2 rounded-[50%] bg-(image:--room-contact-shadow)" />
+          <div className="anim-rise absolute start-1/2 top-[2%] flex -translate-x-1/2 rtl:translate-x-1/2 items-center gap-1.5 whitespace-nowrap rounded-full bg-surface/90 px-3 py-1 text-xs font-semibold text-text shadow-md backdrop-blur-md [--d:300ms]">
+            <span className={cn('size-1.5 rounded-full', mood === 'working' ? 'animate-pulse bg-warning' : 'bg-success')} />
             {label}
           </div>
           <SinoLoop key={roomLoop(slug, mood)} loop={roomLoop(slug, mood)} priority className="anim-fade relative" />
@@ -109,7 +109,7 @@ export function RoomStage({
       {/* Scrim: darker behind the chat column, clear where Sino stands. */}
       <div
         aria-hidden="true"
-        className="absolute inset-0 -z-10 bg-[linear-gradient(90deg,rgba(6,24,28,0.62)_0%,rgba(6,24,28,0.38)_42%,rgba(6,24,28,0.04)_70%),linear-gradient(0deg,rgba(6,24,28,0.4),transparent_30%)]"
+        className="absolute inset-0 -z-10 bg-(image:--room-scrim-side)"
       />
 
       {topBar}
@@ -134,10 +134,10 @@ export function RoomBubble({
   return (
     <div
       className={cn(
-        'max-w-[88%] whitespace-pre-wrap rounded-2xl px-4 py-2.5 text-[15px] leading-6 shadow-[0_8px_24px_-12px_rgba(0,0,0,0.5)] backdrop-blur-md',
+        'max-w-[88%] whitespace-pre-wrap rounded-lg px-4 py-2.5 text-[15px] leading-6 shadow-md backdrop-blur-md',
         from === 'user'
-          ? 'ml-auto rounded-br-md bg-[color-mix(in_oklab,var(--color-focus)_78%,#0b2a31)] text-white'
-          : 'rounded-tl-md bg-[color-mix(in_oklab,var(--color-surface)_92%,transparent)] text-fg',
+          ? 'ms-auto rounded-ee-xs bg-(--room-bubble-user) text-text-inverse'
+          : 'rounded-ss-xs bg-[color-mix(in_oklab,var(--color-surface)_92%,transparent)] text-text',
       )}
     >
       {children}

@@ -24,19 +24,19 @@ related_docs:
 ## Gotchas first
 
 - The only page is `/`, and it is an engineering console, not a product UI: infrastructure status pills, a token budget, an envelope inspector and a presign test button around a per-product chat. Target: a UI centered on one chat with Sino ([ADR-0010](../decisions/0010-one-chat-with-mentions.md)). Do not treat the console layout as the design to extend.
-- Dark mode is `[data-theme="dark"]` only. Tailwind's `dark:` variant is not tied to it (it follows the OS setting), so `dark:` classes misfire. Details in [design tokens](design_tokens.md).
+- Dark mode is `:root[data-theme='dark']` only and no component uses `dark:` (lint bans it). Colors come from the vendored sineva-compro tokens. Details in [design tokens](design_tokens.md).
 - The 44 px touch target is a project rule, not an AA requirement. Some controls are smaller (listed below).
 - Loading, error and not-found pages do not exist (R-31).
 - Several numbers on the page are invented ("342 ms", "All Systems Nominal"). See [product model and wording](../product/product_model_and_wording.md).
 
 ## Components
 
-`packages/ui/src/index.tsx` exports the primitives. `apps/web` has no other shared components besides the dashboard, the command palette and the theme toggle.
+`packages/ui/src/index.ts` exports the primitives (the legacy ones live in `primitives/legacy.tsx` until WP-M0-39 replaces them; the package layout is in [turborepo workspaces](../project-structure/turborepo_workspaces.md)). `apps/web` has no other shared components besides the dashboard, the command palette and the theme toggle.
 
 | Component | Variants and behavior |
 | :--- | :--- |
-| `Button` | `variant`: `primary`, `secondary`, `ghost`, `sun`. `size`: `sm` (min height 38 px), `md` (44 px), `lg` (48 px), `icon` (44 by 44 px). `asChild` renders through Radix `Slot` (used for links). `focus-visible` outline: 2 px in `--color-action-primary`, 2 px offset. Disabled: 50 percent opacity and no pointer events. |
-| `Card` | Rounded, bordered surface. `elevated` switches to `--color-surface-elevated` and adds a shadow. |
+| `Button` | `variant`: `primary`, `secondary`, `ghost`, `sun`. `size`: `sm` (min height 38 px), `md` (44 px), `lg` (48 px), `icon` (44 by 44 px). `asChild` renders through Radix `Slot` (used for links). `focus-visible` outline: 2 px in `--color-focus`, 2 px offset. Disabled: 50 percent opacity and no pointer events. |
+| `Card` | Rounded, bordered surface. `elevated` adds a shadow. |
 | `Badge` | `tone`: `teal`, `sun`, `neutral`, `success`, `warning`. |
 | `StatusPill` | `status`: `online`, `degraded`, `offline`, `standby`, with a dot and a label. |
 | `Container` | `size`: `narrow` (`max-w-4xl`), `default` (`max-w-7xl`), `wide` (1440 px). Horizontal padding 16, 24, 32 px by breakpoint. |
@@ -45,14 +45,14 @@ related_docs:
 Rules for new UI:
 
 - Use the primitives before writing a new one. Variants go through `class-variance-authority`.
-- Reference semantic tokens (`bg-[var(--color-surface)]`). No hex (R-30). A search of `src/client` for hex colors returns nothing today. Components do use raw primitives (`--teal-50`, `--ink-950`, `--sun-100`) and Tailwind palette colors (`emerald-*`, `amber-*`, `rose-*`). Those do not change with the theme; prefer semantic tokens.
+- Reference semantic tokens as utilities (`bg-surface`, `text-text-secondary`, `bg-action-primary`). No hex, no `rgb(`, no Tailwind palette colors, no `dark:`, no arbitrary `z-[n]` (R-30; `packages/ui` and `src/client` lint enforce it). The Google sign-in logo is the one documented exception (third-party brand colors).
 - Client code never imports `@/server/**` (R-08). Types come from `src/shared`.
 
 ## Theming
 
-- `AppProviders` (`client/store/provider.tsx`) wraps the app in `next-themes` `ThemeProvider` with `attribute="data-theme"`, `defaultTheme="light"` and `enableSystem={false}`. The default is light, and the OS preference is ignored.
-- `ThemeToggle` switches between `light` and `dark`. It renders a disabled placeholder until mounted, to avoid a hydration mismatch.
-- `[data-theme="dark"]` in `globals.css` redefines the semantic tokens. There is no `.dark` class.
+- An inline script (`ThemeScript` in the root layout, with the CSP nonce) sets `<html data-theme>` before the first paint. The first visit follows the OS, an explicit choice is stored under `sineva-theme`. `next-themes` is gone.
+- `useTheme` (`client/lib/use_theme.ts`) reads the attribute and `ThemeToggle` and the user menu switch it. `ThemeFollowSystem` (in `AppProviders`) follows OS changes until a choice is stored.
+- `theme-dark.css` redefines the semantic tokens under `:root[data-theme='dark']`. There is no `.dark` class.
 
 ## Accessibility baseline
 
@@ -67,22 +67,9 @@ Target size: WCAG 2.2 SC 2.5.8 (Target Size, Minimum, Level AA) asks for 24 by 2
 - The chat input has an `sr-only` label. The tab-like filter has `aria-label`.
 - Icon buttons have `aria-label`.
 
-### Measured contrast
+### Contrast
 
-Computed on 2026-10-21 with the WCAG relative luminance formula on the token values in `globals.css` (not an audit tool run, and not every pair in the UI). Normal text needs 4.5:1. Non-text UI parts need 3:1.
-
-| Pair | Light | Dark |
-| :--- | :--- | :--- |
-| `--color-text` on canvas | 17.05 | 17.16 |
-| `--color-text-muted` on canvas | 7.87 | 9.37 |
-| `--color-text-subtle` on canvas | 5.12 | 5.69 |
-| `--color-text-subtle` on `--color-surface-muted` | 4.74 | 4.14 (fails 4.5) |
-| `--color-action-primary` on canvas | 6.11 | 10.51 |
-| `--color-text-inverse` on `--color-action-primary` | 6.42 | 10.77 |
-| `--color-border-strong` on canvas (input border) | 1.52 | 2.17 |
-
-- Dark `--color-text-subtle` on `--color-surface-muted` fails AA for normal text. The code does not use that pair today (subtle text sits on surface and elevated surfaces, 5.15 and 4.65 in dark).
-- The input border (`--color-border-strong`) is below 3:1 in both themes. For a text field whose box is the only visible boundary, that likely fails SC 1.4.11.
+The tokens are compro's, whose pairs were verified with the WCAG 2.1 formula (compro `tokens.md` 1.3 and 1.5). `packages/ui/src/__tests__/ui-tokens.test.ts` asserts every pair the app relies on in both themes (4.5:1 for text, 3:1 for non-text, including the input border and the focus ring). A new text-on-surface pair gets a line in that test. Pairs in the 13 product accent ramps are asserted there as well; the 7 proposed ramps still need the official contrast and color-vision review (OQ-UX-04).
 
 ### Current deviations
 
@@ -95,7 +82,6 @@ Computed on 2026-10-21 with the WCAG relative luminance formula on the token val
 | Prompt `input` | `focus:outline-hidden` with only a border color change as the focus cue | R-32 |
 | Filter chips and palette close button | No explicit focus style; they rely on the browser default | R-32 |
 | Transcript | New replies are not announced (no `aria-live`) | R-32 |
-| Input border | Contrast below 3:1 (above) | SC 1.4.11 |
 
 ## Page states
 

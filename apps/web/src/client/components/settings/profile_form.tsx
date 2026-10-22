@@ -172,12 +172,12 @@ export function ProfileForm({
           onChanged={(next) => setProfile((p) => ({ ...p, ...next }))}
         />
         <div className="min-w-0 flex-1">
-          <h2 className="truncate text-xl font-semibold text-fg">{draft.full_name.trim() || profile.email}</h2>
+          <h2 className="truncate text-xl font-semibold text-text">{draft.full_name.trim() || profile.email}</h2>
           {greeting ? (
-            <p className="mt-0.5 truncate text-[14px] text-fg-secondary">{t('profile.call_you', { name: greeting })}</p>
+            <p className="mt-0.5 truncate text-[14px] text-text-secondary">{t('profile.call_you', { name: greeting })}</p>
           ) : null}
           <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1.5">
-            <span className="min-w-0 truncate text-[13px] text-fg-tertiary">{profile.email}</span>
+            <span className="min-w-0 truncate text-[13px] text-text-tertiary">{profile.email}</span>
             {profile.email_verified ? (
               <Pill tone="positive">{t('profile.verified')}</Pill>
             ) : (
@@ -262,7 +262,7 @@ export function ProfileForm({
             onChange={(e) => set('about_me', e.target.value)}
             onBlur={touch('about_me')}
           />
-          <p className="mt-1 text-right text-xs text-fg-tertiary">
+          <p className="mt-1 text-end text-xs text-text-tertiary">
             {t('profile.about_me_count', { count: aboutCount, max: ABOUT_ME_MAX })}
           </p>
         </SettingsRow>

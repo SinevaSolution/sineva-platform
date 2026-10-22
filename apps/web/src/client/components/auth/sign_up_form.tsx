@@ -79,7 +79,7 @@ export function SignUpForm() {
         hint={t('sign_up.password_hint', { min: MIN_PASSWORD })}
         error={passwordError}
       />
-      <div className="space-y-2.5 pt-1 text-[13px] text-fg-secondary">
+      <div className="space-y-2.5 pt-1 text-[13px] text-text-secondary">
         <label className="flex items-start gap-2.5">
           <input type="checkbox" name="consent" required className="mt-0.5 size-4 accent-[var(--color-action-primary)]" />
           <span>{t('sign_up.consent')}</span>

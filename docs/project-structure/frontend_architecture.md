@@ -38,9 +38,9 @@ Frontend code is `src/client` (components, store), the routing files in `src/app
 | UI | One client component, `client/components/sineva_dashboard.tsx` (777 lines, `'use client'`). It holds the agent list, category filter, chat transcript, presign demo, API envelope viewer and status bar. `command_palette.tsx` and `theme_toggle.tsx` are the only other components. |
 | Hydration | `useEffect` dispatches `setAgentsCatalog(initialAgents)` into Redux after mount. Until it runs, the component falls back to the `initialAgents` prop. |
 | Selection | `selected_agent_slug` (default `sinofinance`) and `active_category_filter` live in Redux. Nothing is in the URL, so a reload loses the selected companion, the filter and every transcript, and a view cannot be linked. |
-| Providers | `AppProviders` (`client/store/provider.tsx`) wraps the whole app in the Redux `Provider`, `next-themes` (`attribute="data-theme"`, `defaultTheme="light"`, `enableSystem={false}`) and the sonner `Toaster`. The store is created with `makeStore()` once per mount. |
+| Providers | `AppProviders` (`client/store/provider.tsx`) wraps the whole app in the Redux `Provider`, the `ThemeFollowSystem` listener, the tooltip provider and the sonner `Toaster`. The theme itself is set before paint by `ThemeScript` in the root layout. The store is created with `makeStore()` once per mount. |
 | Route states | None. `src/app` has no `loading.tsx`, `error.tsx` or `not-found.tsx`. |
-| Theming | Token variables switch on `[data-theme="dark"]` in `globals.css`. The Tailwind `dark:` variant is not tied to `data-theme` (no `@custom-variant`), and the dashboard uses `dark:` in a few places. |
+| Theming | The sineva-compro tokens are vendored in `packages/ui/src/styles` ([ADR-0027](../decisions/0027-design-token-source-and-vendoring.md)) and switch on `:root[data-theme='dark']`. No component uses `dark:` (lint bans it). |
 | Identity | The chat call sends `user_id: 'usr_executive_01'` hardcoded. The workspace slice is seeded with constants (`wks_sineva_enterprise_01`, a token quota and a consumed count). |
 
 ### Debt in the current UI

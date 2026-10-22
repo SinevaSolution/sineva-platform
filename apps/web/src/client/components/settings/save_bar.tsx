@@ -24,9 +24,9 @@ export function SaveBar({
   const t = useTranslations('account');
   if (!visible) return null;
   return (
-    <div className="anim-rise sticky bottom-4 z-10 mt-8" role="region" aria-label={t('save_bar.label')}>
-      <div className="flex flex-wrap items-center gap-3 rounded-xl border border-line bg-surface px-4 py-3 shadow-popover">
-        <p className="min-w-0 flex-1 text-[13px] font-medium text-fg" aria-live="polite">
+    <div className="anim-rise sticky bottom-4 z-(--z-sticky) mt-8" role="region" aria-label={t('save_bar.label')}>
+      <div className="flex flex-wrap items-center gap-3 rounded-md border border-border bg-surface px-4 py-3 shadow-md">
+        <p className="min-w-0 flex-1 text-[13px] font-medium text-text" aria-live="polite">
           {t('save_bar.unsaved')}
         </p>
         <Button variant="ghost" size="md" onClick={onDiscard} disabled={pending}>

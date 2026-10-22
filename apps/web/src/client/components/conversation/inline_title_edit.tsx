@@ -68,7 +68,7 @@ export function InlineTitleEdit({
       }}
       onClick={(e) => e.stopPropagation()}
       className={cn(
-        'min-w-0 rounded-md border border-focus bg-surface px-1.5 text-fg outline-none focus-visible:ring-2 focus-visible:ring-focus/40',
+        'min-w-0 rounded-xs border border-focus bg-surface px-1.5 text-text outline-none focus-visible:ring-2 focus-visible:ring-focus/40',
         className,
       )}
     />
