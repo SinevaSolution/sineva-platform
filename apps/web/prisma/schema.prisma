@@ -962,3 +962,37 @@ model AuditEvent {
   @@map("audit_events")
   @@schema("platform")
 }
+
+// ---------------------------------------------------------------------------
+// Durable jobs (ADR-0038)
+// ---------------------------------------------------------------------------
+
+// No foreign key on `workspace_id`: a job row is operational state that the
+// runner owns, and the handler decides what a deleted workspace means for it.
+// The partial unique index that allows one running job per `concurrency_key`
+// cannot be expressed in Prisma schema syntax; it lives in the migration SQL
+// (`jobs_one_running_per_key_idx`). `payload` holds ids only, never secrets.
+model Job {
+  id               String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  job_type         String    @db.VarChar(64)
+  payload          Json      @default("{}")
+  status           String    @default("queued") @db.VarChar(16) // queued | running | succeeded | failed | cancelled
+  run_at           DateTime  @default(now()) @db.Timestamptz(6)
+  attempts         Int       @default(0)
+  max_attempts     Int       @default(5)
+  idempotency_key  String?
+  concurrency_key  String?
+  workspace_id     String?   @db.Uuid
+  locked_by        String?
+  lease_expires_at DateTime? @db.Timestamptz(6)
+  last_error_code  String?   @db.VarChar(128)
+  created_at       DateTime  @default(now()) @db.Timestamptz(6)
+  updated_at       DateTime  @default(now()) @db.Timestamptz(6)
+  finished_at      DateTime? @db.Timestamptz(6)
+
+  @@unique([job_type, idempotency_key])
+  @@index([status, run_at])
+  @@index([workspace_id])
+  @@map("jobs")
+  @@schema("platform")
+}

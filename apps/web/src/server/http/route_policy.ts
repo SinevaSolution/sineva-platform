@@ -332,6 +332,17 @@ export const MUTATING_ROUTE_POLICY: Record<string, MutatingRoutePolicy> = {
     effect: 'ingest',
     audit: ['approval.expired', 'input.expired'],
   },
+  'POST /internal/v1/jobs/tick': {
+    effect: 'ingest',
+    audit: 'none',
+    reason:
+      'A scheduler beat only runs jobs; each job that changes a connection writes its own audit event inside its handler, and the tick itself records counts in the job log.',
+  },
+  'POST /api/internal/v1/jobs/tick': {
+    effect: 'ingest',
+    audit: 'none',
+    reason: 'Alias of POST /internal/v1/jobs/tick.',
+  },
   'POST /api/v1/workspaces/{workspace_id}/library/uploads': {
     effect: 'create',
     audit: 'none',

@@ -2,6 +2,7 @@ import 'server-only';
 import { businessProfilePaths } from './business_profile_paths';
 import { membersPaths } from './members_paths';
 import { getInboxPaths } from './inbox_paths';
+import { getConnectionsPaths } from './connections_paths';
 import { LIBRARY_COMPONENT_SCHEMAS, libraryOpenApiPaths } from './library_paths';
 
 // Response object of the standard envelope, for the profile family below.
@@ -106,6 +107,7 @@ export function getOpenApiSpec(): Record<string, unknown> {
     paths: {
       ...membersPaths(),
       ...getInboxPaths(),
+      ...getConnectionsPaths(),
       ...libraryOpenApiPaths(),
       ...businessProfilePaths(),
       '/api/internal/v1/keys': {

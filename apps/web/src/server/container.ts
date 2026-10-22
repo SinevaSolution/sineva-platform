@@ -1,5 +1,10 @@
 import 'server-only';
 import { randomBytes } from 'node:crypto';
+import type { JobQueue } from './domain/jobs/job_queue';
+import { PrismaJobQueue } from './infrastructure/database/prisma_job_queue';
+import { LoggerJobLog } from './infrastructure/logging/log_job_log';
+import { JobRunner } from './application/jobs/job_runner';
+import { TickJobsUseCase, type JobPlanner } from './application/jobs/tick_jobs_use_case';
 import type { BusinessProfileRepository } from './domain/repositories/business_profile_repository';
 import type {
   ChecklistRepository,
@@ -1077,4 +1082,35 @@ export const getDismissFirstTaskUseCase = memoize(
 // an accepted invitation); no route exposes it.
 export const getRecordChecklistEventUseCase = memoize(
   () => new RecordChecklistEventUseCase({ checklist: getChecklistRepository() }),
+);
+
+// ---------------------------------------------------------------------------
+// Durable jobs (ADR-0038)
+// ---------------------------------------------------------------------------
+
+export const getJobQueue = memoize<JobQueue>(() => new PrismaJobQueue(getPrismaClient()));
+const getJobLog = memoize(() => new LoggerJobLog());
+
+// One id per process: it names the lease holder, so two instances never
+// complete each other's jobs. Random rather than the hostname because a
+// restarted container must not inherit leases of its previous life.
+const jobWorkerId = `web-${process.pid}-${randomBytes(4).toString('hex')}`;
+
+export const getJobRunner = memoize(() => {
+  const runner = new JobRunner({ queue: getJobQueue(), log: getJobLog(), workerId: jobWorkerId });
+  // Job handlers are registered here as the features that own them land.
+  return runner;
+});
+
+// Planners enqueue what is due; each must be idempotent because a tick can run twice.
+const getJobPlanners = memoize<readonly JobPlanner[]>(() => []);
+
+export const getTickJobsUseCase = memoize(
+  () =>
+    new TickJobsUseCase({
+      queue: getJobQueue(),
+      runner: getJobRunner(),
+      planners: getJobPlanners(),
+      log: getJobLog(),
+    }),
 );
