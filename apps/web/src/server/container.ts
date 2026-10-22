@@ -296,7 +296,9 @@ const getEmailSender = memoize<EmailSender>(() => {
       from: env.email_from ?? 'Sineva <noreply@sineva.id>',
       // Without a renderer the sender falls back to a one-line placeholder body,
       // so a real invitation would arrive with no link in it.
-      renderer: renderEmailTemplate,
+      // The app address lets templates point at their own images (Sino).
+      renderer: (template, locale, params) =>
+        renderEmailTemplate(template, locale, { ...params, app_url: env.next_public_app_url }),
     });
   }
   return new FakeEmailSender();
