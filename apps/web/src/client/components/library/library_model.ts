@@ -68,24 +68,39 @@ export function fileKindFromName(fileName: string): LibraryFileKind {
 export interface AccessChoice {
   everyone: boolean;
   specialists: string[];
+  /** Squad ids (ADR-0043). */
+  squads: string[];
 }
 
 /**
  * Who can use something. Everyone already includes every specialist, so a list
- * with both is just Everyone. Squad and workflow scopes are reserved and not
- * shown yet; a specialist scope without a reference is ignored as broken data.
+ * with both is just Everyone. The workflow scope is reserved and not shown
+ * yet; a specialist or squad scope without a reference is ignored as broken data.
  */
 export function accessSummary(scopes: readonly LibraryScopeView[]): AccessChoice {
   if (scopes.some((scope) => scope.scope_type === 'workspace')) {
-    return { everyone: true, specialists: [] };
+    return { everyone: true, specialists: [], squads: [] };
   }
   const specialists = scopes.flatMap((scope) =>
     scope.scope_type === 'specialist' && scope.scope_ref ? [scope.scope_ref] : [],
   );
-  return { everyone: false, specialists: [...new Set(specialists)] };
+  const squads = scopes.flatMap((scope) => (scope.scope_type === 'squad' && scope.scope_ref ? [scope.scope_ref] : []));
+  return { everyone: false, specialists: [...new Set(specialists)], squads: [...new Set(squads)] };
 }
 
-export type ScopeInput = { scope_type: 'workspace' } | { scope_type: 'specialist'; scope_ref: string };
+/** Same choice, whatever the order the lists came in. */
+export function accessKey(choice: AccessChoice): string {
+  return `${choice.everyone}:${choice.specialists.slice().sort().join(',')}:${choice.squads.slice().sort().join(',')}`;
+}
+
+export function sameAccess(a: AccessChoice, b: AccessChoice): boolean {
+  return accessKey(a) === accessKey(b);
+}
+
+export type ScopeInput =
+  | { scope_type: 'workspace' }
+  | { scope_type: 'specialist'; scope_ref: string }
+  | { scope_type: 'squad'; scope_ref: string };
 
 /**
  * The request scopes for a choice. Null when nothing is chosen: an empty list
@@ -94,8 +109,11 @@ export type ScopeInput = { scope_type: 'workspace' } | { scope_type: 'specialist
  */
 export function scopeInputs(choice: AccessChoice): ScopeInput[] | null {
   if (choice.everyone) return [{ scope_type: 'workspace' }];
-  if (choice.specialists.length === 0) return null;
-  return choice.specialists.map((scope_ref) => ({ scope_type: 'specialist' as const, scope_ref }));
+  if (choice.specialists.length === 0 && choice.squads.length === 0) return null;
+  return [
+    ...choice.specialists.map((scope_ref) => ({ scope_type: 'specialist' as const, scope_ref })),
+    ...choice.squads.map((scope_ref) => ({ scope_type: 'squad' as const, scope_ref })),
+  ];
 }
 
 export interface CollectionNode {

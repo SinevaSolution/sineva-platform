@@ -1,6 +1,7 @@
 'use client';
 
 import * as React from 'react';
+import { Users } from 'lucide-react';
 import { SNBadge, SNSwitch } from '@sineva/ui';
 import { cn } from '@/client/components/ui/cn';
 import { SNSpecialistTile } from '@/client/components/ui/sn_specialist_tile';
@@ -8,13 +9,14 @@ import { useTranslations } from '@/i18n/provider';
 import type { ShellSpecialistView } from '@/shared/shell_view';
 import type { AccessChoice } from './library_model';
 import { CHIP_BASE } from './library_chip';
+import { useLibrarySquads } from './library_squads';
 
 /**
  * "Who can use this": an Everyone switch, then one toggle per specialist.
  * With Everyone on, the specialist toggles show as included and cannot be
- * changed, which says out loud what Everyone means. Squads and Workflows are
- * listed as disabled "Soon" options so people see where access is going; the
- * API rejects them until those features ship.
+ * changed, which says out loud what Everyone means. The workspace's squads are
+ * toggles like specialists (ADR-0043). Workflows are listed as a disabled "Soon"
+ * option so people see where access is going; the API rejects it until then.
  */
 export function LibraryAccessPicker({
   value,
@@ -31,6 +33,7 @@ export function LibraryAccessPicker({
   invalid?: boolean;
 }) {
   const t = useTranslations('library_ui');
+  const squads = useLibrarySquads();
   const uid = React.useId();
   const hintId = `${uid}-hint`;
   const errorId = `${uid}-error`;
@@ -38,8 +41,18 @@ export function LibraryAccessPicker({
   function toggle(slug: string) {
     const has = value.specialists.includes(slug);
     onChange({
+      ...value,
       everyone: false,
       specialists: has ? value.specialists.filter((entry) => entry !== slug) : [...value.specialists, slug],
+    });
+  }
+
+  function toggleSquad(id: string) {
+    const has = value.squads.includes(id);
+    onChange({
+      ...value,
+      everyone: false,
+      squads: has ? value.squads.filter((entry) => entry !== id) : [...value.squads, id],
     });
   }
 
@@ -59,7 +72,9 @@ export function LibraryAccessPicker({
           checked={value.everyone}
           disabled={disabled}
           aria-describedby={hintId}
-          onCheckedChange={(checked) => onChange({ everyone: checked, specialists: checked ? [] : value.specialists })}
+          onCheckedChange={(checked) =>
+            onChange({ everyone: checked, specialists: checked ? [] : value.specialists, squads: checked ? [] : value.squads })
+          }
         />
       </div>
       <ul
@@ -90,19 +105,40 @@ export function LibraryAccessPicker({
             </li>
           );
         })}
-        {(['squads', 'workflows'] as const).map((key) => (
-          <li key={key}>
-            <button
-              type="button"
-              disabled
-              aria-disabled="true"
-              className={cn(CHIP_BASE, 'gap-2 border-dashed border-border-strong bg-surface text-text-tertiary')}
-            >
-              {t(key === 'squads' ? 'access.squads' : 'access.workflows')}
-              <SNBadge tone="neutral">{t('soon')}</SNBadge>
-            </button>
-          </li>
-        ))}
+        {squads.map((squad) => {
+          const included = value.everyone || value.squads.includes(squad.id);
+          return (
+            <li key={squad.id}>
+              <button
+                type="button"
+                aria-pressed={included}
+                disabled={disabled || value.everyone}
+                onClick={() => toggleSquad(squad.id)}
+                className={cn(
+                  CHIP_BASE,
+                  'gap-2',
+                  included
+                    ? 'border-transparent bg-surface-tint text-text-brand'
+                    : 'border-border-strong bg-surface text-text-secondary hover:bg-(--state-hover) hover:text-text',
+                )}
+              >
+                <Users aria-hidden="true" className="size-4" />
+                {squad.name}
+              </button>
+            </li>
+          );
+        })}
+        <li>
+          <button
+            type="button"
+            disabled
+            aria-disabled="true"
+            className={cn(CHIP_BASE, 'gap-2 border-dashed border-border-strong bg-surface text-text-tertiary')}
+          >
+            {t('access.workflows')}
+            <SNBadge tone="neutral">{t('soon')}</SNBadge>
+          </button>
+        </li>
       </ul>
       {invalid ? (
         <p id={errorId} role="alert" className="text-sm text-danger">

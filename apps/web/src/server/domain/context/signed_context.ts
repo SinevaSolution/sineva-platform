@@ -1,4 +1,5 @@
 import type { UserRole } from '@/server/domain/entities/user';
+import type { SquadClaim } from '@/server/domain/squads/squad';
 import type { RequestContext } from './request_context';
 
 export interface UserProfileProjection {
@@ -44,6 +45,10 @@ export interface SignedContextClaims {
   // Additional optional claims reserved for subsequent milestones
   agent_slug?: string | null;
   run_id?: string | null;
+
+  // Squad turns (ADR-0044). Both come from stored data, never from the request body or the model.
+  squad?: SquadClaim;
+  budget?: { max_credits: number; max_tokens: number };
 }
 
 export interface MintContextOptions {
@@ -56,6 +61,8 @@ export interface MintContextOptions {
   profile?: UserProfileProjection;
   allowed_agents?: string[];
   trace_id?: string;
+  squad?: SquadClaim;
+  budget?: { max_credits: number; max_tokens: number };
 }
 
 export interface ContextSigner {

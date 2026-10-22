@@ -35,8 +35,9 @@ export interface ConversationView {
   id: string;
   workspace_id: string;
   user_id: string;
-  kind: 'hub' | 'room';
+  kind: 'hub' | 'room' | 'squad';
   agent_slug: string | null;
+  squad_id?: string | null;
   title: string | null;
   title_source: 'user' | 'auto' | 'first_message' | null;
   pinned_at: string | null;

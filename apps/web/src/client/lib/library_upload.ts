@@ -24,7 +24,7 @@ export async function uploadLibraryFile(
   file: File,
   options: {
     folder_id?: string | null;
-    scopes?: Array<{ scope_type: 'workspace' | 'specialist'; scope_ref?: string }>;
+    scopes?: Array<{ scope_type: 'workspace' | 'specialist' | 'squad'; scope_ref?: string }>;
   } = {},
   session: LibraryUploadSession = {},
 ): Promise<LibraryDocumentView> {

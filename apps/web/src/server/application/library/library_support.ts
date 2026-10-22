@@ -32,6 +32,7 @@ import type {
 import type { ObjectStore } from '@/server/domain/repositories/object_store';
 import type { TransactionRunner } from '@/server/domain/transactions/transaction_runner';
 import type { LibraryScopeInput } from '@/server/application/dtos/library_dto';
+import type { SquadRepository } from '@/server/domain/squads/squad_ports';
 import type { LibraryDocumentPatch } from '@/server/domain/repositories/library_repository';
 
 export interface LibraryDeps {
@@ -45,6 +46,8 @@ export interface LibraryDeps {
   entitlements: EntitlementService;
   transactions: TransactionRunner;
   log: LibraryLog;
+  /** Checks that a squad scope names an active squad of the workspace (ADR-0043). Without it a squad scope is refused. */
+  squads?: Pick<SquadRepository, 'existingActiveIds'>;
   /** Correlation id of an ingest job. Not a database id: it is sent to sineva-ai. */
   newJobId: () => string;
   now: () => Date;
@@ -116,6 +119,15 @@ export function resolveScopes(
       scopes.set('workspace', { scope_type: 'workspace', scope_ref: workspaceId });
       continue;
     }
+    if (scope.scope_type === 'squad') {
+      // A member limited to some specialists cannot use every squad, so they
+      // cannot decide who a squad's files belong to either (conservative).
+      if (context.specialist_scope === 'selected') {
+        throw new ForbiddenError('A squad scope needs access to all specialists');
+      }
+      scopes.set(`squad:${scope.scope_ref}`, { scope_type: 'squad', scope_ref: scope.scope_ref });
+      continue;
+    }
     const slug = scope.scope_ref.toLowerCase().trim();
     // The orchestrator `sino` has no scope of its own: it reads workspace documents.
     if (!CANONICAL_SPECIALIST_SLUGS.has(slug) || slug === 'sino') {
@@ -129,6 +141,34 @@ export function resolveScopes(
     scopes.set(`specialist:${slug}`, { scope_type: 'specialist', scope_ref: slug });
   }
   return [...scopes.values()];
+}
+
+/**
+ * `resolveScopes` plus the one check it cannot make without a lookup: a squad
+ * scope must name an active squad of this workspace. Unknown, archived and
+ * another workspace's squad all give the same 422, so a squad id cannot be
+ * probed; a missing `squads` port refuses rather than storing a principal that
+ * points nowhere. Only scopes the caller chose are checked, never inherited
+ * ones: a collection keeps its access after its squad is archived.
+ */
+export async function resolveScopesChecked(
+  deps: Pick<LibraryDeps, 'squads'>,
+  input: LibraryScopeInput[] | undefined,
+  context: RequestContext,
+  defaults: ScopeRef[] = [],
+): Promise<ScopeRef[]> {
+  const scopes = resolveScopes(input, context, defaults);
+  const ids = scopes.filter((scope) => scope.scope_type === 'squad').map((scope) => scope.scope_ref);
+  if (ids.length === 0) {
+    return scopes;
+  }
+  const found = deps.squads ? await deps.squads.existingActiveIds(requireWorkspace(context), ids) : [];
+  if (ids.some((id) => !found.includes(id))) {
+    throw new ValidationError('Unknown squad', [
+      { code: 'unknown_squad', field: 'scopes', detail: 'scope_ref is not an active squad of this workspace' },
+    ]);
+  }
+  return scopes;
 }
 
 /**

@@ -4,7 +4,7 @@ import {
   inheritedScopes,
   loadVisibleFolder,
   requireWorkspace,
-  resolveScopes,
+  resolveScopesChecked,
   resolveVisibleDocument,
   type LibraryDeps,
 } from '@/server/application/library/library_support';
@@ -44,7 +44,7 @@ export class UpdateLibraryDocumentUseCase {
     // both take the (new) collection's access.
     let nextScopes: ScopeRef[] | null = null;
     if (dto.scopes) {
-      nextScopes = resolveScopes(dto.scopes, context);
+      nextScopes = await resolveScopesChecked(this.deps, dto.scopes, context);
       patch.access_inherited = false;
     } else if (dto.inherit_access) {
       const collection = movedTo !== undefined ? movedTo : await loadVisibleFolder(folders, context, document.folder_id);

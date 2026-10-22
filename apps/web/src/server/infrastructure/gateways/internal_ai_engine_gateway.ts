@@ -18,6 +18,7 @@ import type {
   ResumeRunOptions,
   ResumeRunResult,
   RunEventsResult,
+  SquadStreamCallOptions,
   StreamCallOptions,
 } from '@/server/domain/repositories/ai_engine_gateway';
 import {
@@ -173,8 +174,30 @@ export class InternalAiEngineGateway implements AiEngineGateway {
    */
   async chatStream(options: StreamCallOptions): Promise<ReadableStream<Uint8Array>> {
     const env = getEnvConfig();
-    const url = `${env.ai_engine_internal_url}/api/v2/agents/${encodeURIComponent(options.agentSlug)}/chat/stream`;
+    return this.openStream(
+      `${env.ai_engine_internal_url}/api/v2/agents/${encodeURIComponent(options.agentSlug)}/chat/stream`,
+      options,
+    );
+  }
 
+  /**
+   * Squad turn SSE (`POST /api/v2/squads/{squad_id}/chat`, D-M4-2, ADR-0044).
+   * Same transport, headers and error mapping as an agent stream; the squad
+   * itself travels in the signed context, never in the body.
+   */
+  async squadChatStream(options: SquadStreamCallOptions): Promise<ReadableStream<Uint8Array>> {
+    const env = getEnvConfig();
+    return this.openStream(
+      `${env.ai_engine_internal_url}/api/v2/squads/${encodeURIComponent(options.squadId)}/chat`,
+      options,
+    );
+  }
+
+  private async openStream(
+    url: string,
+    options: Pick<StreamCallOptions, 'request' | 'contextToken' | 'requestId' | 'traceparent'>,
+  ): Promise<ReadableStream<Uint8Array>> {
+    const env = getEnvConfig();
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), env.ai_engine_timeout_ms);
 

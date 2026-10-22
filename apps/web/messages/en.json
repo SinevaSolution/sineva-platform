@@ -102,6 +102,23 @@
       "title": "Something went wrong on our side",
       "description": "Nothing you did caused this. Try again in a moment.",
       "action": "Try again"
+    },
+    "squads_list": {
+      "title": "No squads yet",
+      "description": "Pick specialists to work on one goal together.",
+      "action": "Create a squad"
+    },
+    "squad_thread_empty": {
+      "title": "Ask your squad",
+      "description": "Write one request. Sino decides who should help and shows you who did what."
+    },
+    "squad_sessions_empty": {
+      "title": "No chats yet",
+      "description": "Start one and it shows up here."
+    },
+    "squad_activity_empty": {
+      "title": "No turns yet",
+      "description": "Points and who helped show up here after your first request."
     }
   },
   "conversation": {
@@ -143,7 +160,15 @@
       "folder_depth_exceeded": "Collections can be nested three levels deep.",
       "unsupported_file_type": "Choose a PDF, Word, Excel, CSV, slides, text or image file.",
       "file_too_large": "That file is over 25 MB.",
-      "entitlement_required": "This is more than your plan includes."
+      "entitlement_required": "This is more than your plan includes.",
+      "squad_members_count": "A squad needs between 2 and 5 specialists.",
+      "squad_member_duplicate": "A specialist can be in a squad only once.",
+      "squad_member_unavailable": "One of those specialists is turned off or not available to you.",
+      "squad_lead_invalid": "The lead has to be Sino or someone in the squad.",
+      "squad_archived": "This squad is archived, so it cannot change or take new requests.",
+      "squad_needs_attention": "This squad needs a fix first. Open it to see what is missing.",
+      "mention_not_in_squad": "That specialist is not in this squad. Ask the whole squad, or pick one of its members.",
+      "unknown_squad": "That squad no longer exists."
     },
     "not_found": {
       "title": "Sino can't find this page"
@@ -163,7 +188,8 @@
     "new_chat": "New chat",
     "chat": "Chat",
     "not_found": "Not found",
-    "library": "Sino Library"
+    "library": "Sino Library",
+    "squads": "Squads"
   },
   "auth": {
     "sign_in": {
@@ -584,7 +610,8 @@
       "forbidden": "You don't have access to this yet. Ask an admin.",
       "not_found": "This reply couldn't be found. Reload the chat to see where things stand.",
       "rate_limited": "Too many tries. Wait a moment, then try again.",
-      "generic": "Something went wrong while {name} was replying. Try again."
+      "generic": "Something went wrong while {name} was replying. Try again.",
+      "squad_unavailable": "This squad can't take a request right now. Open the squad to see what needs fixing."
     }
   },
   "members": {
@@ -847,7 +874,6 @@
       "everyone": "Everyone",
       "everyone_hint": "Sino in your team chats, every specialist, and later Squads and Workflows.",
       "specialists": "Specialists",
-      "squads": "Squads",
       "workflows": "Workflows",
       "none_error": "Pick at least one specialist, or turn on Everyone.",
       "same": "Same as the collection",
@@ -884,7 +910,8 @@
       "size": "Largest first"
     },
     "used_by": {
-      "everyone": "Everyone"
+      "everyone": "Everyone",
+      "squads_many": "{count} Squads"
     },
     "list": {
       "label": "Your files",
@@ -1209,5 +1236,131 @@
       "resume_action": "Continue setup"
     }
   },
-  "mcp": {}
+  "mcp": {},
+  "squads_ui": {
+    "title": "Squads",
+    "subtitle": "A squad is a few specialists working on one goal together, with their own files and notes.",
+    "new": "New squad",
+    "list_label": "Your squads",
+    "templates_title": "Start from a ready-made squad",
+    "templates_hint": "Pick one, then change anything you like before you save.",
+    "use_template": "Use this squad",
+    "template_prompts": "You could ask",
+    "template_folders": "Good files to add: {folders}",
+    "members_count": "{count, plural, one {# specialist} other {# specialists}}",
+    "led_by_sino": "Led by Sino",
+    "led_by": "Led by {name}",
+    "status_archived": "Archived",
+    "status_attention": "Needs attention",
+    "status_no_access": "Ask an admin for access",
+    "status_unchecked": "We could not check this squad just now",
+    "open": "Open",
+    "actions_for": "Actions for {name}",
+    "edit": "Edit",
+    "archive": "Archive",
+    "restore": "Restore",
+    "delete": "Delete",
+    "close": "Close",
+    "cancel": "Cancel",
+    "attention_member_disabled": "{name} is turned off in this workspace. Turn it back on, or take it out of the squad.",
+    "attention_lead_removed": "The lead is no longer in the squad. Pick a new lead.",
+    "attention_connection_missing": "A tool this squad needs is disconnected. Reconnect it.",
+    "fix_action": "Fix this squad",
+    "no_access_hint": "You need access to every specialist in this squad. An Owner or Admin can give you access.",
+    "archived_hint": "This squad is archived. You can read it, but it cannot take new requests.",
+    "form": {
+      "create_title": "New squad",
+      "edit_title": "Edit squad",
+      "name": "Squad name",
+      "goal": "What is this squad for?",
+      "goal_hint": "One goal, in your own words. Every specialist in the squad works from it.",
+      "goal_counter": "{count} of {max}",
+      "members": "Specialists",
+      "members_hint": "Pick 2 to 5 specialists who should work together.",
+      "members_limit": "Pick between {min} and {max} specialists. You picked {count}.",
+      "lead": "Who leads?",
+      "lead_sino": "Sino",
+      "library": "Files and notes",
+      "library_hint": "After you save, add files for this squad in the Library: choose this squad under Who can use this.",
+      "template_note": "Started from {name}. Change anything you like.",
+      "create": "Create squad",
+      "save": "Save changes"
+    },
+    "confirm": {
+      "archive_title": "Archive {name}?",
+      "archive_body": "Its chats stay readable. The squad cannot take new requests until you restore it.",
+      "archive_action": "Archive squad",
+      "delete_title": "Delete {name}?",
+      "delete_body": "This removes the squad and all of its chats. It can't be undone.",
+      "delete_action": "Delete squad"
+    },
+    "toast": {
+      "created": "Squad created",
+      "saved": "Squad saved",
+      "archived": "Squad archived",
+      "restored": "Squad restored",
+      "deleted": "Squad deleted"
+    }
+  },
+  "squad_chat": {
+    "back": "All squads",
+    "lead_badge": "Lead",
+    "members_label": "Members of {name}",
+    "stage": "{name} · Squad",
+    "subtitle": "Squad chat · {count, plural, one {# specialist} other {# specialists}}",
+    "placeholder": "Ask {name}. Type @ to talk to one member directly",
+    "ceiling": "Up to {points} points for this turn",
+    "not_member": "{name} is not in this squad. Ask the whole squad, or pick one of its members.",
+    "memory_entry": "What this squad remembers",
+    "soon": "Soon",
+    "activity": "Activity",
+    "new_chat": "New chat",
+    "chats": "Chats",
+    "title_default": "Chat with {name}",
+    "loading": "Loading squad chat",
+    "messages_label": "Messages",
+    "working": "{name} is working on it",
+    "announce_replied": "{name} replied.",
+    "announce_stopped": "Reply stopped.",
+    "announce_handoff_done": "{name} finished their part.",
+    "handoff": {
+      "title": "{from} asked {to}: {task}",
+      "working": "Working",
+      "done": "Done",
+      "needs_review": "Needs your review",
+      "failed": "Could not finish",
+      "show": "Show result",
+      "hide": "Hide result",
+      "result_label": "Result from {name}",
+      "failed_note": "{name} could not finish this part. Sino did not write it for them.",
+      "contributors": "Answer put together from {names}",
+      "group": "At the same time as another request"
+    },
+    "limit": {
+      "title": "Stopped: this turn reached its limit",
+      "cap_delegations": "Sino had already asked as many specialists as one turn allows.",
+      "cap_tokens": "The work reached the most one turn can handle.",
+      "cap_time": "It took longer than one turn is allowed to take.",
+      "cap_credits": "It reached the most points one turn can use.",
+      "unfinished": "Not finished yet",
+      "next": "Send a follow-up to carry on with what is left."
+    },
+    "failure": {
+      "title": "{name} could not finish",
+      "body": "Sino tells you what is missing and does not write it for them. Try again, or ask {name} directly."
+    },
+    "activity_panel": {
+      "title": "Activity",
+      "turn_points": "{points} points",
+      "turn_ceiling": "Up to {ceiling} points",
+      "split": "Points by specialist",
+      "status_completed": "Finished",
+      "status_stopped": "Stopped at the limit",
+      "status_failed": "Did not finish",
+      "status_running": "Working",
+      "status_cancelled": "Stopped by you",
+      "direct": "Asked {name} directly",
+      "error": "We could not load the activity. Try again."
+    }
+  }
 }

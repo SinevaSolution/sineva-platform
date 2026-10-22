@@ -3,7 +3,7 @@ import {
   applyDocumentScopes,
   loadVisibleFolder,
   requireWorkspace,
-  resolveScopes,
+  resolveScopesChecked,
   type LibraryDeps,
 } from '@/server/application/library/library_support';
 import type { RequestContext } from '@/server/domain/context/request_context';
@@ -44,7 +44,7 @@ export class UpdateLibraryFolderUseCase {
       patch.parent_id = dto.parent_id;
     }
 
-    const nextScopes = dto.scopes ? resolveScopes(dto.scopes, context) : null;
+    const nextScopes = dto.scopes ? await resolveScopesChecked(this.deps, dto.scopes, context) : null;
     const accessChanged =
       nextScopes !== null && principalsForScopes(nextScopes).join('|') !== principalsForScopes(folder.scopes).join('|');
 

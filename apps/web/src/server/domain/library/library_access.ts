@@ -61,7 +61,11 @@ export function documentAccessFor(context: RequestContext): DocumentAccess {
   return { all: true };
 }
 
-/** A document is visible when any of its scopes is. Squad scopes need squad membership (M4), so a restricted member never sees them. */
+/**
+ * A document is visible when any of its scopes is. A member limited to some
+ * specialists cannot use every squad, so they never see squad-scoped files; an
+ * unrestricted member does (ADR-0043).
+ */
 export function canAccessScopes(access: DocumentAccess, scopes: ScopeRef[]): boolean {
   if (access.all) {
     return true;

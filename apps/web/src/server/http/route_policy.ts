@@ -202,6 +202,51 @@ export const MUTATING_ROUTE_POLICY: Record<string, MutatingRoutePolicy> = {
       'Message text must never enter the audit log (the run is attributable via conversation id and usage events from M1), and runs are metered by usage events, not plan limits, until the ledger exists.',
     entitlement: 'none',
   },
+  // Squads (ADR-0043, ADR-0044).
+  'POST /api/v1/workspaces/{workspace_id}/squads': {
+    effect: 'create',
+    audit: ['squad.created'],
+    // `squads.max` is also checked, with the count after the create.
+    entitlement: ENTITLEMENT_KEYS.SQUADS,
+  },
+  'POST /api/v1/workspaces/{workspace_id}/squad-templates/{slug}/use': {
+    effect: 'create',
+    audit: ['squad.created'],
+    entitlement: ENTITLEMENT_KEYS.SQUADS,
+  },
+  'PATCH /api/v1/workspaces/{workspace_id}/squads/{squad_id}': {
+    effect: 'change',
+    audit: ['squad.updated', 'squad.lead_changed', 'squad.archived'],
+  },
+  'PUT /api/v1/workspaces/{workspace_id}/squads/{squad_id}/members': {
+    effect: 'change',
+    audit: ['squad.member_added', 'squad.member_removed', 'squad.lead_changed'],
+  },
+  'PUT /api/v1/workspaces/{workspace_id}/squads/{squad_id}/access': {
+    effect: 'change',
+    audit: ['squad.access_overridden'],
+  },
+  'DELETE /api/v1/workspaces/{workspace_id}/squads/{squad_id}': {
+    effect: 'delete',
+    audit: ['squad.deleted'],
+    entitlement: 'none',
+    reason: 'Deleting a squad frees a place and spends nothing, so no plan limit applies.',
+  },
+  'POST /api/v1/workspaces/{workspace_id}/squads/{squad_id}/sessions': {
+    effect: 'create',
+    audit: ['conversation.created'],
+    entitlement: 'none',
+    reason:
+      'A chat session is not plan-gated; the squad itself was checked when it was created and turns are metered by usage, not plan limits, until the ledger exists.',
+  },
+  'POST /api/v1/workspaces/{workspace_id}/squads/{squad_id}/sessions/{session_id}/messages': {
+    effect: 'run',
+    audit: 'none',
+    // One reason covers both `none` values.
+    reason:
+      'Message text must never enter the audit log; a cap hit is audited as squad.turn.limit_reached by the run relay, and turns are metered by usage events, not plan limits, until the ledger exists.',
+    entitlement: 'none',
+  },
   'POST /api/v1/workspaces/{workspace_id}/runs/{run_id}/cancel': {
     effect: 'change',
     audit: ['chat.run.cancel_requested'],

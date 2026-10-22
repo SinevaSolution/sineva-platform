@@ -18,6 +18,7 @@ import { useTranslations } from '@/i18n/provider';
 import type { LibraryScopeView } from '@/shared/library_view';
 import type { ShellSpecialistView } from '@/shared/shell_view';
 import { accessSummary, type LibraryFileKind, type LibraryUiStatus } from './library_model';
+import { useLibrarySquads } from './library_squads';
 
 // Small display pieces the Library screen, drawer and rows share.
 
@@ -104,6 +105,7 @@ export function LibraryUsedBy({
   className?: string;
 }) {
   const t = useTranslations('library_ui');
+  const squadOptions = useLibrarySquads();
   const access = accessSummary(scopes);
   if (access.everyone) {
     return (
@@ -113,13 +115,14 @@ export function LibraryUsedBy({
       </span>
     );
   }
+  const squads = access.squads.map((id) => squadOptions.find((squad) => squad.id === id)?.name ?? null).filter((name): name is string => name !== null);
   const named = access.specialists.map((slug) => ({
     slug,
     name: specialists.find((s) => s.agent_slug === slug)?.display_name ?? slug,
   }));
   const shown = named.slice(0, MAX_FACES);
   const hidden = named.length - shown.length;
-  const label = named.map((entry) => entry.name).join(', ');
+  const label = [...named.map((entry) => entry.name), ...squads].join(', ');
   return (
     <SNTooltip label={label}>
       <span className={cn('inline-flex items-center', className)}>
@@ -140,6 +143,12 @@ export function LibraryUsedBy({
             </span>
           ) : null}
         </span>
+        {squads.length > 0 ? (
+          <span aria-hidden="true" className={cn('inline-flex items-center gap-1 text-xs font-medium text-text-secondary', named.length > 0 && 'ms-2')}>
+            <Users className="size-3.5" />
+            {squads.length === 1 ? squads[0] : t('used_by.squads_many', { count: squads.length })}
+          </span>
+        ) : null}
       </span>
     </SNTooltip>
   );

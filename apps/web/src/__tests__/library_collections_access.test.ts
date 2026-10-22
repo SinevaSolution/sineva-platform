@@ -30,27 +30,63 @@ const only = (slug: string): ScopeRef => ({ scope_type: 'specialist', scope_ref:
 const memberOf = (specialists: string[]) =>
   ctx({ role: 'member', user_id: OTHER_USER, specialist_scope: 'selected', allowed_specialists: specialists });
 
-describe('reserved scope types (ADR-0033)', () => {
-  it('knows workflow next to squad, but the API schemas accept neither', () => {
+const SQUAD_ID = '77777777-7777-4777-8777-777777777777';
+
+describe('squad and workflow scope types (ADR-0033, ADR-0043)', () => {
+  it('knows workflow next to squad; the API now accepts a squad scope and still rejects workflow', () => {
     expect(LIBRARY_SCOPE_TYPES).toEqual(['workspace', 'specialist', 'squad', 'workflow']);
-    for (const scope_type of ['squad', 'workflow']) {
-      const scopes = [{ scope_type, scope_ref: '77777777-7777-4777-8777-777777777777' }];
-      expect(CreateLibraryFolderSchema.safeParse({ name: 'x', scopes }).success).toBe(false);
-      expect(UpdateLibraryFolderSchema.safeParse({ scopes }).success).toBe(false);
-      expect(UpdateLibraryDocumentSchema.safeParse({ scopes }).success).toBe(false);
-      expect(
-        RequestLibraryUploadSchema.safeParse({
-          file_name: 'a.pdf',
-          content_type: 'application/pdf',
-          byte_size: 10,
-          sha256: 'a'.repeat(64),
-          scopes,
-        }).success,
-      ).toBe(false);
-    }
+    const squad = [{ scope_type: 'squad', scope_ref: SQUAD_ID }];
+    const workflow = [{ scope_type: 'workflow', scope_ref: SQUAD_ID }];
+    expect(CreateLibraryFolderSchema.safeParse({ name: 'x', scopes: squad }).success).toBe(true);
+    expect(UpdateLibraryFolderSchema.safeParse({ scopes: squad }).success).toBe(true);
+    expect(UpdateLibraryDocumentSchema.safeParse({ scopes: squad }).success).toBe(true);
+    // A squad is addressed by id, never by a free word.
+    expect(CreateLibraryFolderSchema.safeParse({ name: 'x', scopes: [{ scope_type: 'squad', scope_ref: 'launch' }] }).success).toBe(false);
+    expect(CreateLibraryFolderSchema.safeParse({ name: 'x', scopes: workflow }).success).toBe(false);
+    expect(UpdateLibraryDocumentSchema.safeParse({ scopes: workflow }).success).toBe(false);
+    const upload = { file_name: 'a.pdf', content_type: 'application/pdf', byte_size: 10, sha256: 'a'.repeat(64) };
+    expect(RequestLibraryUploadSchema.safeParse({ ...upload, scopes: squad }).success).toBe(true);
+    expect(RequestLibraryUploadSchema.safeParse({ ...upload, scopes: workflow }).success).toBe(false);
   });
 
-  it('writes the reserved principals for them, and never sends them in a retrieval scope yet', () => {
+  it('puts a document in a squad scope when the squad is an active squad of the workspace', async () => {
+    const h = buildHarness();
+    h.deps.squads = { existingActiveIds: async (_ws: string, ids: string[]) => ids.filter((id) => id === SQUAD_ID) };
+    const folder = await new CreateLibraryFolderUseCase(h.deps).execute(
+      { name: 'Back-office files', scopes: [{ scope_type: 'squad', scope_ref: SQUAD_ID }] },
+      ctx(),
+    );
+    expect(folder.scopes).toEqual([{ scope_type: 'squad', scope_ref: SQUAD_ID }]);
+    expect(principalsForScopes(folder.scopes)).toEqual([`squad:${SQUAD_ID}`]);
+  });
+
+  it('rejects a squad that is unknown, archived or from another workspace with the same 422', async () => {
+    const h = buildHarness();
+    h.deps.squads = { existingActiveIds: async () => [] };
+    await expect(
+      new CreateLibraryFolderUseCase(h.deps).execute({ name: 'x', scopes: [{ scope_type: 'squad', scope_ref: SQUAD_ID }] }, ctx()),
+    ).rejects.toMatchObject({ details: [expect.objectContaining({ code: 'unknown_squad' })] });
+  });
+
+  it('rejects a squad scope when squads are not wired at all, instead of storing a dangling principal', async () => {
+    const h = buildHarness();
+    await expect(
+      new CreateLibraryFolderUseCase(h.deps).execute({ name: 'x', scopes: [{ scope_type: 'squad', scope_ref: SQUAD_ID }] }, ctx()),
+    ).rejects.toMatchObject({ details: [expect.objectContaining({ code: 'unknown_squad' })] });
+  });
+
+  it('keeps squad scopes away from a member limited to some specialists, as target and as reader', async () => {
+    const h = buildHarness();
+    h.deps.squads = { existingActiveIds: async (_ws: string, ids: string[]) => ids };
+    await expect(
+      new CreateLibraryFolderUseCase(h.deps).execute(
+        { name: 'x', scopes: [{ scope_type: 'squad', scope_ref: SQUAD_ID }] },
+        memberOf(['sinofinance']),
+      ),
+    ).rejects.toBeInstanceOf(ForbiddenError);
+  });
+
+  it('writes the principals for them, and never sends them in a Library retrieval test scope (squad chat gets them from the signed context)', () => {
     expect(
       principalsForScopes([
         { scope_type: 'squad', scope_ref: 's1' },

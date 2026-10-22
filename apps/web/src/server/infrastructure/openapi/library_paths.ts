@@ -79,6 +79,12 @@ const scopeInput = {
       required: ['scope_type', 'scope_ref'],
       properties: { scope_type: { const: 'specialist' }, scope_ref: { type: 'string', example: 'sinohelp' } },
     },
+    {
+      type: 'object',
+      additionalProperties: false,
+      required: ['scope_type', 'scope_ref'],
+      properties: { scope_type: { const: 'squad' }, scope_ref: { type: 'string', format: 'uuid', description: 'An active squad of the workspace (422 unknown_squad otherwise)' } },
+    },
   ],
 };
 
@@ -223,7 +229,7 @@ export function libraryOpenApiPaths(): Record<string, Json> {
       post: operation({
         summary: 'Create a collection (a folder: depth at most 3, unique name per parent)',
         description:
-          'Omitting `scopes` takes the parent collection\'s access, or Everyone at the top level. Squad and workflow scopes are reserved and answer 422 until those features ship.',
+          'Omitting `scopes` takes the parent collection\'s access, or Everyone at the top level. A squad scope names an active squad by id; the workflow scope is reserved and answers 422 until that feature ships.',
         operationId: 'create_library_folder',
         permission: 'library.manage',
         requestSchema: {
@@ -354,7 +360,7 @@ export const LIBRARY_COMPONENT_SCHEMAS: Record<string, Json> = {
   LibraryScope: {
     type: 'object',
     properties: {
-      scope_type: { type: 'string', enum: ['workspace', 'specialist', 'squad', 'workflow'], description: 'squad and workflow are reserved' },
+      scope_type: { type: 'string', enum: ['workspace', 'specialist', 'squad', 'workflow'], description: 'squad is live (ADR-0043); workflow is reserved' },
       scope_ref: { ...nullableString, description: 'Agent slug or squad id; null for the workspace scope' },
     },
   },

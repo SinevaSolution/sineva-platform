@@ -17,10 +17,11 @@ import {
 // Public request schemas of the Library routes. Identity and workspace come
 // from the session and the URL; no schema here names them.
 
-// Squad (M4) and workflow (M3) scopes are reserved and deliberately not accepted here: the API answers 422 until those features ship (ADR-0033).
+// A squad scope is live (ADR-0043): `scope_ref` is the squad id, and the use case checks it is an active squad of the workspace. The workflow scope (M3) is still reserved and answers 422 (ADR-0033).
 export const LibraryScopeInputSchema = z.discriminatedUnion('scope_type', [
   z.object({ scope_type: z.literal('workspace') }).strict(),
   z.object({ scope_type: z.literal('specialist'), scope_ref: z.string().trim().min(1).max(32) }).strict(),
+  z.object({ scope_type: z.literal('squad'), scope_ref: z.string().uuid() }).strict(),
 ]);
 export type LibraryScopeInput = z.infer<typeof LibraryScopeInputSchema>;
 

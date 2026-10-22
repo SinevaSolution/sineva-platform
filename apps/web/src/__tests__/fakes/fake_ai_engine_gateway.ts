@@ -8,6 +8,7 @@ import type {
   ResumeRunOptions,
   ResumeRunResult,
   RunEventsResult,
+  SquadStreamCallOptions,
   StreamCallOptions,
 } from '@/server/domain/repositories/ai_engine_gateway';
 import type { ChatTurnResultV2 } from '@/server/application/dtos/chat_v2_dto';
@@ -24,6 +25,9 @@ export class FakeAiEngineGateway implements AiEngineGateway {
   public readonly requests: AiEngineChatRequest[] = [];
   public readonly v2Requests: ChatTurnCallOptions[] = [];
   public readonly streamRequests: StreamCallOptions[] = [];
+  public readonly squadStreamRequests: SquadStreamCallOptions[] = [];
+  /** Body of the next squad stream; defaults to a one-token squad turn. */
+  public squadStreamFactory: ((options: SquadStreamCallOptions) => Promise<ReadableStream<Uint8Array>>) | null = null;
   public readonly cancelRequests: Array<{ runId: string; contextToken?: string }> = [];
   public readonly replayRequests: Array<{ runId: string; afterSeq?: number }> = [];
   public failure: Error | null = null;
@@ -114,6 +118,23 @@ export class FakeAiEngineGateway implements AiEngineGateway {
           encoder.encode(`id: 1\nevent: token\ndata: {"token":"fake stream reply"}\n\n`),
         );
         controller.enqueue(encoder.encode(`id: 2\nevent: done\ndata: ${JSON.stringify(done)}\n\n`));
+        controller.close();
+      },
+    });
+  }
+
+  async squadChatStream(options: SquadStreamCallOptions): Promise<ReadableStream<Uint8Array>> {
+    this.squadStreamRequests.push(options);
+    if (this.failure) {
+      throw this.failure;
+    }
+    if (this.squadStreamFactory) {
+      return this.squadStreamFactory(options);
+    }
+    const encoder = new TextEncoder();
+    return new ReadableStream({
+      start(controller) {
+        controller.enqueue(encoder.encode(`id: 1\nevent: token\ndata: {"token":"squad reply"}\n\n`));
         controller.close();
       },
     });

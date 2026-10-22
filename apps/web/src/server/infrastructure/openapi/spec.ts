@@ -3,6 +3,7 @@ import { businessProfilePaths } from './business_profile_paths';
 import { membersPaths } from './members_paths';
 import { getInboxPaths } from './inbox_paths';
 import { LIBRARY_COMPONENT_SCHEMAS, libraryOpenApiPaths } from './library_paths';
+import { SQUAD_COMPONENT_SCHEMAS, squadOpenApiPaths } from './squad_paths';
 
 // Response object of the standard envelope, for the profile family below.
 function envelopeResponse(description: string) {
@@ -94,6 +95,11 @@ export function getOpenApiSpec(): Record<string, unknown> {
           'Inbox items, approvals of drafts and input requests (FR-INBOX-01 to FR-INBOX-15)',
       },
       {
+        name: 'Squads',
+        description:
+          'Squads: teams of 2 to 5 specialists with a goal, templates, access, chat sessions and handoffs (ADR-0043, ADR-0044)',
+      },
+      {
         name: 'Library',
         description:
           'Sino Library: documents, folders, scopes, uploads, quotas and retrieval tests (ADR-0030)',
@@ -107,6 +113,7 @@ export function getOpenApiSpec(): Record<string, unknown> {
       ...membersPaths(),
       ...getInboxPaths(),
       ...libraryOpenApiPaths(),
+      ...squadOpenApiPaths(),
       ...businessProfilePaths(),
       '/api/internal/v1/keys': {
         get: {
@@ -1830,6 +1837,7 @@ export function getOpenApiSpec(): Record<string, unknown> {
     components: {
       schemas: {
         ...LIBRARY_COMPONENT_SCHEMAS,
+        ...SQUAD_COMPONENT_SCHEMAS,
         StandardEnvelope: {
           type: 'object',
           required: ['success', 'status', 'message', 'data', 'meta', 'errors'],

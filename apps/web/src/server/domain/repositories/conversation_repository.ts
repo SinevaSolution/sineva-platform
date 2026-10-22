@@ -9,6 +9,7 @@ export interface CreateConversationInput {
   user_id: string;
   kind: ConversationKind;
   agent_slug?: string | null;
+  squad_id?: string | null;
   title?: string | null;
   title_source?: ConversationTitleSource | null;
   origin_message_id?: string | null;
@@ -20,6 +21,7 @@ export interface ListConversationsFilter {
   user_id: string;
   kind?: ConversationKind;
   agent_slug?: string;
+  squad_id?: string;
   cursor?: string;
   limit?: number;
 }

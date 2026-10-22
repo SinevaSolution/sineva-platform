@@ -7,7 +7,11 @@ import type {
   MessageCardRepository,
   NewMessageCard,
 } from '@/server/domain/repositories/message_card_repository';
-import type { ConversationRepository } from '@/server/domain/repositories/conversation_repository';
+import type {
+  ConversationRepository,
+  CreateConversationInput,
+  ListConversationsFilter,
+} from '@/server/domain/repositories/conversation_repository';
 import type {
   CreateMessageInput,
   MessageRepository,
@@ -25,10 +29,10 @@ export class InMemoryConversations implements ConversationRepository {
   async findById(id: string): Promise<ConversationEntity | null> {
     return this.rows.get(id) ?? null;
   }
-  async create(): Promise<ConversationEntity> {
+  async create(_input?: CreateConversationInput): Promise<ConversationEntity> {
     throw new Error('not used by the relay tests');
   }
-  async list(): Promise<{ items: ConversationEntity[]; next_cursor: string | null }> {
+  async list(_filter?: ListConversationsFilter): Promise<{ items: ConversationEntity[]; next_cursor: string | null }> {
     throw new Error('not used by the relay tests');
   }
   async updateLastMessageAt(): Promise<void> {

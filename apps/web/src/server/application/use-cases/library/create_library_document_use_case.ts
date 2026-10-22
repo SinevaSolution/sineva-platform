@@ -7,7 +7,7 @@ import {
   loadVisibleFolder,
   monthStart,
   requireWorkspace,
-  resolveScopes,
+  resolveScopesChecked,
   startIngest,
   type LibraryDeps,
 } from '@/server/application/library/library_support';
@@ -64,7 +64,7 @@ export class CreateLibraryDocumentUseCase {
     }
     // Nothing chosen and no Room default: follow the collection (ADR-0033).
     const inherited = !dto.scopes?.length && defaults.length === 0;
-    const scopes = inherited ? inheritedScopes(folder, context) : resolveScopes(dto.scopes, context, defaults);
+    const scopes = inherited ? inheritedScopes(folder, context) : await resolveScopesChecked(this.deps, dto.scopes, context, defaults);
 
     const bytes = new TextEncoder().encode(dto.content);
     if (bytes.length > LIBRARY_MAX_BYTES) {

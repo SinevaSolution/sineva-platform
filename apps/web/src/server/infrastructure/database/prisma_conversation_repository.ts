@@ -18,6 +18,7 @@ function mapConversation(row: {
   user_id: string;
   kind: string;
   agent_slug: string | null;
+  squad_id: string | null;
   title: string | null;
   title_source: string | null;
   pinned_at: Date | null;
@@ -34,6 +35,7 @@ function mapConversation(row: {
     user_id: row.user_id,
     kind: row.kind as ConversationKind,
     agent_slug: row.agent_slug,
+    squad_id: row.squad_id,
     title: row.title,
     title_source: row.title_source as ConversationTitleSource | null,
     pinned_at: row.pinned_at?.toISOString() ?? null,
@@ -63,6 +65,7 @@ export class PrismaConversationRepository implements ConversationRepository {
         user_id: input.user_id,
         kind: input.kind,
         agent_slug: input.agent_slug ?? null,
+        squad_id: input.squad_id ?? null,
         title: input.title ?? null,
         title_source: input.title_source ?? null,
         origin_message_id: input.origin_message_id ?? null,
@@ -80,18 +83,21 @@ export class PrismaConversationRepository implements ConversationRepository {
     const whereClause: {
       workspace_id: string;
       user_id: string;
-      kind?: string;
+      kind?: string | { not: string };
       agent_slug?: string;
+      squad_id?: string;
     } = {
       workspace_id: filter.workspace_id,
       user_id: filter.user_id,
     };
 
-    if (filter.kind) {
-      whereClause.kind = filter.kind;
-    }
+    // Squad chats have their own screen (ADR-0043); the Hub and Room lists never carry them.
+    whereClause.kind = filter.kind ?? { not: 'squad' };
     if (filter.agent_slug) {
       whereClause.agent_slug = filter.agent_slug;
+    }
+    if (filter.squad_id) {
+      whereClause.squad_id = filter.squad_id;
     }
 
     const rows = await this.prisma.conversation.findMany({

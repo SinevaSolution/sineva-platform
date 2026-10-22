@@ -3,7 +3,7 @@ import {
   inheritedScopes,
   loadVisibleFolder,
   requireWorkspace,
-  resolveScopes,
+  resolveScopesChecked,
   type LibraryDeps,
 } from '@/server/application/library/library_support';
 import type { RequestContext } from '@/server/domain/context/request_context';
@@ -12,7 +12,7 @@ import { libraryValidation } from '@/server/domain/library/library_errors';
 import type { LibraryFolderEntity } from '@/server/domain/library/library_entities';
 
 export class CreateLibraryFolderUseCase {
-  constructor(private readonly deps: Pick<LibraryDeps, 'folders'>) {}
+  constructor(private readonly deps: Pick<LibraryDeps, 'folders' | 'squads'>) {}
 
   async execute(dto: CreateLibraryFolderDto, context: RequestContext): Promise<LibraryFolderEntity> {
     const { folders } = this.deps;
@@ -28,7 +28,7 @@ export class CreateLibraryFolderUseCase {
     // which is the one place that can decide it atomically.
     // Access is the parent's unless chosen, Everyone at the top level (ADR-0033).
     // Sub-collections are independent afterwards: nothing here keeps them in step.
-    const scopes = dto.scopes?.length ? resolveScopes(dto.scopes, context) : inheritedScopes(parent, context);
+    const scopes = dto.scopes?.length ? await resolveScopesChecked(this.deps, dto.scopes, context) : inheritedScopes(parent, context);
     return folders.create({
       workspace_id: workspaceId,
       parent_id: parentId,

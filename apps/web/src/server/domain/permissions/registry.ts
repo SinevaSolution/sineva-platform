@@ -50,7 +50,14 @@ export type PermissionKey =
   | 'inbox.view'
   | 'approval.decide_own'
   | 'approval.decide_any'
-  | 'inbox.answer';
+  | 'inbox.answer'
+  | 'squad.read'
+  | 'squad.create'
+  | 'squad.edit'
+  | 'squad.chat'
+  | 'squad.memory.edit'
+  | 'squad.access.override'
+  | 'squad.delete';
 
 export type PermissionAccess = 'yes' | 'no' | 'limited';
 
@@ -69,7 +76,8 @@ export interface PermissionDefinition {
     | 'business_profile'
     | 'onboarding'
     | 'model'
-    | 'inbox';
+    | 'inbox'
+    | 'squad';
   description: string;
   roles: Record<UserRole, PermissionAccess>;
 }
@@ -127,6 +135,15 @@ export const C2_PERMISSION_MATRIX_FIXTURE: Record<
   'approval.decide_own': { owner: 'yes', admin: 'yes', member: 'yes', viewer: 'no' },
   'approval.decide_any': { owner: 'yes', admin: 'yes', member: 'no', viewer: 'no' },
   'inbox.answer': { owner: 'yes', admin: 'yes', member: 'yes', viewer: 'no' },
+  // Squads (ADR-0043). A Member edits only squads they created: `limited`, with
+  // the policy below and the use case both checking the creator.
+  'squad.read': { owner: 'yes', admin: 'yes', member: 'yes', viewer: 'yes' },
+  'squad.create': { owner: 'yes', admin: 'yes', member: 'yes', viewer: 'no' },
+  'squad.edit': { owner: 'yes', admin: 'yes', member: 'limited', viewer: 'no' },
+  'squad.chat': { owner: 'yes', admin: 'yes', member: 'yes', viewer: 'no' },
+  'squad.memory.edit': { owner: 'yes', admin: 'yes', member: 'yes', viewer: 'no' },
+  'squad.access.override': { owner: 'yes', admin: 'yes', member: 'no', viewer: 'no' },
+  'squad.delete': { owner: 'yes', admin: 'yes', member: 'no', viewer: 'no' },
 };
 
 export const CANONICAL_PERMISSION_KEYS = Object.keys(
@@ -162,6 +179,10 @@ export const PERMISSION_POLICIES: Partial<Record<PermissionKey, PermissionPolicy
     targetRole === undefined
       ? true
       : canRemoveMember(actorRole, targetRole, actorUserId === targetUserId),
+  // Limited to the squad's creator; without both ids the guard is a coarse gate
+  // and the use case repeats the check once it has loaded the squad.
+  'squad.edit': ({ actorRole, actorUserId, targetUserId }) =>
+    actorRole !== 'member' || targetUserId === undefined ? true : actorUserId === targetUserId,
   'specialist.use': ({ allowedSpecialists, specialistSlug }) => {
     // If scoped to selected specialists, check membership
     if (allowedSpecialists && specialistSlug) {

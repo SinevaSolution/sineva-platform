@@ -1,4 +1,4 @@
-export type ConversationKind = 'hub' | 'room';
+export type ConversationKind = 'hub' | 'room' | 'squad';
 
 export type ConversationTitleSource = 'user' | 'auto' | 'first_message';
 
@@ -8,6 +8,8 @@ export interface ConversationEntity {
   user_id: string;
   kind: ConversationKind;
   agent_slug: string | null;
+  /** Set only when `kind` is `squad` (ADR-0043). */
+  squad_id?: string | null;
   title: string | null;
   title_source: ConversationTitleSource | null;
   pinned_at: string | null;

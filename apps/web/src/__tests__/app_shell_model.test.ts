@@ -42,7 +42,7 @@ describe('sidebar navigation model', () => {
     ]) {
       const item = items.find((i) => i.id === id);
       expect(item?.href).toBe(`/w/kopi-senja/${FEATURES[id as FeatureId].segment}`);
-      expect(item?.soon).toBe(id !== 'inbox' && id !== 'library');
+      expect(item?.soon).toBe(id !== 'inbox' && id !== 'library' && id !== 'squads');
     }
     expect(items.find((i) => i.id === 'home')?.soon).toBe(false);
   });

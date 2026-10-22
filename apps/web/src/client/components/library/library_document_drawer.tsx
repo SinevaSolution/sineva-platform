@@ -10,9 +10,11 @@ import type { LibraryDocumentView } from '@/shared/library_view';
 import type { ShellSpecialistView } from '@/shared/shell_view';
 import { LibraryAccessPicker } from './library_access_picker';
 import {
+  accessKey,
   accessSummary,
   fileKind,
   flattenCollectionTree,
+  sameAccess,
   scopeInputs,
   uiStatus,
   type AccessChoice,
@@ -96,7 +98,7 @@ export function LibraryDocumentDrawer(props: LibraryDocumentDrawerProps) {
   // Compared by value, not identity: the page refreshes while files are being
   // read, which hands over new arrays that must not wipe an edit in progress.
   const savedAccess = accessSummary(document.scopes);
-  const savedKey = `${savedAccess.everyone}:${savedAccess.specialists.slice().sort().join(',')}`;
+  const savedKey = accessKey(savedAccess);
   const [seen, setSeen] = React.useState({ title: document.title, access: savedKey });
   if (seen.title !== document.title || seen.access !== savedKey) {
     setSeen({ title: document.title, access: savedKey });
@@ -106,8 +108,7 @@ export function LibraryDocumentDrawer(props: LibraryDocumentDrawerProps) {
 
   const titleChanged = title.trim() !== '' && title.trim() !== document.title;
   const saved = savedAccess;
-  const accessChanged =
-    access.everyone !== saved.everyone || access.specialists.slice().sort().join() !== saved.specialists.slice().sort().join();
+  const accessChanged = !sameAccess(access, saved);
   const scopes = scopeInputs(access);
 
   const reason = document.status_detail?.reason_code as keyof typeof REASONS | undefined;
@@ -121,7 +122,7 @@ export function LibraryDocumentDrawer(props: LibraryDocumentDrawerProps) {
   const specialistNames = (access.everyone ? [] : access.specialists).map(
     (slug) => specialists.find((s) => s.agent_slug === slug)?.display_name ?? slug,
   );
-  const followed = collection ? accessSummary(collection.scopes) : { everyone: true, specialists: [] as string[] };
+  const followed = collection ? accessSummary(collection.scopes) : { everyone: true, specialists: [] as string[], squads: [] as string[] };
 
   return (
     <SNDrawer

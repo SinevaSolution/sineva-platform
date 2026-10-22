@@ -1,0 +1,10 @@
+{
+  "user_message": "Tutup buku bulan ini: cek arus kas dan siapa saja yang masuk payroll.",
+  "session_id": "8f3a1c2d-6b4e-4d7a-9c15-2e0b7a41f9d3",
+  "client_message_id": "a1b2c3d4-e5f6-4a8b-9c0d-1e2f3a4b5c6d",
+  "mentions": [],
+  "attachments": [],
+  "use_library": false,
+  "invoke_skill": null,
+  "allow_degraded": false
+}

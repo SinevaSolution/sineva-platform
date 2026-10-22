@@ -7,6 +7,7 @@ import {
   fileKind,
   fileKindFromName,
   flattenCollectionTree,
+  sameAccess,
   scopeInputs,
   uiStatus,
   uploadedByName,
@@ -98,34 +99,46 @@ describe('who can use a document or collection', () => {
   const only = (slug: string): LibraryScopeView => ({ scope_type: 'specialist', scope_ref: slug });
 
   it('summarises Everyone, chosen specialists, or both (Everyone wins)', () => {
-    expect(accessSummary([everyone])).toEqual({ everyone: true, specialists: [] });
+    expect(accessSummary([everyone])).toEqual({ everyone: true, specialists: [], squads: [] });
     expect(accessSummary([only('sinosales'), only('sinohelp')])).toEqual({
       everyone: false,
       specialists: ['sinosales', 'sinohelp'],
+      squads: [],
     });
-    expect(accessSummary([everyone, only('sinosales')])).toEqual({ everyone: true, specialists: [] });
+    expect(accessSummary([everyone, only('sinosales')])).toEqual({ everyone: true, specialists: [], squads: [] });
   });
 
-  it('ignores reserved scope types and a specialist without a reference', () => {
+  it('keeps squads, ignores the reserved workflow scope and a scope without a reference', () => {
     expect(
       accessSummary([
         { scope_type: 'squad', scope_ref: 's1' },
+        { scope_type: 'squad', scope_ref: null },
         { scope_type: 'workflow', scope_ref: 'w1' },
         { scope_type: 'specialist', scope_ref: null },
       ]),
-    ).toEqual({ everyone: false, specialists: [] });
+    ).toEqual({ everyone: false, specialists: [], squads: ['s1'] });
   });
 
-  it('turns a choice back into request scopes, only ever workspace or specialist', () => {
-    expect(scopeInputs({ everyone: true, specialists: ['sinosales'] })).toEqual([{ scope_type: 'workspace' }]);
-    expect(scopeInputs({ everyone: false, specialists: ['sinosales', 'sinohelp'] })).toEqual([
+  it('turns a choice back into request scopes: workspace, specialists and squads', () => {
+    expect(scopeInputs({ everyone: true, specialists: ['sinosales'], squads: ['s1'] })).toEqual([{ scope_type: 'workspace' }]);
+    expect(scopeInputs({ everyone: false, specialists: ['sinosales', 'sinohelp'], squads: [] })).toEqual([
       { scope_type: 'specialist', scope_ref: 'sinosales' },
       { scope_type: 'specialist', scope_ref: 'sinohelp' },
+    ]);
+    expect(scopeInputs({ everyone: false, specialists: ['sinosales'], squads: ['s1'] })).toEqual([
+      { scope_type: 'specialist', scope_ref: 'sinosales' },
+      { scope_type: 'squad', scope_ref: 's1' },
     ]);
   });
 
   it('refuses to produce an empty scope list: nothing chosen means nobody could use it', () => {
-    expect(scopeInputs({ everyone: false, specialists: [] })).toBeNull();
+    expect(scopeInputs({ everyone: false, specialists: [], squads: [] })).toBeNull();
+  });
+
+  it('compares access by value, in any order', () => {
+    const a = { everyone: false, specialists: ['b', 'a'], squads: ['y', 'x'] };
+    expect(sameAccess(a, { everyone: false, specialists: ['a', 'b'], squads: ['x', 'y'] })).toBe(true);
+    expect(sameAccess(a, { ...a, squads: ['x'] })).toBe(false);
   });
 });
 

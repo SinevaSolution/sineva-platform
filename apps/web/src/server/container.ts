@@ -184,6 +184,28 @@ import { SeaweedObjectStore } from './infrastructure/storage/seaweed_object_stor
 import { SharpAvatarImageProcessor } from './infrastructure/media/sharp_avatar_image_processor';
 import { AllowlistedRemoteImageFetcher } from './infrastructure/media/allowlisted_remote_image_fetcher';
 import type { LibraryDeps } from './application/library/library_support';
+import type { MemberToolPolicy, SquadRepository, SquadSpecialistDirectory, SquadTurnRepository } from './domain/squads/squad_ports';
+import { PrismaSquadRepository } from './infrastructure/database/prisma_squad_repository';
+import { PrismaSquadTurnRepository } from './infrastructure/database/prisma_squad_turn_repository';
+import { NoConnectionsMemberToolPolicy } from './infrastructure/squads/no_connections_member_tool_policy';
+import { RosterSquadSpecialistDirectory } from './application/squads/roster_squad_directory';
+import { SquadTurnService } from './application/squads/squad_turn_service';
+import type { SquadChatDeps } from './application/squads/squad_chat_support';
+import type { SquadDeps } from './application/squads/squad_support';
+import { CreateSquadUseCase } from './application/use-cases/squads/create_squad_use_case';
+import { UpdateSquadUseCase } from './application/use-cases/squads/update_squad_use_case';
+import { SetSquadMembersUseCase } from './application/use-cases/squads/set_squad_members_use_case';
+import { DeleteSquadUseCase } from './application/use-cases/squads/delete_squad_use_case';
+import { GetSquadUseCase } from './application/use-cases/squads/get_squad_use_case';
+import { ListSquadsUseCase } from './application/use-cases/squads/list_squads_use_case';
+import { SetSquadAccessUseCase } from './application/use-cases/squads/set_squad_access_use_case';
+import { ListSquadTemplatesUseCase } from './application/use-cases/squads/list_squad_templates_use_case';
+import { UseSquadTemplateUseCase } from './application/use-cases/squads/use_squad_template_use_case';
+import { CreateSquadSessionUseCase } from './application/use-cases/squads/create_squad_session_use_case';
+import { ListSquadSessionsUseCase } from './application/use-cases/squads/list_squad_sessions_use_case';
+import { GetSquadSessionUseCase } from './application/use-cases/squads/get_squad_session_use_case';
+import { CreateSquadMessageUseCase } from './application/use-cases/squads/create_squad_message_use_case';
+import { ListSquadActivityUseCase } from './application/use-cases/squads/list_squad_activity_use_case';
 import type { KnowledgeIngestGateway } from './domain/library/knowledge_ingest_gateway';
 import type {
   LibraryDocumentRepository,
@@ -565,6 +587,7 @@ export const getStreamRunUseCase = memoize(
       guard: new CardFrameGuard(getCardValidator(), new LoggerCardRejectionLog()),
       metrics: new LogRunMetricsRecorder(),
       log: new LoggerRunRelayLog(),
+      squads: getSquadTurnService(),
     }),
 );
 
@@ -919,6 +942,7 @@ const getLibraryDeps = memoize<LibraryDeps>(() => ({
   entitlements: getEntitlementService(),
   transactions: getTransactionRunner(),
   log: new LoggerLibraryLog(),
+  squads: getSquadRepository(),
   // Correlation id sent to sineva-ai, not a database id.
   newJobId: () => crypto.randomUUID(),
   now: () => new Date(),
@@ -1086,3 +1110,61 @@ export const getDismissFirstTaskUseCase = memoize(
 export const getRecordChecklistEventUseCase = memoize(
   () => new RecordChecklistEventUseCase({ checklist: getChecklistRepository() }),
 );
+
+// ---------------------------------------------------------------------------
+// Squads (ADR-0043, ADR-0044)
+// ---------------------------------------------------------------------------
+
+export const getSquadRepository = memoize<SquadRepository>(() => new PrismaSquadRepository(getPrismaClient()));
+const getSquadTurnRepository = memoize<SquadTurnRepository>(() => new PrismaSquadTurnRepository(getPrismaClient()));
+const getSquadSpecialistDirectory = memoize<SquadSpecialistDirectory>(
+  () => new RosterSquadSpecialistDirectory(getListWorkspaceSpecialistsUseCase()),
+);
+// The connections module is not on this base; see the adapter for the seam.
+const getMemberToolPolicy = memoize<MemberToolPolicy>(() => new NoConnectionsMemberToolPolicy());
+
+const getSquadDeps = memoize<SquadDeps>(() => ({
+  squads: getSquadRepository(),
+  directory: getSquadSpecialistDirectory(),
+  audit: getAuditLogger(),
+  entitlements: getEntitlementService(),
+  transactions: getTransactionRunner(),
+  members: getWorkspaceMemberRepository(),
+}));
+
+const getSquadChatDeps = memoize<SquadChatDeps>(() => ({
+  squads: getSquadRepository(),
+  directory: getSquadSpecialistDirectory(),
+  audit: getAuditLogger(),
+  transactions: getTransactionRunner(),
+  conversations: getConversationRepository(),
+  messages: getMessageRepository(),
+  turns: getSquadTurnRepository(),
+  listMessages: getListMessagesUseCase(),
+}));
+
+export const getSquadTurnService = memoize(
+  () =>
+    new SquadTurnService({
+      squads: getSquadRepository(),
+      turns: getSquadTurnRepository(),
+      tools: getMemberToolPolicy(),
+      audit: getAuditLogger(),
+      log: new LoggerRunRelayLog(),
+    }),
+);
+
+export const getListSquadsUseCase = memoize(() => new ListSquadsUseCase(getSquadDeps()));
+export const getGetSquadUseCase = memoize(() => new GetSquadUseCase(getSquadDeps()));
+export const getCreateSquadUseCase = memoize(() => new CreateSquadUseCase(getSquadDeps()));
+export const getUpdateSquadUseCase = memoize(() => new UpdateSquadUseCase(getSquadDeps()));
+export const getSetSquadMembersUseCase = memoize(() => new SetSquadMembersUseCase(getSquadDeps()));
+export const getDeleteSquadUseCase = memoize(() => new DeleteSquadUseCase(getSquadDeps()));
+export const getSetSquadAccessUseCase = memoize(() => new SetSquadAccessUseCase(getSquadDeps()));
+export const getListSquadTemplatesUseCase = memoize(() => new ListSquadTemplatesUseCase());
+export const getUseSquadTemplateUseCase = memoize(() => new UseSquadTemplateUseCase(getCreateSquadUseCase()));
+export const getCreateSquadSessionUseCase = memoize(() => new CreateSquadSessionUseCase(getSquadChatDeps()));
+export const getListSquadSessionsUseCase = memoize(() => new ListSquadSessionsUseCase(getSquadChatDeps()));
+export const getGetSquadSessionUseCase = memoize(() => new GetSquadSessionUseCase(getSquadChatDeps()));
+export const getCreateSquadMessageUseCase = memoize(() => new CreateSquadMessageUseCase(getSquadChatDeps()));
+export const getListSquadActivityUseCase = memoize(() => new ListSquadActivityUseCase(getSquadChatDeps()));

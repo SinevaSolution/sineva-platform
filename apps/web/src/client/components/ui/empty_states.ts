@@ -1,4 +1,5 @@
 import {
+  Activity,
   Lightbulb,
   ListChecks,
   KeyRound,
@@ -130,6 +131,31 @@ export const EMPTY_STATES = {
     size: 'sm',
     title: 'sign_in_methods_none.title',
     description: 'sign_in_methods_none.description',
+  },
+  squads_list: {
+    pose: 'thumbs-up',
+    size: 'lg',
+    title: 'squads_list.title',
+    description: 'squads_list.description',
+    action: 'squads_list.action',
+  },
+  squad_thread_empty: {
+    pose: 'wave',
+    size: 'md',
+    title: 'squad_thread_empty.title',
+    description: 'squad_thread_empty.description',
+  },
+  squad_sessions_empty: {
+    icon: MessagesSquare,
+    size: 'sm',
+    title: 'squad_sessions_empty.title',
+    description: 'squad_sessions_empty.description',
+  },
+  squad_activity_empty: {
+    icon: Activity,
+    size: 'sm',
+    title: 'squad_activity_empty.title',
+    description: 'squad_activity_empty.description',
   },
   coming_soon: {
     pose: 'thumbs-up',

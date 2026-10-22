@@ -22,6 +22,15 @@ export interface StreamCallOptions {
   traceparent?: string;
 }
 
+export interface SquadStreamCallOptions {
+  squadId: string;
+  request: ChatTurnRequestV2;
+  /** Signed context carrying the `squad` claim (ADR-0044). */
+  contextToken: string;
+  requestId?: string;
+  traceparent?: string;
+}
+
 export interface RunEventsResult {
   run_id: string;
   events: ParsedSseMessage[];
@@ -132,6 +141,7 @@ export interface AiEngineGateway {
   // Contract v2 methods
   chatTurn(options: ChatTurnCallOptions): Promise<ChatTurnResultV2 & { latency_ms: number }>;
   chatStream(options: StreamCallOptions): Promise<ReadableStream<Uint8Array>>;
+  squadChatStream(options: SquadStreamCallOptions): Promise<ReadableStream<Uint8Array>>;
   listAgents(options: {
     contextToken?: string;
     requestId?: string;

@@ -1,5 +1,10 @@
 import { chatTurnRequestV2Schema } from '@/server/application/dtos/chat_v2_dto';
 import {
+  squadHandoffEventSchema,
+  squadHandoffResultEventSchema,
+  squadTurnLimitEventSchema,
+} from '@/server/application/dtos/squad_dto';
+import {
   approvalRequiredEventSchema,
   inputRequiredEventSchema,
 } from '@/server/application/inbox/approval_contract_dto';
@@ -26,14 +31,18 @@ import {
   ContextInvalidError,
   DependencyUnavailableError,
   DomainError,
+  ForbiddenError,
   ModelUnavailableError,
+  NotFoundError,
   UpstreamServiceError,
   UpstreamUnavailableError,
+  ValidationError,
 } from '@/server/domain/errors/domain_error';
 import type { InboxItemCreator } from '@/server/domain/inbox/inbox_item_creator';
 import type { AiEngineGateway } from '@/server/domain/repositories/ai_engine_gateway';
 import type { ChatRunRepository } from '@/server/domain/repositories/chat_run_repository';
 import type { ConversationRepository } from '@/server/domain/repositories/conversation_repository';
+import type { SquadTurnPort } from '@/server/domain/squads/squad_ports';
 import type {
   MessageCardRepository,
   NewMessageCard,
@@ -57,6 +66,8 @@ export interface StreamRunDeps {
   hub: RunHub;
   /** Turns `approval_required` and `input_required` into Inbox items (ADR-0032). */
   inbox: InboxItemCreator;
+  /** Squad turns (ADR-0044). Without it a squad conversation fails to start, honestly. */
+  squads?: SquadTurnPort;
   guard: RunFrameGuard;
   metrics: RunMetricsRecorder;
   log: RunRelayLog;
@@ -88,7 +99,16 @@ interface Terminal {
   replyLanguage: string;
   upstreamRunId: string | null;
   upstreamSessionId: string | null;
+  /** The `squad` block of a squad `done` frame, passed to the squad port untouched. */
+  squad?: Record<string, unknown> | null;
 }
+
+/** Squad events the relay validates and hands to the squad port (ADR-0044). */
+const SQUAD_EVENT_SCHEMAS = {
+  handoff: squadHandoffEventSchema,
+  handoff_result: squadHandoffResultEventSchema,
+  turn_limit: squadTurnLimitEventSchema,
+} as const;
 
 /** What one drain tracks while it reads the upstream stream. */
 interface DrainState {
@@ -116,6 +136,16 @@ function relayErrorFor(error: unknown): RelayError {
   }
   if (error instanceof UpstreamServiceError) {
     return { code: 'upstream_error', status: 502, retryable: true, message: 'The reply service returned something unexpected. Try again.' };
+  }
+  // A squad that changed between the message and the stream (ADR-0044).
+  if (error instanceof ForbiddenError) {
+    return { code: 'forbidden', status: 403, retryable: false, message: 'You no longer have access to this.' };
+  }
+  if (error instanceof NotFoundError) {
+    return { code: 'not_found', status: 404, retryable: false, message: 'This could not be found.' };
+  }
+  if (error instanceof ValidationError) {
+    return { code: 'squad_unavailable', status: 422, retryable: false, message: 'This squad cannot take a turn right now.' };
   }
   if (error instanceof ContextInvalidError || error instanceof DomainError) {
     return { code: 'internal_error', status: 500, retryable: false, message: 'Something went wrong on our side.' };
@@ -146,6 +176,8 @@ export class StreamRunUseCase {
   private readonly sleep: (ms: number) => Promise<void>;
   private readonly pollIntervalMs: number;
   private readonly replayDeadlineMs: number;
+  /** Run handles of squad conversations that are still open on this instance; see `finishSquad`. */
+  private readonly squadRuns = new Set<string>();
 
   constructor(private readonly deps: StreamRunDeps) {
     this.now = deps.now ?? Date.now;
@@ -161,6 +193,7 @@ export class StreamRunUseCase {
   ): Promise<ReadableStream<Uint8Array>> {
     // Ownership first: nothing below runs for a handle the caller does not own.
     const owned = await resolveOwnedRun(this.deps, runHandle, context);
+    if (owned.conversation.kind === 'squad') this.squadRuns.add(runHandle);
     const run = await this.deps.chatRuns.findOrCreate({
       workspace_id: owned.conversation.workspace_id,
       conversation_id: owned.conversation.id,
@@ -263,16 +296,40 @@ export class StreamRunUseCase {
             : message.id,
         mentions: findMentionSpans(message.content),
       });
-      const { token } = await this.deps.contextSigner.mint(context, {
-        agent_slug: run.agent_slug,
-        run_id: run.run_handle,
-      });
-      body = await this.deps.gateway.chatStream({
-        agentSlug: run.agent_slug,
-        request,
-        contextToken: token,
-        requestId: context.request_id,
-      });
+      if (owned.conversation.kind === 'squad') {
+        // The squad is re-checked now, not trusted from when the message was
+        // stored, and its claim is built from stored data only.
+        if (!this.deps.squads) throw new Error('squad turns are not wired');
+        const plan = await this.deps.squads.prepare({
+          conversation: owned.conversation,
+          run_handle: run.run_handle,
+          agent_slug: run.agent_slug,
+          context,
+        });
+        const { token } = await this.deps.contextSigner.mint(context, {
+          agent_slug: run.agent_slug,
+          run_id: run.run_handle,
+          squad: plan.claim,
+          budget: plan.budget,
+        });
+        body = await this.deps.gateway.squadChatStream({
+          squadId: plan.squad_id,
+          request,
+          contextToken: token,
+          requestId: context.request_id,
+        });
+      } else {
+        const { token } = await this.deps.contextSigner.mint(context, {
+          agent_slug: run.agent_slug,
+          run_id: run.run_handle,
+        });
+        body = await this.deps.gateway.chatStream({
+          agentSlug: run.agent_slug,
+          request,
+          contextToken: token,
+          requestId: context.request_id,
+        });
+      }
     } catch (error) {
       await this.failToStart(run, session, error);
       return;
@@ -360,6 +417,11 @@ export class StreamRunUseCase {
       return false;
     }
 
+    if (this.squadRuns.has(run.run_handle) && frame.event in SQUAD_EVENT_SCHEMAS) {
+      if (await this.recordSquadFrame(frame, run, context)) session.publish({ kind: 'frame', frame });
+      return false;
+    }
+
     if (frame.event === 'approval_required' || frame.event === 'input_required') {
       const bridged = await this.bridgeInboxFrame(frame, run, context, session.upstreamRunId, state.approvalByCard);
       if (bridged) session.publish({ kind: 'frame', frame: bridged });
@@ -398,6 +460,7 @@ export class StreamRunUseCase {
   }
 
   private async failToStart(run: ChatRunEntity, session: RunSession, error: unknown): Promise<void> {
+    this.squadRuns.delete(run.run_handle);
     const relayError = relayErrorFor(error);
     if (relayError.code === 'internal_error') {
       this.deps.log.failed('start_failed', { run_handle: run.run_handle, cause: error });
@@ -478,6 +541,48 @@ export class StreamRunUseCase {
       }),
     });
     this.recordMetrics(run, terminal, state.firstTokenAt, startedAt);
+  }
+
+  // ---------------------------------------------------------------------
+  // Squad events (ADR-0044)
+  // ---------------------------------------------------------------------
+
+  /**
+   * Validates a squad event and stores it. Returns whether to forward it: a
+   * payload that is off contract is dropped with a log line, never shown as a
+   * card the platform could not store. A storage failure is logged and the
+   * event is still forwarded, because the browser's live card is correct and
+   * the next replay stores it again (writes are idempotent).
+   */
+  private async recordSquadFrame(frame: SseFrame, run: ChatRunEntity, context: RequestContext): Promise<boolean> {
+    const schema = SQUAD_EVENT_SCHEMAS[frame.event as keyof typeof SQUAD_EVENT_SCHEMAS];
+    const data = parseJson(frame.data);
+    if (!schema.safeParse(data).success) {
+      this.deps.log.failed('squad_frame_failed', { run_handle: run.run_handle });
+      return false;
+    }
+    try {
+      await this.deps.squads?.recordFrame({ run_handle: run.run_handle, event: frame.event, data, context });
+    } catch (error) {
+      this.deps.log.failed('squad_frame_failed', { run_handle: run.run_handle, cause: error });
+    }
+    return true;
+  }
+
+  /** Closes the squad turn from the run's terminal state. Called once, by the writer that won the finalize. */
+  private async finishSquad(run: ChatRunEntity, terminal: Terminal): Promise<void> {
+    if (!this.squadRuns.delete(run.run_handle)) return;
+    const outcome =
+      terminal.runStatus === 'cancelled'
+        ? 'cancelled'
+        : terminal.runStatus === 'error' || terminal.runStatus === 'failed'
+          ? 'failed'
+          : 'completed';
+    try {
+      await this.deps.squads?.finish({ run_handle: run.run_handle, outcome, squad: terminal.squad ?? null });
+    } catch (error) {
+      this.deps.log.failed('squad_finish_failed', { run_handle: run.run_handle, cause: error });
+    }
   }
 
   // ---------------------------------------------------------------------
@@ -633,7 +738,13 @@ export class StreamRunUseCase {
       replyLanguage: done.reply_language,
       upstreamRunId: done.run_id,
       upstreamSessionId: done.session_id,
+      squad: this.squadBlockOf(data),
     };
+  }
+
+  private squadBlockOf(data: unknown): Record<string, unknown> | null {
+    const squad = (data as { squad?: unknown } | undefined)?.squad;
+    return typeof squad === 'object' && squad !== null && !Array.isArray(squad) ? (squad as Record<string, unknown>) : null;
   }
 
   /**
@@ -654,7 +765,11 @@ export class StreamRunUseCase {
         status: terminal.runStatus,
         error_code: terminal.errorCode,
       });
-      if (!won) return true;
+      if (!won) {
+        this.squadRuns.delete(run.run_handle);
+        return true;
+      }
+      await this.finishSquad(run, terminal);
 
       const upstreamRunId = terminal.upstreamRunId ?? session?.upstreamRunId ?? null;
       if (upstreamRunId || terminal.upstreamSessionId) {
@@ -848,6 +963,11 @@ export class StreamRunUseCase {
           if (!frame) continue;
           if (frame.id !== undefined && Number.isFinite(Number(frame.id))) {
             after = Number(frame.id);
+          }
+          if (this.squadRuns.has(run.run_handle) && frame.event in SQUAD_EVENT_SCHEMAS) {
+            // Idempotent: the drain may have stored this event already.
+            if (await this.recordSquadFrame(frame, run, context)) emit(frame);
+            continue;
           }
           if (frame.event === 'approval_required' || frame.event === 'input_required') {
             // Idempotent: the item already exists when the drain saw this frame first.

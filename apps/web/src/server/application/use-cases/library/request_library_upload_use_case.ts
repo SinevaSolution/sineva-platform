@@ -4,7 +4,7 @@ import {
   loadVisibleFolder,
   monthStart,
   requireWorkspace,
-  resolveScopes,
+  resolveScopesChecked,
   type LibraryDeps,
 } from '@/server/application/library/library_support';
 import type { RequestContext } from '@/server/domain/context/request_context';
@@ -52,7 +52,7 @@ export class RequestLibraryUploadUseCase {
     // No scopes sent means "whatever the collection says" (ADR-0033); sending
     // scopes is a deliberate override and stops following the collection.
     const inherited = !dto.scopes || dto.scopes.length === 0;
-    const scopes = inherited ? inheritedScopes(folder, context) : resolveScopes(dto.scopes, context);
+    const scopes = inherited ? inheritedScopes(folder, context) : await resolveScopesChecked(this.deps, dto.scopes, context);
 
     const duplicate = await documents.findDuplicate(workspaceId, dto.sha256, scopes);
     if (duplicate) {

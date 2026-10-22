@@ -32,7 +32,11 @@ import type {
   LibraryUsageView,
 } from '@/shared/library_view';
 import type { ShellSpecialistView } from '@/shared/shell_view';
-import { LibraryCollectionDialog, type CollectionDialogMode, type CollectionValues } from './library_collection_dialog';
+import {
+  LibraryCollectionDialog,
+  type CollectionDialogMode,
+  type CollectionValues,
+} from './library_collection_dialog';
 import { LibraryCollections } from './library_collections';
 import { LibraryDocumentDrawer } from './library_document_drawer';
 import {
@@ -46,9 +50,11 @@ import {
   accessSummary,
   ancestorIds,
   buildCollectionTree,
+  sameAccess,
   scopeInputs,
   type CollectionNode,
 } from './library_model';
+import { LibrarySquadsProvider, type LibrarySquadOption } from './library_squads';
 import { LibraryUploadZone, MAX_FILES_PER_DROP } from './library_upload_zone';
 import { useLibraryUploads } from './use_library_uploads';
 
@@ -107,7 +113,9 @@ function useStoredView(): [LibraryView, (next: LibraryView) => void] {
   return [view, change];
 }
 
-type Deleting = { kind: 'document'; document: LibraryDocumentView } | { kind: 'collection'; node: CollectionNode };
+type Deleting =
+  | { kind: 'document'; document: LibraryDocumentView }
+  | { kind: 'collection'; node: CollectionNode };
 
 export function LibraryScreen({
   workspaceId,
@@ -121,6 +129,7 @@ export function LibraryScreen({
   canUpload,
   canManage,
   specialists,
+  squads,
   filters,
 }: {
   workspaceId: string;
@@ -136,6 +145,8 @@ export function LibraryScreen({
   canUpload: boolean;
   canManage: boolean;
   specialists: ShellSpecialistView[];
+  /** Active squads, for "Who can use this" (ADR-0043). */
+  squads: LibrarySquadOption[];
   filters: LibraryFilters;
 }) {
   const t = useTranslations('library_ui');
@@ -149,8 +160,13 @@ export function LibraryScreen({
   // What is loaded: the server's page, plus whatever "Show more" appended. A
   // new page from the server (filter, search, refresh) replaces it, detected
   // by identity while rendering instead of an effect that would render twice.
-  const [loaded, setLoaded] = React.useState({ source: list, items: list.items, cursor: list.next_cursor });
-  if (loaded.source !== list) setLoaded({ source: list, items: list.items, cursor: list.next_cursor });
+  const [loaded, setLoaded] = React.useState({
+    source: list,
+    items: list.items,
+    cursor: list.next_cursor,
+  });
+  if (loaded.source !== list)
+    setLoaded({ source: list, items: list.items, cursor: list.next_cursor });
   const { items, cursor } = loaded;
   const [view, changeView] = useStoredView();
   const [pending, setPending] = React.useState(false);
@@ -173,11 +189,23 @@ export function LibraryScreen({
     setOpenId(urlDocId);
   }
   const openDocument =
-    (openId ? (items.find((item) => item.id === openId) ?? (selectedDocument?.id === openId ? selectedDocument : null)) : null) ?? null;
+    (openId
+      ? (items.find((item) => item.id === openId) ??
+        (selectedDocument?.id === openId ? selectedDocument : null))
+      : null) ?? null;
 
-  const tree = React.useMemo(() => buildCollectionTree(folders, summary.by_folder), [folders, summary.by_folder]);
-  const collectionNames = React.useMemo(() => new Map(folders.map((folder) => [folder.id, folder.name])), [folders]);
-  const selectedFolder = filters.folderId && filters.folderId !== 'root' ? folders.find((f) => f.id === filters.folderId) : undefined;
+  const tree = React.useMemo(
+    () => buildCollectionTree(folders, summary.by_folder),
+    [folders, summary.by_folder],
+  );
+  const collectionNames = React.useMemo(
+    () => new Map(folders.map((folder) => [folder.id, folder.name])),
+    [folders],
+  );
+  const selectedFolder =
+    filters.folderId && filters.folderId !== 'root'
+      ? folders.find((f) => f.id === filters.folderId)
+      : undefined;
 
   // Reading goes on in the background; ask again while anything is unfinished
   // and the tab is visible. Stops by itself when nothing is left to read.
@@ -209,20 +237,37 @@ export function LibraryScreen({
     const qs = query(overrides).toString();
     return `/w/${workspaceSlug}/library${qs ? `?${qs}` : ''}`;
   };
-  const hrefForFolder = (folderId: string | undefined) => href({ folder_id: folderId, doc: undefined });
+  const hrefForFolder = (folderId: string | undefined) =>
+    href({ folder_id: folderId, doc: undefined });
 
-  function applyFilters(change: { q?: string; status?: StatusFilter; usedBy?: string; sort?: string }) {
+  function applyFilters(change: {
+    q?: string;
+    status?: StatusFilter;
+    usedBy?: string;
+    sort?: string;
+  }) {
     const overrides: Record<string, string | undefined> = { doc: undefined };
     if (change.q !== undefined) overrides.q = change.q;
     if (change.status !== undefined) overrides.status = change.status;
-    if (change.sort !== undefined) overrides.sort = change.sort === 'newest' ? undefined : change.sort;
+    if (change.sort !== undefined)
+      overrides.sort = change.sort === 'newest' ? undefined : change.sort;
     if (change.usedBy !== undefined) {
       overrides.used_by = change.usedBy && change.usedBy !== 'everyone' ? change.usedBy : undefined;
       overrides.scope_type = change.usedBy === 'everyone' ? 'workspace' : undefined;
     }
     router.replace(href(overrides), { scroll: false });
   }
-  const clearFilters = () => router.replace(href({ q: undefined, status: undefined, used_by: undefined, scope_type: undefined, doc: undefined }), { scroll: false });
+  const clearFilters = () =>
+    router.replace(
+      href({
+        q: undefined,
+        status: undefined,
+        used_by: undefined,
+        scope_type: undefined,
+        doc: undefined,
+      }),
+      { scroll: false },
+    );
 
   function openFile(document: LibraryDocumentView) {
     setError(null);
@@ -259,10 +304,17 @@ export function LibraryScreen({
       const params = query({ doc: undefined });
       params.set('cursor', cursor);
       params.set('limit', String(PAGE_SIZE));
-      const more = await apiRequest<LibraryDocumentListView>(`${base}/documents?${params.toString()}`);
+      const more = await apiRequest<LibraryDocumentListView>(
+        `${base}/documents?${params.toString()}`,
+      );
       setLoaded((current) => ({
         ...current,
-        items: [...current.items, ...more.items.filter((item) => !current.items.some((existing) => existing.id === item.id))],
+        items: [
+          ...current.items,
+          ...more.items.filter(
+            (item) => !current.items.some((existing) => existing.id === item.id),
+          ),
+        ],
         cursor: more.next_cursor,
       }));
     });
@@ -287,7 +339,9 @@ export function LibraryScreen({
       return ACCEPTED.includes(ext) && file.size > 0 && file.size <= MAX_BYTES;
     });
     if (valid.length < chosen.length) {
-      const typeProblem = chosen.some((file) => !ACCEPTED.includes(file.name.slice(file.name.lastIndexOf('.') + 1).toLowerCase()));
+      const typeProblem = chosen.some(
+        (file) => !ACCEPTED.includes(file.name.slice(file.name.lastIndexOf('.') + 1).toLowerCase()),
+      );
       snToast.error(typeProblem ? t('zone.type_error') : t('zone.size_error'));
     }
     addFiles(valid);
@@ -296,7 +350,11 @@ export function LibraryScreen({
 
   // --- file actions ------------------------------------------------------
 
-  const patchDocument = (document: LibraryDocumentView, body: Record<string, unknown>, done?: string) =>
+  const patchDocument = (
+    document: LibraryDocumentView,
+    body: Record<string, unknown>,
+    done?: string,
+  ) =>
     run(async () => {
       await apiRequest(`${base}/documents/${document.id}`, { method: 'PATCH', body });
       if (done) snToast.success(done);
@@ -323,7 +381,8 @@ export function LibraryScreen({
     if (!ok) return;
     setDeleting(null);
     if (target.kind === 'document') closeFile();
-    else if (filters.folderId === target.node.id) router.replace(hrefForFolder(undefined), { scroll: false });
+    else if (filters.folderId === target.node.id)
+      router.replace(hrefForFolder(undefined), { scroll: false });
   }
 
   async function submitCollection(values: CollectionValues) {
@@ -340,12 +399,16 @@ export function LibraryScreen({
       if (values.parent_id !== mode.node.parent_id) body.parent_id = values.parent_id;
       const before = accessSummary(mode.node.scopes);
       const after = accessSummary(
-        values.scopes.map((scope) => ({ scope_type: scope.scope_type, scope_ref: scope.scope_type === 'specialist' ? scope.scope_ref : null })),
+        values.scopes.map((scope) => ({
+          scope_type: scope.scope_type,
+          scope_ref: scope.scope_type === 'workspace' ? null : scope.scope_ref,
+        })),
       );
-      if (before.everyone !== after.everyone || before.specialists.slice().sort().join() !== after.specialists.slice().sort().join()) {
+      if (!sameAccess(before, after)) {
         body.scopes = values.scopes;
       }
-      if (Object.keys(body).length > 0) await apiRequest(`${base}/folders/${mode.node.id}`, { method: 'PATCH', body });
+      if (Object.keys(body).length > 0)
+        await apiRequest(`${base}/folders/${mode.node.id}`, { method: 'PATCH', body });
       snToast.success(t('toast.saved'));
     });
     if (ok) setCollectionDialog(null);
@@ -361,7 +424,11 @@ export function LibraryScreen({
       total={summary.total}
       inTop={summary.in_root}
       selected={filters.folderId}
-      openIds={filters.folderId && filters.folderId !== 'root' ? ancestorIds(folders, filters.folderId) : []}
+      openIds={
+        filters.folderId && filters.folderId !== 'root'
+          ? ancestorIds(folders, filters.folderId)
+          : []
+      }
       hrefFor={hrefForFolder}
       canManage={canManage}
       onCreate={(parentId) => {
@@ -417,7 +484,9 @@ export function LibraryScreen({
           headingLevel={2}
           title={t('empty.search_title', { query: filters.q })}
           description={t('empty.search_body')}
-          action={<SNButton onClick={() => applyFilters({ q: '' })}>{t('empty.search_action')}</SNButton>}
+          action={
+            <SNButton onClick={() => applyFilters({ q: '' })}>{t('empty.search_action')}</SNButton>
+          }
         />
       );
     }
@@ -441,7 +510,13 @@ export function LibraryScreen({
           headingLevel={2}
           title={t('empty.collection_title')}
           description={canUpload ? t('empty.collection_body') : t('empty.collection_viewer_body')}
-          action={canUpload ? <SNButton variant="primary" onClick={choose}>{t('empty.upload')}</SNButton> : undefined}
+          action={
+            canUpload ? (
+              <SNButton variant="primary" onClick={choose}>
+                {t('empty.upload')}
+              </SNButton>
+            ) : undefined
+          }
         />
       );
     }
@@ -452,248 +527,291 @@ export function LibraryScreen({
         headingLevel={2}
         title={t('empty.library_title')}
         description={canUpload ? t('empty.library_body') : t('empty.library_viewer_body')}
-        action={canUpload ? <SNButton variant="primary" onClick={choose}>{t('empty.upload')}</SNButton> : undefined}
+        action={
+          canUpload ? (
+            <SNButton variant="primary" onClick={choose}>
+              {t('empty.upload')}
+            </SNButton>
+          ) : undefined
+        }
       />
     );
   })();
 
   return (
-    <section className="mx-auto w-full max-w-6xl space-y-6 p-4 sm:p-6 lg:p-8">
-      <input
-        ref={picker}
-        type="file"
-        multiple
-        hidden
-        tabIndex={-1}
-        aria-label={t('add.file')}
-        accept={ACCEPTED.map((ext) => `.${ext}`).join(',')}
-        onChange={(event) => {
-          onPicked(event.currentTarget.files);
-          event.currentTarget.value = '';
-        }}
-      />
-      <LibraryHero summary={summary} usage={usage} onStorageDetails={() => setQuotaOpen(true)} action={addMenu} />
-      {canUpload ? (
-        <LibraryUploadZone
-          items={uploads.items}
-          intoName={selectedFolder?.name ?? null}
-          onFiles={addFiles}
-          onRetry={uploads.retry}
-          onRemove={uploads.remove}
+    <LibrarySquadsProvider value={squads}>
+      <section className="mx-auto w-full max-w-6xl space-y-6 p-4 sm:p-6 lg:p-8">
+        <input
+          ref={picker}
+          type="file"
+          multiple
+          hidden
+          tabIndex={-1}
+          aria-label={t('add.file')}
+          accept={ACCEPTED.map((ext) => `.${ext}`).join(',')}
+          onChange={(event) => {
+            onPicked(event.currentTarget.files);
+            event.currentTarget.value = '';
+          }}
         />
-      ) : null}
-
-      <div className="grid gap-6 lg:grid-cols-[17rem_minmax(0,1fr)]">
-        <aside className="hidden lg:block">
-          <div className="sticky top-4">{collectionsPanel()}</div>
-        </aside>
-        <div className="min-w-0 space-y-4">
-          <LibraryToolbar
-            q={filters.q}
-            status={filters.status}
-            usedBy={usedByValue}
-            sort={filters.sort}
-            view={view}
-            specialists={specialists}
-            onChange={applyFilters}
-            onView={changeView}
-            onOpenCollections={() => setCollectionsOpen(true)}
+        <LibraryHero
+          summary={summary}
+          usage={usage}
+          onStorageDetails={() => setQuotaOpen(true)}
+          action={addMenu}
+        />
+        {canUpload ? (
+          <LibraryUploadZone
+            items={uploads.items}
+            intoName={selectedFolder?.name ?? null}
+            onFiles={addFiles}
+            onRetry={uploads.retry}
+            onRemove={uploads.remove}
           />
-          {emptyState ?? (
-            <>
-              <LibraryDocumentList
-                items={items}
-                view={view}
-                collectionNames={collectionNames}
-                specialists={specialists}
-                selectedId={openId}
-                onOpen={openFile}
-              />
-              {cursor ? (
-                <div className="flex justify-center">
-                  <SNButton loading={pending} onClick={() => void showMore()}>
-                    {t('list.more')}
-                  </SNButton>
-                </div>
-              ) : null}
-            </>
-          )}
-        </div>
-      </div>
+        ) : null}
 
-      {openDocument ? (
-        <LibraryDocumentDrawer
-          key={openDocument.id}
-          document={openDocument}
-          workspaceSlug={workspaceSlug}
-          specialists={specialists}
-          tree={tree}
-          uploadedBy={uploaderNames[openDocument.created_by] ?? null}
-          canManage={canManage}
+        <div className="grid gap-6 lg:grid-cols-[17rem_minmax(0,1fr)]">
+          <aside className="hidden lg:block">
+            <div className="sticky top-4">{collectionsPanel()}</div>
+          </aside>
+          <div className="min-w-0 space-y-4">
+            <LibraryToolbar
+              q={filters.q}
+              status={filters.status}
+              usedBy={usedByValue}
+              sort={filters.sort}
+              view={view}
+              specialists={specialists}
+              onChange={applyFilters}
+              onView={changeView}
+              onOpenCollections={() => setCollectionsOpen(true)}
+            />
+            {emptyState ?? (
+              <>
+                <LibraryDocumentList
+                  items={items}
+                  view={view}
+                  collectionNames={collectionNames}
+                  specialists={specialists}
+                  selectedId={openId}
+                  onOpen={openFile}
+                />
+                {cursor ? (
+                  <div className="flex justify-center">
+                    <SNButton loading={pending} onClick={() => void showMore()}>
+                      {t('list.more')}
+                    </SNButton>
+                  </div>
+                ) : null}
+              </>
+            )}
+          </div>
+        </div>
+
+        {openDocument ? (
+          <LibraryDocumentDrawer
+            key={openDocument.id}
+            document={openDocument}
+            workspaceSlug={workspaceSlug}
+            specialists={specialists}
+            tree={tree}
+            uploadedBy={uploaderNames[openDocument.created_by] ?? null}
+            canManage={canManage}
+            pending={pending}
+            error={error}
+            onClose={closeFile}
+            onRename={(title) => void patchDocument(openDocument, { title }, t('toast.saved'))}
+            onMove={(folderId) =>
+              void patchDocument(openDocument, { folder_id: folderId }, t('toast.moved'))
+            }
+            onAccess={(change) =>
+              void patchDocument(
+                openDocument,
+                change === 'inherit' ? { inherit_access: true } : { scopes: change.scopes },
+                t('toast.access_saved'),
+              )
+            }
+            onTryAgain={() =>
+              void run(async () => {
+                await apiRequest(`${base}/documents/${openDocument.id}/reindex`, {
+                  method: 'POST',
+                });
+                snToast.success(t('toast.reading_again'));
+              })
+            }
+            onReplace={() => {
+              setError(null);
+              setReplacing(openDocument);
+            }}
+            onSeeText={() => void seeText(openDocument)}
+            onDelete={() => {
+              setError(null);
+              setDeleting({ kind: 'document', document: openDocument });
+            }}
+          />
+        ) : null}
+
+        <SNDrawer
+          open={collectionsOpen}
+          onOpenChange={setCollectionsOpen}
+          side="start"
+          width="panel"
+          title={t('collections.title')}
+          closeLabel={t('close')}
+        >
+          <div className="h-full overflow-y-auto p-5 pt-14 md:pt-5">
+            {collectionsPanel(() => setCollectionsOpen(false))}
+          </div>
+        </SNDrawer>
+
+        {collectionDialog ? (
+          <LibraryCollectionDialog
+            mode={collectionDialog}
+            tree={tree}
+            specialists={specialists}
+            pending={pending}
+            error={error}
+            onSubmit={(values) => void submitCollection(values)}
+            onClose={() => setCollectionDialog(null)}
+          />
+        ) : null}
+
+        <SNConfirmDialog
+          open={deleting !== null}
+          onOpenChange={(open) => {
+            if (!open && !pending) setDeleting(null);
+          }}
+          title={
+            deleting?.kind === 'collection' ? t('delete.collection_title') : t('delete.file_title')
+          }
+          description={
+            deleting?.kind === 'collection'
+              ? t('delete.collection_body', { name: deleting.node.name })
+              : t('delete.file_body', { title: deleting?.document.title ?? '' })
+          }
+          confirmLabel={t('delete.confirm')}
+          pendingLabel={t('delete.pending')}
+          cancelLabel={t('cancel')}
+          destructive
           pending={pending}
           error={error}
-          onClose={closeFile}
-          onRename={(title) => void patchDocument(openDocument, { title }, t('toast.saved'))}
-          onMove={(folderId) => void patchDocument(openDocument, { folder_id: folderId }, t('toast.moved'))}
-          onAccess={(change) =>
-            void patchDocument(
-              openDocument,
-              change === 'inherit' ? { inherit_access: true } : { scopes: change.scopes },
-              t('toast.access_saved'),
-            )
+          onConfirm={() => void confirmDelete()}
+        />
+
+        {replacing ? (
+          <ReplaceDialog
+            document={replacing}
+            workspaceId={workspaceId}
+            onClose={() => setReplacing(null)}
+            onReplaced={() => {
+              setReplacing(null);
+              closeFile();
+              snToast.success(t('toast.replaced'));
+              router.refresh();
+            }}
+          />
+        ) : null}
+
+        <SNDialog
+          open={preview !== null}
+          onOpenChange={(open) => {
+            if (!open) setPreview(null);
+          }}
+          title={t('preview.title')}
+          closeLabel={t('close')}
+          footer={
+            preview?.next_page ? (
+              <SNButton
+                disabled={pending}
+                onClick={() =>
+                  void run(async () => {
+                    const next = await apiRequest<LibraryPreviewView>(
+                      `${base}/documents/${preview.document_id}/preview?page_from=${preview.next_page}`,
+                    );
+                    setPreview({ ...next, pages: [...preview.pages, ...next.pages] });
+                  })
+                }
+              >
+                {t('preview.more')}
+              </SNButton>
+            ) : undefined
           }
-          onTryAgain={() =>
-            void run(async () => {
-              await apiRequest(`${base}/documents/${openDocument.id}/reindex`, { method: 'POST' });
-              snToast.success(t('toast.reading_again'));
-            })
-          }
-          onReplace={() => {
-            setError(null);
-            setReplacing(openDocument);
-          }}
-          onSeeText={() => void seeText(openDocument)}
-          onDelete={() => {
-            setError(null);
-            setDeleting({ kind: 'document', document: openDocument });
-          }}
-        />
-      ) : null}
+        >
+          <div className="max-h-[60vh] space-y-4 overflow-y-auto">
+            {preview?.pages.map((page) => (
+              <section key={page.page}>
+                <h3 className="text-sm font-semibold text-text">
+                  {t('preview.page', { number: page.page })}
+                </h3>
+                {page.readable ? (
+                  <p className="mt-1 whitespace-pre-wrap text-sm text-text">{page.text}</p>
+                ) : (
+                  <p className="mt-1 text-sm text-warning">{t('preview.unreadable')}</p>
+                )}
+              </section>
+            ))}
+          </div>
+        </SNDialog>
 
-      <SNDrawer
-        open={collectionsOpen}
-        onOpenChange={setCollectionsOpen}
-        side="start"
-        width="panel"
-        title={t('collections.title')}
-        closeLabel={t('close')}
-      >
-        <div className="h-full overflow-y-auto p-5 pt-14 md:pt-5">{collectionsPanel(() => setCollectionsOpen(false))}</div>
-      </SNDrawer>
-
-      {collectionDialog ? (
-        <LibraryCollectionDialog
-          mode={collectionDialog}
-          tree={tree}
-          specialists={specialists}
-          pending={pending}
-          error={error}
-          onSubmit={(values) => void submitCollection(values)}
-          onClose={() => setCollectionDialog(null)}
-        />
-      ) : null}
-
-      <SNConfirmDialog
-        open={deleting !== null}
-        onOpenChange={(open) => {
-          if (!open && !pending) setDeleting(null);
-        }}
-        title={deleting?.kind === 'collection' ? t('delete.collection_title') : t('delete.file_title')}
-        description={
-          deleting?.kind === 'collection'
-            ? t('delete.collection_body', { name: deleting.node.name })
-            : t('delete.file_body', { title: deleting?.document.title ?? '' })
-        }
-        confirmLabel={t('delete.confirm')}
-        pendingLabel={t('delete.pending')}
-        cancelLabel={t('cancel')}
-        destructive
-        pending={pending}
-        error={error}
-        onConfirm={() => void confirmDelete()}
-      />
-
-      {replacing ? (
-        <ReplaceDialog
-          document={replacing}
-          workspaceId={workspaceId}
-          onClose={() => setReplacing(null)}
-          onReplaced={() => {
-            setReplacing(null);
-            closeFile();
-            snToast.success(t('toast.replaced'));
-            router.refresh();
-          }}
-        />
-      ) : null}
-
-      <SNDialog
-        open={preview !== null}
-        onOpenChange={(open) => {
-          if (!open) setPreview(null);
-        }}
-        title={t('preview.title')}
-        closeLabel={t('close')}
-        footer={
-          preview?.next_page ? (
-            <SNButton
-              disabled={pending}
-              onClick={() =>
-                void run(async () => {
-                  const next = await apiRequest<LibraryPreviewView>(
-                    `${base}/documents/${preview.document_id}/preview?page_from=${preview.next_page}`,
-                  );
-                  setPreview({ ...next, pages: [...preview.pages, ...next.pages] });
-                })
-              }
-            >
-              {t('preview.more')}
-            </SNButton>
-          ) : undefined
-        }
-      >
-        <div className="max-h-[60vh] space-y-4 overflow-y-auto">
-          {preview?.pages.map((page) => (
-            <section key={page.page}>
-              <h3 className="text-sm font-semibold text-text">{t('preview.page', { number: page.page })}</h3>
-              {page.readable ? (
-                <p className="mt-1 whitespace-pre-wrap text-sm text-text">{page.text}</p>
-              ) : (
-                <p className="mt-1 text-sm text-warning">{t('preview.unreadable')}</p>
-              )}
-            </section>
-          ))}
-        </div>
-      </SNDialog>
-
-      <SNDrawer open={quotaOpen} onOpenChange={setQuotaOpen} side="end" width="panel" title={t('usage.title')} closeLabel={t('close')}>
-        <div className="h-full space-y-5 overflow-y-auto p-5 pt-14 md:pt-5">
-          <h2 className="text-lg font-semibold text-text">{t('usage.title')}</h2>
-          {usage ? (
-            <ul className="space-y-3">
-              <UsageRow
-                label={t('usage.files')}
-                value={formatNumber(usage.documents, locale)}
-                ok={usage.within_limits.documents}
-                warning={t('usage.files_reached')}
-              />
-              <UsageRow
-                label={t('usage.storage')}
-                value={formatFileSize(usage.storage_bytes, locale)}
-                ok={usage.within_limits.storage}
-                warning={t('usage.storage_reached')}
-              />
-              <UsageRow
-                label={t('usage.pages')}
-                value={formatNumber(usage.ocr_pages_month, locale)}
-                ok={usage.within_limits.ocr_pages}
-                warning={t('usage.pages_reached')}
-              />
-            </ul>
-          ) : null}
-        </div>
-      </SNDrawer>
-    </section>
+        <SNDrawer
+          open={quotaOpen}
+          onOpenChange={setQuotaOpen}
+          side="end"
+          width="panel"
+          title={t('usage.title')}
+          closeLabel={t('close')}
+        >
+          <div className="h-full space-y-5 overflow-y-auto p-5 pt-14 md:pt-5">
+            <h2 className="text-lg font-semibold text-text">{t('usage.title')}</h2>
+            {usage ? (
+              <ul className="space-y-3">
+                <UsageRow
+                  label={t('usage.files')}
+                  value={formatNumber(usage.documents, locale)}
+                  ok={usage.within_limits.documents}
+                  warning={t('usage.files_reached')}
+                />
+                <UsageRow
+                  label={t('usage.storage')}
+                  value={formatFileSize(usage.storage_bytes, locale)}
+                  ok={usage.within_limits.storage}
+                  warning={t('usage.storage_reached')}
+                />
+                <UsageRow
+                  label={t('usage.pages')}
+                  value={formatNumber(usage.ocr_pages_month, locale)}
+                  ok={usage.within_limits.ocr_pages}
+                  warning={t('usage.pages_reached')}
+                />
+              </ul>
+            ) : null}
+          </div>
+        </SNDrawer>
+      </section>
+    </LibrarySquadsProvider>
   );
 }
 
-function UsageRow({ label, value, ok, warning }: { label: string; value: string; ok: boolean; warning: string }) {
+function UsageRow({
+  label,
+  value,
+  ok,
+  warning,
+}: {
+  label: string;
+  value: string;
+  ok: boolean;
+  warning: string;
+}) {
   const t = useTranslations('library_ui');
   return (
     <li className="space-y-2 rounded-lg border border-border p-4">
       <div className="flex items-center justify-between gap-3">
         <span className="text-sm font-medium text-text">{label}</span>
-        <SNStatusChip tone={ok ? 'success' : 'danger'} label={ok ? t('usage.ok') : t('usage.reached')} />
+        <SNStatusChip
+          tone={ok ? 'success' : 'danger'}
+          label={ok ? t('usage.ok') : t('usage.reached')}
+        />
       </div>
       <p className="text-2xl font-semibold text-text">{value}</p>
       {ok ? null : <p className="text-sm text-warning">{warning}</p>}
@@ -729,14 +847,21 @@ function ReplaceDialog({
     try {
       // Sending no scopes keeps a file that follows its collection following it.
       const scopes = document.access_inherited ? null : scopeInputs(accessSummary(document.scopes));
-      await uploadLibraryFile(workspaceId, file, { folder_id: document.folder_id, ...(scopes ? { scopes } : {}) }, {});
+      await uploadLibraryFile(
+        workspaceId,
+        file,
+        { folder_id: document.folder_id, ...(scopes ? { scopes } : {}) },
+        {},
+      );
     } catch (err) {
       setError(errorText(err));
       setWorking(false);
       return;
     }
     try {
-      await apiRequest(`/api/v1/workspaces/${workspaceId}/library/documents/${document.id}`, { method: 'DELETE' });
+      await apiRequest(`/api/v1/workspaces/${workspaceId}/library/documents/${document.id}`, {
+        method: 'DELETE',
+      });
     } catch {
       setError(t('replace.delete_failed'));
       setWorking(false);
@@ -771,7 +896,11 @@ function ReplaceDialog({
             const [file] = files;
             if (file) void replaceWith(file);
           }}
-          messages={{ type: t('zone.type_error'), size: t('zone.size_error'), count: t('zone.count_error') }}
+          messages={{
+            type: t('zone.type_error'),
+            size: t('zone.size_error'),
+            count: t('zone.count_error'),
+          }}
         />
         {working ? (
           <p role="status" className="text-sm text-text-secondary">

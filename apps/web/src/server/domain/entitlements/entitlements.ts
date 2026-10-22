@@ -16,6 +16,8 @@ export const ENTITLEMENT_KEYS = {
   ROUTINES: 'routines.max',
   WORKFLOWS: 'workflows.max',
   SQUADS: 'squads.enabled',
+  // Integer ceiling on active squads (D-M4-3); `squads.enabled` is the on/off switch.
+  SQUADS_MAX: 'squads.max',
 } as const;
 
 export type EntitlementKey = (typeof ENTITLEMENT_KEYS)[keyof typeof ENTITLEMENT_KEYS];

@@ -72,6 +72,8 @@ model Workspace {
   onboarding_states     OnboardingState[]
   profile_scans         ProfileScan[]
   checklist_items       WorkspaceChecklistState[]
+  squads                Squad[]
+  squad_turns           SquadTurn[]
 
   @@map("workspaces")
   @@schema("platform")
@@ -340,8 +342,9 @@ model Conversation {
   id                String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   workspace_id      String    @map("workspace_id") @db.Uuid
   user_id           String    @map("user_id") @db.Uuid
-  kind              String    @default("hub") @map("kind") // hub | room
+  kind              String    @default("hub") @map("kind") // hub | room | squad
   agent_slug        String?   @map("agent_slug")
+  squad_id          String?   @map("squad_id") @db.Uuid
   title             String?   @map("title")
   title_source      String?   @map("title_source") // user | auto | first_message
   pinned_at         DateTime? @map("pinned_at") @db.Timestamptz(6)
@@ -357,8 +360,11 @@ model Conversation {
   messages      Message[]
   chat_runs     ChatRun[]
   message_cards MessageCard[]
+  squad         Squad?        @relation(fields: [squad_id], references: [id], onDelete: Cascade)
+  squad_turns   SquadTurn[]
 
   @@index([workspace_id, user_id, last_message_at])
+  @@index([squad_id])
   @@index([workspace_id, kind])
   @@index([workspace_id, agent_slug])
   @@map("conversations")
@@ -985,5 +991,122 @@ model AuditEvent {
   @@index([request_id])
   @@index([run_id])
   @@map("audit_events")
+  @@schema("platform")
+}
+
+// A squad (ADR-0043): a named team of 2 to 5 specialists with a goal and a lead.
+// `status` is only active or archived; "Needs attention" is computed from the
+// live roster, never stored. `limits` overrides the starter turn bounds.
+// Deleting a squad deletes its chat sessions (conversations.squad_id cascades).
+model Squad {
+  id              String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  workspace_id    String    @map("workspace_id") @db.Uuid
+  name            String    @map("name")
+  goal            String    @map("goal")
+  lead_type       String    @default("sino") @map("lead_type") // sino | member
+  lead_agent_slug String?   @map("lead_agent_slug")
+  template_slug   String?   @map("template_slug")
+  status          String    @default("active") @map("status") // active | archived
+  limits          Json?     @map("limits")
+  created_by      String?   @map("created_by") @db.Uuid
+  archived_at     DateTime? @map("archived_at") @db.Timestamptz(6)
+  created_at      DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updated_at      DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  workspace        Workspace             @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
+  members          SquadMember[]
+  access_overrides SquadAccessOverride[]
+  conversations    Conversation[]
+  turns            SquadTurn[]
+
+  @@index([workspace_id, status])
+  @@map("squads")
+  @@schema("platform")
+}
+
+model SquadMember {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  squad_id   String   @map("squad_id") @db.Uuid
+  agent_slug String   @map("agent_slug")
+  position   Int      @map("position")
+  added_by   String?  @map("added_by") @db.Uuid
+  added_at   DateTime @default(now()) @map("added_at") @db.Timestamptz(6)
+
+  squad Squad @relation(fields: [squad_id], references: [id], onDelete: Cascade)
+
+  @@unique([squad_id, agent_slug])
+  @@map("squad_members")
+  @@schema("platform")
+}
+
+// An Owner or Admin lets one person open a squad although they cannot access
+// every member specialist (FR-SQD-18, D-M4-12).
+model SquadAccessOverride {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  squad_id   String   @map("squad_id") @db.Uuid
+  user_id    String   @map("user_id") @db.Uuid
+  granted_by String?  @map("granted_by") @db.Uuid
+  granted_at DateTime @default(now()) @map("granted_at") @db.Timestamptz(6)
+
+  squad Squad @relation(fields: [squad_id], references: [id], onDelete: Cascade)
+
+  @@unique([squad_id, user_id])
+  @@map("squad_access_overrides")
+  @@schema("platform")
+}
+
+// One squad run (ADR-0044). Holds facts only, never message text. `run_handle`
+// ties it to the chat run and the assistant message. `ceiling_points` is null
+// for a direct @SinoX (no pre-estimate, FR-BILL-05).
+model SquadTurn {
+  id                 String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  workspace_id       String    @map("workspace_id") @db.Uuid
+  squad_id           String    @map("squad_id") @db.Uuid
+  conversation_id    String    @map("conversation_id") @db.Uuid
+  user_id            String    @map("user_id") @db.Uuid
+  run_handle         String    @unique @map("run_handle")
+  lead_slug          String    @map("lead_slug")
+  direct_slug        String?   @map("direct_slug")
+  ceiling_points     Int?      @map("ceiling_points")
+  status             String    @default("running") @map("status") // running | completed | failed | cancelled
+  termination_reason String?   @map("termination_reason") // done | cap_delegations | cap_tokens | cap_time | cap_credits | error | cancelled
+  delegation_count   Int       @default(0) @map("delegation_count")
+  points             Int?      @map("points")
+  created_at         DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  finished_at        DateTime? @map("finished_at") @db.Timestamptz(6)
+
+  workspace    Workspace      @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
+  squad        Squad          @relation(fields: [squad_id], references: [id], onDelete: Cascade)
+  conversation Conversation   @relation(fields: [conversation_id], references: [id], onDelete: Cascade)
+  handoffs     SquadHandoff[]
+
+  @@index([squad_id, created_at])
+  @@index([conversation_id])
+  @@map("squad_turns")
+  @@schema("platform")
+}
+
+// One delegation inside a turn. `delegation_id` is sineva-ai's id; the unique
+// pair makes event replays idempotent.
+model SquadHandoff {
+  id             String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  turn_id        String   @map("turn_id") @db.Uuid
+  delegation_id  String   @map("delegation_id")
+  position       Int      @map("position")
+  from_slug      String   @map("from_slug")
+  to_slug        String   @map("to_slug")
+  task_summary   String   @map("task_summary")
+  parallel_group Int?     @map("parallel_group")
+  status         String   @default("working") @map("status") // working | done | needs_review | failed
+  summary        String?  @map("summary")
+  error_code     String?  @map("error_code")
+  points         Int?     @map("points")
+  created_at     DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updated_at     DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  turn SquadTurn @relation(fields: [turn_id], references: [id], onDelete: Cascade)
+
+  @@unique([turn_id, delegation_id])
+  @@map("squad_handoffs")
   @@schema("platform")
 }

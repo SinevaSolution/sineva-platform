@@ -38,6 +38,7 @@ export function Composer({
   autoFocus = false,
   size = 'md',
   specialists = [],
+  onDraftChange,
   ref: handleRef,
 }: {
   ref?: React.Ref<ComposerHandle>;
@@ -47,6 +48,8 @@ export function Composer({
   autoFocus?: boolean;
   size?: 'md' | 'lg';
   specialists?: ShellSpecialistView[];
+  /** Called with the draft as it changes (the squad chat reads it to show the points line). Keep it stable. */
+  onDraftChange?: (draft: string) => void;
 }) {
   const t = useTranslations('chat');
   const [value, setValue] = React.useState('');
@@ -159,6 +162,10 @@ export function Composer({
       pendingCaret.current = null;
     }
   }, [value]);
+
+  React.useEffect(() => {
+    onDraftChange?.(value);
+  }, [value, onDraftChange]);
 
   const trimmed = value.trim();
   const canSend = trimmed.length > 0 && !sending && !disabled;

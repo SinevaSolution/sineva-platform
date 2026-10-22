@@ -39,6 +39,12 @@ export class CreateMessageUseCase {
       throw new NotFoundError('Conversation', conversationId);
     }
 
+    // A squad session has its own message route: it checks squad access, state
+    // and who may be addressed before anything is stored (ADR-0044).
+    if (conversation.kind === 'squad') {
+      throw new NotFoundError('Conversation', conversationId);
+    }
+
     // Idempotency: repeated client_message_id returns existing record (API-3, FR-HUB-20)
     if (dto.client_message_id) {
       const existing = await this.messageRepository.findByClientMessageId(

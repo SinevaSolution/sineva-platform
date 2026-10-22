@@ -102,6 +102,23 @@
       "title": "Ada masalah di pihak kami",
       "description": "Ini bukan kesalahanmu. Coba lagi sebentar lagi.",
       "action": "Coba lagi"
+    },
+    "squads_list": {
+      "title": "Belum ada Squad",
+      "description": "Pilih spesialis untuk mengerjakan satu tujuan bersama.",
+      "action": "Buat Squad"
+    },
+    "squad_thread_empty": {
+      "title": "Tanya Squad kamu",
+      "description": "Tulis satu permintaan. Sino memutuskan siapa yang membantu dan menunjukkan siapa mengerjakan apa."
+    },
+    "squad_sessions_empty": {
+      "title": "Belum ada chat",
+      "description": "Mulai satu dan chat-nya muncul di sini."
+    },
+    "squad_activity_empty": {
+      "title": "Belum ada giliran",
+      "description": "Poin dan siapa yang membantu muncul di sini setelah permintaan pertamamu."
     }
   },
   "conversation": {
@@ -143,7 +160,15 @@
       "folder_depth_exceeded": "Koleksi bisa bersarang sampai tiga tingkat.",
       "unsupported_file_type": "Pilih file PDF, Word, Excel, CSV, slide, teks, atau gambar.",
       "file_too_large": "File itu lebih dari 25 MB.",
-      "entitlement_required": "Ini melebihi yang termasuk di paketmu."
+      "entitlement_required": "Ini melebihi yang termasuk di paketmu.",
+      "squad_members_count": "Squad butuh antara 2 dan 5 spesialis.",
+      "squad_member_duplicate": "Satu spesialis hanya bisa masuk Squad satu kali.",
+      "squad_member_unavailable": "Salah satu spesialis itu dimatikan atau tidak tersedia untukmu.",
+      "squad_lead_invalid": "Pemimpin harus Sino atau salah satu anggota Squad.",
+      "squad_archived": "Squad ini diarsipkan, jadi tidak bisa diubah atau menerima permintaan baru.",
+      "squad_needs_attention": "Squad ini perlu diperbaiki dulu. Buka untuk melihat apa yang kurang.",
+      "mention_not_in_squad": "Spesialis itu tidak ada di Squad ini. Tanya seluruh Squad, atau pilih salah satu anggotanya.",
+      "unknown_squad": "Squad itu sudah tidak ada."
     },
     "not_found": {
       "title": "Sino tidak menemukan halaman ini"
@@ -163,7 +188,8 @@
     "new_chat": "Obrolan baru",
     "chat": "Obrolan",
     "not_found": "Tidak ditemukan",
-    "library": "Sino Library"
+    "library": "Sino Library",
+    "squads": "Squad"
   },
   "auth": {
     "sign_in": {
@@ -584,7 +610,8 @@
       "forbidden": "Kamu belum punya akses ke sini. Hubungi admin.",
       "not_found": "Balasan ini tidak ditemukan. Muat ulang obrolan untuk melihat kondisi terakhirnya.",
       "rate_limited": "Terlalu banyak percobaan. Tunggu sebentar, lalu coba lagi.",
-      "generic": "Ada yang tidak beres saat {name} membalas. Coba lagi."
+      "generic": "Ada yang tidak beres saat {name} membalas. Coba lagi.",
+      "squad_unavailable": "Squad ini belum bisa menerima permintaan sekarang. Buka Squad untuk melihat apa yang perlu diperbaiki."
     }
   },
   "members": {
@@ -847,7 +874,6 @@
       "everyone": "Semua orang",
       "everyone_hint": "Sino di chat tim, setiap spesialis, dan nanti Squad dan Workflow.",
       "specialists": "Spesialis",
-      "squads": "Squad",
       "workflows": "Workflow",
       "none_error": "Pilih setidaknya satu spesialis, atau aktifkan Semua orang.",
       "same": "Sama dengan koleksi",
@@ -884,7 +910,8 @@
       "size": "Terbesar dulu"
     },
     "used_by": {
-      "everyone": "Semua orang"
+      "everyone": "Semua orang",
+      "squads_many": "{count} Squad"
     },
     "list": {
       "label": "File kamu",
@@ -1209,5 +1236,131 @@
       "resume_action": "Lanjutkan penyiapan"
     }
   },
-  "mcp": {}
+  "mcp": {},
+  "squads_ui": {
+    "title": "Squad",
+    "subtitle": "Squad adalah beberapa spesialis yang mengerjakan satu tujuan bersama, lengkap dengan file dan catatannya sendiri.",
+    "new": "Squad baru",
+    "list_label": "Squad kamu",
+    "templates_title": "Mulai dari Squad siap pakai",
+    "templates_hint": "Pilih satu, lalu ubah apa pun sebelum kamu simpan.",
+    "use_template": "Pakai Squad ini",
+    "template_prompts": "Kamu bisa bertanya",
+    "template_folders": "File yang baik untuk ditambahkan: {folders}",
+    "members_count": "{count} spesialis",
+    "led_by_sino": "Dipimpin Sino",
+    "led_by": "Dipimpin {name}",
+    "status_archived": "Diarsipkan",
+    "status_attention": "Perlu perhatian",
+    "status_no_access": "Minta akses ke admin",
+    "status_unchecked": "Kami belum bisa memeriksa Squad ini sekarang",
+    "open": "Buka",
+    "actions_for": "Aksi untuk {name}",
+    "edit": "Ubah",
+    "archive": "Arsipkan",
+    "restore": "Pulihkan",
+    "delete": "Hapus",
+    "close": "Tutup",
+    "cancel": "Batal",
+    "attention_member_disabled": "{name} dimatikan di workspace ini. Nyalakan lagi, atau keluarkan dari Squad.",
+    "attention_lead_removed": "Pemimpin tidak lagi ada di Squad. Pilih pemimpin baru.",
+    "attention_connection_missing": "Ada aplikasi yang dibutuhkan Squad ini terputus. Hubungkan lagi.",
+    "fix_action": "Perbaiki Squad ini",
+    "no_access_hint": "Kamu butuh akses ke setiap spesialis di Squad ini. Owner atau Admin bisa memberimu akses.",
+    "archived_hint": "Squad ini diarsipkan. Kamu masih bisa membacanya, tapi tidak bisa menerima permintaan baru.",
+    "form": {
+      "create_title": "Squad baru",
+      "edit_title": "Ubah Squad",
+      "name": "Nama Squad",
+      "goal": "Squad ini untuk apa?",
+      "goal_hint": "Satu tujuan, dengan kata-katamu sendiri. Semua spesialis di Squad bekerja dari sini.",
+      "goal_counter": "{count} dari {max}",
+      "members": "Spesialis",
+      "members_hint": "Pilih 2 sampai 5 spesialis yang akan bekerja bersama.",
+      "members_limit": "Pilih antara {min} dan {max} spesialis. Kamu memilih {count}.",
+      "lead": "Siapa yang memimpin?",
+      "lead_sino": "Sino",
+      "library": "File dan catatan",
+      "library_hint": "Setelah disimpan, tambahkan file untuk Squad ini di Library: pilih Squad ini di bagian Siapa yang bisa memakai ini.",
+      "template_note": "Dimulai dari {name}. Ubah apa pun yang kamu mau.",
+      "create": "Buat Squad",
+      "save": "Simpan perubahan"
+    },
+    "confirm": {
+      "archive_title": "Arsipkan {name}?",
+      "archive_body": "Chat-nya tetap bisa dibaca. Squad tidak bisa menerima permintaan baru sampai kamu memulihkannya.",
+      "archive_action": "Arsipkan Squad",
+      "delete_title": "Hapus {name}?",
+      "delete_body": "Ini menghapus Squad beserta semua chat-nya. Tidak bisa dibatalkan.",
+      "delete_action": "Hapus Squad"
+    },
+    "toast": {
+      "created": "Squad dibuat",
+      "saved": "Squad disimpan",
+      "archived": "Squad diarsipkan",
+      "restored": "Squad dipulihkan",
+      "deleted": "Squad dihapus"
+    }
+  },
+  "squad_chat": {
+    "back": "Semua Squad",
+    "lead_badge": "Pemimpin",
+    "members_label": "Anggota {name}",
+    "stage": "{name} · Squad",
+    "subtitle": "Chat Squad · {count} spesialis",
+    "placeholder": "Tanya {name}. Ketik @ untuk bicara langsung dengan satu anggota",
+    "ceiling": "Maksimal {points} poin untuk giliran ini",
+    "not_member": "{name} tidak ada di Squad ini. Tanya seluruh Squad, atau pilih salah satu anggotanya.",
+    "memory_entry": "Yang diingat Squad ini",
+    "soon": "Segera",
+    "activity": "Aktivitas",
+    "new_chat": "Chat baru",
+    "chats": "Chat",
+    "title_default": "Chat dengan {name}",
+    "loading": "Memuat chat Squad",
+    "messages_label": "Pesan",
+    "working": "{name} sedang mengerjakannya",
+    "announce_replied": "{name} sudah membalas.",
+    "announce_stopped": "Balasan dihentikan.",
+    "announce_handoff_done": "{name} selesai dengan bagiannya.",
+    "handoff": {
+      "title": "{from} meminta {to}: {task}",
+      "working": "Sedang dikerjakan",
+      "done": "Selesai",
+      "needs_review": "Perlu kamu periksa",
+      "failed": "Belum bisa selesai",
+      "show": "Tampilkan hasil",
+      "hide": "Sembunyikan hasil",
+      "result_label": "Hasil dari {name}",
+      "failed_note": "{name} belum bisa menyelesaikan bagian ini. Sino tidak menuliskannya untuk mereka.",
+      "contributors": "Jawaban disusun dari {names}",
+      "group": "Berjalan bersamaan dengan permintaan lain"
+    },
+    "limit": {
+      "title": "Berhenti: giliran ini mencapai batasnya",
+      "cap_delegations": "Sino sudah meminta sebanyak spesialis yang boleh dalam satu giliran.",
+      "cap_tokens": "Pekerjaannya sudah mencapai batas terbanyak untuk satu giliran.",
+      "cap_time": "Waktunya lebih lama dari yang diizinkan untuk satu giliran.",
+      "cap_credits": "Sudah mencapai poin terbanyak yang boleh dipakai satu giliran.",
+      "unfinished": "Belum selesai",
+      "next": "Kirim pesan lanjutan untuk meneruskan sisanya."
+    },
+    "failure": {
+      "title": "{name} belum bisa menyelesaikan",
+      "body": "Sino memberi tahu apa yang kurang dan tidak menuliskannya untuk mereka. Coba lagi, atau tanya {name} langsung."
+    },
+    "activity_panel": {
+      "title": "Aktivitas",
+      "turn_points": "{points} poin",
+      "turn_ceiling": "Maksimal {ceiling} poin",
+      "split": "Poin per spesialis",
+      "status_completed": "Selesai",
+      "status_stopped": "Berhenti di batas",
+      "status_failed": "Tidak selesai",
+      "status_running": "Sedang dikerjakan",
+      "status_cancelled": "Kamu hentikan",
+      "direct": "Bertanya langsung ke {name}",
+      "error": "Kami belum bisa memuat aktivitas. Coba lagi."
+    }
+  }
 }

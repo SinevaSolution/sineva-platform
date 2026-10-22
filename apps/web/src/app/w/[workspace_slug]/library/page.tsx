@@ -7,6 +7,7 @@ import {
   getGetLibraryUsageUseCase,
   getListLibraryDocumentsUseCase,
   getListLibraryFoldersUseCase,
+  getListSquadsUseCase,
 } from '@/server/container';
 import { getTranslations } from '@/i18n/server';
 import { ListLibraryDocumentsQuerySchema } from '@/server/application/dtos/library_dto';
@@ -46,11 +47,15 @@ export default async function Page({
   const status = query.status && UI_STATUSES.has(query.status) ? query.status : undefined;
 
   const manager = context.role === 'owner' || context.role === 'admin';
-  const [documents, folders, summary, usage] = await Promise.all([
+  const [documents, folders, summary, usage, squads] = await Promise.all([
     getListLibraryDocumentsUseCase().execute({ ...query, status, cursor: undefined }, context),
     getListLibraryFoldersUseCase().execute(context),
     getGetLibrarySummaryUseCase().execute(context),
     manager ? getGetLibraryUsageUseCase().execute(context) : Promise.resolve(null),
+    // Active squads for "Who can use this". A restricted member cannot pick one, so they get none.
+    context.specialist_scope === 'selected'
+      ? Promise.resolve({ items: [] })
+      : getListSquadsUseCase().execute({ status: 'active' }, context),
   ]);
 
   let selected = null;
@@ -94,6 +99,7 @@ export default async function Page({
       canUpload={context.role !== 'viewer'}
       canManage={manager}
       specialists={specialists}
+      squads={squads.items.map(({ squad }) => ({ id: squad.id, name: squad.name }))}
       filters={filters}
     />
   );

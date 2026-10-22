@@ -166,6 +166,7 @@ function setup(props: Props = {}, locale: 'en' | 'id' = 'en') {
           summary={SUMMARY}
           usage={USAGE}
           uploaderNames={{ 'user-1': 'Sari' }}
+          squads={[]}
           selectedDocument={null}
           canUpload
           canManage

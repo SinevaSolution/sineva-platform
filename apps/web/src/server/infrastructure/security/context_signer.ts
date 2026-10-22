@@ -123,6 +123,12 @@ export class Ed25519ContextSigner implements ContextSigner {
     if (options?.run_id) {
       claims.run_id = options.run_id;
     }
+    if (options?.squad) {
+      claims.squad = options.squad;
+    }
+    if (options?.budget) {
+      claims.budget = options.budget;
+    }
 
     // Only include job_title, department, about_me when use_profile_in_context is true
     if (useProfileInContext) {

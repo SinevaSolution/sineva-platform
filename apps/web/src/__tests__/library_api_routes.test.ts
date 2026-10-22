@@ -364,11 +364,18 @@ describe('collections, access and counts through the routes (ADR-0033)', () => {
     expect(list.data.items[0].scopes).toEqual([{ scope_type: 'specialist', scope_ref: 'sinosales' }]);
   });
 
-  it.each(['squad', 'workflow'])('rejects a reserved %s scope with 422 on folders and documents', async (scope_type) => {
-    const scopes = [{ scope_type, scope_ref: '77777777-7777-4777-8777-777777777777' }];
+  it('rejects the reserved workflow scope with 422 on folders and documents', async () => {
+    const scopes = [{ scope_type: 'workflow', scope_ref: '77777777-7777-4777-8777-777777777777' }];
     expect((await call(foldersRoute.POST, 'POST', '/folders', { body: { name: 'x', scopes } })).status).toBe(422);
     expect((await call(folderRoute.PATCH, 'PATCH', `/folders/${FOLDER}`, { body: { scopes } })).status).toBe(422);
     expect((await call(documentRoute.PATCH, 'PATCH', `/documents/${DOC}`, { body: { scopes } })).status).toBe(422);
+  });
+
+  it('answers 422 unknown_squad for a squad scope that is not an active squad of the workspace', async () => {
+    const scopes = [{ scope_type: 'squad', scope_ref: '77777777-7777-4777-8777-777777777777' }];
+    const res = await call(foldersRoute.POST, 'POST', '/folders', { body: { name: 'x', scopes } });
+    expect(res.status).toBe(422);
+    expect((await res.json()).errors[0]).toMatchObject({ code: 'unknown_squad' });
   });
 
   it('rejects scopes together with inherit_access', async () => {
