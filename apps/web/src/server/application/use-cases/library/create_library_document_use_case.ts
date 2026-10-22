@@ -3,7 +3,8 @@ import { detectPii } from '@sineva/shared';
 import type { CreateLibraryDocumentDto } from '@/server/application/dtos/library_dto';
 import { resolveOwnedConversation } from '@/server/application/chat/resolve_owned_conversation';
 import {
-  assertFolderExists,
+  inheritedScopes,
+  loadVisibleFolder,
   monthStart,
   requireWorkspace,
   resolveScopes,
@@ -46,7 +47,7 @@ export class CreateLibraryDocumentUseCase {
     const { documents, folders, store, entitlements, audit, transactions, conversations } = this.deps;
     const workspaceId = requireWorkspace(context);
 
-    await assertFolderExists(folders, workspaceId, dto.folder_id);
+    const folder = await loadVisibleFolder(folders, context, dto.folder_id);
 
     let defaults: ScopeRef[] = [];
     let title: string;
@@ -61,7 +62,9 @@ export class CreateLibraryDocumentUseCase {
     } else {
       title = dto.title;
     }
-    const scopes = resolveScopes(dto.scopes, context, defaults);
+    // Nothing chosen and no Room default: follow the collection (ADR-0033).
+    const inherited = !dto.scopes?.length && defaults.length === 0;
+    const scopes = inherited ? inheritedScopes(folder, context) : resolveScopes(dto.scopes, context, defaults);
 
     const bytes = new TextEncoder().encode(dto.content);
     if (bytes.length > LIBRARY_MAX_BYTES) {
@@ -97,6 +100,7 @@ export class CreateLibraryDocumentUseCase {
       uploaded_at: null,
       created_by: context.user_id,
       scopes,
+      access_inherited: inherited,
     });
     const key = sourceObjectKey(workspaceId, created.id);
     await documents.update(workspaceId, created.id, { storage_key: key });

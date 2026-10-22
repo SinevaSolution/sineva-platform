@@ -58,6 +58,7 @@ async function seedDocument(
     review_interval_days: null,
     review_due_at: null,
     uploaded_at: over.uploaded === false ? null : new Date(),
+    access_inherited: false,
     created_by: userId,
     scopes: over.scopes ?? [{ scope_type: 'workspace', scope_ref: workspaceId }],
   });
@@ -253,26 +254,26 @@ describe('library ingest events (Prisma)', () => {
 describe('library folders (Prisma)', () => {
   it('keeps names unique per parent including the root, and the same name under another parent is fine', async () => {
     const { user, workspace } = await seedWorkspace('lib-folders');
-    const root = await folders.create({ workspace_id: workspace.id, parent_id: null, name: 'SOP', created_by: user.id });
+    const root = await folders.create({ workspace_id: workspace.id, parent_id: null, name: 'SOP', created_by: user.id, scopes: [{ scope_type: 'workspace', scope_ref: workspace.id }] });
     // Two root folders with the same name would pass a unique index over a nullable parent_id.
-    await expect(folders.create({ workspace_id: workspace.id, parent_id: null, name: 'SOP', created_by: user.id })).rejects.toBeInstanceOf(ConflictError);
-    const child = await folders.create({ workspace_id: workspace.id, parent_id: root.id, name: 'SOP', created_by: user.id });
+    await expect(folders.create({ workspace_id: workspace.id, parent_id: null, name: 'SOP', created_by: user.id, scopes: [{ scope_type: 'workspace', scope_ref: workspace.id }] })).rejects.toBeInstanceOf(ConflictError);
+    const child = await folders.create({ workspace_id: workspace.id, parent_id: root.id, name: 'SOP', created_by: user.id, scopes: [{ scope_type: 'workspace', scope_ref: workspace.id }] });
     expect(child.parent_id).toBe(root.id);
-    await expect(folders.create({ workspace_id: workspace.id, parent_id: root.id, name: 'SOP', created_by: user.id })).rejects.toBeInstanceOf(ConflictError);
+    await expect(folders.create({ workspace_id: workspace.id, parent_id: root.id, name: 'SOP', created_by: user.id, scopes: [{ scope_type: 'workspace', scope_ref: workspace.id }] })).rejects.toBeInstanceOf(ConflictError);
   });
 
   it('allows the same root name in two workspaces', async () => {
     const a = await seedWorkspace('lib-fo-a');
     const b = await seedWorkspace('lib-fo-b');
-    await folders.create({ workspace_id: a.workspace.id, parent_id: null, name: 'SOP', created_by: a.user.id });
-    await expect(folders.create({ workspace_id: b.workspace.id, parent_id: null, name: 'SOP', created_by: b.user.id })).resolves.toBeDefined();
+    await folders.create({ workspace_id: a.workspace.id, parent_id: null, name: 'SOP', created_by: a.user.id, scopes: [{ scope_type: 'workspace', scope_ref: a.workspace.id }] });
+    await expect(folders.create({ workspace_id: b.workspace.id, parent_id: null, name: 'SOP', created_by: b.user.id, scopes: [{ scope_type: 'workspace', scope_ref: b.workspace.id }] })).resolves.toBeDefined();
   });
 
   it('moves between root and a parent and keeps uniqueness on the move', async () => {
     const { user, workspace } = await seedWorkspace('lib-fo-move');
-    const a = await folders.create({ workspace_id: workspace.id, parent_id: null, name: 'A', created_by: user.id });
-    const b = await folders.create({ workspace_id: workspace.id, parent_id: null, name: 'B', created_by: user.id });
-    const nestedB = await folders.create({ workspace_id: workspace.id, parent_id: a.id, name: 'B', created_by: user.id });
+    const a = await folders.create({ workspace_id: workspace.id, parent_id: null, name: 'A', created_by: user.id, scopes: [{ scope_type: 'workspace', scope_ref: workspace.id }] });
+    const b = await folders.create({ workspace_id: workspace.id, parent_id: null, name: 'B', created_by: user.id, scopes: [{ scope_type: 'workspace', scope_ref: workspace.id }] });
+    const nestedB = await folders.create({ workspace_id: workspace.id, parent_id: a.id, name: 'B', created_by: user.id, scopes: [{ scope_type: 'workspace', scope_ref: workspace.id }] });
     await expect(folders.update(workspace.id, nestedB.id, { parent_id: null })).rejects.toBeInstanceOf(ConflictError);
     await expect(folders.update(workspace.id, b.id, { parent_id: a.id })).rejects.toBeInstanceOf(ConflictError);
     const renamed = await folders.update(workspace.id, nestedB.id, { name: 'C' });
@@ -282,8 +283,8 @@ describe('library folders (Prisma)', () => {
 
   it('refuses to delete a folder with folders or documents inside at the database level too (NO ACTION)', async () => {
     const { user, workspace } = await seedWorkspace('lib-fo-del');
-    const parent = await folders.create({ workspace_id: workspace.id, parent_id: null, name: 'Parent', created_by: user.id });
-    const child = await folders.create({ workspace_id: workspace.id, parent_id: parent.id, name: 'Child', created_by: user.id });
+    const parent = await folders.create({ workspace_id: workspace.id, parent_id: null, name: 'Parent', created_by: user.id, scopes: [{ scope_type: 'workspace', scope_ref: workspace.id }] });
+    const child = await folders.create({ workspace_id: workspace.id, parent_id: parent.id, name: 'Child', created_by: user.id, scopes: [{ scope_type: 'workspace', scope_ref: workspace.id }] });
     expect(await folders.contentCounts(workspace.id, parent.id)).toEqual({ folders: 1, documents: 0 });
     await expect(folders.delete(workspace.id, parent.id)).rejects.toThrow();
 
@@ -300,7 +301,7 @@ describe('library folders (Prisma)', () => {
   it('never reads or changes a folder of another workspace', async () => {
     const a = await seedWorkspace('lib-fo-iso-a');
     const b = await seedWorkspace('lib-fo-iso-b');
-    const folder = await folders.create({ workspace_id: a.workspace.id, parent_id: null, name: 'Mine', created_by: a.user.id });
+    const folder = await folders.create({ workspace_id: a.workspace.id, parent_id: null, name: 'Mine', created_by: a.user.id, scopes: [{ scope_type: 'workspace', scope_ref: a.workspace.id }] });
     expect(await folders.findById(b.workspace.id, folder.id)).toBeNull();
     expect(await folders.listAll(b.workspace.id)).toEqual([]);
     await expect(folders.update(b.workspace.id, folder.id, { name: 'stolen' })).rejects.toThrow();
@@ -462,7 +463,7 @@ describe('library use cases on Prisma: atomicity and deletion cascade', () => {
 
   it('deleting a workspace removes its library rows through the cascade', async () => {
     const { user, workspace } = await seedWorkspace('lib-ws-gone');
-    const folder = await folders.create({ workspace_id: workspace.id, parent_id: null, name: 'F', created_by: user.id });
+    const folder = await folders.create({ workspace_id: workspace.id, parent_id: null, name: 'F', created_by: user.id, scopes: [{ scope_type: 'workspace', scope_ref: workspace.id }] });
     const doc = await seedDocument(workspace.id, user.id, { folder_id: folder.id });
     await events.append({ document_id: doc.id, workspace_id: workspace.id, event_id: null, job_id: null, sequence: null, stage: 'x', outcome: 'y', status: null, detail: null, applied: true });
     // Folder FKs are NO ACTION (checked at statement end), so the workspace cascade removes folders and documents together.
@@ -470,5 +471,126 @@ describe('library use cases on Prisma: atomicity and deletion cascade', () => {
     expect(await prisma.libraryFolder.count({ where: { workspace_id: workspace.id } })).toBe(0);
     expect(await prisma.libraryDocumentScope.count({ where: { workspace_id: workspace.id } })).toBe(0);
     expect(await prisma.libraryIngestEvent.count({ where: { workspace_id: workspace.id } })).toBe(0);
+  });
+});
+
+describe('collection access, counts and list filters (Prisma, ADR-0033)', () => {
+  const everyone = (workspaceId: string) => ({ scope_type: 'workspace' as const, scope_ref: workspaceId });
+  const only = (slug: string) => ({ scope_type: 'specialist' as const, scope_ref: slug });
+
+  it('stores and replaces a collection access, in the workspace only', async () => {
+    const a = await seedWorkspace('lib-fs-a');
+    const b = await seedWorkspace('lib-fs-b');
+    const folder = await folders.create({ workspace_id: a.workspace.id, parent_id: null, name: 'Pricing', created_by: a.user.id, scopes: [only('sinosales')] });
+    expect((await folders.findById(a.workspace.id, folder.id))?.scopes).toEqual([only('sinosales')]);
+
+    await folders.replaceScopes(a.workspace.id, folder.id, [everyone(a.workspace.id), only('sinohelp')]);
+    // Scopes come back sorted by type then reference.
+    expect((await folders.listAll(a.workspace.id))[0]?.scopes).toEqual([only('sinohelp'), everyone(a.workspace.id)]);
+    // Another workspace cannot change it.
+    await expect(folders.replaceScopes(b.workspace.id, folder.id, [everyone(b.workspace.id)])).rejects.toThrow();
+    expect((await folders.findById(a.workspace.id, folder.id))?.scopes).toHaveLength(2);
+  });
+
+  it('deleting a collection removes its access rows', async () => {
+    const { user, workspace } = await seedWorkspace('lib-fs-del');
+    const folder = await folders.create({ workspace_id: workspace.id, parent_id: null, name: 'Gone', created_by: user.id, scopes: [everyone(workspace.id)] });
+    await folders.delete(workspace.id, folder.id);
+    expect(await prisma.libraryFolderScope.count({ where: { folder_id: folder.id } })).toBe(0);
+  });
+
+  it('lists the documents that follow a collection, pending uploads included', async () => {
+    const { user, workspace } = await seedWorkspace('lib-inherit');
+    const folder = await folders.create({ workspace_id: workspace.id, parent_id: null, name: 'F', created_by: user.id, scopes: [everyone(workspace.id)] });
+    const follower = await seedDocument(workspace.id, user.id, { folder_id: folder.id, hash: '1'.repeat(64) });
+    await documents.update(workspace.id, follower.id, { access_inherited: true });
+    const pending = await seedDocument(workspace.id, user.id, { folder_id: folder.id, hash: '2'.repeat(64), uploaded: false });
+    await documents.update(workspace.id, pending.id, { access_inherited: true });
+    await seedDocument(workspace.id, user.id, { folder_id: folder.id, hash: '3'.repeat(64) });
+
+    const inheriting = await documents.listInheriting(workspace.id, folder.id);
+    expect(inheriting.map((d) => d.id).sort()).toEqual([follower.id, pending.id].sort());
+    expect(inheriting.every((d) => d.access_inherited)).toBe(true);
+  });
+
+  it('summarises statuses and collections for what the caller may see, and not other workspaces', async () => {
+    const a = await seedWorkspace('lib-sum-a');
+    const b = await seedWorkspace('lib-sum-b');
+    const folder = await folders.create({ workspace_id: a.workspace.id, parent_id: null, name: 'F', created_by: a.user.id, scopes: [everyone(a.workspace.id)] });
+    const mk = async (hash: string, status: string, extra: Parameters<typeof seedDocument>[2] = {}) => {
+      const doc = await seedDocument(a.workspace.id, a.user.id, { hash: hash.repeat(64), ...extra });
+      await documents.update(a.workspace.id, doc.id, { status: status as 'ready' });
+      return doc;
+    };
+    await mk('1', 'ready', { folder_id: folder.id });
+    await mk('2', 'ready');
+    await mk('3', 'queued');
+    await mk('4', 'processing');
+    await mk('5', 'needs_attention');
+    await mk('6', 'failed');
+    await mk('7', 'deleting');
+    await mk('8', 'ready', { scopes: [only('sinofinance')] });
+    await mk('9', 'ready', { uploaded: false });
+    await seedDocument(b.workspace.id, b.user.id, { hash: 'a'.repeat(64) });
+
+    expect(await documents.summary(a.workspace.id, { all: true })).toEqual({
+      total: 7,
+      by_status: { ready: 3, reading: 2, needs_attention: 1, failed: 1 },
+      by_folder: { [folder.id]: 1 },
+      in_root: 6,
+    });
+    const restricted = await documents.summary(a.workspace.id, { all: false, specialists: ['sinohelp'] });
+    expect(restricted.total).toBe(6);
+    expect(restricted.by_status.ready).toBe(2);
+  });
+
+  it('counts what each companion knows: ready documents, Everyone once, specialist-only by slug', async () => {
+    const { user, workspace } = await seedWorkspace('lib-know');
+    const mk = async (hash: string, scopes: Array<ReturnType<typeof only> | ReturnType<typeof everyone>>, status = 'ready') => {
+      const doc = await seedDocument(workspace.id, user.id, { hash: hash.repeat(64), scopes });
+      await documents.update(workspace.id, doc.id, { status: status as 'ready' });
+    };
+    await mk('1', [everyone(workspace.id)]);
+    await mk('2', [everyone(workspace.id), only('sinosales')]);
+    await mk('3', [only('sinosales')]);
+    await mk('4', [only('sinosales'), only('sinohelp')]);
+    await mk('5', [only('sinosales')], 'processing');
+    await mk('6', [only('sinosales')], 'deleting');
+
+    expect(await documents.knowledgeCounts(workspace.id)).toEqual({
+      everyone: 2,
+      specialist_only: { sinosales: 2, sinohelp: 1 },
+    });
+  });
+
+  it('filters by used_by and reading, and sorts by name and size', async () => {
+    const { user, workspace } = await seedWorkspace('lib-list');
+    const mk = async (hash: string, title: string, scopes: Array<ReturnType<typeof only> | ReturnType<typeof everyone>>, status: string, size: number) => {
+      const doc = await seedDocument(workspace.id, user.id, { hash: hash.repeat(64), scopes });
+      await documents.update(workspace.id, doc.id, { title, status: status as 'ready', byte_size: size });
+    };
+    await mk('1', 'Everyone doc', [everyone(workspace.id)], 'ready', 5);
+    await mk('2', 'Sales only', [only('sinosales')], 'ready', 500);
+    await mk('3', 'Help only', [only('sinohelp')], 'ready', 50);
+    await mk('4', 'Being read', [everyone(workspace.id)], 'processing', 1);
+    await mk('5', 'Waiting', [everyone(workspace.id)], 'queued', 2);
+    const base = { workspace_id: workspace.id, access: { all: true } as const, limit: 25 };
+
+    const sales = await documents.list({ ...base, used_by: 'sinosales' });
+    expect(sales.items.map((d) => d.title).sort()).toEqual(['Being read', 'Everyone doc', 'Sales only', 'Waiting']);
+    const reading = await documents.list({ ...base, status: 'reading' });
+    expect(reading.items.map((d) => d.title).sort()).toEqual(['Being read', 'Waiting']);
+    expect((await documents.list({ ...base, sort: 'name' })).items.map((d) => d.title)).toEqual([
+      'Being read',
+      'Everyone doc',
+      'Help only',
+      'Sales only',
+      'Waiting',
+    ]);
+    const bySize = await documents.list({ ...base, sort: 'size', limit: 2 });
+    expect(bySize.items.map((d) => d.title)).toEqual(['Sales only', 'Help only']);
+    // The cursor keeps the chosen order on the next page.
+    const next = await documents.list({ ...base, sort: 'size', limit: 2, cursor: bySize.next_cursor! });
+    expect(next.items.map((d) => d.title)).toEqual(['Everyone doc', 'Waiting']);
   });
 });

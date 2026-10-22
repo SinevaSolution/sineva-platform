@@ -207,6 +207,8 @@ import { PreviewLibraryDocumentUseCase } from './application/use-cases/library/p
 import { ApplyIngestEventUseCase } from './application/use-cases/library/apply_ingest_event_use_case';
 import { TryLibraryRetrievalUseCase } from './application/use-cases/library/try_library_retrieval_use_case';
 import { GetLibraryUsageUseCase } from './application/use-cases/library/get_library_usage_use_case';
+import { GetLibrarySummaryUseCase } from './application/use-cases/library/get_library_summary_use_case';
+import { GetLibraryKnowledgeUseCase } from './application/use-cases/library/get_library_knowledge_use_case';
 import { CreateLibraryFolderUseCase } from './application/use-cases/library/create_library_folder_use_case';
 import { ListLibraryFoldersUseCase } from './application/use-cases/library/list_library_folders_use_case';
 import { UpdateLibraryFolderUseCase } from './application/use-cases/library/update_library_folder_use_case';
@@ -935,6 +937,8 @@ export const getPreviewLibraryDocumentUseCase = memoize(() => new PreviewLibrary
 export const getApplyIngestEventUseCase = memoize(() => new ApplyIngestEventUseCase(getLibraryDeps()));
 export const getTryLibraryRetrievalUseCase = memoize(() => new TryLibraryRetrievalUseCase(getLibraryDeps()));
 export const getGetLibraryUsageUseCase = memoize(() => new GetLibraryUsageUseCase(getLibraryDeps()));
+export const getGetLibrarySummaryUseCase = memoize(() => new GetLibrarySummaryUseCase(getLibraryDeps()));
+export const getGetLibraryKnowledgeUseCase = memoize(() => new GetLibraryKnowledgeUseCase(getLibraryDeps()));
 export const getCreateLibraryFolderUseCase = memoize(() => new CreateLibraryFolderUseCase(getLibraryDeps()));
 export const getListLibraryFoldersUseCase = memoize(() => new ListLibraryFoldersUseCase(getLibraryDeps()));
 export const getUpdateLibraryFolderUseCase = memoize(() => new UpdateLibraryFolderUseCase(getLibraryDeps()));

@@ -40,13 +40,13 @@ describe('folders (FR-LIB-04)', () => {
 
   it('does not accept a parent folder of another workspace', async () => {
     const h = buildHarness();
-    const foreign = await h.folders.create({ workspace_id: OTHER_WS, parent_id: null, name: 'Theirs', created_by: OTHER_USER });
+    const foreign = await h.folders.create({ workspace_id: OTHER_WS, parent_id: null, name: 'Theirs', created_by: OTHER_USER, scopes: [{ scope_type: 'workspace', scope_ref: OTHER_WS }] });
     await expect(usecases(h).create.execute({ name: 'x', parent_id: foreign.id }, ctx())).rejects.toBeInstanceOf(NotFoundError);
   });
 
   it('lists only the folders of the caller workspace', async () => {
     const h = buildHarness();
-    await h.folders.create({ workspace_id: OTHER_WS, parent_id: null, name: 'Theirs', created_by: OTHER_USER });
+    await h.folders.create({ workspace_id: OTHER_WS, parent_id: null, name: 'Theirs', created_by: OTHER_USER, scopes: [{ scope_type: 'workspace', scope_ref: OTHER_WS }] });
     const mine = await usecases(h).create.execute({ name: 'Mine' }, ctx());
     const list = await usecases(h).list.execute(ctx());
     expect(list.items.map((f) => f.id)).toEqual([mine.id]);
@@ -82,7 +82,7 @@ describe('folders (FR-LIB-04)', () => {
 
   it('404s a folder of another workspace', async () => {
     const h = buildHarness();
-    const foreign = await h.folders.create({ workspace_id: OTHER_WS, parent_id: null, name: 'Theirs', created_by: OTHER_USER });
+    const foreign = await h.folders.create({ workspace_id: OTHER_WS, parent_id: null, name: 'Theirs', created_by: OTHER_USER, scopes: [{ scope_type: 'workspace', scope_ref: OTHER_WS }] });
     await expect(usecases(h).update.execute(foreign.id, { name: 'x' }, ctx())).rejects.toBeInstanceOf(NotFoundError);
     await expect(usecases(h).remove.execute(foreign.id, ctx())).rejects.toBeInstanceOf(NotFoundError);
   });

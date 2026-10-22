@@ -11,12 +11,16 @@ import * as foldersRoute from '@/app/api/v1/workspaces/[workspace_id]/library/fo
 import * as folderRoute from '@/app/api/v1/workspaces/[workspace_id]/library/folders/[folder_id]/route';
 import * as tryRoute from '@/app/api/v1/workspaces/[workspace_id]/library/try/route';
 import * as usageRoute from '@/app/api/v1/workspaces/[workspace_id]/library/usage/route';
+import * as summaryRoute from '@/app/api/v1/workspaces/[workspace_id]/library/summary/route';
+import * as knowledgeRoute from '@/app/api/v1/workspaces/[workspace_id]/library/knowledge/route';
 import { CompleteLibraryUploadUseCase } from '@/server/application/use-cases/library/complete_library_upload_use_case';
 import { CreateLibraryDocumentUseCase } from '@/server/application/use-cases/library/create_library_document_use_case';
 import { CreateLibraryFolderUseCase } from '@/server/application/use-cases/library/create_library_folder_use_case';
 import { DeleteLibraryDocumentUseCase } from '@/server/application/use-cases/library/delete_library_document_use_case';
 import { DeleteLibraryFolderUseCase } from '@/server/application/use-cases/library/delete_library_folder_use_case';
 import { GetLibraryDocumentUseCase } from '@/server/application/use-cases/library/get_library_document_use_case';
+import { GetLibraryKnowledgeUseCase } from '@/server/application/use-cases/library/get_library_knowledge_use_case';
+import { GetLibrarySummaryUseCase } from '@/server/application/use-cases/library/get_library_summary_use_case';
 import { GetLibraryUsageUseCase } from '@/server/application/use-cases/library/get_library_usage_use_case';
 import { ListLibraryDocumentsUseCase } from '@/server/application/use-cases/library/list_library_documents_use_case';
 import { ListLibraryFoldersUseCase } from '@/server/application/use-cases/library/list_library_folders_use_case';
@@ -67,6 +71,8 @@ const CASES: RouteCase[] = [
   { name: 'DELETE folder', handler: folderRoute.DELETE, method: 'DELETE', path: `/folders/${FOLDER}`, deniedRole: 'member' },
   { name: 'POST try', handler: tryRoute.POST, method: 'POST', path: '/try', body: { query: 'x' }, deniedRole: 'member' },
   { name: 'GET usage', handler: usageRoute.GET, method: 'GET', path: '/usage', deniedRole: 'member' },
+  { name: 'GET summary', handler: summaryRoute.GET, method: 'GET', path: '/summary', deniedRole: null },
+  { name: 'GET knowledge', handler: knowledgeRoute.GET, method: 'GET', path: '/knowledge', deniedRole: null },
 ];
 
 function headers(extra: Record<string, string> = {}): Record<string, string> {
@@ -118,6 +124,8 @@ beforeEach(() => {
   vi.spyOn(container, 'getPreviewLibraryDocumentUseCase').mockReturnValue(new PreviewLibraryDocumentUseCase(deps));
   vi.spyOn(container, 'getTryLibraryRetrievalUseCase').mockReturnValue(new TryLibraryRetrievalUseCase(deps));
   vi.spyOn(container, 'getGetLibraryUsageUseCase').mockReturnValue(new GetLibraryUsageUseCase(deps));
+  vi.spyOn(container, 'getGetLibrarySummaryUseCase').mockReturnValue(new GetLibrarySummaryUseCase(deps));
+  vi.spyOn(container, 'getGetLibraryKnowledgeUseCase').mockReturnValue(new GetLibraryKnowledgeUseCase(deps));
   vi.spyOn(container, 'getCreateLibraryFolderUseCase').mockReturnValue(new CreateLibraryFolderUseCase(deps));
   vi.spyOn(container, 'getListLibraryFoldersUseCase').mockReturnValue(new ListLibraryFoldersUseCase(deps));
   vi.spyOn(container, 'getUpdateLibraryFolderUseCase').mockReturnValue(new UpdateLibraryFolderUseCase(deps));
@@ -341,5 +349,48 @@ describe('folders, try and usage through the routes', () => {
     });
     expect(res.status).toBe(201);
     expect((await res.json()).data).toMatchObject({ source_type: 'note', title: 'Jam buka' });
+  });
+});
+
+describe('collections, access and counts through the routes (ADR-0033)', () => {
+  it('creates a collection with chosen access and serves it without internals', async () => {
+    const res = await call(foldersRoute.POST, 'POST', '/folders', {
+      body: { name: 'Pricing', scopes: [{ scope_type: 'specialist', scope_ref: 'sinosales' }] },
+    });
+    expect(res.status).toBe(201);
+    const json = await res.json();
+    expect(json.data).toMatchObject({ name: 'Pricing', scopes: [{ scope_type: 'specialist', scope_ref: 'sinosales' }] });
+    const list = await (await call(foldersRoute.GET, 'GET', '/folders')).json();
+    expect(list.data.items[0].scopes).toEqual([{ scope_type: 'specialist', scope_ref: 'sinosales' }]);
+  });
+
+  it.each(['squad', 'workflow'])('rejects a reserved %s scope with 422 on folders and documents', async (scope_type) => {
+    const scopes = [{ scope_type, scope_ref: '77777777-7777-4777-8777-777777777777' }];
+    expect((await call(foldersRoute.POST, 'POST', '/folders', { body: { name: 'x', scopes } })).status).toBe(422);
+    expect((await call(folderRoute.PATCH, 'PATCH', `/folders/${FOLDER}`, { body: { scopes } })).status).toBe(422);
+    expect((await call(documentRoute.PATCH, 'PATCH', `/documents/${DOC}`, { body: { scopes } })).status).toBe(422);
+  });
+
+  it('rejects scopes together with inherit_access', async () => {
+    const res = await call(documentRoute.PATCH, 'PATCH', `/documents/${DOC}`, {
+      body: { inherit_access: true, scopes: [{ scope_type: 'workspace' }] },
+    });
+    expect(res.status).toBe(422);
+  });
+
+  it('serves the summary and what each companion knows', async () => {
+    h.documents.seed({ workspace_id: WS, status: 'ready', scopes: [{ scope_type: 'workspace', scope_ref: WS }] });
+    h.documents.seed({ workspace_id: WS, status: 'ready', scopes: [{ scope_type: 'specialist', scope_ref: 'sinosales' }] });
+    const summary = await (await call(summaryRoute.GET, 'GET', '/summary')).json();
+    expect(summary.data).toMatchObject({ total: 2, by_status: { ready: 2, reading: 0 }, in_root: 2 });
+    const knows = await (await call(knowledgeRoute.GET, 'GET', '/knowledge')).json();
+    expect(knows.data.everyone).toBe(1);
+    expect(knows.data.specialists.sinosales).toBe(2);
+    expect(knows.data.specialists.sinohelp).toBe(1);
+  });
+
+  it('rejects an unknown used_by and sort on the list', async () => {
+    expect((await call(documentsRoute.GET, 'GET', '/documents?used_by=nobody')).status).toBe(422);
+    expect((await call(documentsRoute.GET, 'GET', '/documents?sort=random')).status).toBe(422);
   });
 });

@@ -47,7 +47,8 @@ How it is enforced: the datasource declares `schemas = ["platform"]`, every mode
 | `storage_objects` | `StorageObject` | Metadata of a file uploaded through a presigned URL | nothing |
 | `library_folders` | `LibraryFolder` | Sino Library folder tree (depth 3, unique name per parent through `parent_key`) | Library use cases |
 | `library_documents` | `LibraryDocument` | Library document metadata, status and ingest bookkeeping (no text, no chunks: sineva-ai owns those) | Library use cases and the ingest events route |
-| `library_document_scopes` | `LibraryDocumentScope` | Scopes of a document: workspace, specialist or squad (`scope_ref` is never null) | Library use cases |
+| `library_document_scopes` | `LibraryDocumentScope` | Scopes of a document: workspace, specialist, squad or workflow (the last two reserved; `scope_ref` is never null). `library_documents.access_inherited` says whether they follow the collection | Library use cases |
+| `library_folder_scopes` | `LibraryFolderScope` | Who can use a collection (ADR-0033); same shape as the document scopes, never empty | Library use cases |
 | `library_ingest_events` | `LibraryIngestEvent` | Append-only ingest history, one row per event (`applied` says whether it changed the status) | Library use cases |
 
 The former companion registry table `agent_configs` was dropped by migration `20261022120000_drop_agent_configs`: sineva-ai owns the specialist catalog and the platform presents it through a static manifest in code ([ADR-0024](../decisions/0024-specialist-manifest-and-catalog-split.md)). Nothing reads or writes a specialist table. The other tables in this list exist in the init migration with no adapter behind them. The platform does not persist chat history in these tables; sessions and messages live on the `sineva-ai` side (`sineva_ai.agent_sessions`, `sineva_ai.agent_messages`), whose Postgres persistence is currently dormant.

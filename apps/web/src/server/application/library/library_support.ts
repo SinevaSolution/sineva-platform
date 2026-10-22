@@ -18,7 +18,11 @@ import {
   principalsForScopes,
   type ScopeRef,
 } from '@/server/domain/library/library_access';
-import type { LibraryDocumentEntity, LibraryStatusDetail } from '@/server/domain/library/library_entities';
+import type {
+  LibraryDocumentEntity,
+  LibraryFolderEntity,
+  LibraryStatusDetail,
+} from '@/server/domain/library/library_entities';
 import type { LibraryLog } from '@/server/domain/library/library_ports';
 import type {
   LibraryDocumentRepository,
@@ -28,6 +32,7 @@ import type {
 import type { ObjectStore } from '@/server/domain/repositories/object_store';
 import type { TransactionRunner } from '@/server/domain/transactions/transaction_runner';
 import type { LibraryScopeInput } from '@/server/application/dtos/library_dto';
+import type { LibraryDocumentPatch } from '@/server/domain/repositories/library_repository';
 
 export interface LibraryDeps {
   documents: LibraryDocumentRepository;
@@ -126,14 +131,93 @@ export function resolveScopes(
   return [...scopes.values()];
 }
 
-export async function assertFolderExists(
+/**
+ * Loads a collection the caller may use. A missing one, another workspace's
+ * and one whose access excludes a restricted member all give the same 404, so
+ * a hidden collection is not disclosed by trying to put something into it.
+ * Null in, null out: the top level has no collection.
+ */
+export async function loadVisibleFolder(
   folders: LibraryFolderRepository,
-  workspaceId: string,
+  context: RequestContext,
   folderId: string | null | undefined,
-): Promise<void> {
-  if (folderId && !(await folders.findById(workspaceId, folderId))) {
+): Promise<LibraryFolderEntity | null> {
+  if (!folderId) {
+    return null;
+  }
+  const folder = await folders.findById(requireWorkspace(context), folderId);
+  if (!folder || !canAccessScopes(documentAccessFor(context), folder.scopes)) {
     throw new NotFoundError('Library folder', folderId);
   }
+  return folder;
+}
+
+/** What a new document gets when nobody chose: its collection's access, or Everyone at the top level. */
+export function inheritedScopes(folder: LibraryFolderEntity | null, context: RequestContext): ScopeRef[] {
+  return folder && folder.scopes.length > 0
+    ? folder.scopes.map((scope) => ({ ...scope }))
+    : [{ scope_type: 'workspace', scope_ref: requireWorkspace(context) }];
+}
+
+/**
+ * Gives a document new scopes and tells sineva-ai: the rows and the audit
+ * event in one transaction, the ACL relabel after it (never a re-read,
+ * FR-LIB-14). `extra` rides in the same write (inherit flag, folder, title).
+ * When the relabel fails the scopes stay saved and `acl_synced_at` stays null,
+ * so the state is visible and the same call or a reindex repairs it; the
+ * failure is rethrown for the caller to decide (a user PATCH surfaces it, a
+ * collection-wide change logs it and carries on).
+ */
+export async function applyDocumentScopes(
+  deps: LibraryDeps,
+  context: RequestContext,
+  document: LibraryDocumentEntity,
+  nextScopes: ScopeRef[],
+  extra: LibraryDocumentPatch = {},
+): Promise<LibraryDocumentEntity> {
+  const { documents, audit, transactions, gateway, log } = deps;
+  const workspaceId = requireWorkspace(context);
+  const before = principalsForScopes(document.scopes);
+  const after = principalsForScopes(nextScopes);
+  const changed = before.join('|') !== after.join('|');
+  const now = deps.now();
+  const patch: LibraryDocumentPatch = { ...extra };
+
+  const saved = await transactions.run(async () => {
+    if (changed) {
+      await documents.replaceScopes(workspaceId, document.id, nextScopes);
+      // The acl in sineva-ai is stale until the relabel below succeeds; the
+      // null makes that visible instead of implicit.
+      patch.acl_synced_at = null;
+      await audit.log({
+        action: 'library.document.scope_changed',
+        context,
+        target_resource_type: 'library_document',
+        target_resource_id: document.id,
+        change: { before: { scopes: before }, after: { scopes: after } },
+      });
+    }
+    return Object.keys(patch).length > 0 ? documents.update(workspaceId, document.id, patch) : document;
+  });
+  if (!changed) {
+    return saved;
+  }
+  if (document.ingest_attempted_at === null) {
+    // Nothing was ever sent to sineva-ai, so there are no chunks to relabel.
+    return documents.update(workspaceId, document.id, { acl_synced_at: now });
+  }
+  try {
+    await gateway.updateAcl(
+      { tenant_id: workspaceId, document_id: document.id, acl: after },
+      await mintCall(deps, context),
+    );
+  } catch (error) {
+    if (error instanceof DomainError) {
+      log.warn('library.acl_sync_failed', { workspace_id: workspaceId, document_id: document.id, status: error.status });
+    }
+    throw error;
+  }
+  return documents.update(workspaceId, document.id, { acl_synced_at: now });
 }
 
 /**

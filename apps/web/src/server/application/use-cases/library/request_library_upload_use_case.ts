@@ -1,6 +1,7 @@
 import type { RequestLibraryUploadDto } from '@/server/application/dtos/library_dto';
 import {
-  assertFolderExists,
+  inheritedScopes,
+  loadVisibleFolder,
   monthStart,
   requireWorkspace,
   resolveScopes,
@@ -47,8 +48,11 @@ export class RequestLibraryUploadUseCase {
       throw libraryValidation('invalid_sha256', 'sha256', 'sha256 must be 64 lowercase hex characters');
     }
 
-    await assertFolderExists(folders, workspaceId, dto.folder_id);
-    const scopes = resolveScopes(dto.scopes, context);
+    const folder = await loadVisibleFolder(folders, context, dto.folder_id);
+    // No scopes sent means "whatever the collection says" (ADR-0033); sending
+    // scopes is a deliberate override and stops following the collection.
+    const inherited = !dto.scopes || dto.scopes.length === 0;
+    const scopes = inherited ? inheritedScopes(folder, context) : resolveScopes(dto.scopes, context);
 
     const duplicate = await documents.findDuplicate(workspaceId, dto.sha256, scopes);
     if (duplicate) {
@@ -83,6 +87,7 @@ export class RequestLibraryUploadUseCase {
       uploaded_at: null,
       created_by: context.user_id,
       scopes,
+      access_inherited: inherited,
     });
     const key = sourceObjectKey(workspaceId, created.id);
     await documents.update(workspaceId, created.id, { storage_key: key });

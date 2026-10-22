@@ -236,6 +236,7 @@ export class MembersWorld {
     assert: async (_ws, key) => {
       this.entitlementChecks.push(key);
     },
+    numericLimit: async () => null,
   };
 
   accounts: MemberAccountLookup = {

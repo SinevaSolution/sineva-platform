@@ -1,12 +1,15 @@
 import 'server-only';
 import { Prisma, type PrismaClient } from '@/server/infrastructure/database/generated/client';
 import type { LibraryLanguage, LibrarySourceType, LibraryStatus } from '@/server/domain/library/library';
-import type { ScopeRef } from '@/server/domain/library/library_access';
+import type { DocumentAccess, ScopeRef } from '@/server/domain/library/library_access';
+import type { LibrarySort } from '@/server/domain/library/library';
 import type { LibraryDocumentEntity, LibraryStatusDetail } from '@/server/domain/library/library_entities';
 import type {
   LibraryDocumentFilter,
   LibraryDocumentPatch,
   LibraryDocumentRepository,
+  LibraryKnowledgeCounts,
+  LibrarySummaryCounts,
   LibraryUsage,
   NewLibraryDocument,
 } from '@/server/domain/repositories/library_repository';
@@ -39,6 +42,7 @@ interface DocumentRow {
   ingest_attempted_at: Date | null;
   last_ingest_sequence: number;
   acl_synced_at: Date | null;
+  access_inherited: boolean;
   uploaded_at: Date | null;
   created_by: string;
   created_at: Date;
@@ -79,6 +83,7 @@ function mapDocument(row: DocumentRow): LibraryDocumentEntity {
     ingest_attempted_at: iso(row.ingest_attempted_at),
     last_ingest_sequence: row.last_ingest_sequence,
     acl_synced_at: iso(row.acl_synced_at),
+    access_inherited: row.access_inherited,
     uploaded_at: iso(row.uploaded_at),
     created_by: row.created_by,
     created_at: row.created_at.toISOString(),
@@ -100,6 +105,33 @@ function toData(patch: LibraryDocumentPatch): Prisma.LibraryDocumentUncheckedUpd
     // `updated_at` does not update itself (known debt), so every write sets it.
     updated_at: new Date(),
   };
+}
+
+/** What a member limited to some specialists may see: Everyone's documents and their specialists'. A squad or workflow scope needs membership that does not exist yet, so it never matches. */
+function accessFilter(access: DocumentAccess): Prisma.LibraryDocumentWhereInput | null {
+  if (access.all) {
+    return null;
+  }
+  return {
+    scopes: {
+      some: {
+        OR: [{ scope_type: 'workspace' }, { scope_type: 'specialist', scope_ref: { in: access.specialists } }],
+      },
+    },
+  };
+}
+
+function orderFor(sort: LibrarySort | undefined): Prisma.LibraryDocumentOrderByWithRelationInput[] {
+  switch (sort) {
+    case 'oldest':
+      return [{ created_at: 'asc' }, { id: 'asc' }];
+    case 'name':
+      return [{ title: 'asc' }, { id: 'asc' }];
+    case 'size':
+      return [{ byte_size: 'desc' }, { id: 'desc' }];
+    default:
+      return [{ created_at: 'desc' }, { id: 'desc' }];
+  }
 }
 
 function scopeMatch(scopes: ScopeRef[]): Prisma.LibraryDocumentScopeWhereInput[] {
@@ -125,6 +157,7 @@ export class PrismaLibraryDocumentRepository implements LibraryDocumentRepositor
         review_due_at: input.review_due_at,
         uploaded_at: input.uploaded_at,
         created_by: input.created_by,
+        access_inherited: input.access_inherited,
         scopes: {
           create: input.scopes.map((scope) => ({
             workspace_id: input.workspace_id,
@@ -148,18 +181,14 @@ export class PrismaLibraryDocumentRepository implements LibraryDocumentRepositor
 
   async list(filter: LibraryDocumentFilter): Promise<{ items: LibraryDocumentEntity[]; next_cursor: string | null }> {
     const and: Prisma.LibraryDocumentWhereInput[] = [];
-    if (!filter.access.all) {
-      // Workspace documents, and the specialists this member may use. A squad
-      // scope needs squad membership (M4), so it never matches here.
+    const restricted = accessFilter(filter.access);
+    if (restricted) {
+      and.push(restricted);
+    }
+    if (filter.used_by) {
+      // What a specialist can really use: Everyone's documents and the ones scoped to it.
       and.push({
-        scopes: {
-          some: {
-            OR: [
-              { scope_type: 'workspace' },
-              { scope_type: 'specialist', scope_ref: { in: filter.access.specialists } },
-            ],
-          },
-        },
+        scopes: { some: { OR: [{ scope_type: 'workspace' }, { scope_type: 'specialist', scope_ref: filter.used_by }] } },
       });
     }
     if (filter.scope_type) {
@@ -173,7 +202,7 @@ export class PrismaLibraryDocumentRepository implements LibraryDocumentRepositor
         workspace_id: filter.workspace_id,
         // A pending upload is not a document yet.
         uploaded_at: { not: null },
-        status: filter.status ?? { not: 'deleting' },
+        status: filter.status === 'reading' ? { in: ['queued', 'processing'] } : (filter.status ?? { not: 'deleting' }),
         ...(filter.source_type ? { source_type: filter.source_type } : {}),
         ...(filter.language ? { language: filter.language } : {}),
         ...(filter.folder_id !== undefined ? { folder_id: filter.folder_id } : {}),
@@ -181,7 +210,7 @@ export class PrismaLibraryDocumentRepository implements LibraryDocumentRepositor
         ...(and.length > 0 ? { AND: and } : {}),
       },
       include: { scopes: true },
-      orderBy: [{ created_at: 'desc' }, { id: 'desc' }],
+      orderBy: orderFor(filter.sort),
       take: filter.limit + 1,
       ...(filter.cursor ? { cursor: { id: filter.cursor }, skip: 1 } : {}),
     });
@@ -278,6 +307,75 @@ export class PrismaLibraryDocumentRepository implements LibraryDocumentRepositor
       storage_bytes: totals._sum.byte_size ?? 0,
       ocr_pages_month: ocr._sum.ocr_page_count ?? 0,
     };
+  }
+
+  async summary(workspaceId: string, access: DocumentAccess): Promise<LibrarySummaryCounts> {
+    const where: Prisma.LibraryDocumentWhereInput = {
+      workspace_id: workspaceId,
+      uploaded_at: { not: null },
+      status: { not: 'deleting' },
+      ...(accessFilter(access) ?? {}),
+    };
+    const client = activeClient(this.prisma);
+    const [byStatus, byFolder] = await Promise.all([
+      client.libraryDocument.groupBy({ by: ['status'], where, _count: { _all: true } }),
+      client.libraryDocument.groupBy({ by: ['folder_id'], where, _count: { _all: true } }),
+    ]);
+    const statusCount = (...statuses: string[]) =>
+      byStatus.filter((row) => statuses.includes(row.status)).reduce((sum, row) => sum + row._count._all, 0);
+    const by_folder: Record<string, number> = {};
+    let in_root = 0;
+    for (const row of byFolder) {
+      if (row.folder_id === null) in_root = row._count._all;
+      else by_folder[row.folder_id] = row._count._all;
+    }
+    return {
+      total: byStatus.reduce((sum, row) => sum + row._count._all, 0),
+      by_status: {
+        ready: statusCount('ready'),
+        reading: statusCount('queued', 'processing'),
+        needs_attention: statusCount('needs_attention'),
+        failed: statusCount('failed'),
+      },
+      by_folder,
+      in_root,
+    };
+  }
+
+  async knowledgeCounts(workspaceId: string): Promise<LibraryKnowledgeCounts> {
+    const client = activeClient(this.prisma);
+    const ready: Prisma.LibraryDocumentWhereInput = {
+      workspace_id: workspaceId,
+      uploaded_at: { not: null },
+      status: 'ready',
+    };
+    const [everyone, scoped] = await Promise.all([
+      client.libraryDocument.count({ where: { ...ready, scopes: { some: { scope_type: 'workspace' } } } }),
+      // Specialist-only documents: scoped to a specialist and not to Everyone, so a
+      // document marked both counts once, in `everyone`.
+      client.libraryDocumentScope.groupBy({
+        by: ['scope_ref'],
+        where: {
+          workspace_id: workspaceId,
+          scope_type: 'specialist',
+          document: { ...ready, scopes: { none: { scope_type: 'workspace' } } },
+        },
+        _count: { _all: true },
+      }),
+    ]);
+    return {
+      everyone,
+      specialist_only: Object.fromEntries(scoped.map((row) => [row.scope_ref, row._count._all])),
+    };
+  }
+
+  async listInheriting(workspaceId: string, folderId: string): Promise<LibraryDocumentEntity[]> {
+    // Pending uploads too: one that completes after the collection changed must not keep the old access.
+    const rows = await activeClient(this.prisma).libraryDocument.findMany({
+      where: { workspace_id: workspaceId, folder_id: folderId, access_inherited: true },
+      include: { scopes: true },
+    });
+    return rows.map(mapDocument);
   }
 
   async delete(workspaceId: string, id: string): Promise<void> {
