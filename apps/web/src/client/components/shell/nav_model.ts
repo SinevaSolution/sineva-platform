@@ -14,6 +14,7 @@ export type NavIcon =
   | 'home'
   | 'new-chat'
   | 'inbox'
+  | 'customers'
   | 'squads'
   | 'library'
   | 'tools'
@@ -29,6 +30,15 @@ export const FEATURES = {
     labelKey: 'features.inbox.label',
     icon: 'inbox',
     blurbKey: 'features.inbox.blurb',
+  },
+  // Customer conversations from connected channels (WhatsApp, Instagram,
+  // Facebook), with SinoHelp drafts and human takeover (WP-M3-44, D-M3-9).
+  customers: {
+    id: 'customers',
+    segment: 'customers',
+    labelKey: 'features.customers.label',
+    icon: 'customers',
+    blurbKey: 'features.customers.blurb',
   },
   squads: {
     id: 'squads',
@@ -124,6 +134,7 @@ export function buildNavSections(workspaceSlug: string): NavSection[] {
         { id: 'home', labelKey: 'nav.home', href: base, icon: 'home', exact: true, soon: false },
         { id: 'new', labelKey: 'nav.new_chat', href: `${base}/new`, icon: 'new-chat', exact: false, soon: false },
         feature('inbox'),
+        feature('customers'),
       ],
     },
     { id: 'workspace', labelKey: 'sections.workspace', items: [feature('squads'), feature('library'), feature('tools')] },

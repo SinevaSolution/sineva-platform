@@ -297,6 +297,10 @@
         "label": "Inbox",
         "blurb": "Draf yang menunggu persetujuanmu dan kabar dari para spesialis, di satu tempat."
       },
+      "customers": {
+        "label": "Chat pelanggan",
+        "blurb": "Lihat semua chat dari pelangganmu di WhatsApp, Instagram, dan Facebook. SinoHelp menyiapkan draf balasan, dan kamu bisa mengambil alih chat mana pun."
+      },
       "squads": {
         "label": "Squads",
         "blurb": "Gabungkan beberapa spesialis jadi satu squad untuk satu tujuan."

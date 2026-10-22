@@ -297,6 +297,10 @@
         "label": "Inbox",
         "blurb": "Drafts waiting for your OK, and updates from your specialists, in one place."
       },
+      "customers": {
+        "label": "Customer chats",
+        "blurb": "See every chat your customers send on WhatsApp, Instagram and Facebook. SinoHelp drafts the replies, and you can take over any chat yourself."
+      },
       "squads": {
         "label": "Squads",
         "blurb": "Put specialists together as a squad that works on one goal."
