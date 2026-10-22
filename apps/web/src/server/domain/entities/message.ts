@@ -6,7 +6,11 @@ export type MessageStatus =
   | 'failed'
   | 'needs_approval'
   | 'needs_input'
-  | 'budget_exceeded';
+  | 'budget_exceeded'
+  // Stopped by the person; the text that was already streamed is kept.
+  | 'cancelled'
+  // The run broke after it started; `finish_reason` holds the typed code.
+  | 'error';
 
 export interface MentionEntity {
   agent_slug: string;

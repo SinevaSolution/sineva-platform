@@ -67,7 +67,9 @@ export interface MessageView {
     | 'failed'
     | 'needs_approval'
     | 'needs_input'
-    | 'budget_exceeded';
+    | 'budget_exceeded'
+    | 'cancelled'
+    | 'error';
   finish_reason: string | null;
   run_id: string | null;
   channel: string | null;
