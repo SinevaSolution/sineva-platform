@@ -404,6 +404,62 @@ export const MUTATING_ROUTE_POLICY: Record<string, MutatingRoutePolicy> = {
     effect: 'ingest',
     audit: ['library.document.indexed', 'library.document.failed'],
   },
+  'POST /api/v1/workspaces/{workspace_id}/workflows': {
+    effect: 'create',
+    audit: ['workflow.created'],
+    entitlement: ENTITLEMENT_KEYS.WORKFLOWS,
+  },
+  'PATCH /api/v1/workspaces/{workspace_id}/workflows/{workflow_id}': {
+    effect: 'change',
+    audit: 'none',
+    reason:
+      'Autosaving a draft is not an auditable event of PRD 10; what is auditable is publishing, restoring, archiving and deleting, which write their own events.',
+  },
+  'DELETE /api/v1/workspaces/{workspace_id}/workflows/{workflow_id}': {
+    effect: 'delete',
+    audit: ['workflow.deleted'],
+  },
+  'POST /api/v1/workspaces/{workspace_id}/workflows/{workflow_id}/publish': {
+    effect: 'change',
+    audit: ['workflow.version_published'],
+  },
+  'POST /api/v1/workspaces/{workspace_id}/workflows/{workflow_id}/archive': {
+    effect: 'change',
+    audit: ['workflow.archived'],
+  },
+  'POST /api/v1/workspaces/{workspace_id}/workflows/{workflow_id}/restore/{version_id}': {
+    effect: 'change',
+    audit: ['workflow.version_restored'],
+  },
+  'POST /api/v1/workspaces/{workspace_id}/workflows/{workflow_id}/runs': {
+    effect: 'run',
+    audit: ['workflow.run.started', 'workflow.run.failed'],
+    entitlement: 'none',
+    reason:
+      'Runs have no plan count to enforce; their cost is metered by the ledger and receipts of the usage work, and the per-run ceiling travels in the signed context budget.',
+  },
+  'POST /api/v1/workspaces/{workspace_id}/workflow-templates/{slug}/use': {
+    effect: 'create',
+    audit: ['workflow.created'],
+    entitlement: ENTITLEMENT_KEYS.WORKFLOWS,
+  },
+  'POST /api/v1/workspaces/{workspace_id}/workflow-runs/{run_id}/cancel': {
+    effect: 'change',
+    audit: ['workflow.run.cancelled'],
+  },
+  'POST /api/v1/workspaces/{workspace_id}/workflow-runs/{run_id}/resume': {
+    effect: 'change',
+    audit: ['workflow.run.resumed'],
+  },
+  'POST /api/internal/v1/workflow-runs/events': {
+    effect: 'ingest',
+    audit: [
+      'workflow.run.review_requested',
+      'workflow.run.completed',
+      'workflow.run.failed',
+      'workflow.run.cancelled',
+    ],
+  },
   'POST /api/v1/storage/presign': {
     effect: 'create',
     audit: 'none',

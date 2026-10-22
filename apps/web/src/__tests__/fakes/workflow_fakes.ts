@@ -397,7 +397,8 @@ export class FakeWorkflowCatalog implements WorkflowCatalog {
   connectionList: WorkflowConnection[] = [];
   actionMap: Record<string, ActionMeta> = {};
 
-  async enabledSpecialists(_context: RequestContext): Promise<string[] | null> {
+  async enabledSpecialists(context: RequestContext): Promise<string[] | null> {
+    void context;
     if (this.unreachable) throw new UpstreamUnavailableError('down', 'KNOWLEDGE_UNAVAILABLE');
     return this.specialists;
   }

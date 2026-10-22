@@ -72,6 +72,11 @@ model Workspace {
   onboarding_states     OnboardingState[]
   profile_scans         ProfileScan[]
   checklist_items       WorkspaceChecklistState[]
+  workflows             Workflow[]
+  workflow_versions     WorkflowVersion[]
+  workflow_runs         WorkflowRun[]
+  workflow_run_steps    WorkflowRunStep[]
+  workflow_run_events   WorkflowRunEvent[]
 
   @@map("workspaces")
   @@schema("platform")
@@ -985,5 +990,155 @@ model AuditEvent {
   @@index([request_id])
   @@index([run_id])
   @@map("audit_events")
+  @@schema("platform")
+}
+
+// A Workflow (ADR-0045): the editable draft lives on this row, published
+// versions are immutable rows in `workflow_versions`. `draft_revision` goes up
+// on every edit: a stale writer gets a 409, and a test run only unlocks publish
+// while its `draft_revision` still equals this one. `current_version_id` has no
+// foreign key on purpose (the two tables would reference each other); the
+// repository sets it inside the publish transaction. `created_by` is a plain
+// id, not a relation, so deleting a user never deletes a procedure.
+model Workflow {
+  id                 String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  workspace_id       String    @map("workspace_id") @db.Uuid
+  name               String    @map("name")
+  description        String?   @map("description")
+  status             String    @default("draft") @map("status") // draft | published | archived
+  draft_definition   Json      @map("draft_definition")
+  draft_revision     Int       @default(1) @map("draft_revision")
+  current_version_id String?   @map("current_version_id") @db.Uuid
+  template_slug      String?   @map("template_slug")
+  created_by         String    @map("created_by") @db.Uuid
+  archived_at        DateTime? @map("archived_at") @db.Timestamptz(6)
+  created_at         DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updated_at         DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  workspace Workspace         @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
+  versions  WorkflowVersion[]
+  runs      WorkflowRun[]
+
+  @@index([workspace_id, status, updated_at(sort: Desc)])
+  @@map("workflows")
+  @@schema("platform")
+}
+
+// Immutable once written. A run pins its version, so these rows are never
+// deleted while a run references them (NO ACTION on the run side, not
+// RESTRICT: a workspace delete removes runs and workflows in one statement,
+// and only the deferred NO ACTION check lets that through).
+model WorkflowVersion {
+  id             String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  workflow_id    String   @map("workflow_id") @db.Uuid
+  workspace_id   String   @map("workspace_id") @db.Uuid
+  version_number Int      @map("version_number")
+  definition     Json     @map("definition")
+  schema_version Int      @map("schema_version")
+  note           String?  @map("note")
+  restored_from  Int?     @map("restored_from")
+  published_by   String   @map("published_by") @db.Uuid
+  published_at   DateTime @default(now()) @map("published_at") @db.Timestamptz(6)
+
+  workflow  Workflow      @relation(fields: [workflow_id], references: [id], onDelete: Cascade)
+  workspace Workspace     @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
+  runs      WorkflowRun[]
+
+  @@unique([workflow_id, version_number])
+  @@map("workflow_versions")
+  @@schema("platform")
+}
+
+// Summary of a run; sineva-ai holds the authoritative state (ADR-0046).
+// `definition` is the snapshot the run was started with, so a later edit never
+// changes what a finished run shows. `engine_run_id` is the correlation id the
+// platform sends to sineva-ai (a handle, not a database id), chosen before the
+// call so an event that races the answer still finds the row. A test run of a
+// draft has no `version_id`; `draft_revision` says which draft it tested.
+model WorkflowRun {
+  id                String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  workspace_id      String    @map("workspace_id") @db.Uuid
+  workflow_id       String    @map("workflow_id") @db.Uuid
+  version_id        String?   @map("version_id") @db.Uuid
+  version_number    Int?      @map("version_number")
+  draft_revision    Int?      @map("draft_revision")
+  engine_run_id     String    @unique @map("engine_run_id")
+  mode              String    @map("mode") // test | live
+  status            String    @default("queued") @map("status") // queued | running | waiting | needs_review | succeeded | failed | cancelled | budget_exceeded
+  started_by        String    @map("started_by") @db.Uuid
+  trigger_type      String    @default("manual") @map("trigger_type") // manual | chat | routine | mcp
+  routine_id        String?   @map("routine_id") @db.Uuid
+  inputs            Json      @default("{}") @map("inputs")
+  definition        Json      @map("definition")
+  credits_estimated Int?      @map("credits_estimated")
+  credits_used      Int       @default(0) @map("credits_used")
+  error_code        String?   @map("error_code")
+  last_event_seq    Int       @default(0) @map("last_event_seq")
+  started_at        DateTime? @map("started_at") @db.Timestamptz(6)
+  finished_at       DateTime? @map("finished_at") @db.Timestamptz(6)
+  created_at        DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updated_at        DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  workspace Workspace          @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
+  workflow  Workflow           @relation(fields: [workflow_id], references: [id], onDelete: NoAction)
+  version   WorkflowVersion?   @relation(fields: [version_id], references: [id], onDelete: NoAction)
+  steps     WorkflowRunStep[]
+  events    WorkflowRunEvent[]
+
+  @@index([workspace_id, created_at(sort: Desc)])
+  @@index([workflow_id, created_at(sort: Desc)])
+  @@index([workspace_id, status])
+  @@map("workflow_runs")
+  @@schema("platform")
+}
+
+// One row per step key of a run, moved by step events. `output_preview` and
+// `trace` are read only with `workflow.trace.view`.
+model WorkflowRunStep {
+  id               String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  run_id           String    @map("run_id") @db.Uuid
+  workspace_id     String    @map("workspace_id") @db.Uuid
+  step_key         String    @map("step_key")
+  position         Int       @map("position")
+  step_type        String    @map("step_type")
+  status           String    @map("status") // waiting | running | needs_review | done | failed | skipped
+  attempt          Int       @default(1) @map("attempt")
+  progress_current Int?      @map("progress_current")
+  progress_total   Int?      @map("progress_total")
+  output_preview   String?   @map("output_preview")
+  trace            Json?     @map("trace")
+  error_code       String?   @map("error_code")
+  credits          Int       @default(0) @map("credits")
+  approval_id      String?   @map("approval_id") @db.Uuid
+  started_at       DateTime? @map("started_at") @db.Timestamptz(6)
+  finished_at      DateTime? @map("finished_at") @db.Timestamptz(6)
+  created_at       DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updated_at       DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  run       WorkflowRun @relation(fields: [run_id], references: [id], onDelete: Cascade)
+  workspace Workspace   @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
+
+  @@unique([run_id, step_key])
+  @@map("workflow_run_steps")
+  @@schema("platform")
+}
+
+// What sineva-ai said, applied or not: the history is the evidence when a run
+// looks wrong, and the unique `event_id` makes a retried callback harmless.
+model WorkflowRunEvent {
+  id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  run_id       String   @map("run_id") @db.Uuid
+  workspace_id String   @map("workspace_id") @db.Uuid
+  event_id     String   @map("event_id")
+  sequence     Int      @map("sequence")
+  type         String   @map("type") // run_status | step_started | step_completed
+  applied      Boolean  @map("applied")
+  created_at   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  run       WorkflowRun @relation(fields: [run_id], references: [id], onDelete: Cascade)
+  workspace Workspace   @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
+
+  @@unique([run_id, event_id])
+  @@map("workflow_run_events")
   @@schema("platform")
 }

@@ -3,6 +3,7 @@ import { businessProfilePaths } from './business_profile_paths';
 import { membersPaths } from './members_paths';
 import { getInboxPaths } from './inbox_paths';
 import { LIBRARY_COMPONENT_SCHEMAS, libraryOpenApiPaths } from './library_paths';
+import { WORKFLOW_COMPONENT_SCHEMAS, workflowOpenApiPaths } from './workflow_paths';
 
 // Response object of the standard envelope, for the profile family below.
 function envelopeResponse(description: string) {
@@ -107,6 +108,7 @@ export function getOpenApiSpec(): Record<string, unknown> {
       ...membersPaths(),
       ...getInboxPaths(),
       ...libraryOpenApiPaths(),
+      ...workflowOpenApiPaths(),
       ...businessProfilePaths(),
       '/api/internal/v1/keys': {
         get: {
@@ -1830,6 +1832,7 @@ export function getOpenApiSpec(): Record<string, unknown> {
     components: {
       schemas: {
         ...LIBRARY_COMPONENT_SCHEMAS,
+        ...WORKFLOW_COMPONENT_SCHEMAS,
         StandardEnvelope: {
           type: 'object',
           required: ['success', 'status', 'message', 'data', 'meta', 'errors'],

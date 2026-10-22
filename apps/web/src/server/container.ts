@@ -1,5 +1,38 @@
 import 'server-only';
 import { randomBytes } from 'node:crypto';
+import type { WorkflowDeps } from './application/workflows/workflow_support';
+import type {
+  WorkflowRepository,
+  WorkflowRunRepository,
+  WorkflowVersionRepository,
+} from './domain/repositories/workflow_repository';
+import type { WorkflowCatalog, WorkflowRunGateway } from './domain/workflows/workflow_ports';
+import {
+  PrismaWorkflowRepository,
+  PrismaWorkflowVersionRepository,
+} from './infrastructure/database/prisma_workflow_repository';
+import { PrismaWorkflowRunRepository } from './infrastructure/database/prisma_workflow_run_repository';
+import { InternalWorkflowRunGateway } from './infrastructure/gateways/internal_workflow_run_gateway';
+import { RosterWorkflowCatalog } from './infrastructure/gateways/roster_workflow_catalog';
+import { LoggerWorkflowLog } from './infrastructure/logging/log_workflow_log';
+import { CreateWorkflowUseCase } from './application/use-cases/workflows/create_workflow_use_case';
+import { ListWorkflowsUseCase } from './application/use-cases/workflows/list_workflows_use_case';
+import { GetWorkflowUseCase } from './application/use-cases/workflows/get_workflow_use_case';
+import { UpdateWorkflowDraftUseCase } from './application/use-cases/workflows/update_workflow_draft_use_case';
+import { PublishWorkflowUseCase } from './application/use-cases/workflows/publish_workflow_use_case';
+import { ListWorkflowVersionsUseCase } from './application/use-cases/workflows/list_workflow_versions_use_case';
+import { RestoreWorkflowVersionUseCase } from './application/use-cases/workflows/restore_workflow_version_use_case';
+import { ArchiveWorkflowUseCase } from './application/use-cases/workflows/archive_workflow_use_case';
+import { DeleteWorkflowUseCase } from './application/use-cases/workflows/delete_workflow_use_case';
+import { ListWorkflowTemplatesUseCase } from './application/use-cases/workflows/list_workflow_templates_use_case';
+import { UseWorkflowTemplateUseCase } from './application/use-cases/workflows/use_workflow_template_use_case';
+import { GetWorkflowCatalogUseCase } from './application/use-cases/workflows/get_workflow_catalog_use_case';
+import { StartWorkflowRunUseCase } from './application/use-cases/workflows/start_workflow_run_use_case';
+import { GetWorkflowRunUseCase } from './application/use-cases/workflows/get_workflow_run_use_case';
+import { ListWorkflowRunsUseCase } from './application/use-cases/workflows/list_workflow_runs_use_case';
+import { CancelWorkflowRunUseCase } from './application/use-cases/workflows/cancel_workflow_run_use_case';
+import { ResumeWorkflowRunUseCase } from './application/use-cases/workflows/resume_workflow_run_use_case';
+import { ApplyWorkflowRunEventUseCase } from './application/use-cases/workflows/apply_workflow_run_event_use_case';
 import type { BusinessProfileRepository } from './domain/repositories/business_profile_repository';
 import type {
   ChecklistRepository,
@@ -1086,3 +1119,51 @@ export const getDismissFirstTaskUseCase = memoize(
 export const getRecordChecklistEventUseCase = memoize(
   () => new RecordChecklistEventUseCase({ checklist: getChecklistRepository() }),
 );
+
+// Workflows (ADR-0045, ADR-0046). The run engine lives in sineva-ai; the
+// connector registry does not exist on this base, so the catalog adapter
+// reports no connections (see `RosterWorkflowCatalog`).
+export const getWorkflowRepository = memoize<WorkflowRepository>(() => new PrismaWorkflowRepository(getPrismaClient()));
+export const getWorkflowVersionRepository = memoize<WorkflowVersionRepository>(
+  () => new PrismaWorkflowVersionRepository(getPrismaClient()),
+);
+export const getWorkflowRunRepository = memoize<WorkflowRunRepository>(
+  () => new PrismaWorkflowRunRepository(getPrismaClient()),
+);
+const getWorkflowRunGateway = memoize<WorkflowRunGateway>(() => new InternalWorkflowRunGateway());
+export const getWorkflowCatalog = memoize<WorkflowCatalog>(() => new RosterWorkflowCatalog(getAiEngineGateway()));
+
+const getWorkflowDeps = memoize<WorkflowDeps>(() => ({
+  workflows: getWorkflowRepository(),
+  versions: getWorkflowVersionRepository(),
+  runs: getWorkflowRunRepository(),
+  catalog: getWorkflowCatalog(),
+  gateway: getWorkflowRunGateway(),
+  contextSigner: getContextSigner(),
+  audit: getAuditLogger(),
+  entitlements: getEntitlementService(),
+  transactions: getTransactionRunner(),
+  log: new LoggerWorkflowLog(),
+  // Correlation id sent to sineva-ai, not a database id.
+  newEngineRunId: () => crypto.randomUUID(),
+  now: () => new Date(),
+}));
+
+export const getCreateWorkflowUseCase = memoize(() => new CreateWorkflowUseCase(getWorkflowDeps()));
+export const getListWorkflowsUseCase = memoize(() => new ListWorkflowsUseCase(getWorkflowDeps()));
+export const getGetWorkflowUseCase = memoize(() => new GetWorkflowUseCase(getWorkflowDeps()));
+export const getUpdateWorkflowDraftUseCase = memoize(() => new UpdateWorkflowDraftUseCase(getWorkflowDeps()));
+export const getPublishWorkflowUseCase = memoize(() => new PublishWorkflowUseCase(getWorkflowDeps()));
+export const getListWorkflowVersionsUseCase = memoize(() => new ListWorkflowVersionsUseCase(getWorkflowDeps()));
+export const getRestoreWorkflowVersionUseCase = memoize(() => new RestoreWorkflowVersionUseCase(getWorkflowDeps()));
+export const getArchiveWorkflowUseCase = memoize(() => new ArchiveWorkflowUseCase(getWorkflowDeps()));
+export const getDeleteWorkflowUseCase = memoize(() => new DeleteWorkflowUseCase(getWorkflowDeps()));
+export const getListWorkflowTemplatesUseCase = memoize(() => new ListWorkflowTemplatesUseCase(getWorkflowDeps()));
+export const getUseWorkflowTemplateUseCase = memoize(() => new UseWorkflowTemplateUseCase(getWorkflowDeps()));
+export const getGetWorkflowCatalogUseCase = memoize(() => new GetWorkflowCatalogUseCase(getWorkflowDeps()));
+export const getStartWorkflowRunUseCase = memoize(() => new StartWorkflowRunUseCase(getWorkflowDeps()));
+export const getGetWorkflowRunUseCase = memoize(() => new GetWorkflowRunUseCase(getWorkflowDeps()));
+export const getListWorkflowRunsUseCase = memoize(() => new ListWorkflowRunsUseCase(getWorkflowDeps()));
+export const getCancelWorkflowRunUseCase = memoize(() => new CancelWorkflowRunUseCase(getWorkflowDeps()));
+export const getResumeWorkflowRunUseCase = memoize(() => new ResumeWorkflowRunUseCase(getWorkflowDeps()));
+export const getApplyWorkflowRunEventUseCase = memoize(() => new ApplyWorkflowRunEventUseCase(getWorkflowDeps()));
