@@ -150,7 +150,7 @@ Set them in Settings, Environment Variables. Mark every secret as Sensitive. Val
 | `VAULT_LOCAL_KEK` | yes for connections | `prod-2026-1:<base64 of 32 bytes>` (`echo "prod-2026-1:$(openssl rand -base64 32)"`); the id must not contain `dev`, `example`, `changeme` | generate; store a copy in the password manager, losing it loses every stored credential | set | set (different key) |
 | `VAULT_LOCAL_KEK_PREVIOUS` | no | same form | only during key rotation ([runbook](connections_runbook.md)) | unset | unset |
 | `VAULT_KMS_PROVIDER` | no | `local` | keep `local` until the production KMS is chosen | `local` | `local` |
-| `GOOGLE_CONNECT_CLIENT_ID`, `GOOGLE_CONNECT_CLIENT_SECRET` | for Google Calendar | OAuth client | section 6 | set | unset |
+| `GOOGLE_CONNECT_CLIENT_ID`, `GOOGLE_CONNECT_CLIENT_SECRET` | for Google Calendar and Gmail | OAuth client | section 6 | set | unset |
 | `NOTION_CLIENT_ID`, `NOTION_CLIENT_SECRET` | for Notion | public integration | section 6 | set | unset |
 | `ENTITLEMENTS_MODE` | no | `open` | keep `open` until M6 | `open` | `open` |
 | `ENTITLEMENTS_ALLOW_ENFORCED` | no | | never set before M6 | unset | unset |
@@ -178,10 +178,21 @@ Replace `https://sineva.id` with your final origin. The path comes from the code
 | :--- | :--- | :--- | :--- |
 | Google sign-in | Google Cloud, APIs and Services, Credentials, OAuth client (Web) | `https://sineva.id/api/v1/auth/oauth/google/callback` | `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` |
 | GitHub sign-in | GitHub, Settings, Developer settings, OAuth Apps | `https://sineva.id/api/v1/auth/oauth/github/callback` (Authorization callback URL) | `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET` |
-| Google Calendar (Connect) | a separate OAuth client from sign-in (different consent screen and scopes) | `https://sineva.id/api/v1/connections/oauth/callback` | `GOOGLE_CONNECT_CLIENT_ID`, `GOOGLE_CONNECT_CLIENT_SECRET` |
+| Google Calendar and Gmail (Connect) | a separate OAuth client from sign-in (different consent screen and scopes) | `https://sineva.id/api/v1/connections/oauth/callback` | `GOOGLE_CONNECT_CLIENT_ID`, `GOOGLE_CONNECT_CLIENT_SECRET` |
 | Notion (Connect) | Notion, My integrations, public integration | `https://sineva.id/api/v1/connections/oauth/callback` | `NOTION_CLIENT_ID`, `NOTION_CLIENT_SECRET` |
 
 Also add the origin under "Authorized JavaScript origins" for the Google clients. A Google consent screen in "Testing" status limits sign-in to listed test users; publish it before launch. The provider parameters marked "recalled" in the connection manifests need checking against each provider's documentation before it goes live ([connections runbook](connections_runbook.md), section 6).
+
+### 6.1 Gmail in Connected tools
+
+Gmail uses the same `GOOGLE_CONNECT_CLIENT_ID` and `GOOGLE_CONNECT_CLIENT_SECRET` as Google Calendar, with the same callback above. It does not use the Google sign-in client. Enable the Gmail API in that Google Cloud project and configure the consent screen for these bundles:
+
+- `email_read`: `openid`, `https://www.googleapis.com/auth/userinfo.email` and `https://www.googleapis.com/auth/gmail.readonly`.
+- `email_compose`: the read bundle plus `https://www.googleapis.com/auth/gmail.compose`.
+
+For an external app in Testing, add the accounts that will connect as test users. Google classifies both `gmail.readonly` and `gmail.compose` as restricted scopes. Public use requires restricted-scope verification; storing or transmitting restricted data on servers also requires a security assessment ([Google scope requirements](https://developers.google.com/workspace/gmail/api/auth/scopes)). Publishing the consent screen alone does not complete these requirements.
+
+**Implementation boundary:** the provider registry, OAuth connection lifecycle, access bundles, grants and Connected tools UI are implemented. The four Gmail action definitions cover searching, reading, drafting and sending; sending is marked as an irreversible external write. The Tool Gateway (WP-M2-10) and Gmail action execution are not implemented on this branch, so linking an account does not yet let a specialist read or send email. Do not use account linking as evidence that email execution or its approval flow works.
 
 ## 7. Migrations during the build
 
@@ -255,7 +266,7 @@ psql "$ADMIN_DATABASE_URL" -v app_role=sineva_app -v vault_role=sineva_vault -v 
 - [ ] Send a chat message: the reply streams. Reload the tab mid-reply: the stream resumes (served from `sineva-ai` events).
 - [ ] Settings, Cron Jobs in the Vercel project lists both jobs. Use "Run" on each and check the log answers 200 (a 401 means `CRON_SECRET` is missing or differs).
 - [ ] `/dev/ui` answers 404.
-- [ ] Connections: the provider list shows Google Calendar and Notion as available; connect one.
+- [ ] Connections: the provider list shows Google Calendar, Gmail and Notion as available when their credentials are configured; connect one. For Gmail, check the connected account, selected access bundle and specialist grants. This checks account linking; email actions still need the Tool Gateway (see section 6.1).
 - [ ] Vercel logs show no `Configuration error` lines.
 - [ ] No seeded account exists (section 10).
 

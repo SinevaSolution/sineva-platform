@@ -16,20 +16,22 @@ related_docs:
 
 # Connections runbook
 
-Operator steps for Connected tools (ADR-0036 to ADR-0039). Every command below is an internal route guarded by `X-Internal-Api-Key`; none is reachable from a browser. `$APP` is the platform base URL on the internal network and `$KEY` the internal API key.
+Operator steps for Connected tools (ADR-0036 to ADR-0039). Every command below requires `X-Internal-Api-Key`; the job tick also accepts the cron bearer described below. `$APP` is the platform base URL and `$KEY` the internal API key. Use the `/api/internal/v1/...` paths on public HTTPS hosts so the page guard does not redirect the request to sign-in.
 
 ## 1. Schedule the job tick (required)
 
-There is no scheduler yet, so nothing refreshes tokens, probes connections or sends rotation reminders until something calls the tick. Call it about once a minute from cron or a platform worker:
+Vercel Production schedules the job tick every minute through `apps/web/vercel.json`. Set `CRON_SECRET`; Vercel calls `GET /api/internal/v1/jobs/tick` with `Authorization: Bearer $CRON_SECRET`. The current schedule requires Pro ([Vercel guide](vercel.md)). Preview deployments do not run these cron jobs.
+
+For Docker or another host, configure a scheduler to call the tick about once a minute. Without it, token refresh, connection probes and rotation reminders do not run. A manual call uses:
 
 ```bash
-curl -fsS -X POST "$APP/internal/v1/jobs/tick" -H "X-Internal-Api-Key: $KEY"
+curl -fsS -X POST "$APP/api/internal/v1/jobs/tick" -H "X-Internal-Api-Key: $KEY"
 ```
 
 The answer is `{ planned, reaped, ran, succeeded, retried, failed, planner_errors }`. A non-zero `planner_errors` means a planner threw (see the `job.failed` log lines whose type starts with `planner:`). Queue health:
 
 ```bash
-curl -fsS "$APP/internal/v1/jobs/stats" -H "X-Internal-Api-Key: $KEY"
+curl -fsS "$APP/api/internal/v1/jobs/stats" -H "X-Internal-Api-Key: $KEY"
 ```
 
 Alarm on `oldest_due_seconds` above a few minutes (the tick is not running or cannot keep up) and on `failed` growing. A failed `connection.refresh` job with `last_error_code = invalid_grant` is normal: it is a person who has to reconnect, not an outage.
@@ -54,7 +56,7 @@ Check: as the app role, `SELECT * FROM platform.vault_secrets` must answer `perm
 3. Rewrap in batches until done:
 
 ```bash
-curl -fsS -X POST "$APP/internal/v1/vault/rotate-keys" -H "X-Internal-Api-Key: $KEY" \
+curl -fsS -X POST "$APP/api/internal/v1/vault/rotate-keys" -H "X-Internal-Api-Key: $KEY" \
   -H "Content-Type: application/json" -d '{"limit":200}'
 ```
 
@@ -66,7 +68,7 @@ Repeat while `more` is true. `failed` must end at 0: a failed row is wrapped by 
 A restore can bring back connections that were revoked or whose refresh tokens rotated since the backup. Queue the sweep:
 
 ```bash
-curl -fsS -X POST "$APP/internal/v1/connections/reconcile" -H "X-Internal-Api-Key: $KEY"
+curl -fsS -X POST "$APP/api/internal/v1/connections/reconcile" -H "X-Internal-Api-Key: $KEY"
 ```
 
 It answers 202 with a job id. Each batch queues the next and every connection gets one health job; the ones the provider rejects become `needs_reconnect`, and their owners get an Inbox item and an email. The tick must be running. A restore also resurrects revoked ciphertext: until the sweep has run, treat connections as unverified.
@@ -76,7 +78,7 @@ It answers 202 with a job id. Each batch queues the next and every connection ge
 A provider breach or a leaked OAuth client secret: take every connection of that provider away, in every workspace.
 
 ```bash
-curl -fsS -X POST "$APP/internal/v1/connections/mass-revoke" -H "X-Internal-Api-Key: $KEY" \
+curl -fsS -X POST "$APP/api/internal/v1/connections/mass-revoke" -H "X-Internal-Api-Key: $KEY" \
   -H "Content-Type: application/json" \
   -d '{"provider_id":"google_calendar","confirm":"revoke-all:google_calendar","limit":100}'
 ```
