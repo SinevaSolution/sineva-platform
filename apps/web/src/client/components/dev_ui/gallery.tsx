@@ -8,6 +8,7 @@ import * as galleries from '@sineva/ui/gallery';
 import { pseudoLocalize, LOCALES, type LocaleCode, type Messages } from '@sineva/i18n';
 import { I18nProvider, useTranslations } from '@/i18n/provider';
 import { CATALOGS } from '@/i18n/catalogs';
+import { EmptyStatesGallery } from './empty_states_gallery';
 
 function expandedMessages(messages: Messages): Messages {
   return Object.fromEntries(
@@ -65,10 +66,14 @@ function GalleryContent({
 }) {
   const t = useTranslations('dev_ui');
   const router = useRouter();
-  const entries = Object.entries(galleries).map(([name, Gallery]) => ({
-    name: name.replace(/Gallery$/, ''),
-    Gallery,
-  }));
+  // App-level galleries (registries that live in the web app, not in @sineva/ui).
+  const entries = [
+    ...Object.entries(galleries).map(([name, Gallery]) => ({
+      name: name.replace(/Gallery$/, ''),
+      Gallery,
+    })),
+    { name: 'EmptyStates', Gallery: EmptyStatesGallery },
+  ];
   const visible = component ? entries.filter((entry) => entry.name === component) : entries;
   const link = (values: Record<string, string>) =>
     `/dev/ui?${new URLSearchParams({ theme, locale, pseudo: pseudo ? '1' : '0', width: String(width), ...(component ? { component } : {}), ...values })}`;

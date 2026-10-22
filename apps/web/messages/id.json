@@ -13,7 +13,8 @@
     "normal": "Teks normal",
     "width": "Lebar pratinjau",
     "sample": "Data contoh",
-    "components": "Komponen"
+    "components": "Komponen",
+    "empty_states": "Kondisi kosong"
   },
   "common": {
     "loading": "Memuat",
@@ -25,6 +26,82 @@
       "aria_to_dark": "Ganti ke tema gelap",
       "title_to_light": "Ganti ke mode terang",
       "title_to_dark": "Ganti ke mode gelap"
+    }
+  },
+  "empty": {
+    "sidebar_recent": {
+      "title": "Belum ada obrolan",
+      "description": "Mulai satu, nanti obrolannya menunggumu di sini."
+    },
+    "home_recent": {
+      "title": "Belum ada obrolan untuk dilanjutkan",
+      "description": "Mulai obrolan dengan Sino, dan lain kali obrolannya menunggumu di sini.",
+      "action": "Mulai obrolan"
+    },
+    "home_ideas": {
+      "title": "Belum ada ide untuk hari ini",
+      "description": "Ide muncul begitu timmu siap."
+    },
+    "chat_thread_empty": {
+      "title": "Mulai percakapan",
+      "description": "Tulis pesan pertamamu di bawah, balasannya muncul di sini."
+    },
+    "chat_deleted": {
+      "title": "Obrolan ini sudah tidak ada",
+      "description": "Mungkin sudah dihapus. Kamu bisa mulai yang baru kapan saja.",
+      "action": "Mulai obrolan baru"
+    },
+    "chat_load_failed": {
+      "title": "Sino tidak bisa membuka obrolan ini",
+      "description": "Pesanmu aman. Coba lagi sebentar lagi.",
+      "action": "Coba lagi"
+    },
+    "new_chat_starters": {
+      "title": "Belum ada ide untuk memulai",
+      "description": "Tulis saja kebutuhanmu di kotak dan kirim."
+    },
+    "mention_no_match": {
+      "title": "Tidak ada spesialis yang cocok dengan “{query}”",
+      "description": "Coba nama lain, atau hapus @ untuk lanjut menulis."
+    },
+    "members_list": {
+      "title": "Belum ada anggota",
+      "description": "Undang timmu, nanti mereka muncul di sini."
+    },
+    "members_invitations": {
+      "title": "Tidak ada undangan tertunda",
+      "description": "Undang seseorang, undangannya menunggu di sini sampai diterima."
+    },
+    "business_offerings": {
+      "title": "Belum ada produk atau layanan",
+      "description": "Tambahkan yang kamu jual supaya Sino bisa menjelaskannya dengan tepat."
+    },
+    "business_policies": {
+      "title": "Belum ada kebijakan",
+      "description": "Tambahkan aturan retur, pengiriman, atau pembayaranmu supaya Sino menjawab seperti kamu."
+    },
+    "onboarding_tasks": {
+      "title": "Belum ada tugas pertama",
+      "description": "Buka workspace-mu dan tanya Sino apa saja untuk memulai."
+    },
+    "sign_in_methods_none": {
+      "title": "Belum ada metode masuk lain",
+      "description": "Google dan GitHub belum terhubung ke akun ini."
+    },
+    "coming_soon": {
+      "title": "Sino masih membangun {title}",
+      "description": "Fiturnya sedang disiapkan. Sementara itu, ngobrol dengan Sino adalah awal yang baik.",
+      "action": "Mulai obrolan saja"
+    },
+    "not_found": {
+      "title": "Sino tidak menemukan halaman ini",
+      "description": "Mungkin halamannya sudah dipindah, atau kamu tidak punya akses ke sana.",
+      "action": "Ke Beranda"
+    },
+    "workspace_error": {
+      "title": "Ada masalah di pihak kami",
+      "description": "Ini bukan kesalahanmu. Coba lagi sebentar lagi.",
+      "action": "Coba lagi"
     }
   },
   "conversation": {
@@ -41,15 +118,6 @@
     "deleted": "Obrolan dihapus"
   },
   "errors": {
-    "not_found": {
-      "title": "Sino tidak menemukan halaman ini",
-      "body": "Mungkin halamannya sudah dipindah, atau kamu tidak punya akses ke sana.",
-      "cta": "Ke Beranda"
-    },
-    "workspace_error": {
-      "title": "Ada masalah di pihak kami",
-      "body": "Ini bukan kesalahanmu. Coba lagi sebentar lagi."
-    },
     "api": {
       "network": "Kami tidak bisa terhubung ke server. Cek koneksimu, lalu coba lagi.",
       "unauthenticated": "Sesi kamu berakhir. Masuk lagi untuk melanjutkan.",
@@ -397,14 +465,11 @@
     },
     "recent": {
       "load_failed": "Obrolanmu tidak bisa dimuat.",
-      "empty": "Obrolanmu akan muncul di sini.",
       "untitled": "Obrolan baru",
       "with": "dengan"
     },
     "coming_soon": {
-      "badge": "Segera hadir",
-      "heading": "Sino masih membangun {title}",
-      "cta": "Mulai obrolan saja"
+      "badge": "Segera hadir"
     }
   },
   "specialists": {
@@ -431,8 +496,6 @@
       "coming_heading": "Segera di workspace-mu",
       "recent_loading": "Memuat obrolan",
       "recent_failed": "Obrolanmu tidak bisa dimuat. Muat ulang untuk mencoba lagi.",
-      "recent_empty": "Belum ada obrolan. Pilih seseorang dari timmu di atas, atau {link}.",
-      "recent_empty_link": "tanya Sino",
       "chat_team": "Obrolan tim",
       "chat_with": "Dengan {name}"
     }
@@ -484,8 +547,7 @@
     },
     "mention_menu": {
       "heading": "Panggil spesialis",
-      "list_label": "Spesialis",
-      "empty": "Tidak ada spesialis yang cocok dengan “{query}”"
+      "list_label": "Spesialis"
     },
     "thread": {
       "loading": "Memuat obrolan",
@@ -552,7 +614,6 @@
     "invitations": "Undangan tertunda",
     "resend": "Kirim ulang undangan",
     "revoke": "Cabut undangan",
-    "empty_invites": "Tidak ada undangan tertunda.",
     "expires": "Berlaku hingga {date}",
     "copy": "Salin tautan undangan",
     "email_failed": "Email gagal dikirim. Salin tautan dan bagikan kepada orang yang diundang.",
@@ -809,10 +870,8 @@
     "discard_scan": "Hapus saran",
     "offerings": "Produk dan layanan",
     "add_offering": "Tambah produk atau layanan",
-    "empty_offerings": "Belum ada produk atau layanan.",
     "policies": "Kebijakan bisnis",
     "add_policy": "Tambah kebijakan",
-    "empty_policies": "Belum ada kebijakan bisnis.",
     "entry_name": "Nama atau judul",
     "entry_body": "Deskripsi",
     "policy_kind": "Jenis kebijakan",

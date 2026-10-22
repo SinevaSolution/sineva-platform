@@ -3,6 +3,7 @@ import * as React from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { SNBanner, SNButton, SNCheckbox, SNField, SNInput, SNSelect } from '@sineva/ui';
+import { PresetEmptyState } from '@/client/components/ui/empty_state';
 import { apiRequest } from '@/client/lib/api';
 import { useApiErrorText } from '@/client/lib/use_api_error';
 import { useTranslations } from '@/i18n/provider';
@@ -107,6 +108,9 @@ export function OnboardingScreen({
       <section className="mx-auto w-full max-w-2xl space-y-6 p-6 sm:p-10">
         <h1 className="text-2xl font-semibold">{t('complete_title')}</h1>
         <p className="text-text-secondary">{t('first_tasks')}</p>
+        {tasks.length === 0 ? (
+          <PresetEmptyState preset="onboarding_tasks" className="rounded-md border border-dashed border-border py-6" />
+        ) : null}
         <ul className="space-y-3">
           {tasks.map((task) => (
             <li key={task.task_id} className="space-y-3 rounded-md border border-border p-4">

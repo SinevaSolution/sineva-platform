@@ -1,6 +1,7 @@
 import { ArrowRight, CalendarClock, Inbox, Workflow } from 'lucide-react';
 import Link from 'next/link';
 import type * as React from 'react';
+import { PresetEmptyState } from '@/client/components/ui/empty_state';
 import { SNSinoFigure } from '@/client/components/ui/sn_sino_figure';
 import { specialistPose } from '@/client/components/ui/specialist_accent';
 import { SNTooltip } from '@sineva/ui';
@@ -124,7 +125,17 @@ export async function HomeView({
                   ))}
                 </ul>
               </section>
-            ) : null}
+            ) : (
+              <section aria-labelledby="ideas-heading" className="anim-rise" style={delay(540)}>
+                <h2 id="ideas-heading" className="mb-2 text-[13px] font-medium text-text-secondary">
+                  {t('home.ideas_heading')}
+                </h2>
+                <PresetEmptyState
+                  preset="home_ideas"
+                  className="rounded-md border border-dashed border-border-strong py-4"
+                />
+              </section>
+            )}
 
             <section aria-labelledby="next-heading" className="anim-rise" style={delay(600)}>
               <h2 id="next-heading" className="mb-2 text-[13px] font-medium text-text-secondary">

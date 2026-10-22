@@ -10,6 +10,7 @@ import { ConversationActions } from '@/client/components/conversation/conversati
 import { InlineTitleEdit } from '@/client/components/conversation/inline_title_edit';
 import { useConversationActions } from '@/client/components/conversation/use_conversation_actions';
 import { cn } from '@/client/components/ui/cn';
+import { PresetEmptyState } from '@/client/components/ui/empty_state';
 import { SNSinoFigure } from '@/client/components/ui/sn_sino_figure';
 import type { ConversationView } from '@/shared/chat_view';
 import { chatMarker } from './nav_model';
@@ -90,7 +91,7 @@ export function RecentChats({
     return <p className="px-2 py-1 text-xs text-text-tertiary">{t('recent.load_failed')}</p>;
   }
   if (state.items.length === 0) {
-    return <p className="px-2 py-1 text-xs text-text-tertiary">{t('recent.empty')}</p>;
+    return <PresetEmptyState preset="sidebar_recent" className="px-2 py-3" />;
   }
 
   return (
