@@ -2,8 +2,8 @@
 title: "Architecture Decision Records"
 category: "decisions"
 status: "active"
-version: "1.2.0"
-last_updated: "2026-10-21"
+version: "1.3.0"
+last_updated: "2026-10-22"
 owner: "Sineva Engineering"
 tags: ["sineva", "adr", "decisions", "index"]
 summary: "Index of the decisions that shape sineva-platform, with the format and rules for adding or superseding one."
@@ -18,7 +18,7 @@ supersedes: []
 
 # Architecture Decision Records
 
-An ADR records one decision: what was chosen, why, and what it costs. All 21 are Accepted. This folder holds decisions only. How-to guides, current-state descriptions and the rules derived from the decisions live elsewhere ([agent rules](../governance/agent_rules.md), [engineering](../engineering/README.md)). When a rule and its ADR disagree, the ADR wins and the rule gets fixed.
+An ADR records one decision: what was chosen, why, and what it costs. All 22 are Accepted. This folder holds decisions only. How-to guides, current-state descriptions and the rules derived from the decisions live elsewhere ([agent rules](../governance/agent_rules.md), [engineering](../engineering/README.md)). When a rule and its ADR disagree, the ADR wins and the rule gets fixed.
 
 Items marked "cross-service" are mirrored in `sineva-ai` (`docs/decisions/` there, a sineva-ai ADR of the same title). Change both repos together.
 
@@ -45,6 +45,7 @@ Items marked "cross-service" are mirrored in `sineva-ai` (`docs/decisions/` ther
 | [0019](0019-role-and-permission-model.md) | Four static roles, permission registry, specialist scoping | You add or check route permissions |
 | [0020](0020-multi-tenancy-isolation-and-lifecycle.md) | Seven isolation layers, seven workspace lifecycle states | You implement tenancy, isolation or limits |
 | [0021](0021-signed-internal-context.md) | EdDSA compact JWS internal context token (cross-service) | You call or verify sineva-ai internal requests |
+| [0022](0022-run-handle-and-sse-relay.md) | Run handle, `chat_runs`, SSE relay with resume and cancel (cross-service) | You touch streaming, run ids or the stream routes |
 
 ## Suggested reading order
 

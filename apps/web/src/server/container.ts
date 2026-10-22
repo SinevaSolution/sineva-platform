@@ -55,6 +55,13 @@ import { GetConversationUseCase } from './application/use-cases/chat/get_convers
 import { ListConversationsUseCase } from './application/use-cases/chat/list_conversations_use_case';
 import { ListMessagesUseCase } from './application/use-cases/chat/list_messages_use_case';
 import { CreateMessageUseCase } from './application/use-cases/chat/create_message_use_case';
+import type { ChatRunRepository } from './domain/repositories/chat_run_repository';
+import { PrismaChatRunRepository } from './infrastructure/database/prisma_chat_run_repository';
+import { LogRunMetricsRecorder } from './infrastructure/metrics/log_run_metrics_recorder';
+import { passThroughFrameGuard } from './domain/chat/run_frame_guard';
+import { RunHub } from './application/chat/run_hub';
+import { StreamRunUseCase } from './application/use-cases/chat/stream_run_use_case';
+import { CancelRunUseCase } from './application/use-cases/chat/cancel_run_use_case';
 import type { UserProfileRepository } from './domain/repositories/user_profile_repository';
 import { PrismaUserProfileRepository } from './infrastructure/database/prisma_user_profile_repository';
 import { GetProfileUseCase } from './application/use-cases/profile/get_profile_use_case';
@@ -316,6 +323,45 @@ export const getListMessagesUseCase = memoize(
 
 export const getCreateMessageUseCase = memoize(
   () => new CreateMessageUseCase(getConversationRepository(), getMessageRepository()),
+);
+
+export const getChatRunRepository = memoize<ChatRunRepository>(
+  () => new PrismaChatRunRepository(getPrismaClient()),
+);
+
+// Live runs must be one registry per process. Next can evaluate this module
+// more than once (dev reloads, separate route bundles), and two hubs would
+// each start their own upstream stream for the same run, so the hub lives on
+// globalThis.
+const globalForRunHub = globalThis as typeof globalThis & { __sinevaRunHub?: RunHub };
+export const getRunHub = (): RunHub => (globalForRunHub.__sinevaRunHub ??= new RunHub());
+
+export const getStreamRunUseCase = memoize(
+  () =>
+    new StreamRunUseCase({
+      conversations: getConversationRepository(),
+      messages: getMessageRepository(),
+      chatRuns: getChatRunRepository(),
+      gateway: getAiEngineGateway(),
+      contextSigner: getContextSigner(),
+      hub: getRunHub(),
+      // M0 emits no card events; the card validator plugs in here (FR-AX-09).
+      guard: passThroughFrameGuard,
+      metrics: new LogRunMetricsRecorder(),
+    }),
+);
+
+export const getCancelRunUseCase = memoize(
+  () =>
+    new CancelRunUseCase({
+      conversations: getConversationRepository(),
+      messages: getMessageRepository(),
+      chatRuns: getChatRunRepository(),
+      gateway: getAiEngineGateway(),
+      contextSigner: getContextSigner(),
+      hub: getRunHub(),
+      audit: defaultAuditLogger,
+    }),
 );
 
 export const getUserProfileRepository = memoize<UserProfileRepository>(

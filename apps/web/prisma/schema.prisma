@@ -27,34 +27,35 @@ datasource db {
 // ---------------------------------------------------------------------------
 
 model Workspace {
-  id                      String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  workspace_slug          String    @unique @map("workspace_slug")
-  workspace_name          String    @map("workspace_name")
-  owner_user_id           String?   @map("owner_user_id") @db.Uuid
-  status                  String    @default("active") @map("status") // trialing | active | past_due | read_only | suspended | pending_deletion | deleted
-  status_reason           String?   @map("status_reason")
-  trial_ends_at           DateTime? @map("trial_ends_at") @db.Timestamptz(6)
-  timezone                String    @default("Asia/Jakarta") @map("timezone")
-  default_locale          String    @default("id") @map("default_locale")
-  logo_url                String?   @map("logo_url")
-  deleted_at              DateTime? @map("deleted_at") @db.Timestamptz(6)
-  slug_changed_at         DateTime? @map("slug_changed_at") @db.Timestamptz(6)
+  id              String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  workspace_slug  String    @unique @map("workspace_slug")
+  workspace_name  String    @map("workspace_name")
+  owner_user_id   String?   @map("owner_user_id") @db.Uuid
+  status          String    @default("active") @map("status") // trialing | active | past_due | read_only | suspended | pending_deletion | deleted
+  status_reason   String?   @map("status_reason")
+  trial_ends_at   DateTime? @map("trial_ends_at") @db.Timestamptz(6)
+  timezone        String    @default("Asia/Jakarta") @map("timezone")
+  default_locale  String    @default("id") @map("default_locale")
+  logo_url        String?   @map("logo_url")
+  deleted_at      DateTime? @map("deleted_at") @db.Timestamptz(6)
+  slug_changed_at DateTime? @map("slug_changed_at") @db.Timestamptz(6)
 
   // Usage, Plans & Billing fields (kept untouched per WP-M0-21, moved in WP-M3-27 / WP-M4-38)
-  subscription_tier       String    @default("growth") @map("subscription_tier")
-  monthly_token_quota     Int       @default(1000000) @map("monthly_token_quota")
-  monthly_tokens_consumed Int       @default(0) @map("monthly_tokens_consumed")
+  subscription_tier       String @default("growth") @map("subscription_tier")
+  monthly_token_quota     Int    @default(1000000) @map("monthly_token_quota")
+  monthly_tokens_consumed Int    @default(0) @map("monthly_tokens_consumed")
 
-  created_at              DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
-  updated_at              DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  created_at DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updated_at DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  owner                   User?     @relation("WorkspaceOwner", fields: [owner_user_id], references: [id], onDelete: SetNull)
-  members                 WorkspaceMember[]
-  member_specialists      WorkspaceMemberSpecialist[]
-  invitations             WorkspaceInvitation[]
-  agent_configs           AgentConfig[]
-  conversations           Conversation[]
-  storage_objects         StorageObject[]
+  owner              User?                       @relation("WorkspaceOwner", fields: [owner_user_id], references: [id], onDelete: SetNull)
+  members            WorkspaceMember[]
+  member_specialists WorkspaceMemberSpecialist[]
+  invitations        WorkspaceInvitation[]
+  agent_configs      AgentConfig[]
+  conversations      Conversation[]
+  storage_objects    StorageObject[]
+  chat_runs          ChatRun[]
 
   @@map("workspaces")
   @@schema("platform")
@@ -71,9 +72,9 @@ model WorkspaceMember {
   created_at       DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updated_at       DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  workspace        Workspace @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
-  user             User      @relation(fields: [user_id], references: [id], onDelete: Cascade)
-  specialists      WorkspaceMemberSpecialist[]
+  workspace   Workspace                   @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
+  user        User                        @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  specialists WorkspaceMemberSpecialist[]
 
   @@unique([workspace_id, user_id])
   @@index([workspace_id])
@@ -89,8 +90,8 @@ model WorkspaceMemberSpecialist {
   agent_slug          String   @map("agent_slug")
   created_at          DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
 
-  workspace           Workspace       @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
-  member              WorkspaceMember @relation(fields: [workspace_member_id], references: [id], onDelete: Cascade)
+  workspace Workspace       @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
+  member    WorkspaceMember @relation(fields: [workspace_member_id], references: [id], onDelete: Cascade)
 
   @@unique([workspace_member_id, agent_slug])
   @@index([workspace_id])
@@ -112,8 +113,8 @@ model WorkspaceInvitation {
   created_at       DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
   updated_at       DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  workspace        Workspace @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
-  inviter          User      @relation("InviterUser", fields: [inviter_user_id], references: [id], onDelete: Cascade)
+  workspace Workspace @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
+  inviter   User      @relation("InviterUser", fields: [inviter_user_id], references: [id], onDelete: Cascade)
 
   @@index([workspace_id])
   @@index([email])
@@ -145,13 +146,13 @@ model User {
   created_at             DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
   updated_at             DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  owned_workspaces       Workspace[]           @relation("WorkspaceOwner")
-  memberships            WorkspaceMember[]
-  invitations_sent       WorkspaceInvitation[] @relation("InviterUser")
-  accounts               Account[]
-  sessions               Session[]
-  staff_profile          PlatformStaff?
-  conversations          Conversation[]
+  owned_workspaces Workspace[]           @relation("WorkspaceOwner")
+  memberships      WorkspaceMember[]
+  invitations_sent WorkspaceInvitation[] @relation("InviterUser")
+  accounts         Account[]
+  sessions         Session[]
+  staff_profile    PlatformStaff?
+  conversations    Conversation[]
 
   @@map("users")
   @@schema("platform")
@@ -174,7 +175,7 @@ model Account {
   created_at               DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
   updated_at               DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  user                     User      @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  user User @relation(fields: [user_id], references: [id], onDelete: Cascade)
 
   @@unique([provider_id, account_id])
   @@index([user_id])
@@ -196,7 +197,7 @@ model Session {
   created_at          DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
   updated_at          DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  user                User      @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  user User @relation(fields: [user_id], references: [id], onDelete: Cascade)
 
   @@index([user_id])
   @@index([active_workspace_id])
@@ -225,7 +226,7 @@ model PlatformStaff {
   created_at  DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updated_at  DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  user        User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  user User @relation(fields: [user_id], references: [id], onDelete: Cascade)
 
   @@map("platform_staff")
   @@schema("platform")
@@ -284,7 +285,7 @@ model AgentConfig {
   created_at            DateTime @default(now()) @db.Timestamptz(6)
   updated_at            DateTime @default(now()) @db.Timestamptz(6)
 
-  workspace             Workspace? @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
+  workspace Workspace? @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
 
   @@map("agent_configs")
   @@schema("platform")
@@ -306,9 +307,10 @@ model Conversation {
   created_at        DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
   updated_at        DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  workspace         Workspace @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
-  user              User      @relation(fields: [user_id], references: [id], onDelete: Cascade)
-  messages          Message[]
+  workspace Workspace @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
+  user      User      @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  messages  Message[]
+  chat_runs ChatRun[]
 
   @@index([workspace_id, user_id, last_message_at])
   @@index([workspace_id, kind])
@@ -318,25 +320,53 @@ model Conversation {
 }
 
 model Message {
-  id                String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  conversation_id   String       @map("conversation_id") @db.Uuid
-  role              String       @map("role") // user | assistant | system
-  agent_slug        String?      @map("agent_slug")
-  content           String       @map("content") @db.Text
-  mentions          Json?        @map("mentions")
-  status            String       @default("completed") @map("status") // pending | completed | failed | needs_approval | needs_input | budget_exceeded
-  finish_reason     String?      @map("finish_reason")
-  run_id            String?      @map("run_id")
-  channel           String?      @default("web") @map("channel")
-  client_message_id String?      @map("client_message_id")
-  created_at        DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
-  updated_at        DateTime     @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  id                String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  conversation_id   String   @map("conversation_id") @db.Uuid
+  role              String   @map("role") // user | assistant | system
+  agent_slug        String?  @map("agent_slug")
+  content           String   @map("content") @db.Text
+  mentions          Json?    @map("mentions")
+  status            String   @default("completed") @map("status") // pending | completed | failed | needs_approval | needs_input | budget_exceeded | cancelled | error
+  finish_reason     String?  @map("finish_reason")
+  run_id            String?  @map("run_id")
+  channel           String?  @default("web") @map("channel")
+  client_message_id String?  @map("client_message_id")
+  created_at        DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updated_at        DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  conversation      Conversation @relation(fields: [conversation_id], references: [id], onDelete: Cascade)
+  conversation Conversation @relation(fields: [conversation_id], references: [id], onDelete: Cascade)
+  chat_runs    ChatRun[]
 
   @@index([conversation_id, created_at])
   @@index([conversation_id, client_message_id])
+  @@index([run_id])
   @@map("messages")
+  @@schema("platform")
+}
+
+// One streamed reply (ADR-0022). `run_handle` is the id the browser holds
+// (allocated by POST .../messages); the upstream_* columns map it to sineva-ai.
+model ChatRun {
+  id                   String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  workspace_id         String   @map("workspace_id") @db.Uuid
+  conversation_id      String   @map("conversation_id") @db.Uuid
+  user_message_id      String   @map("user_message_id") @db.Uuid
+  run_handle           String   @unique @map("run_handle")
+  agent_slug           String   @map("agent_slug")
+  status               String   @default("pending") @map("status") // pending | streaming | completed | cancelled | error | needs_approval | needs_input | budget_exceeded | failed
+  upstream_run_id      String?  @map("upstream_run_id")
+  upstream_session_id  String?  @map("upstream_session_id")
+  assistant_message_id String?  @map("assistant_message_id") @db.Uuid
+  error_code           String?  @map("error_code")
+  created_at           DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updated_at           DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  workspace    Workspace    @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
+  conversation Conversation @relation(fields: [conversation_id], references: [id], onDelete: Cascade)
+  user_message Message      @relation(fields: [user_message_id], references: [id], onDelete: Cascade)
+
+  @@index([workspace_id, conversation_id, created_at])
+  @@map("chat_runs")
   @@schema("platform")
 }
 
@@ -351,7 +381,7 @@ model StorageObject {
   created_at      DateTime @default(now()) @db.Timestamptz(6)
   updated_at      DateTime @default(now()) @db.Timestamptz(6)
 
-  workspace       Workspace @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
+  workspace Workspace @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
 
   @@map("storage_objects")
   @@schema("platform")
