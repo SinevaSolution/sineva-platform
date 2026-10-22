@@ -6,6 +6,12 @@ import { SNButton } from './sn_button';
 afterEach(cleanup);
 
 describe('SNButton', () => {
+  it('FR-UX-18 uses the theme-aware foreground on solid danger buttons', () => {
+    render(<SNButton variant="danger">Delete</SNButton>);
+    expect(screen.getByRole('button').className).toContain('text-text-on-danger');
+    expect(screen.getByRole('button').className).not.toContain('text-text-inverse');
+  });
+
   it('renders a button with its accessible name and type=button by default', () => {
     render(<SNButton>Save</SNButton>);
     const button = screen.getByRole('button', { name: 'Save' });

@@ -43,6 +43,9 @@
       ],
       "@sineva/ui/theme": [
         "../../packages/ui/src/lib/theme.ts"
+      ],
+      "@sineva/ui/gallery": [
+        "../../packages/ui/src/gallery.ts"
       ]
     }
   },

@@ -27,6 +27,7 @@ export function InboxDetail({
   const [pending, setPending] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
   const [editing, setEditing] = React.useState(false);
+  const [showDiff, setShowDiff] = React.useState(true);
   const [draftTitle, setDraftTitle] = React.useState(String(item.payload?.title ?? ''));
   const [draftBody, setDraftBody] = React.useState(String(item.payload?.body ?? ''));
   const [note, setNote] = React.useState('');
@@ -80,6 +81,16 @@ export function InboxDetail({
           {t('mark_read')}
         </SNButton>
       ) : null}
+      {item.state === 'expired' || approval?.status === 'expired' || input?.status === 'expired' ? (
+        <div className="space-y-3">
+          <SNBanner tone="warning">{t('expired_title')}</SNBanner>
+          {item.source.id && item.source.type !== 'system' ? (
+            <SNButton asChild variant="primary">
+              <Link href={`/w/${workspaceSlug}/chat/${item.source.id}`}>{t('draft_again')}</Link>
+            </SNButton>
+          ) : null}
+        </div>
+      ) : null}
       {error ? <SNBanner tone="danger">{error}</SNBanner> : null}
       {item.payload ? (
         <div className="space-y-3">
@@ -100,6 +111,36 @@ export function InboxDetail({
                   rows={8}
                 />
               </SNField>
+              {draftBody !== String(item.payload.body ?? '') ? (
+                <div className="space-y-3 rounded-md border border-border bg-canvas-alt p-3 text-xs">
+                  <div className="flex items-center justify-between">
+                    <span className="font-semibold text-text-secondary">{t('edited_draft')}</span>
+                    <SNButton
+                      type="button"
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => setShowDiff((prev) => !prev)}
+                    >
+                      {showDiff ? t('hide_diff') : t('show_diff')}
+                    </SNButton>
+                  </div>
+                  {showDiff ? (
+                    <>
+                      <div>
+                        <span className="font-semibold text-text-secondary">
+                          {t('original_draft')}
+                        </span>
+                        <p className="mt-1 whitespace-pre-wrap text-danger line-through">
+                          {String(item.payload.body ?? '')}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="mt-1 whitespace-pre-wrap text-success">{draftBody}</p>
+                      </div>
+                    </>
+                  ) : null}
+                </div>
+              ) : null}
             </>
           ) : (
             <>

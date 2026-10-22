@@ -61,3 +61,47 @@ describe('Library file upload', () => {
     expect(api).not.toHaveBeenCalled();
   });
 });
+
+it('FR-LIB-01 reuses its upload ticket after a failed PUT instead of creating another pending document', async () => {
+  api.mockReset();
+  api.mockImplementation(async (path: string) =>
+    path.endsWith('/uploads') ? ticket : { id: 'doc-1', status: 'queued' },
+  );
+  const fetcher = vi
+    .fn()
+    .mockRejectedValueOnce(new Error('storage unavailable'))
+    .mockResolvedValueOnce(new Response('', { status: 200 }));
+  vi.stubGlobal('fetch', fetcher);
+  const source = file();
+  const session = {};
+  await expect(uploadLibraryFile('ws-1', source, {}, session)).rejects.toMatchObject({
+    detailCodes: ['upload_failed'],
+  });
+  await expect(uploadLibraryFile('ws-1', source, {}, session)).resolves.toMatchObject({
+    id: 'doc-1',
+  });
+  expect(api.mock.calls.filter(([path]) => path.endsWith('/uploads'))).toHaveLength(1);
+  expect(fetcher).toHaveBeenCalledTimes(2);
+});
+
+it('FR-LIB-01 retries completion without reuploading bytes after a lost completion response', async () => {
+  api.mockReset();
+  api
+    .mockResolvedValueOnce(ticket)
+    .mockRejectedValueOnce(new Error('response lost'))
+    .mockResolvedValueOnce({ id: 'doc-1', status: 'queued' });
+  const fetcher = vi.fn().mockResolvedValue(new Response('', { status: 200 }));
+  vi.stubGlobal('fetch', fetcher);
+  const source = file();
+  const session = {};
+  await expect(uploadLibraryFile('ws-1', source, {}, session)).rejects.toThrow('response lost');
+  await expect(uploadLibraryFile('ws-1', source, {}, session)).resolves.toMatchObject({
+    id: 'doc-1',
+  });
+  expect(fetcher).toHaveBeenCalledTimes(1);
+  expect(api.mock.calls.map(([path]) => path)).toEqual([
+    '/api/v1/workspaces/ws-1/library/uploads',
+    '/api/v1/workspaces/ws-1/library/documents/doc-1/complete',
+    '/api/v1/workspaces/ws-1/library/documents/doc-1/complete',
+  ]);
+});

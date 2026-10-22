@@ -124,6 +124,8 @@
 
 /* ---- Layer 2: semantic tokens mapped to Tailwind utilities ------------- */
 @theme static {
+  /* Foreground for solid danger actions; danger becomes a light tint in dark mode. */
+  --color-text-on-danger: var(--white);
   /*
    * Warning (new, OQ-DS-4). Amber on sun-100 is 4.99:1 in light, the dark
    * pair is 8.90:1. `warning` and `review` badges differ by icon and label
@@ -154,6 +156,7 @@
 }
 
 :root[data-theme='dark'] {
+  --color-text-on-danger: var(--ink-950);
   --color-warning: #ffb547;
   --color-warning-surface: #2b2215;
   /*

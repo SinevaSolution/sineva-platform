@@ -49,6 +49,10 @@ export default async function Page({
       folderId={query.folder_id}
       search={query.q ?? ''}
       status={query.status ?? ''}
+      scopeType={query.scope_type}
+      scopeRef={query.scope_ref}
+      sourceType={query.source_type}
+      language={query.language}
     />
   );
 }

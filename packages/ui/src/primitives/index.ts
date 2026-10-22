@@ -12,6 +12,8 @@ export { SNSpinner } from './sn_spinner/sn_spinner';
 export type { SNSpinnerProps, SNSpinnerSize } from './sn_spinner/sn_spinner';
 
 // Inputs
+export { SNDropzone } from './sn_dropzone/sn_dropzone';
+export type { SNDropzoneProps } from './sn_dropzone/sn_dropzone';
 export { SNField } from './sn_field/sn_field';
 export type { SNFieldProps } from './sn_field/sn_field';
 export { SNInput } from './sn_input/sn_input';

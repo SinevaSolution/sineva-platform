@@ -19,6 +19,7 @@ export default defineConfig({
       // code under review.
       '@sineva/i18n': resolve(import.meta.dirname, '../../packages/i18n/index.ts'),
       '@sineva/card-schemas': resolve(import.meta.dirname, '../../packages/card-schemas/src/index.ts'),
+      '@sineva/ui/gallery': resolve(import.meta.dirname, '../../packages/ui/src/gallery.ts'),
       '@sineva/ui/cards': resolve(import.meta.dirname, '../../packages/ui/src/cards/index.ts'),
       '@sineva/ui/format': resolve(import.meta.dirname, '../../packages/ui/src/lib/format.ts'),
       '@sineva/ui/theme': resolve(import.meta.dirname, '../../packages/ui/src/lib/theme.ts'),

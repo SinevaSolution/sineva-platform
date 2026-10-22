@@ -15,7 +15,7 @@ const VARIANTS: Record<SNButtonVariant, string> = {
   dark: 'bg-action-dark text-text-inverse hover:bg-action-dark/90',
   secondary: 'border border-border-strong bg-surface text-text hover:bg-(--state-hover)',
   ghost: 'text-text-secondary hover:bg-(--state-hover) hover:text-text',
-  danger: 'bg-danger text-text-inverse hover:bg-danger/90',
+  danger: 'bg-danger text-text-on-danger hover:bg-danger/90',
   link: 'text-text-brand underline-offset-4 hover:underline',
 };
 

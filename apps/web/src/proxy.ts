@@ -54,6 +54,13 @@ const PUBLIC_PAGES = new Set([
 export function proxyPageGuard(request: NextRequest): NextResponse | null {
   const pathname = request.nextUrl.pathname;
 
+  if (pathname === '/dev/ui' || pathname.startsWith('/dev/ui/')) {
+    if (process.env.NODE_ENV === 'production' && process.env.ENABLE_DEV_UI !== '1') {
+      return new NextResponse(null, { status: 404 });
+    }
+    return null;
+  }
+
   // Static assets and API endpoints are ignored by the page guard
   if (
     pathname.startsWith('/api') ||

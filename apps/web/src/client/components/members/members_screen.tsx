@@ -2,11 +2,13 @@
 import * as React from 'react';
 import { useRouter } from 'next/navigation';
 import {
+  SNBadge,
   SNBanner,
   SNButton,
   SNCheckbox,
   SNConfirmDialog,
   SNDialog,
+  SNDrawer,
   SNField,
   SNInput,
   SNSelect,
@@ -30,7 +32,9 @@ const roleKeys = {
   member: 'roles.member',
   viewer: 'roles.viewer',
 } as const;
+
 type Action = () => Promise<void>;
+
 export function MembersScreen({
   workspaceId,
   role,
@@ -66,6 +70,7 @@ export function MembersScreen({
   const [target, setTarget] = React.useState('');
   const [reauth, setReauth] = React.useState(false);
   const retry = React.useRef<Action | null>(null);
+
   async function run(action: Action, sensitive = false) {
     if (pending) return;
     setPending(true);
@@ -85,6 +90,7 @@ export function MembersScreen({
       setPending(false);
     }
   }
+
   async function authenticate(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const password = new FormData(event.currentTarget).get('password');
@@ -95,6 +101,7 @@ export function MembersScreen({
       retry.current = null;
     });
   }
+
   const remove = (member: MemberView) =>
     setConfirmation({
       title: t('remove_title'),
@@ -104,6 +111,7 @@ export function MembersScreen({
         await apiRequest(`${base}/members/${member.id}`, { method: 'DELETE' });
       },
     });
+
   return (
     <section className="mx-auto w-full max-w-4xl space-y-8 p-5 sm:p-8">
       <header className="flex flex-wrap items-start justify-between gap-4">
@@ -143,7 +151,14 @@ export function MembersScreen({
       ) : null}
       <ul className="divide-y divide-border rounded-md border border-border">
         {members.map((member) => (
-          <li key={member.id} className="flex flex-wrap items-center justify-between gap-3 p-4">
+          <li
+            key={member.id}
+            className="flex flex-wrap items-center justify-between gap-3 p-4 hover:bg-(--state-hover) cursor-pointer"
+            onClick={() => {
+              setEditor(member);
+              setError(null);
+            }}
+          >
             <div className="min-w-0">
               <p className="break-words font-medium">
                 {member.display_name}
@@ -160,7 +175,7 @@ export function MembersScreen({
             member.role !== 'owner' &&
             !member.is_you &&
             (role === 'owner' || member.role !== 'admin') ? (
-              <div className="flex flex-wrap gap-2">
+              <div className="flex flex-wrap gap-2" onClick={(e) => e.stopPropagation()}>
                 <SNButton
                   size="sm"
                   onClick={() => {
@@ -284,10 +299,8 @@ export function MembersScreen({
           {t('leave')}
         </SNButton>
       )}
-      {editor ? (
-        <MemberEditor
-          key={typeof editor === 'string' ? editor : editor.id}
-          member={editor === 'invite' ? null : editor}
+      {editor === 'invite' ? (
+        <InviteDialog
           actorRole={role}
           specialists={specialists}
           pending={pending}
@@ -297,14 +310,34 @@ export function MembersScreen({
           }}
           onSave={(body) =>
             run(async () => {
-              if (editor === 'invite')
-                setCreated(
-                  await apiRequest<InvitationCreatedView>(`${base}/invitations`, {
-                    method: 'POST',
-                    body,
-                  }),
-                );
-              else await apiRequest(`${base}/members/${editor.id}`, { method: 'PATCH', body });
+              setCreated(
+                await apiRequest<InvitationCreatedView>(`${base}/invitations`, {
+                  method: 'POST',
+                  body,
+                }),
+              );
+              setEditor(null);
+            })
+          }
+        />
+      ) : editor ? (
+        <MemberDetailDrawer
+          key={editor.id}
+          member={editor}
+          actorRole={role}
+          specialists={specialists}
+          pending={pending}
+          error={error}
+          onClose={() => {
+            if (!pending) setEditor(null);
+          }}
+          onRemove={() => {
+            setEditor(null);
+            remove(editor);
+          }}
+          onSave={(body) =>
+            run(async () => {
+              await apiRequest(`${base}/members/${editor.id}`, { method: 'PATCH', body });
               setEditor(null);
             })
           }
@@ -388,8 +421,8 @@ export function MembersScreen({
     </section>
   );
 }
-function MemberEditor({
-  member,
+
+function InviteDialog({
   actorRole,
   specialists,
   pending,
@@ -397,7 +430,6 @@ function MemberEditor({
   onSave,
   onClose,
 }: {
-  member: MemberView | null;
   actorRole: MemberRole;
   specialists: ShellSpecialistView[];
   pending: boolean;
@@ -406,23 +438,22 @@ function MemberEditor({
   onClose: () => void;
 }) {
   const t = useTranslations('members');
-  const [role, setRole] = React.useState(member?.role ?? 'member');
-  const [scope, setScope] = React.useState(member?.specialist_scope ?? 'all');
-  const [slugs, setSlugs] = React.useState(member?.specialist_slugs ?? []);
+  const [role, setRole] = React.useState<MemberRole>('member');
+  const [scope, setScope] = React.useState<'all' | 'selected'>('all');
+  const [slugs, setSlugs] = React.useState<string[]>([]);
   const roleOptions = (
     actorRole === 'owner'
       ? ['admin', 'member', 'viewer']
-      : member?.role === 'admin'
-        ? ['admin']
-        : ['member', 'viewer']
+      : ['member', 'viewer']
   ) as Array<Exclude<MemberRole, 'owner'>>;
+
   return (
     <SNDialog
       open
       onOpenChange={(open) => {
         if (!open) onClose();
       }}
-      title={member ? t('edit') : t('invite')}
+      title={t('invite')}
     >
       <form
         className="space-y-4"
@@ -430,8 +461,8 @@ function MemberEditor({
           event.preventDefault();
           const form = new FormData(event.currentTarget);
           onSave({
-            ...(!member ? { email: form.get('email') } : {}),
-            ...(role !== member?.role ? { role } : {}),
+            email: form.get('email'),
+            role,
             ...(role === 'member'
               ? {
                   specialist_scope: scope,
@@ -441,16 +472,14 @@ function MemberEditor({
           });
         }}
       >
-        {!member ? (
-          <SNField label={t('email')} required>
-            <SNInput name="email" type="email" autoComplete="email" required />
-          </SNField>
-        ) : null}
+        <SNField label={t('email')} required>
+          <SNInput name="email" type="email" autoComplete="email" required />
+        </SNField>
         <SNField label={t('role')}>
           <SNSelect
             value={role}
             onValueChange={(v) => setRole(v as MemberRole)}
-            disabled={pending || (actorRole === 'admin' && member?.role === 'admin')}
+            disabled={pending}
             options={roleOptions.map((value) => ({ value, label: t(roleKeys[value]) }))}
           />
         </SNField>
@@ -467,7 +496,7 @@ function MemberEditor({
               />
             </SNField>
             {scope === 'selected' ? (
-              <fieldset>
+              <fieldset className="space-y-2">
                 <legend className="text-sm font-medium">{t('selected')}</legend>
                 {specialists.map((s) => (
                   <SNCheckbox
@@ -493,12 +522,9 @@ function MemberEditor({
             type="submit"
             variant="primary"
             loading={pending}
-            disabled={
-              (role === 'member' && scope === 'selected' && slugs.length === 0) ||
-              (!!member && role === member.role && role !== 'member')
-            }
+            disabled={role === 'member' && scope === 'selected' && slugs.length === 0}
           >
-            {member ? t('save') : t('invite')}
+            {t('invite')}
           </SNButton>
           <SNButton disabled={pending} onClick={onClose}>
             {t('cancel')}
@@ -506,5 +532,184 @@ function MemberEditor({
         </div>
       </form>
     </SNDialog>
+  );
+}
+
+function MemberDetailDrawer({
+  member,
+  actorRole,
+  specialists,
+  pending,
+  error,
+  onSave,
+  onRemove,
+  onClose,
+}: {
+  member: MemberView;
+  actorRole: MemberRole;
+  specialists: ShellSpecialistView[];
+  pending: boolean;
+  error: string | null;
+  onSave: (body: Record<string, unknown>) => void;
+  onRemove: () => void;
+  onClose: () => void;
+}) {
+  const t = useTranslations('members');
+  const [role, setRole] = React.useState(member.role);
+  const [scope, setScope] = React.useState(member.specialist_scope ?? 'all');
+  const [slugs, setSlugs] = React.useState(member.specialist_slugs ?? []);
+  const canEdit =
+    (actorRole === 'owner' || actorRole === 'admin') &&
+    member.role !== 'owner' &&
+    !member.is_you &&
+    (actorRole === 'owner' || member.role !== 'admin');
+
+  const roleOptions = (
+    actorRole === 'owner'
+      ? ['admin', 'member', 'viewer']
+      : member.role === 'admin'
+        ? ['admin']
+        : ['member', 'viewer']
+  ) as Array<Exclude<MemberRole, 'owner'>>;
+
+  return (
+    <SNDrawer
+      open
+      onOpenChange={(open) => {
+        if (!open) onClose();
+      }}
+      title={member.display_name}
+      showTitle
+      side="end"
+      width="panel"
+      closeLabel={t('cancel')}
+    >
+      <div className="space-y-6 p-6">
+        <div className="space-y-2 border-b border-border pb-4">
+          <div className="flex items-center gap-2">
+            <span className="text-lg font-semibold">{member.display_name}</span>
+            {member.is_you ? (
+              <span className="text-xs text-text-secondary">({t('you')})</span>
+            ) : null}
+          </div>
+          {member.email ? (
+            <p className="break-all text-sm text-text-secondary">{member.email}</p>
+          ) : null}
+          <div className="flex items-center gap-2 pt-1">
+            <SNBadge
+              tone={
+                member.role === 'owner'
+                  ? 'brand'
+                  : member.role === 'admin'
+                    ? 'review'
+                    : 'neutral'
+              }
+            >
+              {t(roleKeys[member.role])}
+            </SNBadge>
+          </div>
+        </div>
+
+        {canEdit ? (
+          <form
+            className="space-y-4"
+            onSubmit={(event) => {
+              event.preventDefault();
+              onSave({
+                ...(role !== member.role ? { role } : {}),
+                ...(role === 'member'
+                  ? {
+                      specialist_scope: scope,
+                      ...(scope === 'selected' ? { specialist_slugs: slugs } : {}),
+                    }
+                  : {}),
+              });
+            }}
+          >
+            <SNField label={t('role')}>
+              <SNSelect
+                value={role}
+                onValueChange={(v) => setRole(v as MemberRole)}
+                disabled={pending || (actorRole === 'admin' && member.role === 'admin')}
+                options={roleOptions.map((value) => ({ value, label: t(roleKeys[value]) }))}
+              />
+            </SNField>
+            {role === 'member' ? (
+              <>
+                <SNField label={t('scope')}>
+                  <SNSelect
+                    value={scope}
+                    onValueChange={(v) => setScope(v as 'all' | 'selected')}
+                    options={[
+                      { value: 'all', label: t('all') },
+                      { value: 'selected', label: t('selected') },
+                    ]}
+                  />
+                </SNField>
+                {scope === 'selected' ? (
+                  <fieldset className="space-y-2">
+                    <legend className="text-sm font-medium">{t('selected')}</legend>
+                    {specialists.map((s) => (
+                      <SNCheckbox
+                        key={s.agent_slug}
+                        label={s.display_name}
+                        checked={slugs.includes(s.agent_slug)}
+                        onCheckedChange={(checked) =>
+                          setSlugs(
+                            checked
+                              ? [...slugs, s.agent_slug]
+                              : slugs.filter((slug) => slug !== s.agent_slug),
+                          )
+                        }
+                      />
+                    ))}
+                  </fieldset>
+                ) : null}
+              </>
+            ) : null}
+            {error ? <SNBanner tone="danger">{error}</SNBanner> : null}
+            <div className="flex flex-col gap-2 pt-4">
+              <SNButton
+                type="submit"
+                variant="primary"
+                loading={pending}
+                disabled={
+                  (role === 'member' && scope === 'selected' && slugs.length === 0) ||
+                  (role === member.role && role !== 'member')
+                }
+              >
+                {t('save')}
+              </SNButton>
+              {actorRole === 'owner' || member.role !== 'admin' ? (
+                <SNButton
+                  type="button"
+                  variant="ghost"
+                  disabled={pending}
+                  onClick={onRemove}
+                  className="text-danger hover:text-danger"
+                >
+                  {t('remove')}
+                </SNButton>
+              ) : null}
+              <SNButton type="button" disabled={pending} onClick={onClose}>
+                {t('cancel')}
+              </SNButton>
+            </div>
+          </form>
+        ) : (
+          <div className="space-y-4 text-sm text-text-secondary">
+            <div>
+              <span className="font-medium text-text">{t('role')}</span>: {t(roleKeys[member.role])}
+            </div>
+            {member.role === 'member' ? (
+              <div>
+                <span className="font-medium text-text">{t('scope')}</span>:{' '}
+                {member.specialist_scope === 'selected' ? t('selected') : t('all')}
+              </div>
+            ) : null}
+          </div>
+        )}
+      </div>
+    </SNDrawer>
   );
 }

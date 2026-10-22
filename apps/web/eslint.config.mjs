@@ -11,6 +11,8 @@ export default defineConfig([
     '.next/**',
     'node_modules/**',
     'coverage/**',
+    'playwright-report/**',
+    'test-results/**',
     'next-env.d.ts',
     // Prisma client output: machine-generated and rebuilt on every
     // `db:generate`, so lint rules on it are noise.
