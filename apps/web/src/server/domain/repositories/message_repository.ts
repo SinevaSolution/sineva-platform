@@ -35,6 +35,7 @@ export interface MessageRepository {
    * messages store the same handle, so the role filter matters.
    */
   findUserMessageByRunId(runId: string): Promise<MessageEntity | null>;
+  countByConversation(conversationId: string): Promise<number>;
   listByConversation(filter: ListMessagesFilter): Promise<{
     items: MessageEntity[];
     next_cursor: string | null;

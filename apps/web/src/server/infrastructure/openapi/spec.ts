@@ -1060,6 +1060,138 @@ export function getOpenApiSpec(): Record<string, unknown> {
             },
           },
         },
+        patch: {
+          tags: ['Conversations'],
+          summary: 'Rename a conversation',
+          description:
+            'Sets the title (trimmed, 1 to 120 characters) and marks it as the caller\'s own (`title_source = user`), so automatic titles never overwrite it. Only the owner can rename; anyone else gets 404 (FR-HUB-32).',
+          operationId: 'rename_conversation',
+          parameters: [
+            {
+              name: 'workspace_id',
+              in: 'path',
+              required: true,
+              schema: { type: 'string', format: 'uuid' },
+            },
+            {
+              name: 'conversation_id',
+              in: 'path',
+              required: true,
+              schema: { type: 'string', format: 'uuid' },
+            },
+          ],
+          requestBody: {
+            required: true,
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  required: ['title'],
+                  properties: {
+                    title: { type: 'string', minLength: 1, maxLength: 120, example: 'Q4 budget review' },
+                  },
+                },
+              },
+            },
+          },
+          responses: {
+            '200': {
+              description: 'The renamed conversation',
+              content: {
+                'application/json': {
+                  schema: { $ref: '#/components/schemas/StandardEnvelope' },
+                },
+              },
+            },
+            '401': {
+              description: 'Authentication required',
+              content: {
+                'application/json': {
+                  schema: { $ref: '#/components/schemas/StandardEnvelope' },
+                },
+              },
+            },
+            '403': {
+              description: 'The role cannot manage chats (viewer)',
+              content: {
+                'application/json': {
+                  schema: { $ref: '#/components/schemas/StandardEnvelope' },
+                },
+              },
+            },
+            '404': {
+              description: 'Conversation not found or not owned by caller (FR-HUB-32)',
+              content: {
+                'application/json': {
+                  schema: { $ref: '#/components/schemas/StandardEnvelope' },
+                },
+              },
+            },
+            '422': {
+              description: 'Title missing, empty after trimming, or longer than 120 characters',
+              content: {
+                'application/json': {
+                  schema: { $ref: '#/components/schemas/StandardEnvelope' },
+                },
+              },
+            },
+          },
+        },
+        delete: {
+          tags: ['Conversations'],
+          summary: 'Delete a conversation',
+          description:
+            'Permanently deletes the conversation with its messages and chat runs in one transaction, after cancelling any active run. Cannot be undone. Attachments in object storage are purged by the retention job. Only the owner can delete; anyone else gets 404 (FR-HUB-32).',
+          operationId: 'delete_conversation',
+          parameters: [
+            {
+              name: 'workspace_id',
+              in: 'path',
+              required: true,
+              schema: { type: 'string', format: 'uuid' },
+            },
+            {
+              name: 'conversation_id',
+              in: 'path',
+              required: true,
+              schema: { type: 'string', format: 'uuid' },
+            },
+          ],
+          responses: {
+            '200': {
+              description: 'Deleted; data is { id, deleted: true }',
+              content: {
+                'application/json': {
+                  schema: { $ref: '#/components/schemas/StandardEnvelope' },
+                },
+              },
+            },
+            '401': {
+              description: 'Authentication required',
+              content: {
+                'application/json': {
+                  schema: { $ref: '#/components/schemas/StandardEnvelope' },
+                },
+              },
+            },
+            '403': {
+              description: 'The role cannot manage chats (viewer)',
+              content: {
+                'application/json': {
+                  schema: { $ref: '#/components/schemas/StandardEnvelope' },
+                },
+              },
+            },
+            '404': {
+              description: 'Conversation not found or not owned by caller (FR-HUB-32)',
+              content: {
+                'application/json': {
+                  schema: { $ref: '#/components/schemas/StandardEnvelope' },
+                },
+              },
+            },
+          },
+        },
       },
       '/api/v1/workspaces/{workspace_id}/conversations/{conversation_id}/messages': {
         get: {

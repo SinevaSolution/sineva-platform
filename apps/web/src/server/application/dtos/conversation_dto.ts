@@ -36,6 +36,15 @@ export const CreateConversationSchema = z
 
 export type CreateConversationDto = z.infer<typeof CreateConversationSchema>;
 
+export const CONVERSATION_TITLE_MAX_LENGTH = 120;
+
+export const RenameConversationSchema = z.object({
+  // Trim before the length checks so "   " is rejected like "".
+  title: z.string().trim().min(1, 'Title cannot be empty').max(CONVERSATION_TITLE_MAX_LENGTH, 'Title cannot exceed 120 characters'),
+});
+
+export type RenameConversationDto = z.infer<typeof RenameConversationSchema>;
+
 export const CreateMessageSchema = z.object({
   content: z
     .string()

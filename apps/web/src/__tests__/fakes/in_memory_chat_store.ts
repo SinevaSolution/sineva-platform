@@ -29,6 +29,19 @@ export class InMemoryConversations implements ConversationRepository {
   async updateLastMessageAt(): Promise<void> {
     this.lastMessageAtUpdates += 1;
   }
+  async rename(id: string, title: string): Promise<ConversationEntity> {
+    const row = this.rows.get(id);
+    if (!row) throw new Error(`conversation ${id} not found`);
+    row.title = title;
+    row.title_source = 'user';
+    return { ...row };
+  }
+  /** Callbacks standing in for the database's ON DELETE CASCADE. */
+  readonly cascades: Array<(conversationId: string) => void> = [];
+  async delete(id: string): Promise<void> {
+    this.rows.delete(id);
+    for (const cascade of this.cascades) cascade(id);
+  }
 }
 
 export class InMemoryMessages implements MessageRepository {
@@ -66,6 +79,9 @@ export class InMemoryMessages implements MessageRepository {
   }
   async findUserMessageByRunId(runId: string): Promise<MessageEntity | null> {
     return this.rows.find((m) => m.run_id === runId && m.role === 'user') ?? null;
+  }
+  async countByConversation(conversationId: string): Promise<number> {
+    return this.rows.filter((m) => m.conversation_id === conversationId).length;
   }
   async listByConversation(): Promise<{ items: MessageEntity[]; next_cursor: string | null }> {
     throw new Error('not used by the relay tests');
@@ -144,6 +160,13 @@ export class InMemoryChatRuns implements ChatRunRepository {
 
   async setAssistantMessage(id: string, assistantMessageId: string): Promise<void> {
     this.byId(id).assistant_message_id = assistantMessageId;
+  }
+
+  async listByConversation(conversationId: string): Promise<ChatRunEntity[]> {
+    return [...this.rows.values()]
+      .filter((r) => r.conversation_id === conversationId)
+      .sort((a, b) => a.created_at.localeCompare(b.created_at))
+      .map((r) => ({ ...r }));
   }
 
   async findLatestSessionId(conversationId: string): Promise<string | null> {

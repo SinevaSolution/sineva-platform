@@ -10,6 +10,19 @@
       "title_to_dark": "Ganti ke mode gelap"
     }
   },
+  "conversation": {
+    "options_tooltip": "Opsi obrolan",
+    "options_for": "Opsi untuk {title}",
+    "rename": "Ganti nama",
+    "delete": "Hapus",
+    "rename_label": "Nama obrolan",
+    "delete_title": "Hapus obrolan ini?",
+    "delete_body": "Obrolan dan semua pesannya akan dihapus. Ini tidak bisa dibatalkan.",
+    "delete_confirm": "Hapus obrolan",
+    "delete_cancel": "Batal",
+    "deleting": "Menghapus...",
+    "deleted": "Obrolan dihapus"
+  },
   "errors": {
     "not_found": {
       "title": "Sino tidak menemukan halaman ini",

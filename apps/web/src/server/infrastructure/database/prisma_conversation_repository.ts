@@ -122,6 +122,20 @@ export class PrismaConversationRepository implements ConversationRepository {
     };
   }
 
+  async rename(id: string, title: string): Promise<ConversationEntity> {
+    const row = await activeClient(this.prisma).conversation.update({
+      where: { id },
+      // updated_at does not update itself (known debt), so it is set here.
+      data: { title, title_source: 'user', updated_at: new Date() },
+    });
+    return mapConversation(row);
+  }
+
+  async delete(id: string): Promise<void> {
+    // deleteMany: a concurrent second delete is a no-op instead of a P2025.
+    await activeClient(this.prisma).conversation.deleteMany({ where: { id } });
+  }
+
   async updateLastMessageAt(id: string, date: Date): Promise<void> {
     await this.prisma.conversation.update({
       where: { id },

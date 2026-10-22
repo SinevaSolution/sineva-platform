@@ -5,6 +5,7 @@ import type {
   ChatRunRepository,
   FindOrCreateChatRunInput,
 } from '@/server/domain/repositories/chat_run_repository';
+import { activeClient } from './prisma_transaction_runner';
 
 function mapChatRun(row: {
   id: string;
@@ -111,6 +112,14 @@ export class PrismaChatRunRepository implements ChatRunRepository {
       where: { id },
       data: { assistant_message_id: assistantMessageId },
     });
+  }
+
+  async listByConversation(conversationId: string): Promise<ChatRunEntity[]> {
+    const rows = await activeClient(this.prisma).chatRun.findMany({
+      where: { conversation_id: conversationId },
+      orderBy: { created_at: 'asc' },
+    });
+    return rows.map(mapChatRun);
   }
 
   async findLatestSessionId(conversationId: string): Promise<string | null> {

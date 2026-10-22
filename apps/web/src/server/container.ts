@@ -73,6 +73,8 @@ import { passThroughFrameGuard } from './domain/chat/run_frame_guard';
 import { RunHub } from './application/chat/run_hub';
 import { StreamRunUseCase } from './application/use-cases/chat/stream_run_use_case';
 import { CancelRunUseCase } from './application/use-cases/chat/cancel_run_use_case';
+import { RenameConversationUseCase } from './application/use-cases/chat/rename_conversation_use_case';
+import { DeleteConversationUseCase } from './application/use-cases/chat/delete_conversation_use_case';
 import type { UserProfileRepository } from './domain/repositories/user_profile_repository';
 import { PrismaUserProfileRepository } from './infrastructure/database/prisma_user_profile_repository';
 import { GetProfileUseCase } from './application/use-cases/profile/get_profile_use_case';
@@ -411,6 +413,28 @@ export const getCancelRunUseCase = memoize(
       contextSigner: getContextSigner(),
       hub: getRunHub(),
       audit: getAuditLogger(),
+    }),
+);
+
+export const getRenameConversationUseCase = memoize(
+  () =>
+    new RenameConversationUseCase(
+      getConversationRepository(),
+      getAuditLogger(),
+      getTransactionRunner(),
+    ),
+);
+
+export const getDeleteConversationUseCase = memoize(
+  () =>
+    new DeleteConversationUseCase({
+      conversations: getConversationRepository(),
+      messages: getMessageRepository(),
+      chatRuns: getChatRunRepository(),
+      cancelRun: getCancelRunUseCase(),
+      audit: getAuditLogger(),
+      log: new LoggerRunRelayLog(),
+      transactions: getTransactionRunner(),
     }),
 );
 

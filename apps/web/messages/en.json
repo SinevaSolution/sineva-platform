@@ -10,6 +10,19 @@
       "title_to_dark": "Switch to dark mode"
     }
   },
+  "conversation": {
+    "options_tooltip": "Chat options",
+    "options_for": "Options for {title}",
+    "rename": "Rename",
+    "delete": "Delete",
+    "rename_label": "Chat name",
+    "delete_title": "Delete this chat?",
+    "delete_body": "This removes the chat and all its messages. It can't be undone.",
+    "delete_confirm": "Delete chat",
+    "delete_cancel": "Cancel",
+    "deleting": "Deleting...",
+    "deleted": "Chat deleted"
+  },
   "errors": {
     "not_found": {
       "title": "Sino can't find this page",

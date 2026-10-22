@@ -251,6 +251,19 @@ Behaviour to know before you touch it:
 
 Browser side: `src/client/lib/event_stream.ts` (`openRunStream`) reads this stream with `fetch`, reconnects with backoff and `Last-Event-ID`, and maps error codes to message keys in `src/client/lib/stream_errors.ts`.
 
+### Renaming and deleting a conversation
+
+| Route | Purpose |
+| :--- | :--- |
+| `PATCH /api/v1/workspaces/{workspace_id}/conversations/{conversation_id}` | Body `{ title }`, trimmed, 1 to 120 characters (422 otherwise). Sets `title_source = 'user'` so a later automatic title never overwrites it. Needs `chat.create`. Audit `conversation.renamed`. |
+| `DELETE /api/v1/workspaces/{workspace_id}/conversations/{conversation_id}` | Hard delete of the conversation, its messages and its `chat_runs`. Returns `{ id, deleted: true }`. Needs `chat.delete`. Audit `conversation.deleted`. |
+
+- Only the owner can use either route. Another member, an admin and another workspace all get 404, never 403 (FR-HUB-32).
+- Delete first cancels every non-terminal run through `CancelRunUseCase`, outside the transaction (the cancel calls sineva-ai). A refused or unreachable cancel (409, 502, 503) is logged as `run.relay_failed` with code `cancel_before_delete_failed` and the delete goes on; the person's deletion must not depend on sineva-ai being up. A drain that finishes later finds no run row and its message insert fails on the foreign key, so nothing is written into the deleted chat (logged as `store_reply_failed`).
+- The counts for the audit row, the audit write and the delete share one transaction. The audit write comes first, so a failed audit leaves the data in place. Audit metadata is ids and counts only (`kind`, `agent_slug`, `message_count`, `run_count`; for a rename `title_length`), never titles or text.
+- Messages and runs go through `ON DELETE CASCADE` (no migration needed). Attachments and their storage objects do not exist yet; purging them is the retention job (WP-M4-41).
+- A message posted at the same moment as the delete can still fail with a foreign key error instead of a clean 404 (no lock on the conversation row). Rare and harmless: the delete wins.
+
 ### Upstream Error Mapping & Log Hygiene (SEC-6, ADR-0016)
 
 The platform adapter maps upstream failure codes into strongly-typed platform domain errors without fabricating canned fallback responses:

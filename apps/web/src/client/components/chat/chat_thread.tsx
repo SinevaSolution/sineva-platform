@@ -3,6 +3,9 @@
 import { Square } from 'lucide-react';
 import * as React from 'react';
 import { toast } from 'sonner';
+import { ConversationActions } from '@/client/components/conversation/conversation_actions';
+import { InlineTitleEdit } from '@/client/components/conversation/inline_title_edit';
+import { useConversationActions } from '@/client/components/conversation/use_conversation_actions';
 import { RoomBubble, RoomStage } from '@/client/components/room/room_stage';
 import { SinoFigure } from '@/client/components/ui/sino_figure';
 import { specialistPose } from '@/client/components/ui/specialist_accent';
@@ -63,21 +66,26 @@ type ThreadState =
 
 export function ChatThread({
   workspaceId,
+  workspaceSlug,
   conversationId,
   specialists,
 }: {
   workspaceId: string;
+  workspaceSlug: string;
   conversationId: string;
   specialists: ShellSpecialistView[];
 }) {
   const t = useTranslations('chat');
   const tCommon = useTranslations('common');
+  const tConversation = useTranslations('conversation');
   // Empty namespace: stream error keys are full catalog paths (`chat.error.*`).
   const tFull = useTranslations('');
   const errorText = useApiErrorText();
   const [state, setState] = React.useState<ThreadState>({ status: 'loading' });
   const [attempt, setAttempt] = React.useState(0);
   const [sendFailed, setSendFailed] = React.useState(false);
+  const [renaming, setRenaming] = React.useState(false);
+  const actions = useConversationActions({ workspaceId, workspaceSlug });
   const [live, dispatchLive] = React.useReducer(reduceLiveReply, IDLE);
   const bottomRef = React.useRef<HTMLLIElement>(null);
   const streamRef = React.useRef<RunStreamHandle | null>(null);
@@ -267,15 +275,43 @@ export function ChatThread({
           ? streamErrorText(tFull, live.code, companionName)
           : '';
 
+  const displayTitle = conversation.title?.trim() || t('thread.title_default', { name: companionName });
+  const setTitle = (title: string | null) =>
+    setState((prev) =>
+      prev.status !== 'ready' ? prev : { ...prev, conversation: { ...prev.conversation, title } },
+    );
+
   const header = (
     <div className="flex items-center gap-2 px-4 pb-2 pt-3 sm:px-6">
       <SinoFigure pose={specialistPose(specialist?.agent_slug ?? 'sino')} size={34} />
       <div className="min-w-0">
-        <h1 className="truncate text-[15px] font-semibold text-white">
-          {conversation.title?.trim() || t('thread.title_default', { name: companionName })}
-        </h1>
+        {renaming ? (
+          <InlineTitleEdit
+            value={conversation.title}
+            label={tConversation('rename_label')}
+            className="h-7 w-full min-w-[12rem] text-[15px] font-semibold"
+            onCancel={() => setRenaming(false)}
+            onSave={(next) => {
+              setRenaming(false);
+              void actions.rename(conversation.id, next, {
+                previous: conversation.title,
+                apply: setTitle,
+              });
+            }}
+          />
+        ) : (
+          <h1 className="truncate text-[15px] font-semibold text-white">{displayTitle}</h1>
+        )}
         <p className="text-xs text-white/65">{isTeam ? t('thread.subtitle_team') : t('thread.subtitle_private', { name: companionName })}</p>
       </div>
+      {renaming ? null : (
+        <ConversationActions
+          title={displayTitle}
+          triggerClassName="size-8 text-white/75 hover:bg-white/15 hover:text-white data-[state=open]:bg-white/15 data-[state=open]:text-white"
+          onRename={() => setRenaming(true)}
+          onDelete={() => actions.remove(conversation.id)}
+        />
+      )}
     </div>
   );
 
