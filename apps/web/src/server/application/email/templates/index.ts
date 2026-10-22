@@ -9,6 +9,7 @@ import type {
   EmailChangeConfirmParams,
   EmailChangeNoticeParams,
 } from '@/server/domain/email/email_sender';
+import { connectionNeedsReconnectTemplates } from './connections';
 import {
   ownershipTransferRequestTemplates,
   ownershipTransferredNoticeTemplates,
@@ -433,6 +434,7 @@ export const EMAIL_TEMPLATES: {
   workspace_invitation: workspaceInvitationTemplates,
   ownership_transfer_request: ownershipTransferRequestTemplates,
   ownership_transferred_notice: ownershipTransferredNoticeTemplates,
+  connection_needs_reconnect: connectionNeedsReconnectTemplates,
 };
 
 export function renderEmailTemplate<K extends EmailTemplateName>(

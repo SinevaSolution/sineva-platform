@@ -9,3 +9,9 @@ export const tickJobsRequestSchema = z
   .strict();
 
 export type TickJobsRequest = z.infer<typeof tickJobsRequestSchema>;
+
+export const rotateVaultKeysRequestSchema = z
+  .object({
+    limit: z.number().int().min(1).max(500).default(100),
+  })
+  .strict();

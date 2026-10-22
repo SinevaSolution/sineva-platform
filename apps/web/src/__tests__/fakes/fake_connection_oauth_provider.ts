@@ -252,6 +252,11 @@ export class FakeConnectionOAuthProvider implements ConnectorHttpClient {
     return json(200, {});
   }
 
+  /** The provider forgets an access token (the person revoked the app there). */
+  invalidateAccessToken(token: string): void {
+    this.accessTokens.delete(token);
+  }
+
   /** Whether an access token is currently valid (for assertions about refresh results). */
   accessTokenValid(token: string): boolean {
     const record = this.accessTokens.get(token);

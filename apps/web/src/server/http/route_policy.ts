@@ -346,14 +346,33 @@ export const MUTATING_ROUTE_POLICY: Record<string, MutatingRoutePolicy> = {
   },
   'POST /internal/v1/jobs/tick': {
     effect: 'ingest',
-    audit: 'none',
-    reason:
-      'A scheduler beat only runs jobs; each job that changes a connection writes its own audit event inside its handler, and the tick itself records counts in the job log.',
+    audit: ['connection.token_refreshed', 'connection.refresh_failed', 'connection.needs_reconnect'],
   },
   'POST /api/internal/v1/jobs/tick': {
     effect: 'ingest',
+    audit: ['connection.token_refreshed', 'connection.refresh_failed', 'connection.needs_reconnect'],
+  },
+  'POST /internal/v1/vault/rotate-keys': {
+    effect: 'ingest',
     audit: 'none',
-    reason: 'Alias of POST /internal/v1/jobs/tick.',
+    reason:
+      'Rewraps data keys under the current key and returns counts only; no workspace data changes, and the operator command is itself an infrastructure runbook step.',
+  },
+  'POST /api/internal/v1/vault/rotate-keys': {
+    effect: 'ingest',
+    audit: 'none',
+    reason: 'Alias of POST /internal/v1/vault/rotate-keys.',
+  },
+  'POST /internal/v1/connections/reconcile': {
+    effect: 'ingest',
+    audit: 'none',
+    reason:
+      'Only queues a sweep; the health jobs it creates write connection.needs_reconnect for every connection they mark.',
+  },
+  'POST /api/internal/v1/connections/reconcile': {
+    effect: 'ingest',
+    audit: 'none',
+    reason: 'Alias of POST /internal/v1/connections/reconcile.',
   },
   'POST /api/v1/workspaces/{workspace_id}/library/uploads': {
     effect: 'create',

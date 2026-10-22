@@ -45,7 +45,7 @@ export class InMemoryConnectionRepository implements ConnectionRepository {
       account_label: input.account_label,
       access_expires_at: input.access_expires_at,
       refresh_expires_at: input.refresh_expires_at,
-      last_refreshed_at: null,
+      last_refreshed_at: input.last_refreshed_at ?? null,
       last_health_at: null,
       last_error_code: null,
       secret_rotated_at: input.secret_rotated_at ?? null,
@@ -84,6 +84,40 @@ export class InMemoryConnectionRepository implements ConnectionRepository {
         candidate.status !== 'revoked',
     );
     return row ? { ...row } : null;
+  }
+
+  async listRefreshCandidates(now: Date, windowMs: number, limit: number): Promise<ConnectionEntity[]> {
+    return [...this.rows.values()]
+      .filter(
+        (row) =>
+          ['connected', 'partial'].includes(row.status) &&
+          row.auth_type === 'oauth2_pkce' &&
+          row.access_expires_at !== null &&
+          row.access_expires_at.getTime() <= now.getTime() + windowMs,
+      )
+      .sort((a, b) => a.access_expires_at!.getTime() - b.access_expires_at!.getTime())
+      .slice(0, limit)
+      .map((row) => ({ ...row }));
+  }
+
+  async listHealthDue(checkedBefore: Date, limit: number): Promise<ConnectionEntity[]> {
+    return [...this.rows.values()]
+      .filter(
+        (row) =>
+          row.status !== 'revoked' &&
+          row.status !== 'needs_reconnect' &&
+          (row.last_health_at === null || row.last_health_at.getTime() < checkedBefore.getTime()),
+      )
+      .slice(0, limit)
+      .map((row) => ({ ...row }));
+  }
+
+  async listActiveAfter(afterId: string | null, limit: number): Promise<ConnectionEntity[]> {
+    return [...this.rows.values()]
+      .filter((row) => row.status !== 'revoked' && (afterId === null || row.id > afterId))
+      .sort((a, b) => (a.id < b.id ? -1 : 1))
+      .slice(0, limit)
+      .map((row) => ({ ...row }));
   }
 
   async countActive(workspaceId: string): Promise<number> {

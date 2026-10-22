@@ -8,7 +8,8 @@ export type EmailTemplateName =
   | 'email_change_notice'
   | 'workspace_invitation'
   | 'ownership_transfer_request'
-  | 'ownership_transferred_notice';
+  | 'ownership_transferred_notice'
+  | 'connection_needs_reconnect';
 
 export interface RenderedEmail {
   subject: string;
@@ -73,6 +74,14 @@ export interface OwnershipTransferredNoticeParams {
   new_role: 'owner' | 'admin';
 }
 
+export interface ConnectionNeedsReconnectParams {
+  recipient_name?: string;
+  /** A proper name such as "Google Calendar". */
+  provider_name: string;
+  /** Link to the Connected tools page of the workspace. */
+  url: string;
+}
+
 export type EmailParamsMap = {
   verify_email: VerifyEmailParams;
   reset_password: ResetPasswordParams;
@@ -82,6 +91,7 @@ export type EmailParamsMap = {
   workspace_invitation: WorkspaceInvitationParams;
   ownership_transfer_request: OwnershipTransferRequestParams;
   ownership_transferred_notice: OwnershipTransferredNoticeParams;
+  connection_needs_reconnect: ConnectionNeedsReconnectParams;
 };
 
 export interface EmailSendOptions<T extends EmailTemplateName = EmailTemplateName> {

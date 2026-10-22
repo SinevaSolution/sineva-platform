@@ -199,6 +199,10 @@ Cursor-paginated audit events whose target is this connection: `data: { events: 
 | :--- | :--- |
 | `POST /internal/v1/jobs/tick` | Body optional `{ max_jobs?: number }` (1 to 100, default 25). Plans due jobs, reaps expired leases, runs ready jobs. Response `data: { planned, reaped, ran, succeeded, retried, failed }`. Call every minute |
 | `GET /internal/v1/jobs/stats` | Queue depth: `queued`, `running`, `failed`, `oldest_due_seconds` |
+| `POST /internal/v1/connections/reconcile` | Runbook, after a database restore. No body, 202 with `{ job_id }`. Queues a sweep that probes every connection through health jobs and marks the ones that fail `needs_reconnect`; later batches queue themselves |
+| `POST /internal/v1/vault/rotate-keys` | Runbook, key rotation. Body optional `{ limit?: 1 to 500, default 100 }`. Rewraps data keys the current key did not wrap; answer `{ rotated, skipped, failed, more }`. Repeat until `more` is false and `failed` is 0 |
+
+What the tick runs: a refresh job per OAuth connection when its access token is due (about 80 percent of its lifetime, plus or minus 10 percent, never later than 5 minutes before expiry) and a health probe per connection per day. A refresh the provider refuses with `invalid_grant` stops at once: the connection becomes `needs_reconnect`, a system item appears in the Inbox and an email goes to the person who set the connection up. Outages are retried with backoff; any other refusal marks the connection `error` without a notice.
 
 ## Audit events
 

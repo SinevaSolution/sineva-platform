@@ -382,7 +382,8 @@
   "inbox": {
     "sentence": {
       "draft_review": "{name} drafted this {kind}. Nothing is sent.",
-      "input_request": "{name} needs your answer to keep going."
+      "input_request": "{name} needs your answer to keep going.",
+      "connection_needs_reconnect": "{provider} needs to be reconnected before your specialists can use it again."
     },
     "approve_note": {
       "draft_review": "Approving marks this draft ready. Sineva does not send it yet."

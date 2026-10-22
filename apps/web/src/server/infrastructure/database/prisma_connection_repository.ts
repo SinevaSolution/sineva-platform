@@ -73,6 +73,7 @@ export class PrismaConnectionRepository implements ConnectionRepository {
           access_expires_at: input.access_expires_at,
           refresh_expires_at: input.refresh_expires_at,
           secret_rotated_at: input.secret_rotated_at ?? null,
+          last_refreshed_at: input.last_refreshed_at ?? null,
         },
       });
       return mapConnection(row);
@@ -116,6 +117,40 @@ export class PrismaConnectionRepository implements ConnectionRepository {
       },
     });
     return row ? mapConnection(row) : null;
+  }
+
+  async listRefreshCandidates(now: Date, windowMs: number, limit: number): Promise<ConnectionEntity[]> {
+    const rows = await this.db.connection.findMany({
+      where: {
+        status: { in: ['connected', 'partial'] },
+        auth_type: 'oauth2_pkce',
+        access_expires_at: { not: null, lte: new Date(now.getTime() + windowMs) },
+      },
+      orderBy: { access_expires_at: 'asc' },
+      take: limit,
+    });
+    return rows.map(mapConnection);
+  }
+
+  async listHealthDue(checkedBefore: Date, limit: number): Promise<ConnectionEntity[]> {
+    const rows = await this.db.connection.findMany({
+      where: {
+        status: { in: ['connected', 'partial', 'error'] },
+        OR: [{ last_health_at: null }, { last_health_at: { lt: checkedBefore } }],
+      },
+      orderBy: [{ last_health_at: { sort: 'asc', nulls: 'first' } }, { id: 'asc' }],
+      take: limit,
+    });
+    return rows.map(mapConnection);
+  }
+
+  async listActiveAfter(afterId: string | null, limit: number): Promise<ConnectionEntity[]> {
+    const rows = await this.db.connection.findMany({
+      where: { status: { not: 'revoked' }, ...(afterId ? { id: { gt: afterId } } : {}) },
+      orderBy: { id: 'asc' },
+      take: limit,
+    });
+    return rows.map(mapConnection);
   }
 
   async countActive(workspaceId: string): Promise<number> {

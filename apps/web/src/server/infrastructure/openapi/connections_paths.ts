@@ -104,6 +104,42 @@ export function getConnectionsPaths(): Record<string, unknown> {
           '422': response('Body failed validation'),
         },
       }),
+      ...internalPaths('/internal/v1/connections/reconcile', 'post', {
+        tags: ['Internal'],
+        summary: 'Queue the connection sweep after a restore',
+        description:
+          'Guarded by X-Internal-Api-Key. Runbook command: after any database restore, probes every connection and marks the ones that fail as needing a reconnect. Takes no body, answers 202 with the first job id; later batches queue themselves.',
+        operationId: 'queue_connection_reconcile',
+        responses: {
+          '202': response('job_id of the first batch'),
+          '401': response('Missing or invalid X-Internal-Api-Key header'),
+        },
+      }),
+      ...internalPaths('/internal/v1/vault/rotate-keys', 'post', {
+        tags: ['Internal'],
+        summary: 'Rewrap vault data keys under the current key',
+        description:
+          'Guarded by X-Internal-Api-Key. Runbook command for key rotation: rewraps up to limit (1 to 500, default 100) data keys that the current key did not wrap. Ciphertext is untouched and no secret is decrypted. Repeat until more is false and failed is 0, then retire the old key.',
+        operationId: 'rotate_vault_keys',
+        requestBody: {
+          required: false,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                additionalProperties: false,
+                properties: { limit: { type: 'integer', minimum: 1, maximum: 500, default: 100 } },
+              },
+            },
+          },
+        },
+        responses: {
+          '200': response('rotated, skipped, failed, more'),
+          '401': response('Missing or invalid X-Internal-Api-Key header'),
+          '422': response('Body failed validation'),
+          '503': response('The vault or its key service is not available'),
+        },
+      }),
       ...internalPaths('/internal/v1/jobs/stats', 'get', {
         tags: ['Internal'],
         summary: 'Job queue depth',

@@ -21,6 +21,16 @@ export interface ConnectionRepository {
   ): Promise<ConnectionEntity | null>;
   /** Non-revoked connections of the workspace, personal ones included: the figure the plan limit counts. */
   countActive(workspaceId: string): Promise<number>;
+  /**
+   * OAuth connections in a usable status whose access token expires within
+   * `windowMs` of `now`, soonest first. System readers: no viewer filter, no
+   * secret. The refresh planner decides from these when each one is due.
+   */
+  listRefreshCandidates(now: Date, windowMs: number, limit: number): Promise<ConnectionEntity[]>;
+  /** Connections not revoked whose last health probe is older than `checkedBefore` (or never ran). */
+  listHealthDue(checkedBefore: Date, limit: number): Promise<ConnectionEntity[]>;
+  /** Non-revoked connections in id order after `afterId`, for the reconcile sweep. */
+  listActiveAfter(afterId: string | null, limit: number): Promise<ConnectionEntity[]>;
   update(workspaceId: string, id: string, patch: ConnectionPatch): Promise<ConnectionEntity | null>;
   /**
    * Marks the connection revoked and clears the account fields, keeping the

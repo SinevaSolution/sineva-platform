@@ -103,4 +103,16 @@ export type ConnectionStep =
 
 export interface ConnectionLog {
   failed(step: ConnectionStep, detail: { workspace_id?: string; connection_id?: string; provider_id?: string; code?: string }): void;
+  /**
+   * A countable fact (refresh succeeded, refresh failed for a reason other than
+   * invalid_grant, a health probe ran) so failure rates can be read from the logs.
+   */
+  metric(name: ConnectionMetric, detail: { provider_id?: string; code?: string }): void;
 }
+
+export type ConnectionMetric =
+  | 'refresh_succeeded'
+  | 'refresh_failed'
+  | 'refresh_invalid_grant'
+  | 'health_ok'
+  | 'health_failed';

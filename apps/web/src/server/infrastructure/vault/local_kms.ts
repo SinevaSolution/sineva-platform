@@ -74,6 +74,10 @@ export class LocalKms implements KmsPort {
     }
   }
 
+  currentKekId(): string {
+    return this.current.id;
+  }
+
   async wrapDek(dek: Buffer, aad: Buffer): Promise<WrappedDek> {
     const nonce = randomBytes(NONCE_BYTES);
     const cipher = createCipheriv('aes-256-gcm', this.current.key, nonce);
@@ -121,6 +125,9 @@ export class LocalKms implements KmsPort {
  * falling back to the local key.
  */
 export class CloudKmsStub implements KmsPort {
+  currentKekId(): string {
+    return this.fail();
+  }
   private fail(): never {
     throw new VaultUnavailableError('The production key service is not configured yet');
   }

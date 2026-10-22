@@ -5,7 +5,7 @@ import { PROVIDER_MANIFESTS } from '@/server/application/connections/manifests';
 import { HandleOAuthCallbackUseCase } from '@/server/application/connections/oauth/handle_oauth_callback_use_case';
 import { StartOAuthFlowUseCase, type StartOAuthFlowDeps } from '@/server/application/connections/oauth/start_oauth_flow_use_case';
 import { RepositoryAuditLogger } from '@/server/application/audit/repository_audit_logger';
-import type { ConnectionLog, ConnectionStep } from '@/server/domain/connections/connection_errors';
+import type { ConnectionLog, ConnectionMetric, ConnectionStep } from '@/server/domain/connections/connection_errors';
 import type { ConnectorDriverResolver } from '@/server/domain/connections/driver_resolver';
 import type { ConnectorDriver, ProviderManifest } from '@/server/domain/connections/connector';
 import type { RequestContext } from '@/server/domain/context/request_context';
@@ -35,8 +35,15 @@ export const REDIRECT_URI = 'https://app.sineva.test/api/v1/connections/oauth/ca
 
 export class RecordingConnectionLog implements ConnectionLog {
   readonly lines: Array<{ step: ConnectionStep; detail: Record<string, unknown> }> = [];
+  readonly metrics: Array<{ name: ConnectionMetric; detail: Record<string, unknown> }> = [];
   failed(step: ConnectionStep, detail: Record<string, unknown>): void {
     this.lines.push({ step, detail });
+  }
+  metric(name: ConnectionMetric, detail: Record<string, unknown>): void {
+    this.metrics.push({ name, detail });
+  }
+  count(name: ConnectionMetric): number {
+    return this.metrics.filter((entry) => entry.name === name).length;
   }
 }
 

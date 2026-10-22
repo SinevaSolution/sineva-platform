@@ -7,6 +7,13 @@ import { JobRunner } from './application/jobs/job_runner';
 import { TickJobsUseCase, type JobPlanner } from './application/jobs/tick_jobs_use_case';
 import { CredentialResolver } from './application/connections/credential_resolver';
 import { ConnectorRegistry } from './application/connections/connector_registry';
+import { ConnectionHealthService } from './application/connections/refresh/connection_health_service';
+import { ConnectionIncidentNotifier } from './application/connections/refresh/connection_incident_notifier';
+import { ConnectionStateService } from './application/connections/refresh/connection_state_service';
+import { HealthPlanner, RefreshPlanner, registerConnectionJobs } from './application/connections/refresh/connection_jobs';
+import { ReconcileConnectionsUseCase } from './application/connections/refresh/reconcile_connections_use_case';
+import { EnqueueConnectionReconcileUseCase } from './application/connections/refresh/enqueue_connection_reconcile_use_case';
+import { RefreshConnectionTokenUseCase } from './application/connections/refresh/refresh_connection_token_use_case';
 import { StartOAuthFlowUseCase } from './application/connections/oauth/start_oauth_flow_use_case';
 import { HandleOAuthCallbackUseCase } from './application/connections/oauth/handle_oauth_callback_use_case';
 import type { ConnectionLog } from './domain/connections/connection_errors';
@@ -1196,6 +1203,59 @@ export const getHandleOAuthCallbackUseCase = memoize(
     }),
 );
 
+const getConnectionIncidentNotifier = memoize(
+  () =>
+    new ConnectionIncidentNotifier({
+      inbox: getCreateInboxItemUseCase(),
+      accounts: getMemberAccountLookup(),
+      email: getEmailSender(),
+      workspaces: getWorkspaceRepository(),
+      registry: getConnectorRegistry(),
+      appUrl: getEnvConfig().next_public_app_url,
+      log: getConnectionLog(),
+    }),
+);
+const getConnectionStateService = memoize(
+  () =>
+    new ConnectionStateService({
+      connections: getConnectionRepository(),
+      audit: getAuditLogger(),
+      transactions: getTransactionRunner(),
+      incidents: getConnectionIncidentNotifier(),
+    }),
+);
+export const getRefreshConnectionTokenUseCase = memoize(
+  () =>
+    new RefreshConnectionTokenUseCase({
+      connections: getConnectionRepository(),
+      resolver: getCredentialResolver(),
+      secrets: getSecretWriter(),
+      drivers: getConnectorDriverResolver(),
+      audit: getAuditLogger(),
+      transactions: getTransactionRunner(),
+      state: getConnectionStateService(),
+      log: getConnectionLog(),
+    }),
+);
+export const getConnectionHealthService = memoize(
+  () =>
+    new ConnectionHealthService({
+      connections: getConnectionRepository(),
+      resolver: getCredentialResolver(),
+      drivers: getConnectorDriverResolver(),
+      refresh: getRefreshConnectionTokenUseCase(),
+      state: getConnectionStateService(),
+      log: getConnectionLog(),
+    }),
+);
+export const getReconcileConnectionsUseCase = memoize(
+  () => new ReconcileConnectionsUseCase({ connections: getConnectionRepository(), queue: getJobQueue(), log: getConnectionLog() }),
+);
+
+export const getEnqueueConnectionReconcileUseCase = memoize(
+  () => new EnqueueConnectionReconcileUseCase({ queue: getJobQueue() }),
+);
+
 // Resolved on first use, so a missing key fails the first connection call with a
 // typed 503 instead of failing the whole app at boot.
 const getKms = memoize<KmsPort>(() => {
@@ -1220,6 +1280,8 @@ const getVaultService = memoize(
   () => new VaultService(new PrismaVaultSecretRepository(getVaultPrismaClient()), getKms()),
 );
 export const getSecretWriter = memoize<SecretWriter>(() => getVaultService());
+// Rotation rewraps data keys and decrypts nothing, so it can be handed out on its own.
+export const getVaultKeyRotation = memoize(() => ({ rotate: (limit: number) => getVaultService().rotateKeys(limit) }));
 export const getCredentialResolver = memoize(
   () => new CredentialResolver({ connections: getConnectionRepository(), secrets: getVaultService() }),
 );
@@ -1238,12 +1300,21 @@ const jobWorkerId = `web-${process.pid}-${randomBytes(4).toString('hex')}`;
 
 export const getJobRunner = memoize(() => {
   const runner = new JobRunner({ queue: getJobQueue(), log: getJobLog(), workerId: jobWorkerId });
-  // Job handlers are registered here as the features that own them land.
+  registerConnectionJobs(runner, {
+    refresh: getRefreshConnectionTokenUseCase(),
+    health: getConnectionHealthService(),
+    reconcile: getReconcileConnectionsUseCase(),
+    connections: getConnectionRepository(),
+    queue: getJobQueue(),
+  });
   return runner;
 });
 
 // Planners enqueue what is due; each must be idempotent because a tick can run twice.
-const getJobPlanners = memoize<readonly JobPlanner[]>(() => []);
+const getJobPlanners = memoize<readonly JobPlanner[]>(() => [
+  new RefreshPlanner({ connections: getConnectionRepository(), queue: getJobQueue() }),
+  new HealthPlanner({ connections: getConnectionRepository(), queue: getJobQueue() }),
+]);
 
 export const getTickJobsUseCase = memoize(
   () =>

@@ -51,6 +51,8 @@ export interface WrappedDek {
 
 /** Key-encryption key operations. The KEK never leaves the adapter. */
 export interface KmsPort {
+  /** Id of the key that wraps new data keys; rows wrapped by another id are due for rotation. */
+  currentKekId(): string;
   /** `aad` binds the wrapped key to the secret's context. */
   wrapDek(dek: Buffer, aad: Buffer): Promise<WrappedDek>;
   unwrapDek(wrapped: Buffer, kek_id: string, aad: Buffer): Promise<Buffer>;

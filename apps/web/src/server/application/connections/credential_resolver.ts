@@ -30,6 +30,23 @@ export class CredentialResolver {
   ) {}
 
   async forConnection(workspaceId: string, connectionId: string): Promise<ResolvedCredentials> {
+    return this.resolve(workspaceId, connectionId, USABLE_CONNECTION_STATUSES);
+  }
+
+  /**
+   * Like `forConnection` for the health probe only: a connection in `error` is
+   * probed so it can heal, which `forConnection` refuses (a tool call must not run
+   * on a connection that is failing). Revoked and needs-reconnect stay refused.
+   */
+  async forProbe(workspaceId: string, connectionId: string): Promise<ResolvedCredentials> {
+    return this.resolve(workspaceId, connectionId, [...USABLE_CONNECTION_STATUSES, 'error']);
+  }
+
+  private async resolve(
+    workspaceId: string,
+    connectionId: string,
+    allowed: readonly ConnectionEntity['status'][],
+  ): Promise<ResolvedCredentials> {
     const connection = await this.deps.connections.findById(workspaceId, connectionId);
     if (!connection) throw new NotFoundError('Connection', connectionId);
 
@@ -39,7 +56,7 @@ export class CredentialResolver {
     if (connection.status === 'needs_reconnect') {
       throw new ConnectionUnusableError('connection_needs_reconnect', connection.id);
     }
-    if (!USABLE_CONNECTION_STATUSES.includes(connection.status)) {
+    if (!allowed.includes(connection.status)) {
       throw new ConnectionUnusableError('connection_unavailable', connection.id);
     }
 

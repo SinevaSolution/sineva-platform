@@ -252,6 +252,7 @@ export class HandleOAuthCallbackUseCase {
           account_label: identity.account_label ?? target.account_label,
           access_expires_at: accessExpiresAt,
           refresh_expires_at: null,
+          last_refreshed_at: now,
           last_error_code: null,
         });
         await this.deps.secrets.put(this.secretRef(flow, target.id), payload);
@@ -289,6 +290,7 @@ export class HandleOAuthCallbackUseCase {
           account_label: identity.account_label,
           access_expires_at: accessExpiresAt,
           refresh_expires_at: null,
+          last_refreshed_at: now,
         });
         createdId = connection.id;
         // Read for the specialists whose skills declare the provider; write is never a default (FR-CONN-04).

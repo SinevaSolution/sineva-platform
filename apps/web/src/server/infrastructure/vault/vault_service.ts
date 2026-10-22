@@ -8,7 +8,7 @@ import type {
   SecretWriter,
   VaultSecretRepository,
 } from '@/server/domain/vault/vault';
-import { openSecret, sealSecret } from './envelope_crypto';
+import { openSecret, sealSecret, secretAad } from './envelope_crypto';
 
 /**
  * The vault (ADR-0036): seals and opens secrets and stores the rows through a
@@ -43,5 +43,37 @@ export class VaultService implements SecretReader, SecretWriter {
 
   async erase(ref: Pick<SecretRef, 'owner_type' | 'owner_id'>): Promise<void> {
     await this.repository.delete(ref.owner_type, ref.owner_id);
+  }
+
+  /**
+   * KEK rotation (ADR-0036 decision 8): rewraps the data key of up to `limit`
+   * rows that the current key did not wrap. The ciphertext, nonce and row version
+   * are untouched, so a secret read before and after is the same bytes, and the
+   * old key can be retired once `more` is false and `failed` is 0. A row that
+   * changed in between is skipped (a refresh wrote it) and found again by the next
+   * run; a row wrapped by a key this process no longer holds is counted as failed
+   * and stays visible in `more`, never silently dropped.
+   */
+  async rotateKeys(limit: number): Promise<{ rotated: number; skipped: number; failed: number; more: boolean }> {
+    const current = this.kms.currentKekId();
+    const rows = await this.repository.listNotWrappedBy(current, limit);
+    let rotated = 0;
+    let skipped = 0;
+    let failed = 0;
+    for (const row of rows) {
+      try {
+        const wrapped = await this.kms.rotate(row.dek_wrapped, row.kek_id, secretAad(row));
+        const ok = await this.repository.rewrap(
+          { owner_type: row.owner_type, owner_id: row.owner_id, dek_wrapped: wrapped.wrapped, kek_id: wrapped.kek_id, key_version: wrapped.key_version },
+          row.version,
+        );
+        if (ok) rotated += 1;
+        else skipped += 1;
+      } catch {
+        failed += 1;
+      }
+    }
+    const remaining = await this.repository.listNotWrappedBy(current, 1);
+    return { rotated, skipped, failed, more: remaining.length > 0 };
   }
 }

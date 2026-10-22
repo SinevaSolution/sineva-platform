@@ -45,6 +45,7 @@ export const LOG_EVENTS = [
   'job.failed',
   'job.lease_reaped',
   'connection.step_failed',
+  'connection.metric',
 ] as const;
 export type LogEvent = (typeof LOG_EVENTS)[number];
 

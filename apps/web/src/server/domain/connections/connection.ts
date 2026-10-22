@@ -61,6 +61,8 @@ export interface NewConnection {
   access_expires_at: Date | null;
   refresh_expires_at: Date | null;
   secret_rotated_at?: Date | null;
+  /** When the current access token was issued; the refresh schedule counts from it. */
+  last_refreshed_at?: Date | null;
 }
 
 export type ConnectionPatch = Partial<
