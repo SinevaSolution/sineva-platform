@@ -1,6 +1,6 @@
 import type { NextRequest } from 'next/server';
 import { MemberProfileUpdateSchema } from '@/server/application/dtos/profile_dto';
-import { getUpdateMemberProfileUseCase } from '@/server/container';
+import { getLeaveWorkspaceUseCase, getUpdateMemberProfileUseCase } from '@/server/container';
 import { handleRouteError, parseJsonBody, sendSuccessJson } from '@/server/http/response_helper';
 import { withAuth } from '@/server/http/with_auth';
 
@@ -28,4 +28,23 @@ export const PATCH = withAuth<{ workspace_id: string }>(
     }
   },
   { scope: 'workspace', permission: 'profile.update' },
+);
+
+// Leaving affects only the caller's own row in the URL workspace. Every role
+// may call it; the use case refuses the owner (ownership must move first).
+export const DELETE = withAuth<{ workspace_id: string }>(
+  async (request: NextRequest, { requestContext }) => {
+    try {
+      await getLeaveWorkspaceUseCase().execute({ context: requestContext });
+      return sendSuccessJson({
+        data: null,
+        message: 'You left the workspace.',
+        request_id: requestContext.request_id,
+        status: 200,
+      });
+    } catch (err) {
+      return handleRouteError(err, request);
+    }
+  },
+  { scope: 'workspace', permission: 'workspace.view' },
 );
