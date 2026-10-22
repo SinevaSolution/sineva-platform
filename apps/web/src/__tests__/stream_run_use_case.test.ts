@@ -47,6 +47,8 @@ const context = (over: Partial<RequestContext> = {}): RequestContext => ({
   ...over,
 });
 
+const noopLog = { failed: () => undefined };
+
 const encoder = new TextEncoder();
 const decoder = new TextDecoder();
 
@@ -146,6 +148,7 @@ async function harness(over: { guard?: RunFrameGuard; now?: () => number } = {})
     hub,
     guard: over.guard ?? passThroughFrameGuard,
     metrics: { record: (s) => samples.push(s) },
+    log: noopLog,
     now: over.now,
     sleep: async () => undefined,
     poll_interval_ms: 1,
@@ -321,6 +324,7 @@ describe('StreamRunUseCase relay (WP-M0-30, FR-AIR-11, FR-AIR-12, FR-HUB-20)', (
         hub: h.hub,
         guard: passThroughFrameGuard,
         metrics: { record: () => undefined },
+        log: noopLog,
         sleep: async () => undefined,
       });
 
@@ -511,6 +515,7 @@ describe('StreamRunUseCase relay (WP-M0-30, FR-AIR-11, FR-AIR-12, FR-HUB-20)', (
         hub: new RunHub(),
         guard: passThroughFrameGuard,
         metrics: { record: () => undefined },
+        log: noopLog,
         sleep: async () => undefined,
         poll_interval_ms: 1,
         replay_deadline_ms: 50,
@@ -536,6 +541,7 @@ describe('StreamRunUseCase relay (WP-M0-30, FR-AIR-11, FR-AIR-12, FR-HUB-20)', (
         hub: new RunHub(),
         guard: passThroughFrameGuard,
         metrics: { record: () => undefined },
+        log: noopLog,
         sleep: async () => undefined,
       });
       const out = framesOf(await collect(await restarted.execute(HANDLE, { last_event_id: '2' }, context())));

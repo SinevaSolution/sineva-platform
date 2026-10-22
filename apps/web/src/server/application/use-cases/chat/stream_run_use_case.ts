@@ -8,6 +8,7 @@ import type { RunHub, RunSession } from '@/server/application/chat/run_hub';
 import { resolveOwnedRun, type OwnedRun } from '@/server/application/chat/resolve_owned_run';
 import { findMentionSpans } from '@/server/domain/chat/mention_spans';
 import type { RunFrameGuard } from '@/server/domain/chat/run_frame_guard';
+import type { RunRelayLog } from '@/server/domain/chat/run_relay_log';
 import type { RunMetricsRecorder, RunOutcome } from '@/server/domain/chat/run_metrics';
 import type { RequestContext } from '@/server/domain/context/request_context';
 import type { ContextSigner } from '@/server/domain/context/signed_context';
@@ -46,6 +47,7 @@ export interface StreamRunDeps {
   hub: RunHub;
   guard: RunFrameGuard;
   metrics: RunMetricsRecorder;
+  log: RunRelayLog;
   now?: () => number;
   sleep?: (ms: number) => Promise<void>;
   /** How often a resumed attach asks sineva-ai for new events of a running run. */
@@ -272,10 +274,7 @@ export class StreamRunUseCase {
         if (done) break;
       }
     } catch (error) {
-      console.error('[run-relay] upstream stream broke', {
-        run_handle: run.run_handle,
-        reason: error instanceof Error ? error.name : 'unknown',
-      });
+      this.deps.log.failed('upstream_stream_broke', { run_handle: run.run_handle, cause: error });
     }
 
     if (!state.terminal) {
@@ -283,9 +282,7 @@ export class StreamRunUseCase {
     } else {
       // The terminal frame was the last thing we need; release the connection.
       await reader.cancel().catch((error: unknown) => {
-        console.error('[run-relay] could not release the upstream stream', {
-          reason: error instanceof Error ? error.name : 'unknown',
-        });
+        this.deps.log.failed('release_stream_failed', { run_handle: run.run_handle, cause: error });
       });
     }
 
@@ -368,19 +365,13 @@ export class StreamRunUseCase {
   private async failToStart(run: ChatRunEntity, session: RunSession, error: unknown): Promise<void> {
     const relayError = relayErrorFor(error);
     if (relayError.code === 'internal_error') {
-      console.error('[run-relay] could not start the run', {
-        run_handle: run.run_handle,
-        reason: error instanceof Error ? error.name : 'unknown',
-      });
+      this.deps.log.failed('start_failed', { run_handle: run.run_handle, cause: error });
     }
     try {
       // Back to pending, so Retry on this handle can start a fresh run.
       await this.deps.chatRuns.releaseStart(run.id, relayError.code);
     } catch (releaseError) {
-      console.error('[run-relay] could not release the run after a failed start', {
-        run_handle: run.run_handle,
-        reason: releaseError instanceof Error ? releaseError.name : 'unknown',
-      });
+      this.deps.log.failed('release_run_failed', { run_handle: run.run_handle, cause: releaseError });
     }
     session.publish({ kind: 'frame', frame: relayErrorFrame(relayError) });
     session.finish();
@@ -393,9 +384,7 @@ export class StreamRunUseCase {
     state: { text: string; firstTokenAt: number | null; terminal: boolean },
     startedAt: number,
   ): Promise<void> {
-    console.error('[run-relay] upstream frame failed contract validation', {
-      run_handle: run.run_handle,
-    });
+    this.deps.log.failed('bad_frame', { run_handle: run.run_handle });
     state.terminal = true;
     const terminal = this.errorTerminal('upstream_bad_response', state.text);
     await this.storeTerminal(run, session, terminal);
@@ -542,10 +531,7 @@ export class StreamRunUseCase {
       await this.deps.conversations.updateLastMessageAt(run.conversation_id, new Date());
       return true;
     } catch (error) {
-      console.error('[run-relay] could not store the reply', {
-        run_handle: run.run_handle,
-        reason: error instanceof Error ? error.name : 'unknown',
-      });
+      this.deps.log.failed('store_reply_failed', { run_handle: run.run_handle, cause: error });
       return false;
     }
   }
@@ -580,10 +566,7 @@ export class StreamRunUseCase {
       await this.deps.gateway.cancelRun({ runId: session.upstreamRunId, contextToken: token });
       session.cancelAcknowledged = true;
     } catch (error) {
-      console.error('[run-relay] deferred cancel failed', {
-        run_handle: run.run_handle,
-        reason: error instanceof Error ? error.name : 'unknown',
-      });
+      this.deps.log.failed('deferred_cancel_failed', { run_handle: run.run_handle, cause: error });
     }
   }
 

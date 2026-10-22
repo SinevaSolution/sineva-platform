@@ -24,6 +24,8 @@ export const LOG_EVENTS = [
   'breach_check.failed',
   'storage.presign_failed',
   'http.unhandled_error',
+  'run.relay_failed',
+  'run.metrics',
 ] as const;
 export type LogEvent = (typeof LOG_EVENTS)[number];
 
@@ -44,6 +46,12 @@ export interface LogFields {
   agent_slug?: string;
   /** Dotted schema paths of a validation failure. Never the failing values. */
   issue_paths?: string[];
+  /** Opaque id of a chat run (run_<uuid>). Identifies a resource, not a person. */
+  run_handle?: string;
+  first_token_ms?: number;
+  total_ms?: number;
+  /** Reply language code such as `id` or `en`. */
+  locale?: string;
 }
 
 type FieldKind = 'number' | 'string' | 'boolean' | 'string_list';
@@ -61,6 +69,10 @@ const FIELD_KINDS: Record<keyof LogFields, FieldKind> = {
   reason: 'string',
   agent_slug: 'string',
   issue_paths: 'string_list',
+  run_handle: 'string',
+  first_token_ms: 'number',
+  total_ms: 'number',
+  locale: 'string',
 };
 
 // Bounds what an allowed string field can smuggle: a pasted body would be cut
