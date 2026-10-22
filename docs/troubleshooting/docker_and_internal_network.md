@@ -75,7 +75,7 @@ docker compose up -d --force-recreate sineva-ai sineva-platform
 
 ### Health says `standby`
 
-`GET /api/v1/health` reports `data.subsystems.sineva_ai_engine.status` as `standby` when the engine call throws or returns a non-2xx status. A key mismatch (401) and a stopped engine therefore look the same there. The health call times out after 1.2 seconds and reports a hardcoded `engine_version`, so use it as a hint and use the log table above for the cause.
+`GET /api/v1/health` reports `data.subsystems.sineva_ai_engine.status` as `standby` when the engine call throws or returns a non-2xx status. A key mismatch (401) and a stopped engine therefore look the same there. The health call times out after 1.2 seconds. The version is read from the engine's health body (`unknown` when the body has none), and anonymous callers see only the overall `status`, so use the log table above for the cause.
 
 ## Network checks
 

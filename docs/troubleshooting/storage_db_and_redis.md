@@ -82,7 +82,7 @@ Prisma says it needs to reset the schema, or reports drift. Never accept it on a
 
 ### Data disappeared after a restart or a "cleanup"
 
-`npm run docker:down` runs `docker compose down -v` and deletes the Postgres volume, including `sineva-ai`'s data. After it, both services need their migrations again (the platform's `migrate deploy` and `seed`, and the engine's `alembic upgrade head`). Use `docker compose down` to keep data.
+`npm run docker:reset` (`docker compose down -v`, guarded by `CONFIRM_RESET=yes`) deletes the Postgres volume, including `sineva-ai`'s data. `npm run docker:down` keeps it. After it, both services need their migrations again (the platform's `migrate deploy` and `seed`, and the engine's `alembic upgrade head`). Use `docker compose down` to keep data.
 
 ## SeaweedFS and presigned uploads
 
@@ -90,13 +90,13 @@ Prisma says it needs to reset the schema, or reports drift. Never accept it on a
 
 `SignatureDoesNotMatch`, `NoSuchBucket`, `AccessDenied`, or a hostname the browser cannot resolve.
 
-1. Look at the URL the presign call returned. A valid one carries `X-Amz-Signature`. If it has only `X-Amz-Expires`, signing threw inside `SeaweedStorageRepository.createPresignedUploadUrl`, which returns an unsigned URL instead of failing (known debt). Look for the cause in the container's logs and in the S3 variables.
-2. Check the host in the URL. It comes from `S3_ENDPOINT`, which compose sets to `http://seaweedfs-s3:8333`, a name only containers can resolve. A browser outside Docker needs an endpoint it can reach ([ADR-0002](../decisions/0002-seaweedfs-presigned-uploads.md)).
+1. A signing failure never produces a URL: the presign route answers 502. Look for `[storage] presigned upload url generation failed` in the container's logs and check the S3 variables.
+2. Check the host in the URL. It comes from `S3_PUBLIC_ENDPOINT`, which must be an address the browser can reach. `S3_ENDPOINT` (the Docker name `http://seaweedfs-s3:8333`) is only used for server-to-storage calls such as the health probe ([ADR-0002](../decisions/0002-seaweedfs-presigned-uploads.md)).
 3. Path-style addressing must be on (`S3_FORCE_PATH_STYLE` unset or `true`): `http://host:8333/sineva-assets/<key>`.
 4. The `PUT` must send the same `Content-Type` that was passed to presign (`content_type`).
 5. Check the S3 gateway: `docker logs sineva-seaweedfs-s3 --tail 50`.
 
-The health endpoint reports S3 `healthy` whenever an endpoint is configured, without contacting it.
+The health endpoint reports S3 `standby` when `HeadBucket` fails or takes longer than 1.5 seconds.
 
 ## Redis and the cache
 

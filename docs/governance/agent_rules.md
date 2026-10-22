@@ -168,7 +168,7 @@ Use the helpers that wrap `createSuccessResponse`, `createPaginatedResponse` and
 ### R-25 MUST register new routes in the OpenAPI spec
 Add the path and schemas in `src/server/infrastructure/openapi/spec.ts`.
 - **Why**: `/api/openapi.json` and `/api-docs` are the API catalog.
-- **Check**: Enforced by review. No test compares the route files with the spec. Fetch `/api/openapi.json` and find the new path before you open the PR.
+- **Check**: `src/__tests__/openapi_guard.test.ts` fails when a route file or exported method has no spec entry, and when a spec path has no route file. It does not check that a schema matches its Zod DTO, so read the entry before you open the PR.
 
 ### R-40 MUST keep the sineva-ai contract fixtures in sync, byte for byte
 `sineva-ai` owns the internal chat contract (`ChatRequestDTO`, `ChatResponseDTO` and its success envelope). The platform gateway adapts to it. The files in `apps/web/src/__tests__/contract/fixtures/` are copies of `sineva-ai/tests/contract/fixtures/`. Never edit a copy. Change the fixture in `sineva-ai` first, copy it here in the same change, and open the matching change in both repos.
@@ -189,8 +189,8 @@ Do not trust `user_id` or `workspace_id` sent by the client for access decisions
 
 ### R-28 MUST NOT add hardcoded secret defaults or expose secrets
 No new fallback credentials in code or compose files. No secret in a `NEXT_PUBLIC_*` variable.
-- **Why**: Defaults leak into production, and `NEXT_PUBLIC_*` values ship to the browser. Current debt: `getEnvConfig()` and `docker-compose.yml` already hold dev defaults.
-- **Check**: `grep -rn "NEXT_PUBLIC_" apps/web docker-compose.yml .env.example` lists only non-secret URLs. Review every new `??` default on an env variable.
+- **Why**: Defaults leak into production, and `NEXT_PUBLIC_*` values ship to the browser. Development values live in `.env.example` only.
+- **Check**: `src/__tests__/secrets_and_hardening.test.ts` boots `validateEnvConfig` with missing and development secrets, greps `env.ts` for known development literals and checks that every secret-looking variable in `docker-compose.yml` uses `${VAR:?message}`. `grep -rn "NEXT_PUBLIC_" apps/web docker-compose.yml .env.example` lists only non-secret URLs. Review every new `??` default on an env variable.
 
 ### R-29 MUST reach `sineva-ai` only internally
 Use the `AiEngineGateway` over `sineva_internal` with `X-Internal-Api-Key`. The platform env variable is `AI_ENGINE_INTERNAL_API_KEY` and the `sineva-ai` one is `INTERNAL_API_KEY`; compose passes the same value to both. Never publish `sineva-ai` ports or call it from the browser.

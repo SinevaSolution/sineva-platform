@@ -13,9 +13,14 @@ import {
 import { DomainError, MalformedJsonError } from '@/server/domain/errors/domain_error';
 import { logger } from '@/server/infrastructure/logging/logger';
 
+// A client-supplied id ends up in logs, headers and the envelope, so only a
+// bounded token is trusted. Anything else (CR/LF, spaces, 300 characters) is
+// replaced rather than sanitized: a partial id would break cross-service tracing.
+const SAFE_REQUEST_ID = /^[A-Za-z0-9._-]{8,128}$/;
+
 export function extractRequestId(request?: Request | NextRequest | null): string {
   const headerId = request?.headers?.get('x-request-id')?.trim();
-  if (headerId && headerId.length > 0) {
+  if (headerId && SAFE_REQUEST_ID.test(headerId)) {
     return headerId;
   }
   return generateRequestId();

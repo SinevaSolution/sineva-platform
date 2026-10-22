@@ -46,9 +46,6 @@ What is a stub or fake today:
 
 | Area | Reality | Item |
 | :--- | :--- | :--- |
-| Redis cache | In-memory `Map`, `ping()` always true | INF-1 |
-| Presign | Returns an unsigned URL when signing fails; URL host is the internal Docker name | INF-2, INF-5 |
-| Health | Postgres, Redis and S3 values are not probed | INF-3 |
 | Dashboard stats | "342 ms", "All Systems Nominal", the token budget and the status pills are literals | UI-7 |
 | Orchestrator toggle | A Redux value nothing reads | UI-11 |
 

@@ -31,6 +31,9 @@ import { logger, utf8ByteLength } from '../logging/logger';
 const INTERNAL_API_KEY_HEADER = 'X-Internal-Api-Key';
 const SINEVA_CONTEXT_HEADER = 'X-Sineva-Context';
 const REQUEST_ID_HEADER = 'X-Request-Id';
+
+// Machine-code shape accepted from an upstream error body.
+const SAFE_UPSTREAM_CODE = /^[A-Za-z][A-Za-z0-9_]{0,63}$/;
 const TRACEPARENT_HEADER = 'traceparent';
 
 const HEALTH_TIMEOUT_MS = 1200;
@@ -532,16 +535,25 @@ export class InternalAiEngineGateway implements AiEngineGateway {
    * Enforces log hygiene: never logs prompt, reply, or tool call payloads.
    */
   private handleUpstreamError(status: number, rawBody: string): never {
-    let code: string | undefined;
-    let message: string | undefined;
+    let upstreamCode: string | undefined;
+    // Used to classify only. Upstream text can echo user content or internals, so
+    // it is never copied into a thrown error: those messages reach the client.
+    let upstreamMessage: string | undefined;
 
     try {
       const json = JSON.parse(rawBody);
-      code = json?.errors?.[0]?.code || json?.code || json?.error?.code;
-      message = json?.errors?.[0]?.detail || json?.message || json?.error?.message;
+      upstreamCode = json?.errors?.[0]?.code || json?.code || json?.error?.code;
+      upstreamMessage = json?.errors?.[0]?.detail || json?.message || json?.error?.message;
     } catch {
       // Body not JSON
     }
+
+    // Only a machine token may travel to the client; anything else is dropped.
+    const code =
+      typeof upstreamCode === 'string' && SAFE_UPSTREAM_CODE.test(upstreamCode)
+        ? upstreamCode
+        : undefined;
+    const lowered = typeof upstreamMessage === 'string' ? upstreamMessage.toLowerCase() : '';
 
     logger.error('ai_engine.non_2xx', {
       status,
@@ -553,26 +565,26 @@ export class InternalAiEngineGateway implements AiEngineGateway {
     if (status === 401 || status === 403 || code === 'context_invalid') {
       if (
         code === 'context_invalid' ||
-        message?.toLowerCase().includes('context') ||
-        message?.toLowerCase().includes('signature')
+        lowered.includes('context') ||
+        lowered.includes('signature')
       ) {
-        throw new ContextInvalidError(message || 'Internal context verification failed');
+        throw new ContextInvalidError();
       }
-      throw new UpstreamServiceError(message || 'AI engine rejected request authorization', code, 502);
+      throw new UpstreamServiceError('The AI engine rejected the request', code, 502);
     }
 
     // Upstream unavailable / model overloaded
     if (status === 503 || code === 'model_unavailable') {
-      if (code === 'model_unavailable' || message?.toLowerCase().includes('model')) {
-        throw new ModelUnavailableError(message || 'AI model is currently overloaded');
+      if (code === 'model_unavailable' || lowered.includes('model')) {
+        throw new ModelUnavailableError();
       }
       if (code === 'dependency_unavailable') {
-        throw new DependencyUnavailableError(message || 'AI engine dependency unavailable');
+        throw new DependencyUnavailableError();
       }
-      throw new UpstreamUnavailableError(message || 'AI engine service unavailable', code);
+      throw new UpstreamUnavailableError(undefined, code);
     }
 
     // Generic upstream service error 502
-    throw new UpstreamServiceError(message || 'The AI engine returned an unexpected response', code || 'UPSTREAM_ERROR');
+    throw new UpstreamServiceError(undefined, code || 'UPSTREAM_ERROR');
   }
 }

@@ -44,30 +44,54 @@ const KNOWN_DEV_SECRET_HASHES = new Set([
   'd1a6090cbd7f04748ef60551015216ad376475b10c9fbffc289cb54f7c7104f5', // internal ai token
 ]);
 
+// Values shipped for local development carry an explicit marker word between
+// separators (for example "dev-..." or "..._dev"). The hash list covers the
+// legacy compose credentials, the marker covers every value in .env.example
+// without keeping a second plaintext copy of them in code. A random 256-bit
+// secret hits the marker only by coincidence, and the error says what to change.
+const DEV_MARKER =
+  /(^|[-_.])(dev|development|changeme|change[-_]me|placeholder|example|insecure)([-_.0-9]|$)/i;
+
+function matchesDevDefault(candidate: string): boolean {
+  const hash = crypto.createHash('sha256').update(candidate.trim()).digest('hex');
+  return KNOWN_DEV_SECRET_HASHES.has(hash) || DEV_MARKER.test(candidate);
+}
+
 function isDevDefaultSecret(value: string | undefined): boolean {
   if (!value) {
     return false;
   }
-  const hash = crypto.createHash('sha256').update(value.trim()).digest('hex');
-  if (KNOWN_DEV_SECRET_HASHES.has(hash)) {
+  if (matchesDevDefault(value)) {
     return true;
   }
   try {
     const parsed = new URL(value);
-    if (parsed.password) {
-      const pwHash = crypto
-        .createHash('sha256')
-        .update(parsed.password)
-        .digest('hex');
-      if (KNOWN_DEV_SECRET_HASHES.has(pwHash)) {
-        return true;
-      }
+    // A connection URL: the credential is the password component.
+    if (parsed.password && matchesDevDefault(decodeURIComponent(parsed.password))) {
+      return true;
     }
   } catch {
     // Not a URL
   }
   return false;
 }
+
+const SECRET_KEYS = [
+  'DATABASE_URL',
+  'S3_ACCESS_KEY_ID',
+  'S3_SECRET_ACCESS_KEY',
+  'AI_ENGINE_INTERNAL_API_KEY',
+  'AUTH_SECRET',
+  'INTERNAL_CONTEXT_SIGNING_KEY',
+] as const;
+
+const REQUIRED_NAMES_IN_PRODUCTION = [
+  'REDIS_URL',
+  'S3_ENDPOINT',
+  'S3_PUBLIC_ENDPOINT',
+  'AI_ENGINE_INTERNAL_URL',
+  'INTERNAL_CONTEXT_KID',
+] as const;
 
 const timeoutSchema = z
   .string()
@@ -102,24 +126,31 @@ export function validateEnvConfig(
   }
   const timeoutMs = timeoutResult.data;
 
-  if (isProduction) {
-    const requiredInProd = [
-      'DATABASE_URL',
-      'S3_ACCESS_KEY_ID',
-      'S3_SECRET_ACCESS_KEY',
-      'AI_ENGINE_INTERNAL_API_KEY',
-      'AUTH_SECRET',
-      'INTERNAL_CONTEXT_SIGNING_KEY',
-    ];
+  // Credentials have no default anywhere in code, so every environment must
+  // supply them: production from its secret store, development and tests from
+  // .env.example (loaded in getEnvConfig). Failing fast beats booting with a
+  // value that anyone who reads the repository already knows.
+  for (const key of SECRET_KEYS) {
+    if (!raw[key]?.trim()) {
+      throw new Error(`Configuration error: ${key} is required (SEC-4)`);
+    }
+  }
 
-    for (const key of requiredInProd) {
-      const val = raw[key]?.trim();
-      if (!val) {
+  if (isProduction) {
+    // Non-secret names that would otherwise fall back to a localhost or
+    // Docker-internal address. The S3 public endpoint matters most: presigned
+    // URLs are handed to browsers, and falling back to S3_ENDPOINT would hand
+    // them an address they cannot reach.
+    for (const key of REQUIRED_NAMES_IN_PRODUCTION) {
+      if (!raw[key]?.trim()) {
         throw new Error(
           `Configuration error: ${key} is required in production environment (SEC-4)`,
         );
       }
-      if (isDevDefaultSecret(val)) {
+    }
+
+    for (const key of SECRET_KEYS) {
+      if (isDevDefaultSecret(raw[key])) {
         throw new Error(
           `Configuration error: ${key} cannot equal a known dev default in production (SEC-4)`,
         );
@@ -139,29 +170,24 @@ export function validateEnvConfig(
       raw.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000',
     next_public_api_base_url:
       raw.NEXT_PUBLIC_API_BASE_URL ?? 'http://localhost:3000/api/v1',
-    database_url:
-      raw.DATABASE_URL ??
-      'postgresql://localhost:5432/sineva_platform',
+    database_url: raw.DATABASE_URL as string,
     redis_url: raw.REDIS_URL ?? 'redis://localhost:6379/0',
     redis_key_prefix: raw.REDIS_KEY_PREFIX ?? 'sineva:platform:',
     s3_endpoint: raw.S3_ENDPOINT ?? 'http://localhost:8333',
     s3_public_endpoint:
       raw.S3_PUBLIC_ENDPOINT ?? raw.S3_ENDPOINT ?? 'http://localhost:8333',
     s3_region: raw.S3_REGION ?? 'us-east-1',
-    s3_access_key_id: raw.S3_ACCESS_KEY_ID ?? 'dev-s3-key',
-    s3_secret_access_key: raw.S3_SECRET_ACCESS_KEY ?? 'dev-s3-secret',
+    s3_access_key_id: raw.S3_ACCESS_KEY_ID as string,
+    s3_secret_access_key: raw.S3_SECRET_ACCESS_KEY as string,
     s3_bucket_name: raw.S3_BUCKET_NAME ?? 'sineva-assets',
     s3_force_path_style: raw.S3_FORCE_PATH_STYLE !== 'false',
     ai_engine_internal_url:
       raw.AI_ENGINE_INTERNAL_URL ?? 'http://sineva-ai:8000',
-    ai_engine_internal_api_key:
-      raw.AI_ENGINE_INTERNAL_API_KEY ?? 'dev-internal-token',
+    ai_engine_internal_api_key: raw.AI_ENGINE_INTERNAL_API_KEY as string,
     ai_engine_internal_api_key_next: raw.AI_ENGINE_INTERNAL_API_KEY_NEXT,
     ai_engine_timeout_ms: timeoutMs,
-    auth_secret:
-      raw.AUTH_SECRET ?? 'dev-auth-secret-placeholder-32-chars',
-    internal_context_signing_key:
-      raw.INTERNAL_CONTEXT_SIGNING_KEY ?? 'dev-signing-key',
+    auth_secret: raw.AUTH_SECRET as string,
+    internal_context_signing_key: raw.INTERNAL_CONTEXT_SIGNING_KEY as string,
     internal_context_kid: raw.INTERNAL_CONTEXT_KID ?? 'k1',
     email_from: raw.EMAIL_FROM,
     email_server_host: raw.EMAIL_SERVER_HOST,

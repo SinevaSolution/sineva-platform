@@ -21,7 +21,14 @@ if (process.env.NODE_ENV === 'development') {
   };
 }
 
-export function AppProviders({ children }: { children: React.ReactNode }) {
+export function AppProviders({
+  children,
+  nonce,
+}: {
+  children: React.ReactNode;
+  /** CSP nonce for the inline theme script, issued per request by the proxy. */
+  nonce?: string;
+}) {
   const [store] = React.useState<AppStore>(() => makeStore());
 
   return (
@@ -31,6 +38,7 @@ export function AppProviders({ children }: { children: React.ReactNode }) {
         defaultTheme="light"
         enableSystem={false}
         disableTransitionOnChange
+        nonce={nonce}
       >
         <TooltipProvider delayDuration={350} skipDelayDuration={150}>
           {children}

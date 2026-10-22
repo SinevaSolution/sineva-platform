@@ -1,8 +1,12 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
+import { parseEnv } from 'node:util';
 import { describe, expect, it } from 'vitest';
 import nextConfig from '../../next.config';
 import { validateEnvConfig } from '@/server/infrastructure/config/env';
+import { NextRequest } from 'next/server';
+import { proxy } from '@/proxy';
+import { buildCspReportOnly } from '@/server/http/csp';
 import { verifyCsrf } from '@/server/http/csrf_guard';
 import { ForbiddenError } from '@/server/domain/errors/domain_error';
 
@@ -14,7 +18,28 @@ const KNOWN_DEV_DEFAULTS = [
   'sineva_s3_key',
   'sineva_s3_secret',
   'sineva_internal_service_token_dev',
+  'dev-s3-key',
+  'dev-s3-secret',
+  'dev-internal-token',
+  'dev-signing-key',
+  'dev-auth-secret',
 ];
+
+// Variables whose value is a credential or key. The code carries no default for
+// any of them: they come from the environment (production) or from .env.example
+// (development and tests).
+const SECRET_KEYS = [
+  'DATABASE_URL',
+  'S3_ACCESS_KEY_ID',
+  'S3_SECRET_ACCESS_KEY',
+  'AI_ENGINE_INTERNAL_API_KEY',
+  'AUTH_SECRET',
+  'INTERNAL_CONTEXT_SIGNING_KEY',
+];
+
+function readEnvExample(): Record<string, string> {
+  return parseEnv(readFileSync(resolve(ROOT_DIR, '.env.example'), 'utf8')) as Record<string, string>;
+}
 
 describe('WP-M0-09: Secrets Without Defaults & Web Hardening (H2)', () => {
   describe('Environment Config Validation (SEC-4, INF-6)', () => {
@@ -89,14 +114,47 @@ describe('WP-M0-09: Secrets Without Defaults & Web Hardening (H2)', () => {
       ).toThrow(/timeout/i);
     });
 
-    it('boots cleanly in development with fallback/dev defaults', () => {
-      const devEnv = {
-        NODE_ENV: 'development',
-      };
-      const parsed = validateEnvConfig(devEnv);
-      expect(parsed.node_env).toBe('development');
-      expect(parsed.ai_engine_timeout_ms).toBe(15000);
-      expect(parsed.s3_region).toBe('us-east-1');
+    it('throws in production when a required name is missing: S3_PUBLIC_ENDPOINT, INTERNAL_CONTEXT_KID, URLs', () => {
+      for (const key of [
+        'S3_PUBLIC_ENDPOINT',
+        'INTERNAL_CONTEXT_KID',
+        'REDIS_URL',
+        'S3_ENDPOINT',
+        'AI_ENGINE_INTERNAL_URL',
+      ]) {
+        const env: Record<string, string> = { ...validProdEnv };
+        delete env[key];
+        expect(() => validateEnvConfig(env), key).toThrow(new RegExp(key));
+      }
+    });
+
+    it('throws in production when a required value is blank', () => {
+      expect(() => validateEnvConfig({ ...validProdEnv, AUTH_SECRET: '   ' })).toThrow(/AUTH_SECRET/);
+    });
+
+    it('throws in development too when a secret is missing: the code holds no fallback', () => {
+      const env = { NODE_ENV: 'development' };
+      expect(() => validateEnvConfig(env)).toThrow(/required/i);
+    });
+
+    it('boots in development and test with the values shipped in .env.example', () => {
+      const example = readEnvExample();
+      for (const key of SECRET_KEYS) {
+        expect(example[key], `${key} must exist in .env.example`).toBeTruthy();
+      }
+      for (const nodeEnv of ['development', 'test']) {
+        const parsed = validateEnvConfig({ ...example, NODE_ENV: nodeEnv });
+        expect(parsed.node_env).toBe(nodeEnv);
+        expect(parsed.ai_engine_timeout_ms).toBe(15000);
+      }
+    });
+
+    it('rejects in production every secret value that .env.example ships', () => {
+      const example = readEnvExample();
+      for (const key of SECRET_KEYS) {
+        const env = { ...validProdEnv, [key]: example[key] };
+        expect(() => validateEnvConfig(env), key).toThrow(/dev default/i);
+      }
     });
   });
 
@@ -109,6 +167,18 @@ describe('WP-M0-09: Secrets Without Defaults & Web Hardening (H2)', () => {
 
       for (const devDefault of KNOWN_DEV_DEFAULTS) {
         expect(envTs).not.toContain(devDefault);
+      }
+    });
+
+    it('docker-compose.yml has no default or literal for any secret-looking variable', () => {
+      const composeYaml = readFileSync(resolve(ROOT_DIR, 'docker-compose.yml'), 'utf8');
+      const secretish = /(PASSWORD|SECRET|API_KEY|ACCESS_KEY|SIGNING_KEY|TOKEN)/;
+      for (const line of composeYaml.split('\n')) {
+        const m = line.match(/^\s*([A-Z0-9_]+):\s*(.+)$/);
+        if (!m || !secretish.test(m[1])) continue;
+        const value = m[2].trim();
+        expect(value, line).toMatch(/\$\{[A-Z0-9_]+:\?[^}]+\}/);
+        expect(value, line).not.toMatch(/\$\{[A-Z0-9_]+:-/);
       }
     });
 
@@ -131,7 +201,7 @@ describe('WP-M0-09: Secrets Without Defaults & Web Hardening (H2)', () => {
   });
 
   describe('Baseline Security Headers in next.config.ts', () => {
-    it('configures mandatory security headers (frame denial, nosniff, referrer, CSP report-only)', async () => {
+    it('configures mandatory security headers (frame denial, nosniff, referrer, permissions)', async () => {
       expect(typeof nextConfig.headers).toBe('function');
       const headersConfig = await nextConfig.headers!();
 
@@ -146,7 +216,52 @@ describe('WP-M0-09: Secrets Without Defaults & Web Hardening (H2)', () => {
       expect(headerMap.get('x-content-type-options')).toBe('nosniff');
       expect(headerMap.get('referrer-policy')).toBe('strict-origin-when-cross-origin');
       expect(headerMap.get('permissions-policy')).toBeDefined();
-      expect(headerMap.get('content-security-policy-report-only')).toBeDefined();
+      // The CSP carries a per-request nonce, so it is set by the proxy. A static
+      // copy here would be a second, nonce-less policy on every response.
+      expect(headerMap.has('content-security-policy-report-only')).toBe(false);
+      expect(headerMap.has('content-security-policy')).toBe(false);
+    });
+  });
+
+  describe('Content Security Policy in report-only mode with a nonce hook (OQ-UX-11)', () => {
+    it('builds a policy that allows scripts only by nonce and denies framing and plugins', () => {
+      const policy = buildCspReportOnly('abc123nonce', { production: true });
+      expect(policy).toContain("script-src 'self' 'nonce-abc123nonce' 'strict-dynamic'");
+      expect(policy).not.toContain("'unsafe-eval'");
+      expect(policy).not.toMatch(/script-src[^;]*'unsafe-inline'/);
+      expect(policy).toContain("frame-ancestors 'none'");
+      expect(policy).toContain("object-src 'none'");
+      expect(policy).toContain("base-uri 'self'");
+      expect(policy).not.toContain('localhost');
+    });
+
+    it('keeps eval and local websockets for development builds only', () => {
+      const policy = buildCspReportOnly('n', { production: false });
+      expect(policy).toContain("'unsafe-eval'");
+      expect(policy).toContain('ws://localhost:*');
+    });
+
+    it('proxy sends the policy as report-only (never enforcing) with a fresh nonce per request', () => {
+      const first = proxy(new NextRequest('http://localhost:3000/sign-in'));
+      const second = proxy(new NextRequest('http://localhost:3000/sign-in'));
+
+      const a = first.headers.get('content-security-policy-report-only') ?? '';
+      const b = second.headers.get('content-security-policy-report-only') ?? '';
+      expect(first.headers.get('content-security-policy')).toBeNull();
+      const nonceA = a.match(/'nonce-([^']+)'/)?.[1];
+      const nonceB = b.match(/'nonce-([^']+)'/)?.[1];
+      expect(nonceA).toBeTruthy();
+      expect(nonceB).toBeTruthy();
+      expect(nonceA).not.toBe(nonceB);
+      // The nonce reaches the root layout (and Next's own inline scripts) as a
+      // forwarded request header.
+      expect(first.headers.get('x-middleware-request-x-nonce')).toBe(nonceA);
+    });
+
+    it('also sets the policy on page redirects', () => {
+      const res = proxy(new NextRequest('http://localhost:3000/w/acme'));
+      expect(res.status).toBe(307);
+      expect(res.headers.get('content-security-policy-report-only')).toContain("'nonce-");
     });
   });
 
@@ -163,6 +278,18 @@ describe('WP-M0-09: Secrets Without Defaults & Web Hardening (H2)', () => {
         method: 'POST',
         headers: {
           origin: 'http://malicious-site.com',
+          host: 'localhost:3000',
+        },
+      });
+
+      expect(() => verifyCsrf(req)).toThrow(ForbiddenError);
+    });
+
+    it('rejects an origin on the same hostname but another port', () => {
+      const req = new Request('http://localhost:3000/api/v1/agents', {
+        method: 'POST',
+        headers: {
+          origin: 'http://localhost:8080',
           host: 'localhost:3000',
         },
       });

@@ -40,11 +40,12 @@ All four commands go through turbo (`lint`, `typecheck`, `test`, `build`) and mu
 
 Gaps:
 
-- The `test` step is named "Run Unit & Integration Tests" but runs `npm run test`, which excludes `src/__tests__/integration/`. CI has no Postgres, so integration tests never run there.
+- The `verify` job runs `npm run test`, which excludes `src/__tests__/integration/`. Those run in the separate `integration` job (Postgres 17 and Redis 7 service containers, database `sineva_platform_test`). The `security` job runs `npm audit --omit=dev --audit-level=high`, TruffleHog, a scan for `snv_pat_` tokens and private key blocks, and an SBOM (`npm sbom`).
 - There is no deploy job, no image build or push, and no migration job. Deployment is manual.
-- Dependabot, security scanning and a Docker build check are not configured.
+- Dependabot and a Docker build check are not configured.
+- The SBOM is generated and checked for content but not uploaded as an artifact.
 
-Target: a Postgres service container in `verify` (or a second job), a database whose name contains `test`, `TEST_DATABASE_URL` set to it, and `npm run test:integration` as a step ([ADR-0007](../decisions/0007-tdd-fakes-integration-containers.md)). Until then, run integration tests locally for any database change and report the result in the PR.
+The integration job follows [ADR-0007](../decisions/0007-tdd-fakes-integration-containers.md): the database name contains `test` and `TEST_DATABASE_URL` points at the service container. Never point it at a shared database.
 
 ## Dockerfile
 

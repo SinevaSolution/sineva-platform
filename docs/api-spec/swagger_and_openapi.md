@@ -72,9 +72,9 @@ What guards it today (`src/__tests__/api_routes.test.ts`, verified by reading th
 - `POST /api/v1/agents` has a `409` response;
 - the serialized document contains no `sino-` or `sino_` string.
 
-What nothing guards: a route file with no spec entry, a spec path with no route file, and a schema that drifts from its Zod DTO.
+`src/__tests__/openapi_guard.test.ts` lists every `src/app/api/**/route.ts`, converts the folder path to an OpenAPI path (`[agent_slug]` to `{agent_slug}`) and fails when a route or exported HTTP method has no entry in `spec.paths`, or a spec path has no route file.
 
-Target: a test that lists every `src/app/api/**/route.ts`, converts the folder path to an OpenAPI path (`[agent_slug]` to `{agent_slug}`), and asserts that each path and exported HTTP method exists in `spec.paths`, and the reverse. It would fail the build when a route is added without a spec entry. Write it test-first like any other change (R-01).
+What nothing guards: a schema that drifts from its Zod DTO.
 
 ## How to register a route
 

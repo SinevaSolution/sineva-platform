@@ -1,3 +1,4 @@
+import { installHeaderSessionResolver } from './fakes/header_session_resolver';
 import { NextRequest } from 'next/server';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { POST as postSignUp } from '@/app/api/v1/auth/sign-up/route';
@@ -42,6 +43,8 @@ function createJsonRequest(url: string, method: string, body?: unknown, headers:
     body: body !== undefined ? JSON.stringify(body) : undefined,
   });
 }
+
+installHeaderSessionResolver();
 
 describe('Auth API Routes (/api/v1/auth/*, WP-M0-23)', () => {
   beforeEach(() => {

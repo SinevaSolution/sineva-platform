@@ -1,3 +1,4 @@
+import { installHeaderSessionResolver } from './fakes/header_session_resolver';
 import { NextRequest } from 'next/server';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { GET as getProfile, PATCH as patchProfile } from '@/app/api/v1/me/profile/route';
@@ -30,6 +31,8 @@ function patchRequest(body: unknown, headers: Record<string, string> = {}) {
     body: JSON.stringify(body),
   });
 }
+
+installHeaderSessionResolver();
 
 describe('GET /api/v1/me/profile', () => {
   beforeEach(() => {
