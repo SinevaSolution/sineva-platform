@@ -1,16 +1,54 @@
 'use client';
 
+import { Square } from 'lucide-react';
 import * as React from 'react';
 import { toast } from 'sonner';
-import type { RoomMood } from '@/client/components/room/room_model';
 import { RoomBubble, RoomStage } from '@/client/components/room/room_stage';
 import { SinoFigure } from '@/client/components/ui/sino_figure';
 import { specialistPose } from '@/client/components/ui/specialist_accent';
 import { Button } from '@/client/components/ui/button';
+import { Tooltip } from '@/client/components/ui/tooltip';
 import { ApiError, apiRequest } from '@/client/lib/api';
-import type { ConversationView, MessageView } from '@/shared/chat_view';
+import { openRunStream, type RunDoneResult, type RunStreamEvent, type RunStreamHandle } from '@/client/lib/event_stream';
+import { streamErrorMessage } from '@/client/lib/stream_errors';
+import type { ConversationView, MessageView, SendMessageResultView } from '@/shared/chat_view';
 import type { ShellSpecialistView } from '@/shared/shell_view';
 import { Composer } from './composer';
+import { moodForLive, pendingRunToAttach, reduceLiveReply, type LiveReply } from './live_reply_model';
+
+const IDLE: LiveReply = { phase: 'idle' };
+
+const FINAL_STATUSES: ReadonlyArray<MessageView['status']> = [
+  'completed',
+  'failed',
+  'needs_approval',
+  'needs_input',
+  'budget_exceeded',
+  'cancelled',
+];
+
+function assistantFromDone(result: RunDoneResult, runId: string, conversationId: string): MessageView {
+  const cancelled = result.finish_reason === 'cancelled';
+  const status = cancelled
+    ? 'cancelled'
+    : FINAL_STATUSES.find((s) => s === result.status) ?? 'completed';
+  const now = new Date().toISOString();
+  return {
+    id: `live-${runId}`,
+    conversation_id: conversationId,
+    role: 'assistant',
+    agent_slug: result.routed_agent_slug || result.agent_slug || null,
+    content: result.reply_content,
+    mentions: null,
+    status,
+    finish_reason: result.finish_reason,
+    run_id: runId,
+    channel: 'web',
+    client_message_id: null,
+    created_at: now,
+    updated_at: now,
+  };
+}
 
 type ThreadState =
   | { status: 'loading' }
@@ -29,8 +67,62 @@ export function ChatThread({
   const [state, setState] = React.useState<ThreadState>({ status: 'loading' });
   const [attempt, setAttempt] = React.useState(0);
   const [sendFailed, setSendFailed] = React.useState(false);
+  const [live, dispatchLive] = React.useReducer(reduceLiveReply, IDLE);
   const bottomRef = React.useRef<HTMLLIElement>(null);
+  const streamRef = React.useRef<RunStreamHandle | null>(null);
+  // Which load already looked for a run to attach to (see the effect below).
+  const autoAttachKey = React.useRef<string | null>(null);
   const base = `/api/v1/workspaces/${workspaceId}/conversations/${conversationId}`;
+
+  // Leaving the chat only stops listening; the reply keeps being stored on the server.
+  React.useEffect(
+    () => () => {
+      streamRef.current?.close();
+      streamRef.current = null;
+      autoAttachKey.current = null;
+    },
+    [],
+  );
+
+  function attach(runId: string) {
+    streamRef.current?.close();
+    dispatchLive({ type: 'start', run_id: runId });
+    streamRef.current = openRunStream({
+      workspaceId,
+      runId,
+      onEvent: (event: RunStreamEvent) => {
+        if (event.type === 'token') {
+          dispatchLive({ type: 'token', token: event.token });
+        } else if (event.type === 'done') {
+          const reply = assistantFromDone(event.result, runId, conversationId);
+          setState((prev) =>
+            prev.status !== 'ready' || !reply.content
+              ? prev
+              : { ...prev, messages: [...prev.messages, reply] },
+          );
+          dispatchLive({ type: 'done', cancelled: reply.status === 'cancelled' });
+        } else if (event.type === 'error') {
+          dispatchLive({ type: 'error', code: event.code, retryable: event.retryable });
+        }
+      },
+    });
+  }
+
+  // A chat opens in one of two situations that need a stream: it was just
+  // created (the first message is waiting for its reply), or the page was
+  // reloaded mid-reply. Both look the same: the last message is the person's
+  // and has no reply. Once per load, so a failed attach is not retried by
+  // re-renders; Retry is the person's call.
+  React.useEffect(() => {
+    if (state.status !== 'ready') return;
+    const key = `${conversationId}:${attempt}`;
+    if (autoAttachKey.current === key) return;
+    autoAttachKey.current = key;
+    const runId = pendingRunToAttach(state.messages, Date.now());
+    if (runId) attach(runId);
+    // `attach` only closes over stable values and refs.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state, attempt, conversationId]);
 
   React.useEffect(() => {
     let cancelled = false;
@@ -56,17 +148,49 @@ export function ChatThread({
   }, [base, attempt]);
 
   const messageCount = state.status === 'ready' ? state.messages.length : 0;
+  const liveLength = live.phase === 'streaming' || live.phase === 'error' ? live.text.length : 0;
   React.useEffect(() => {
     bottomRef.current?.scrollIntoView({ block: 'end' });
-  }, [messageCount]);
+  }, [messageCount, liveLength, live.phase]);
+
+  async function stop() {
+    if (live.phase !== 'streaming' || live.stopping) return;
+    dispatchLive({ type: 'stopping' });
+    try {
+      // The stream then ends with the partial text kept (done, cancelled).
+      await apiRequest(`/api/v1/workspaces/${workspaceId}/runs/${live.run_id}/cancel`, { method: 'POST' });
+    } catch (error) {
+      dispatchLive({ type: 'stop_failed' });
+      toast.error(error instanceof ApiError ? error.message : "Couldn't stop the reply. Try again.");
+    }
+  }
+
+  function retry() {
+    if (live.phase !== 'error' || state.status !== 'ready') return;
+    if (live.retry === 'same_run') {
+      // Nothing was produced yet: attach to the same run again.
+      attach(live.run_id);
+      return;
+    }
+    // The run is over: send the same words again as a new message.
+    const lastUser = [...state.messages].reverse().find((m) => m.role === 'user');
+    dispatchLive({ type: 'reset' });
+    if (lastUser) void send(lastUser.content);
+  }
 
   async function send(text: string): Promise<boolean> {
+    if (live.phase === 'streaming') {
+      toast.info(`${companionName} is still replying. Press Stop to send something new.`);
+      return false;
+    }
     setSendFailed(false);
     try {
-      const result = await apiRequest<{ message_id: string; status: string }>(`${base}/messages`, {
+      const result = await apiRequest<SendMessageResultView>(`${base}/messages`, {
         method: 'POST',
         body: { content: text, client_message_id: crypto.randomUUID() },
       });
+      // Reply: open the stream right away; the room switches to working.
+      attach(result.run_id);
       setState((prev) =>
         prev.status !== 'ready'
           ? prev
@@ -83,7 +207,7 @@ export function ChatThread({
                   mentions: null,
                   status: 'completed',
                   finish_reason: null,
-                  run_id: null,
+                  run_id: result.run_id,
                   channel: 'web',
                   client_message_id: null,
                   created_at: new Date().toISOString(),
@@ -123,11 +247,17 @@ export function ChatThread({
     ? specialists.find((s) => s.agent_slug === conversation.agent_slug)
     : undefined;
   const companionName = specialist?.display_name ?? 'Sino';
-  const lastIsUser = messages.at(-1)?.role === 'user';
   const isTeam = conversation.kind !== 'room';
-  // Replies are not live yet, so after a send Sino gives a thumbs up ("got
-  // it") rather than pretending to work on an answer.
-  const mood: RoomMood = sendFailed ? 'error' : lastIsUser ? 'done' : 'idle';
+  // Working while a reply streams, thumbs up when it lands, confused on error.
+  const mood = moodForLive(live, sendFailed);
+  const announcement =
+    live.phase === 'done'
+      ? `${companionName} replied.`
+      : live.phase === 'stopped'
+        ? 'Reply stopped.'
+        : live.phase === 'error'
+          ? streamErrorMessage(live.code, companionName)
+          : '';
 
   const header = (
     <div className="flex items-center gap-2 px-4 pb-2 pt-3 sm:px-6">
@@ -143,6 +273,22 @@ export function ChatThread({
 
   const footer = (
     <div className="px-4 pb-4 pt-2 sm:px-6">
+      {live.phase === 'streaming' ? (
+        <div className="mb-2 flex justify-center">
+          <Tooltip label="Stop the reply" side="top">
+            <Button
+              size="lg"
+              onClick={() => void stop()}
+              aria-disabled={live.stopping}
+              aria-label="Stop reply"
+              className="bg-surface/90 backdrop-blur-md"
+            >
+              <Square aria-hidden="true" fill="currentColor" />
+              {live.stopping ? 'Stopping' : 'Stop'}
+            </Button>
+          </Tooltip>
+        </div>
+      ) : null}
       <Composer
         onSubmit={send}
         placeholder={isTeam ? 'Message Sino. Type @ to bring in a specialist' : `Message ${companionName}`}
@@ -163,13 +309,43 @@ export function ChatThread({
         {messages.map((m) => (
           <MessageRow key={m.id} message={m} specialists={specialists} fallbackSlug={specialist?.agent_slug} />
         ))}
-        {lastIsUser ? (
-          <li className="anim-rise text-[13px] text-white/75">
-            Sent. {companionName} will reply here once live replies are switched on in this early version.
+        {live.phase === 'streaming' ? (
+          // Tokens arrive many times a second; the log region must not read
+          // each one out, so this row opts out and completion is announced
+          // once in the status line below.
+          <li className="anim-rise flex items-end gap-2" aria-live="off" aria-busy="true">
+            <SinoFigure pose={specialistPose(specialist?.agent_slug ?? 'sino')} size={32} />
+            <RoomBubble from="companion">
+              <span className="block text-xs font-semibold text-fg-brand">{companionName}</span>
+              {/* Plain text on purpose: model output is never rendered as HTML. */}
+              {live.text || <span className="text-fg-secondary">{companionName} is working on it</span>}
+            </RoomBubble>
+          </li>
+        ) : null}
+        {live.phase === 'error' ? (
+          <li className="anim-rise flex flex-col items-start gap-2">
+            {live.text ? (
+              <div className="flex items-end gap-2">
+                <SinoFigure pose={specialistPose(specialist?.agent_slug ?? 'sino')} size={32} />
+                <RoomBubble from="companion">
+                  <span className="block text-xs font-semibold text-fg-brand">{companionName}</span>
+                  {live.text}
+                </RoomBubble>
+              </div>
+            ) : null}
+            <RoomBubble from="companion">
+              <span className="block">{streamErrorMessage(live.code, companionName)}</span>
+              <Button size="md" variant="primary" onClick={retry} className="mt-2">
+                Try again
+              </Button>
+            </RoomBubble>
           </li>
         ) : null}
         <li ref={bottomRef} aria-hidden="true" />
       </ol>
+      <p role="status" className="sr-only">
+        {announcement}
+      </p>
     </RoomStage>
   );
 }
@@ -199,6 +375,14 @@ function MessageRow({
         <span className="block text-xs font-semibold text-fg-brand">{name}</span>
         {/* Plain text until the sanitized markdown renderer lands (M1). */}
         {message.content}
+        {message.status === 'error' ? (
+          <span className="mt-1 block text-[13px] text-fg-secondary">
+            {streamErrorMessage(message.finish_reason ?? 'upstream_interrupted', name)}
+          </span>
+        ) : null}
+        {message.status === 'cancelled' ? (
+          <span className="mt-1 block text-[13px] text-fg-secondary">You stopped this reply.</span>
+        ) : null}
       </RoomBubble>
     </li>
   );
