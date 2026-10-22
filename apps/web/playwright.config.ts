@@ -8,6 +8,8 @@ const matrix = [
 
 export default defineConfig({
   testDir: './e2e',
+  // Full-stack journeys run through playwright.journeys.config.ts.
+  testIgnore: '**/journeys/**',
   fullyParallel: true,
   forbidOnly: Boolean(process.env.CI),
   retries: process.env.CI ? 1 : 0,
