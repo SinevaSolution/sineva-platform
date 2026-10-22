@@ -5,6 +5,7 @@ import { SinoFigure } from '@/client/components/ui/sino_figure';
 import type { SinoPose } from '@/client/components/ui/specialist_accent';
 import { SinoLoop } from '@/client/components/ui/sino_loop';
 import { ActivityTicker } from './activity_ticker';
+import { SceneCopy, type AuthScene } from './scene_copy';
 
 // The six specialists in their work poses, evenly spaced around Sino.
 const CAST: { pose: SinoPose; name: string }[] = [
@@ -33,36 +34,7 @@ const delay = (ms: number) => ({ '--d': `${ms}ms` }) as React.CSSProperties;
  * Phones: the form alone under a soft tint, since the art would push the
  * form below the fold.
  */
-/**
- * Each auth screen tells its own small story on the left, so people know
- * where they are at a glance: sign in = the team at work (orbit), sign up =
- * meet the team (line-up), forgot = Sino flies a letter over, reset = Sino
- * rebuilding access, verify = thumbs up.
- */
-export type AuthScene = 'orbit' | 'lineup' | 'mail' | 'build' | 'thumbs';
-
-const SCENE_COPY: Record<AuthScene, { headline: string; line: string }> = {
-  orbit: {
-    headline: 'Your team is already at work.',
-    line: 'Sino and six specialists handle the busywork. You stay in charge of what goes out.',
-  },
-  lineup: {
-    headline: 'Meet your new team.',
-    line: 'Six specialists, one companion. Create your account and they start today.',
-  },
-  mail: {
-    headline: 'A reset link is on its way.',
-    line: 'Sino delivers it to your inbox. It works for 30 minutes.',
-  },
-  build: {
-    headline: 'Almost back in.',
-    line: 'Pick a new password and Sino signs you out everywhere else, to be safe.',
-  },
-  thumbs: {
-    headline: 'One tap and you are in.',
-    line: 'Verifying your email keeps your workspace yours.',
-  },
-};
+export type { AuthScene };
 
 export function AuthCard({
   title,
@@ -89,12 +61,7 @@ export function AuthCard({
           <Scene scene={scene} />
         </div>
         <div className="max-w-[460px]">
-          <p className="anim-rise text-[clamp(28px,2vw+10px,40px)] font-semibold leading-[1.08] tracking-[-0.03em] text-fg">
-            {SCENE_COPY[scene].headline}
-          </p>
-          <p className="anim-rise mt-2.5 max-w-[40ch] text-[15px] text-fg-secondary" style={delay(80)}>
-            {SCENE_COPY[scene].line}
-          </p>
+          <SceneCopy scene={scene} />
           {scene === 'orbit' || scene === 'lineup' ? (
             <div className="anim-rise mt-5" style={delay(160)}>
               <ActivityTicker />

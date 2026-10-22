@@ -9,6 +9,8 @@ import { toast } from 'sonner';
 import { cn } from '@/client/components/ui/cn';
 import { Tooltip } from '@/client/components/ui/tooltip';
 import { apiRequest } from '@/client/lib/api';
+import { useApiErrorText } from '@/client/lib/use_api_error';
+import { useTranslations } from '@/i18n/provider';
 import type { ShellUserView } from '@/shared/shell_view';
 
 const itemClass =
@@ -34,6 +36,8 @@ export function UserMenu({
   compact: boolean;
 }) {
   const router = useRouter();
+  const t = useTranslations('shell');
+  const errorText = useApiErrorText();
   const { resolvedTheme, setTheme } = useTheme();
   const isDark = resolvedTheme === 'dark';
 
@@ -43,7 +47,7 @@ export function UserMenu({
       router.replace('/sign-in');
       router.refresh();
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Could not sign out. Try again.');
+      toast.error(errorText(error));
     }
   }
 
@@ -58,7 +62,7 @@ export function UserMenu({
 
   return (
     <DropdownMenu.Root>
-      <Tooltip label="Your profile and sign out" side={compact ? 'right' : 'top'}>
+      <Tooltip label={t('user_menu.tooltip')} side={compact ? 'right' : 'top'}>
         <DropdownMenu.Trigger
           className={cn(
             'flex min-w-0 items-center gap-2 rounded-lg text-left hover:bg-hover data-[state=open]:bg-hover',
@@ -91,17 +95,17 @@ export function UserMenu({
           <DropdownMenu.Item asChild className={itemClass}>
             <Link href={`/w/${workspaceSlug}/settings/profile`}>
               <UserRound aria-hidden="true" className="size-4" />
-              Profile
+              {t('user_menu.profile')}
             </Link>
           </DropdownMenu.Item>
           <DropdownMenu.Item className={itemClass} onSelect={() => setTheme(isDark ? 'light' : 'dark')}>
             {isDark ? <Sun aria-hidden="true" className="size-4" /> : <Moon aria-hidden="true" className="size-4" />}
-            {isDark ? 'Light mode' : 'Dark mode'}
+            {isDark ? t('user_menu.light_mode') : t('user_menu.dark_mode')}
           </DropdownMenu.Item>
           <DropdownMenu.Separator className="my-1 h-px bg-line" />
           <DropdownMenu.Item className={cn(itemClass, 'text-danger')} onSelect={signOut}>
             <LogOut aria-hidden="true" className="size-4" />
-            Sign out
+            {t('user_menu.sign_out')}
           </DropdownMenu.Item>
         </DropdownMenu.Content>
       </DropdownMenu.Portal>

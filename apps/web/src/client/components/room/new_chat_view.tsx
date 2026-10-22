@@ -8,6 +8,7 @@ import { cn } from '@/client/components/ui/cn';
 import { SinoFigure } from '@/client/components/ui/sino_figure';
 import { specialistPose } from '@/client/components/ui/specialist_accent';
 import { Tooltip } from '@/client/components/ui/tooltip';
+import { useTranslations } from '@/i18n/provider';
 import type { ShellSpecialistView } from '@/shared/shell_view';
 import { startersFor, type RoomMood } from './room_model';
 import { RoomBubble, RoomStage } from './room_stage';
@@ -35,6 +36,8 @@ export function NewChatView({
   initialWith: string | null;
 }) {
   const router = useRouter();
+  const t = useTranslations('room');
+  const tSpecialists = useTranslations('specialists');
   const [withSlug, setWithSlug] = React.useState<string | null>(initialWith);
   const [mood, setMood] = React.useState<RoomMood>('idle');
   const composer = React.useRef<ComposerHandle>(null);
@@ -55,13 +58,13 @@ export function NewChatView({
 
   const picker = (
     <div className="px-4 pt-4 sm:px-6">
-      <div role="radiogroup" aria-label="Who do you want to work with?" className="flex gap-1.5 overflow-x-auto pb-1">
+      <div role="radiogroup" aria-label={t('picker_label')} className="flex gap-1.5 overflow-x-auto pb-1">
         <CastChip
           checked={withSlug === null}
           onSelect={() => choose(null)}
           pose="wave"
-          label="Team"
-          hint="Sino and every specialist. Type @ to bring someone in."
+          label={tSpecialists('marker.team')}
+          hint={t('team_hint')}
         />
         {specialists.map((s) => (
           <CastChip
@@ -70,7 +73,7 @@ export function NewChatView({
             onSelect={() => choose(s.agent_slug)}
             pose={specialistPose(s.agent_slug)}
             label={s.display_name}
-            hint={`Private chat with ${s.display_name}, your ${s.role_title}`}
+            hint={t('specialist_hint', { name: s.display_name, role: s.role_title })}
           />
         ))}
       </div>
@@ -88,39 +91,40 @@ export function NewChatView({
         agentSlug={withSlug ?? undefined}
         specialists={withSlug ? undefined : specialists}
         onPendingChange={(p) => setMood(p ? 'working' : 'idle')}
-        placeholder={withSlug ? `Message ${name}` : 'Ask Sino anything. Type @ to bring in a specialist'}
+        placeholder={withSlug ? t('placeholder_specialist', { name }) : t('placeholder_team')}
       />
       <p className="mt-2 text-center text-[11px] text-white/60">
-        {withSlug ? `Private to you. ${name} drafts, you decide what goes out.` : 'Sino drafts, you decide what goes out.'}
+        {withSlug ? t('footer_specialist', { name }) : t('footer_team')}
       </p>
     </div>
   );
 
   return (
-    <RoomStage slug={withSlug} mood={mood} label={withSlug ? name : 'Sino · Team'} header={picker} footer={footer}>
+    <RoomStage slug={withSlug} mood={mood} label={withSlug ? name : t('stage_team')} header={picker} footer={footer}>
       <div key={withSlug ?? 'team'} className="flex min-h-full flex-col justify-end gap-3 px-4 pb-4 pt-8 sm:px-6">
         <div className="anim-rise flex items-end gap-2">
           <SinoFigure pose={specialistPose(withSlug ?? 'sino')} size={36} className="md:hidden" />
           <RoomBubble from="companion">
             <span className="block text-xs font-semibold text-fg-brand">{name}</span>
-            Hi {firstName}!{' '}
-            {current
-              ? `I'm your ${current.role_title}. What should we work on?`
-              : 'What are we working on today? Type @ to bring a specialist into this chat.'}
+            {t('hello', { name: firstName })}{' '}
+            {current ? t('intro_specialist', { role: current.role_title }) : t('intro_team')}
           </RoomBubble>
         </div>
-        <ul className="flex flex-wrap gap-2" aria-label="Ideas to start with">
-          {startersFor(withSlug).map((text, i) => (
-            <li key={text} className="anim-rise" style={{ '--d': `${120 + i * 70}ms` } as React.CSSProperties}>
-              <button
-                type="button"
-                onClick={() => composer.current?.fill(text)}
-                className="rounded-full bg-white/12 px-3 py-1.5 text-left text-[13px] text-white ring-1 ring-white/20 backdrop-blur-md transition-[background-color,transform] duration-150 hover:bg-white/20 active:scale-[0.98]"
-              >
-                {text}
-              </button>
-            </li>
-          ))}
+        <ul className="flex flex-wrap gap-2" aria-label={t('starters_label')}>
+          {startersFor(withSlug).map((key, i) => {
+            const text = t(key);
+            return (
+              <li key={key} className="anim-rise" style={{ '--d': `${120 + i * 70}ms` } as React.CSSProperties}>
+                <button
+                  type="button"
+                  onClick={() => composer.current?.fill(text)}
+                  className="rounded-full bg-white/12 px-3 py-1.5 text-left text-[13px] text-white ring-1 ring-white/20 backdrop-blur-md transition-[background-color,transform] duration-150 hover:bg-white/20 active:scale-[0.98]"
+                >
+                  {text}
+                </button>
+              </li>
+            );
+          })}
         </ul>
       </div>
     </RoomStage>

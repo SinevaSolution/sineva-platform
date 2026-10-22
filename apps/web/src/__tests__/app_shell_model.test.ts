@@ -1,4 +1,7 @@
 import { describe, expect, it } from 'vitest';
+import { flattenMessages } from '@sineva/i18n';
+import en from '../../messages/en.json';
+import id from '../../messages/id.json';
 import {
   buildNavSections,
   chatMarker,
@@ -43,7 +46,7 @@ describe('sidebar navigation model', () => {
 
   it('knows which path segments are planned features', () => {
     expect(featureBySegment('workflows')?.id).toBe('workflows');
-    expect(featureBySegment('library')?.label).toBe('Sino Library');
+    expect(featureBySegment('library')?.labelKey).toBe('features.library.label');
     expect(featureBySegment('nope')).toBeNull();
   });
 
@@ -55,19 +58,49 @@ describe('sidebar navigation model', () => {
   });
 });
 
+describe('nav copy keys', () => {
+  const nav = buildNavSections('kopi-senja');
+  const keys = [
+    ...nav.flatMap((s) => (s.labelKey ? [s.labelKey] : [])),
+    ...nav.flatMap((s) => s.items.map((i) => i.labelKey)),
+    ...Object.values(FEATURES).flatMap((f) => [f.labelKey, f.blurbKey]),
+  ];
+
+  it('points every label and blurb at a message that exists in both languages', () => {
+    for (const catalog of [en, id]) {
+      const flat = flattenMessages(catalog);
+      for (const key of keys) {
+        expect(flat[`shell.${key}`], key).toBeTruthy();
+      }
+    }
+  });
+
+  it('keeps the protected names and the two translated names as decided', () => {
+    const flat = flattenMessages(id);
+    expect(flat['shell.features.library.label']).toBe('Sino Library');
+    expect(flat['shell.features.inbox.label']).toBe('Inbox');
+    expect(flat['shell.features.workflows.label']).toBe('Workflows');
+    expect(flat['shell.features.routines.label']).toBe('Routines');
+    expect(flat['shell.features.skills.label']).toBe('Skills');
+    expect(flat['shell.features.squads.label']).toBe('Squads');
+    expect(flat['shell.features.tools.label']).toBe('Aplikasi terhubung');
+  });
+});
+
 describe('recent chat marker', () => {
   const names = { sinofinance: 'SinoFinance' };
-  it('labels a hub chat as Team', () => {
-    expect(chatMarker({ kind: 'hub', agent_slug: null }, names)).toEqual({ label: 'Team', pose: 'wave' });
+  it('marks a hub chat as the team chat', () => {
+    expect(chatMarker({ kind: 'hub', agent_slug: null }, names)).toEqual({ kind: 'team', name: null, pose: 'wave' });
   });
-  it('labels a private chat with the specialist name and pose', () => {
+  it('marks a private chat with the specialist name and pose', () => {
     expect(chatMarker({ kind: 'room', agent_slug: 'sinofinance' }, names)).toEqual({
-      label: 'SinoFinance',
+      kind: 'specialist',
+      name: 'SinoFinance',
       pose: 'coins',
     });
   });
-  it('falls back to Specialist for an unknown slug', () => {
-    expect(chatMarker({ kind: 'room', agent_slug: 'ghost' }, names).label).toBe('Specialist');
+  it('leaves the name empty for an unknown slug so the caller shows the generic label', () => {
+    expect(chatMarker({ kind: 'room', agent_slug: 'ghost' }, names)).toMatchObject({ kind: 'specialist', name: null });
   });
 });
 

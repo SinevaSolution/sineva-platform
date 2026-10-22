@@ -1,8 +1,12 @@
 import type { Metadata } from 'next';
 import { HomeView } from '@/client/components/home/home_view';
+import { getTranslations } from '@/i18n/server';
 import { loadWorkspaceContext } from './workspace_context';
 
-export const metadata: Metadata = { title: 'Home' };
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations('meta');
+  return { title: t('home') };
+}
 
 function hourIn(timezone: string): number {
   try {
@@ -21,7 +25,8 @@ export default async function WorkspaceHomePage({
 }) {
   const { workspace_slug } = await params;
   const ctx = await loadWorkspaceContext(workspace_slug);
-  const firstName = ctx.user.name.trim().split(/\s+/)[0] || 'there';
+  const t = await getTranslations('workspace');
+  const firstName = ctx.user.name.trim().split(/\s+/)[0] || t('fallback_name');
 
   return (
     <HomeView

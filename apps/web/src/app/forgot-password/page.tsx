@@ -1,21 +1,24 @@
 import type { Metadata } from 'next';
 import { AuthCard, AuthLink } from '@/client/components/auth/auth_card';
 import { ForgotPasswordForm } from '@/client/components/auth/password_reset_forms';
+import { getTranslations } from '@/i18n/server';
 
-export const metadata: Metadata = { title: 'Reset your password' };
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations('meta');
+  return { title: t('forgot_password') };
+}
 
-export default function ForgotPasswordPage() {
+export default async function ForgotPasswordPage() {
+  const t = await getTranslations('auth');
   return (
     <AuthCard
       scene="mail"
-      title="Forgot your password?"
-      subtitle="Enter your email and we'll send you a link to set a new one."
+      title={t('forgot_password.title')}
+      subtitle={t('forgot_password.subtitle')}
       pose="holding-phone"
-      footer={
-        <>
-          Remembered it? <AuthLink href="/sign-in">Back to sign in</AuthLink>
-        </>
-      }
+      footer={t.rich('forgot_password.footer', {
+        link: <AuthLink href="/sign-in">{t('forgot_password.footer_link')}</AuthLink>,
+      })}
     >
       <ForgotPasswordForm />
     </AuthCard>

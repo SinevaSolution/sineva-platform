@@ -3,14 +3,17 @@
 import * as React from 'react';
 import { SinoFigure } from '@/client/components/ui/sino_figure';
 import type { SinoPose } from '@/client/components/ui/specialist_accent';
+import { useTranslations } from '@/i18n/provider';
 
-const ITEMS: { pose: SinoPose; name: string; text: string }[] = [
-  { pose: 'coins', name: 'SinoFinance', text: 'matches invoices to your bank statement' },
-  { pose: 'handshake', name: 'SinoSales', text: 'drafts the follow-up after a client call' },
-  { pose: 'megaphone', name: 'SinoSocial', text: 'plans next week’s posts in your brand voice' },
-  { pose: 'holding-phone', name: 'SinoHelp', text: 'answers the questions customers repeat' },
-  { pose: 'whiteboard', name: 'SinoPeople', text: 'turns a job brief into a ready posting' },
-  { pose: 'magnifier', name: 'SinoInsights', text: 'spots what changed in this month’s numbers' },
+// `name` is the product name (never translated); `textKey` is a literal so the
+// key-usage check can follow it.
+const ITEMS: { pose: SinoPose; name: string; textKey: string }[] = [
+  { pose: 'coins', name: 'SinoFinance', textKey: 'ticker.sinofinance' },
+  { pose: 'handshake', name: 'SinoSales', textKey: 'ticker.sinosales' },
+  { pose: 'megaphone', name: 'SinoSocial', textKey: 'ticker.sinosocial' },
+  { pose: 'holding-phone', name: 'SinoHelp', textKey: 'ticker.sinohelp' },
+  { pose: 'whiteboard', name: 'SinoPeople', textKey: 'ticker.sinopeople' },
+  { pose: 'magnifier', name: 'SinoInsights', textKey: 'ticker.sinoinsights' },
 ];
 
 const INTERVAL_MS = 3200;
@@ -21,6 +24,7 @@ const INTERVAL_MS = 3200;
  * while the tab is hidden so it never burns cycles in the background.
  */
 export function ActivityTicker() {
+  const t = useTranslations('auth');
   const [index, setIndex] = React.useState(0);
 
   React.useEffect(() => {
@@ -37,7 +41,7 @@ export function ActivityTicker() {
       <span key={item.name} className="anim-swap flex items-center gap-2">
         <SinoFigure pose={item.pose} size={40} />
         <span className="text-sm text-fg-secondary">
-          <span className="font-semibold text-fg">{item.name}</span> {item.text}
+          <span className="font-semibold text-fg">{item.name}</span> {t(item.textKey)}
         </span>
       </span>
     </div>

@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation';
 import * as React from 'react';
 import { apiRequest } from '@/client/lib/api';
 import { useAppSelector } from '@/client/store/hooks';
+import { useTranslations } from '@/i18n/provider';
 import { cn } from '@/client/components/ui/cn';
 import { SinoFigure } from '@/client/components/ui/sino_figure';
 import type { ConversationView } from '@/shared/chat_view';
@@ -39,6 +40,8 @@ export function RecentChats({
   onNavigate?: () => void;
 }) {
   const pathname = usePathname();
+  const t = useTranslations('shell');
+  const tSpecialists = useTranslations('specialists');
   const version = useAppSelector((s) => s.ui.chats_version);
   const [state, setState] = React.useState<LoadState>({ status: 'loading' });
 
@@ -70,10 +73,10 @@ export function RecentChats({
     );
   }
   if (state.status === 'error') {
-    return <p className="px-2 py-1 text-xs text-fg-tertiary">Couldn&apos;t load your chats.</p>;
+    return <p className="px-2 py-1 text-xs text-fg-tertiary">{t('recent.load_failed')}</p>;
   }
   if (state.items.length === 0) {
-    return <p className="px-2 py-1 text-xs text-fg-tertiary">Your chats will show up here.</p>;
+    return <p className="px-2 py-1 text-xs text-fg-tertiary">{t('recent.empty')}</p>;
   }
 
   return (
@@ -82,6 +85,8 @@ export function RecentChats({
         const href = `/w/${workspaceSlug}/chat/${c.id}`;
         const active = pathname === href;
         const marker = chatMarker(c, specialistNames);
+        const markerLabel =
+          marker.kind === 'team' ? tSpecialists('marker.team') : (marker.name ?? tSpecialists('marker.specialist'));
         return (
           <li key={c.id}>
             <Link
@@ -94,17 +99,17 @@ export function RecentChats({
               )}
             >
               <SinoFigure pose={marker.pose} size={22} className="-my-1" />
-              <span className="min-w-0 flex-1 truncate">{c.title?.trim() || 'New chat'}</span>
+              <span className="min-w-0 flex-1 truncate">{c.title?.trim() || t('recent.untitled')}</span>
               <span
                 className={cn(
                   'shrink-0 rounded-full px-1.5 text-[10px] font-medium leading-4',
-                  marker.label === 'Team'
+                  marker.kind === 'team'
                     ? 'bg-[color-mix(in_oklab,var(--color-focus)_16%,transparent)] text-fg-brand'
                     : 'bg-hover text-fg-tertiary group-hover:bg-surface',
                 )}
               >
-                <span className="sr-only">with </span>
-                {marker.label}
+                <span className="sr-only">{t('recent.with')} </span>
+                {markerLabel}
               </span>
             </Link>
           </li>

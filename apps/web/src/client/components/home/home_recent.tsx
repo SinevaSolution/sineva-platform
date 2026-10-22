@@ -6,18 +6,10 @@ import { chatMarker } from '@/client/components/shell/nav_model';
 import { SinoFigure } from '@/client/components/ui/sino_figure';
 import { apiRequest } from '@/client/lib/api';
 import { useAppSelector } from '@/client/store/hooks';
+import { formatRelativeTime } from '@sineva/ui/format';
+import { useLocale, useTranslations } from '@/i18n/provider';
 import type { ConversationView } from '@/shared/chat_view';
 import type { ShellSpecialistView } from '@/shared/shell_view';
-
-const rtf = new Intl.RelativeTimeFormat('en', { numeric: 'auto' });
-
-function ago(iso: string): string {
-  const mins = Math.round((Date.parse(iso) - Date.now()) / 60000);
-  if (Math.abs(mins) < 60) return rtf.format(mins, 'minute');
-  const hours = Math.round(mins / 60);
-  if (Math.abs(hours) < 24) return rtf.format(hours, 'hour');
-  return rtf.format(Math.round(hours / 24), 'day');
-}
 
 /** The four latest chats as cards, each saying who it is with. */
 export function HomeRecent({
@@ -29,6 +21,10 @@ export function HomeRecent({
   workspaceSlug: string;
   specialists: ShellSpecialistView[];
 }) {
+  const t = useTranslations('workspace');
+  const tShell = useTranslations('shell');
+  const tSpecialists = useTranslations('specialists');
+  const locale = useLocale();
   const version = useAppSelector((s) => s.ui.chats_version);
   const [items, setItems] = React.useState<ConversationView[] | null | 'error'>(null);
   const names = React.useMemo(
@@ -52,7 +48,7 @@ export function HomeRecent({
 
   if (items === null) {
     return (
-      <div aria-busy="true" aria-label="Loading chats" className="space-y-1.5">
+      <div aria-busy="true" aria-label={t('home.recent_loading')} className="space-y-1.5">
         {[0, 1, 2].map((i) => (
           <div key={i} className="h-14 animate-pulse rounded-xl bg-hover" />
         ))}
@@ -60,18 +56,20 @@ export function HomeRecent({
     );
   }
   if (items === 'error') {
-    return <p className="text-sm text-fg-tertiary">Couldn&apos;t load your chats. Refresh to try again.</p>;
+    return <p className="text-sm text-fg-tertiary">{t('home.recent_failed')}</p>;
   }
   if (items.length === 0) {
     return (
       <div className="flex items-center gap-3 rounded-xl border border-dashed border-line-strong p-4">
         <SinoFigure pose="wave" size={44} />
         <p className="text-sm text-fg-secondary">
-          No chats yet. Pick someone from your team above, or{' '}
-          <Link href={`/w/${workspaceSlug}/new`} className="font-medium text-fg-brand hover:underline">
-            ask Sino
-          </Link>
-          .
+          {t.rich('home.recent_empty', {
+            link: (
+              <Link href={`/w/${workspaceSlug}/new`} className="font-medium text-fg-brand hover:underline">
+                {t('home.recent_empty_link')}
+              </Link>
+            ),
+          })}
         </p>
       </div>
     );
@@ -80,6 +78,10 @@ export function HomeRecent({
     <ul className="space-y-1.5">
       {items.map((c) => {
         const marker = chatMarker(c, names);
+        const withLabel =
+          marker.kind === 'team'
+            ? t('home.chat_team')
+            : t('home.chat_with', { name: marker.name ?? tSpecialists('marker.specialist') });
         return (
           <li key={c.id}>
             <Link
@@ -88,9 +90,9 @@ export function HomeRecent({
             >
               <SinoFigure pose={marker.pose} size={40} />
               <span className="min-w-0 flex-1">
-                <span className="block truncate text-sm font-medium text-fg">{c.title?.trim() || 'New chat'}</span>
+                <span className="block truncate text-sm font-medium text-fg">{c.title?.trim() || tShell('recent.untitled')}</span>
                 <span className="text-xs text-fg-tertiary">
-                  {marker.label === 'Team' ? 'Team chat' : `With ${marker.label}`} · {ago(c.last_message_at ?? c.created_at)}
+                  {withLabel} · {formatRelativeTime(c.last_message_at ?? c.created_at, locale)}
                 </span>
               </span>
             </Link>

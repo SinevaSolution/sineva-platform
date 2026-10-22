@@ -59,10 +59,10 @@ describe('timeZoneOptions', () => {
 });
 
 describe('LOCALE_OPTIONS', () => {
-  it('offers English and Bahasa Indonesia', () => {
+  it('offers every enabled locale from the registry by its native name', () => {
     expect(LOCALE_OPTIONS).toEqual([
-      { value: 'en', label: 'English' },
       { value: 'id', label: 'Bahasa Indonesia' },
+      { value: 'en', label: 'English' },
     ]);
   });
 });

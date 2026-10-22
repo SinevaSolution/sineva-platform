@@ -3,7 +3,8 @@
 import { useRouter } from 'next/navigation';
 import type * as React from 'react';
 import { toast } from 'sonner';
-import { ApiError, apiRequest } from '@/client/lib/api';
+import { apiRequest } from '@/client/lib/api';
+import { useApiErrorText } from '@/client/lib/use_api_error';
 import { useAppDispatch } from '@/client/store/hooks';
 import { chatsChanged } from '@/client/store/slices/ui_slice';
 import type { ConversationView } from '@/shared/chat_view';
@@ -35,6 +36,7 @@ export function StartChat({
 }) {
   const router = useRouter();
   const dispatch = useAppDispatch();
+  const errorText = useApiErrorText();
 
   async function start(text: string): Promise<boolean> {
     onPendingChange?.(true);
@@ -59,7 +61,7 @@ export function StartChat({
       router.push(`/w/${workspaceSlug}/chat/${conversation.id}`);
       return true;
     } catch (error) {
-      toast.error(error instanceof ApiError ? error.message : 'Something went wrong. Try again.');
+      toast.error(errorText(error));
       onPendingChange?.(false);
       return false;
     }

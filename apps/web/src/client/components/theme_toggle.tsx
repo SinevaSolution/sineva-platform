@@ -4,10 +4,12 @@ import * as React from 'react';
 import { Moon, Sun } from 'lucide-react';
 import { useTheme } from 'next-themes';
 import { Button } from '@sineva/ui';
+import { useTranslations } from '@/i18n/provider';
 
 const emptySubscribe = () => () => {};
 
 export function ThemeToggle() {
+  const t = useTranslations('common');
   const { theme, setTheme } = useTheme();
   const mounted = React.useSyncExternalStore(
     emptySubscribe,
@@ -20,7 +22,7 @@ export function ThemeToggle() {
       <Button
         variant="secondary"
         size="icon"
-        aria-label="Toggle color theme"
+        aria-label={t('theme.toggle')}
         disabled
       >
         <Sun className="h-4 w-4" />
@@ -35,12 +37,8 @@ export function ThemeToggle() {
       variant="secondary"
       size="icon"
       onClick={() => setTheme(isDark ? 'light' : 'dark')}
-      aria-label={
-        isDark
-          ? 'Switch to warm light theme'
-          : 'Switch to deep teal dark theme'
-      }
-      title={isDark ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
+      aria-label={isDark ? t('theme.aria_to_light') : t('theme.aria_to_dark')}
+      title={isDark ? t('theme.title_to_light') : t('theme.title_to_dark')}
     >
       {isDark ? (
         <Sun className="h-4 w-4 text-[var(--sun-500)]" />

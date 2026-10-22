@@ -25,6 +25,12 @@
     "paths": {
       "@/*": [
         "./src/*"
+      ],
+      "@sineva/i18n": [
+        "../../packages/i18n/index.ts"
+      ],
+      "@sineva/ui/format": [
+        "../../packages/ui/src/lib/format.ts"
       ]
     }
   },

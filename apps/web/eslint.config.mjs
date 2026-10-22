@@ -1,6 +1,7 @@
 import { defineConfig, globalIgnores } from 'eslint/config';
 import nextVitals from 'eslint-config-next/core-web-vitals';
 import nextTs from 'eslint-config-next/typescript';
+import noHardcodedStrings from './eslint-rules/no-hardcoded-strings.mjs';
 
 export default defineConfig([
   ...nextVitals,
@@ -40,5 +41,14 @@ export default defineConfig([
         },
       ],
     },
+  },
+  {
+    // Every string a customer reads is a message key in messages/en.json and
+    // messages/id.json (FR-UX-34). API routes, the internal key route and the
+    // developer-facing /api-docs page are not customer UI.
+    files: ['src/client/**/*.{ts,tsx}', 'src/app/**/*.{ts,tsx}'],
+    ignores: ['src/app/api/**', 'src/app/api-docs/**', 'src/app/internal/**'],
+    plugins: { sineva: { rules: { 'no-hardcoded-strings': noHardcodedStrings } } },
+    rules: { 'sineva/no-hardcoded-strings': 'error' },
   },
 ]);

@@ -6,11 +6,13 @@ import { buttonVariants } from '@/client/components/ui/button';
 import { cn } from '@/client/components/ui/cn';
 import { FormAlert } from '@/client/components/ui/field';
 import { apiRequest } from '@/client/lib/api';
+import { useTranslations } from '@/i18n/provider';
 
 type Status = 'verifying' | 'verified' | 'failed';
 
 /** Confirms the emailed token once on load (POST, not on the GET link). */
 export function VerifyEmailStatus({ token }: { token: string | null }) {
+  const t = useTranslations('auth');
   const [status, setStatus] = React.useState<Status>(token ? 'verifying' : 'failed');
   const started = React.useRef(false);
 
@@ -25,21 +27,19 @@ export function VerifyEmailStatus({ token }: { token: string | null }) {
   if (status === 'verifying') {
     return (
       <p role="status" className="text-center text-sm text-fg-secondary">
-        Checking your link...
+        {t('verify_email.checking')}
       </p>
     );
   }
   if (status === 'verified') {
     return (
       <div className="space-y-4">
-        <FormAlert tone="success">Your email is verified. You&apos;re all set.</FormAlert>
+        <FormAlert tone="success">{t('verify_email.verified')}</FormAlert>
         <Link href="/sign-in" className={cn(buttonVariants({ variant: 'primary', size: 'lg' }), 'w-full')}>
-          Continue to sign in
+          {t('verify_email.continue')}
         </Link>
       </div>
     );
   }
-  return (
-    <FormAlert>This link has expired or was already used. Sign in and we&apos;ll send you a new one.</FormAlert>
-  );
+  return <FormAlert>{t('verify_email.failed')}</FormAlert>;
 }

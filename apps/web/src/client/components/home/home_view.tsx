@@ -5,14 +5,16 @@ import { SinoFigure } from '@/client/components/ui/sino_figure';
 import { specialistPose } from '@/client/components/ui/specialist_accent';
 import { Tooltip } from '@/client/components/ui/tooltip';
 import { startersFor } from '@/client/components/room/room_model';
+import { getTranslations } from '@/i18n/server';
 import type { ShellSpecialistView } from '@/shared/shell_view';
 import { HomeRecent } from './home_recent';
 
-function greeting(hour: number): string {
-  if (hour < 11) return 'Good morning';
-  if (hour < 15) return 'Good afternoon';
-  if (hour < 19) return 'Good evening';
-  return 'Hi';
+// Literal keys so the key-usage check can follow them.
+function greetingKey(hour: number): string {
+  if (hour < 11) return 'home.greeting_morning';
+  if (hour < 15) return 'home.greeting_afternoon';
+  if (hour < 19) return 'home.greeting_evening';
+  return 'home.greeting_night';
 }
 
 const delay = (ms: number) => ({ '--d': `${ms}ms` }) as React.CSSProperties;
@@ -22,7 +24,7 @@ const delay = (ms: number) => ({ '--d': `${ms}ms` }) as React.CSSProperties;
  * (top, one tap opens their room), where you left off, ideas to start, and
  * what is coming. Starting a conversation always happens in New chat.
  */
-export function HomeView({
+export async function HomeView({
   workspaceId,
   workspaceSlug,
   firstName,
@@ -35,8 +37,12 @@ export function HomeView({
   specialists: ShellSpecialistView[];
   hour: number;
 }) {
+  const t = await getTranslations('workspace');
+  const tShell = await getTranslations('shell');
+  const tRoom = await getTranslations('room');
+  const tSpecialists = await getTranslations('specialists');
   const base = `/w/${workspaceSlug}`;
-  const ideas = specialists.slice(0, 3).map((s) => ({ s, text: startersFor(s.agent_slug)[0] }));
+  const ideas = specialists.slice(0, 3).map((s) => ({ s, text: tRoom(startersFor(s.agent_slug)[0]!) }));
 
   return (
     <div className="min-h-0 flex-1 overflow-y-auto">
@@ -44,23 +50,23 @@ export function HomeView({
         {/* Greeting + launch bar */}
         <div className="anim-rise">
           <h1 className="text-[clamp(26px,2vw+14px,36px)] font-semibold leading-[1.1] tracking-[-0.025em] text-fg">
-            {greeting(hour)}, {firstName}.
+            {t(greetingKey(hour), { name: firstName })}
           </h1>
-          <p className="mt-1.5 text-[15px] text-fg-secondary">Your team is here. Who do you need today?</p>
+          <p className="mt-1.5 text-[15px] text-fg-secondary">{t('home.subtitle')}</p>
         </div>
 
         {/* The team, on top */}
         <section aria-labelledby="team-heading" className="mt-6">
           <h2 id="team-heading" className="sr-only">
-            Your team
+            {t('home.team_heading')}
           </h2>
           <ul className="-mx-4 flex snap-x gap-1 overflow-x-auto px-4 pb-1 sm:mx-0 sm:grid sm:grid-cols-7 sm:overflow-visible sm:px-0">
             <TeamMember
               href={`${base}/new`}
               pose="wave"
-              name="Team"
-              role="Sino with everyone"
-              hint="Chat with Sino. Bring any specialist in with @"
+              name={tSpecialists('marker.team')}
+              role={t('home.team_role')}
+              hint={t('home.team_hint')}
               d={60}
             />
             {specialists.map((s, i) => (
@@ -70,7 +76,7 @@ export function HomeView({
                 pose={specialistPose(s.agent_slug)}
                 name={s.display_name}
                 role={s.role_title}
-                hint={`Open a private chat with ${s.display_name}`}
+                hint={t('home.private_hint', { name: s.display_name })}
                 d={110 + i * 50}
               />
             ))}
@@ -83,14 +89,14 @@ export function HomeView({
           style={delay(420)}
         >
           <SinoFigure pose="wave" size={40} />
-          <span className="flex-1">Ask Sino anything…</span>
+          <span className="flex-1">{t('home.launch')}</span>
           <ArrowRight aria-hidden="true" className="size-4 transition-transform duration-200 group-hover:translate-x-0.5" />
         </Link>
 
         <div className="mt-10 grid gap-8 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]">
           <section aria-labelledby="recent-heading" className="anim-rise" style={delay(480)}>
             <h2 id="recent-heading" className="mb-2 text-[13px] font-medium text-fg-secondary">
-              Pick up where you left off
+              {t('home.recent_heading')}
             </h2>
             <HomeRecent workspaceId={workspaceId} workspaceSlug={workspaceSlug} specialists={specialists} />
           </section>
@@ -99,7 +105,7 @@ export function HomeView({
             {ideas.length > 0 ? (
               <section aria-labelledby="ideas-heading" className="anim-rise" style={delay(540)}>
                 <h2 id="ideas-heading" className="mb-2 text-[13px] font-medium text-fg-secondary">
-                  Ideas for today
+                  {t('home.ideas_heading')}
                 </h2>
                 <ul className="space-y-1.5">
                   {ideas.map(({ s, text }) => (
@@ -122,15 +128,15 @@ export function HomeView({
 
             <section aria-labelledby="next-heading" className="anim-rise" style={delay(600)}>
               <h2 id="next-heading" className="mb-2 text-[13px] font-medium text-fg-secondary">
-                Coming to your workspace
+                {t('home.coming_heading')}
               </h2>
               <ul className="grid grid-cols-3 gap-1.5">
                 {[
-                  { href: `${base}/inbox`, label: 'Inbox', Icon: Inbox },
-                  { href: `${base}/workflows`, label: 'Workflows', Icon: Workflow },
-                  { href: `${base}/routines`, label: 'Routines', Icon: CalendarClock },
+                  { href: `${base}/inbox`, label: tShell('features.inbox.label'), Icon: Inbox },
+                  { href: `${base}/workflows`, label: tShell('features.workflows.label'), Icon: Workflow },
+                  { href: `${base}/routines`, label: tShell('features.routines.label'), Icon: CalendarClock },
                 ].map(({ href, label, Icon }) => (
-                  <li key={label}>
+                  <li key={href}>
                     <Link
                       href={href}
                       className="flex flex-col gap-2 rounded-xl bg-surface-alt p-3 text-[13px] font-medium text-fg-secondary transition-colors hover:bg-hover hover:text-fg"
