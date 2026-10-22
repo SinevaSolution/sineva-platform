@@ -218,6 +218,7 @@ describe('app-density layer', () => {
       '--z-dropdown',
       '--z-drawer',
       '--z-modal',
+      '--z-popover',
       '--z-toast',
       '--z-tooltip',
       '--z-skip',
@@ -226,6 +227,12 @@ describe('app-density layer', () => {
     for (let i = 1; i < numbers.length; i += 1) {
       expect(numbers[i], `${layers[i]![0]} must sit above ${layers[i - 1]![0]}`).toBeGreaterThan(numbers[i - 1]!);
     }
+  });
+
+  it('puts select, combobox and popover lists above modals so they open usably inside a dialog', () => {
+    const root = block(density, ':root');
+    expect(Number(root['--z-popover'])).toBeGreaterThan(Number(root['--z-modal']));
+    expect(Number(root['--z-toast'])).toBeGreaterThan(Number(root['--z-popover']));
   });
 
   it('puts toast above modal and tooltip above toast', () => {

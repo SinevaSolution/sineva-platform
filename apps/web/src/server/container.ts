@@ -114,12 +114,18 @@ import type { OAuthProvider } from './domain/auth/oauth_provider';
 import { GoogleOAuthProvider, GitHubOAuthProvider } from './infrastructure/auth/oauth_providers';
 import { OAuthSignInUseCase } from './application/use-cases/auth/oauth_sign_in_use_case';
 import { LinkAccountUseCase } from './application/use-cases/auth/link_account_use_case';
+import { OAuthReauthenticateUseCase } from './application/use-cases/auth/oauth_reauthenticate_use_case';
+import {
+  OAuthIntentCallbackUseCase,
+  withOAuthNotice,
+} from './application/use-cases/auth/oauth_intent_callback_use_case';
 import { UnlinkAccountUseCase } from './application/use-cases/auth/unlink_account_use_case';
 import { ListUserAccountsUseCase } from './application/use-cases/auth/list_user_accounts_use_case';
 import type { AccountRepository } from './domain/repositories/account_repository';
 import { PrismaAccountRepository } from './infrastructure/database/prisma_account_repository';
 import type { OAuthAuthService } from './domain/auth/oauth_auth_service';
 import { PrismaOAuthAuthService } from './infrastructure/auth/prisma_oauth_auth_service';
+import type { OAuthIntent } from './domain/auth/oauth_intent';
 import { generateOAuthState, verifyOAuthState } from './infrastructure/security/oauth_state_service';
 import { ValidationError } from './domain/errors/domain_error';
 import type { ConversationRepository } from './domain/repositories/conversation_repository';
@@ -293,7 +299,9 @@ const getEmailSender = memoize<EmailSender>(() => {
       from: env.email_from ?? 'Sineva <noreply@sineva.id>',
       // Without a renderer the sender falls back to a one-line placeholder body,
       // so a real invitation would arrive with no link in it.
-      renderer: renderEmailTemplate,
+      // The app address lets templates point at their own images (Sino).
+      renderer: (template, locale, params) =>
+        renderEmailTemplate(template, locale, { ...params, app_url: env.next_public_app_url }),
     });
   }
   return new FakeEmailSender();
@@ -368,11 +376,31 @@ export const getContextSigner = memoize<ContextSigner>(() => {
   );
 });
 
+// The browser-test stack points both providers at one fake identity provider.
+// Real deployments leave OAUTH_TEST_IDP_URL unset (see env.ts for the guard).
+function testIdpEndpoints(provider: 'google' | 'github') {
+  const base = getEnvConfig().oauth_test_idp_url?.replace(/\/+$/, '');
+  if (!base) return {};
+  return provider === 'google'
+    ? {
+        authorizationEndpoint: `${base}/google/authorize`,
+        tokenEndpoint: `${base}/google/token`,
+        userinfoEndpoint: `${base}/google/userinfo`,
+      }
+    : {
+        authorizationEndpoint: `${base}/github/authorize`,
+        tokenEndpoint: `${base}/github/token`,
+        userinfoEndpoint: `${base}/github/user`,
+        emailsEndpoint: `${base}/github/emails`,
+      };
+}
+
 export const getGoogleOAuthProvider = memoize<OAuthProvider>(() => {
   const env = getEnvConfig();
   return new GoogleOAuthProvider({
     clientId: env.google_client_id ?? 'dev-google-client-id',
     clientSecret: env.google_client_secret ?? 'dev-google-client-secret',
+    ...testIdpEndpoints('google'),
   });
 });
 
@@ -381,8 +409,22 @@ export const getGitHubOAuthProvider = memoize<OAuthProvider>(() => {
   return new GitHubOAuthProvider({
     clientId: env.github_client_id ?? 'dev-github-client-id',
     clientSecret: env.github_client_secret ?? 'dev-github-client-secret',
+    ...testIdpEndpoints('github'),
   });
 });
+
+/**
+ * True when the deployment has real credentials for the provider. The
+ * providers above fall back to placeholder ids so the sign-in page renders in
+ * development; the link and re-confirm flows must not send a signed-in person
+ * to a provider that will reject the placeholder.
+ */
+export function isOAuthProviderConfigured(provider: string): boolean {
+  const env = getEnvConfig();
+  if (provider === 'google') return Boolean(env.google_client_id && env.google_client_secret);
+  if (provider === 'github') return Boolean(env.github_client_id && env.github_client_secret);
+  return false;
+}
 
 export function getOAuthProvider(provider: string): OAuthProvider {
   if (provider === 'google') return getGoogleOAuthProvider();
@@ -420,16 +462,31 @@ export const getListUserAccountsUseCase = memoize(
   () => new ListUserAccountsUseCase(getAccountRepository()),
 );
 
+export const getOAuthReauthenticateUseCase = memoize(
+  () =>
+    new OAuthReauthenticateUseCase(
+      getAccountRepository(),
+      // The JWT service owns the freshness window, shared with the password path.
+      { markFresh: (userId, sessionId) => getJwtAuthService().markFresh(userId, sessionId) },
+      getAuditLogger(),
+    ),
+);
+
+export const getOAuthIntentCallbackUseCase = memoize(
+  () => new OAuthIntentCallbackUseCase(getLinkAccountUseCase(), getOAuthReauthenticateUseCase()),
+);
+
 export function initiateOAuthFlow(
   provider: string,
-  returnTo?: string,
+  options: { returnTo?: string; intent?: OAuthIntent; userId?: string } = {},
 ): { authUrl: string; signedCookieValue: string } {
   const env = getEnvConfig();
   const oauthProvider = getOAuthProvider(provider);
   const { state, codeChallenge, signedCookieValue } = generateOAuthState(
     provider,
     env.auth_secret,
-    returnTo,
+    options.returnTo,
+    { intent: options.intent, userId: options.userId },
   );
   const redirectUri = `${env.next_public_app_url}/api/v1/auth/oauth/${provider}/callback`;
   const authUrl = oauthProvider.getAuthorizationUrl({
@@ -440,14 +497,38 @@ export function initiateOAuthFlow(
   return { authUrl, signedCookieValue };
 }
 
+/**
+ * Where to send the person when the provider answered with an error (they
+ * pressed "Cancel" on the consent screen). A link or re-confirm goes back to
+ * the page that started it with a notice; a sign-in keeps the old behaviour
+ * (null here, the route sends it to the sign-in page).
+ */
+export function describeOAuthFailureTarget(params: {
+  stateCookie?: string;
+  state?: string | null;
+  error: string;
+}): string | null {
+  if (!params.state) return null;
+  try {
+    const payload = verifyOAuthState(params.stateCookie, params.state, getEnvConfig().auth_secret);
+    if (payload.intent === 'sign_in') return null;
+    return withOAuthNotice(payload.returnTo, params.error === 'access_denied' ? 'cancelled' : 'failed');
+  } catch {
+    return null;
+  }
+}
+
 export async function handleOAuthCallback(params: {
   provider: string;
   code: string;
   state: string;
   stateCookie?: string;
+  /** The browser's current session, when it has one. */
+  session?: { userId: string; sessionId: string; freshUntil?: Date | null } | null;
+  requestId?: string;
   ipAddress?: string;
   userAgent?: string;
-}): Promise<{ sessionToken: string; targetPath: string }> {
+}): Promise<{ sessionToken?: string; targetPath: string }> {
   const env = getEnvConfig();
   const statePayload = verifyOAuthState(params.stateCookie, params.state, env.auth_secret);
   const redirectUri = `${env.next_public_app_url}/api/v1/auth/oauth/${params.provider}/callback`;
@@ -458,6 +539,18 @@ export async function handleOAuthCallback(params: {
     codeVerifier: statePayload.codeVerifier,
     redirectUri,
   });
+
+  // Link and re-confirm act on the signed-in person and never open a new session.
+  if (statePayload.intent !== 'sign_in') {
+    return getOAuthIntentCallbackUseCase().execute({
+      intent: statePayload.intent,
+      boundUserId: statePayload.userId,
+      session: params.session ?? null,
+      profile,
+      returnTo: statePayload.returnTo,
+      requestId: params.requestId ?? 'oauth_intent',
+    });
+  }
 
   const signInUseCase = getOAuthSignInUseCase();
   const result = await signInUseCase.execute({

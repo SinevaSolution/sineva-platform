@@ -505,10 +505,24 @@ export class JwtAuthService {
 
     const passwordHash = PasswordHasher.hash(params.new_password);
 
-    await this.prisma.account.updateMany({
+    const updated = await this.prisma.account.updateMany({
       where: { user_id: user.id, provider_id: 'credential' },
       data: { password: passwordHash },
     });
+    if (updated.count === 0) {
+      // Someone who has only ever signed in with Google or GitHub has no
+      // credential row, so the update above matched nothing. The reset email is
+      // also how they add a password (Settings, Sign-in methods), so create it.
+      // The mailbox proved ownership of the address the same way sign-up does.
+      await this.prisma.account.create({
+        data: {
+          user_id: user.id,
+          provider_id: 'credential',
+          account_id: user.id,
+          password: passwordHash,
+        },
+      });
+    }
 
     // Single use: delete verification token
     await this.prisma.verification.deleteMany({
@@ -640,11 +654,28 @@ export class JwtAuthService {
       throw new UnauthorizedError('Invalid password.');
     }
 
+    return this.markFresh(userId, sessionId);
+  }
+
+  /**
+   * Opens a new 15-minute fresh window on an existing session and re-signs its
+   * token with the new `fresh_until`. Shared by the password and the OAuth
+   * re-confirm paths so the window is defined in one place.
+   */
+  async markFresh(
+    userId: string,
+    sessionId: string,
+  ): Promise<{ refreshed_token: string; fresh_until: Date }> {
     const freshUntil = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes
-    await this.prisma.session.update({
-      where: { id: sessionId },
+    // updateMany with the owner in the filter: a session id that is not this
+    // user's matches nothing instead of freshening someone else's session.
+    const updated = await this.prisma.session.updateMany({
+      where: { id: sessionId, user_id: userId, revoked_at: null },
       data: { fresh_until: freshUntil },
     });
+    if (updated.count === 0) {
+      throw new UnauthorizedError('Session not found.');
+    }
 
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
     const token = JwtService.sign(

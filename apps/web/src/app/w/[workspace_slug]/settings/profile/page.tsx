@@ -5,15 +5,12 @@ import { ProfileForm } from '@/client/components/settings/profile_form';
 import { SettingsPageHeader } from '@/client/components/settings/settings_page_header';
 import { parseSettingsTab } from '@/client/components/settings/settings_tabs';
 import { SignInMethods } from '@/client/components/settings/sign_in_methods';
-import {
-  getGetMeUseCase,
-  getGetPreferencesUseCase,
-  getListUserAccountsUseCase,
-} from '@/server/container';
+import { getGetMeUseCase, getGetPreferencesUseCase } from '@/server/container';
 import { NotFoundError } from '@/server/domain/errors/domain_error';
 import { getTranslations } from '@/i18n/server';
 import { getPageSession } from '@/server/http/page_session';
 import { loadWorkspaceContext } from '../../workspace_context';
+import { loadSignInMethods } from '@/server/http/sign_in_methods';
 
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getTranslations('settings_ui');
@@ -25,10 +22,11 @@ export default async function ProfilePage({
   searchParams,
 }: {
   params: Promise<{ workspace_slug: string }>;
-  searchParams: Promise<{ tab?: string | string[] }>;
+  searchParams: Promise<{ tab?: string | string[]; oauth?: string | string[] }>;
 }) {
   const { workspace_slug } = await params;
-  const tab = parseSettingsTab((await searchParams).tab);
+  const query = await searchParams;
+  const tab = parseSettingsTab(query.tab);
   const t = await getTranslations('settings_ui');
   // Redirects to sign-in or 404s for a foreign workspace before anything else loads.
   const ctx = await loadWorkspaceContext(workspace_slug);
@@ -48,8 +46,13 @@ export default async function ProfilePage({
   if (tab === 'preferences') {
     content = <PreferencesForm initial={await getGetPreferencesUseCase().execute(session.user_id)} />;
   } else if (tab === 'sign_in') {
-    const accounts = await getListUserAccountsUseCase().execute(session.user_id);
-    content = <SignInMethods email={session.email} accounts={accounts} />;
+    content = (
+      <SignInMethods
+        view={await loadSignInMethods(session)}
+        workspaceSlug={workspace_slug}
+        initialNotice={typeof query.oauth === 'string' ? query.oauth : undefined}
+      />
+    );
   } else {
     let me;
     try {

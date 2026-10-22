@@ -136,6 +136,7 @@ Folder guide: [README](troubleshooting/README.md).
 - [Storage, Database and Redis](troubleshooting/storage_db_and_redis.md)
 
 - [Checkpoint resume batch](development/resume-batch-2026-10-22.md): integrated M1 backends, functional UI, runtime fixes and outstanding acceptance work.
+- [Manual test: invitations and sign-in methods](development/manual_test_invitations.md): try the people flows by hand with Mailpit and two browsers.
 
 ## Keeping the docs true
 

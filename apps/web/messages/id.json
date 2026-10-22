@@ -143,7 +143,28 @@
       "folder_depth_exceeded": "Koleksi bisa bersarang sampai tiga tingkat.",
       "unsupported_file_type": "Pilih file PDF, Word, Excel, CSV, slide, teks, atau gambar.",
       "file_too_large": "File itu lebih dari 25 MB.",
-      "entitlement_required": "Ini melebihi yang termasuk di paketmu."
+      "entitlement_required": "Ini melebihi yang termasuk di paketmu.",
+      "already_member": "Orang itu sudah ada di workspace ini.",
+      "last_owner": "Workspace harus punya pemilik. Alihkan kepemilikan ke admin dulu.",
+      "invitation_expired": "Undangan ini sudah kedaluwarsa. Minta pemilik mengirim yang baru.",
+      "invitation_used": "Undangan ini sudah dipakai.",
+      "invitation_revoked": "Undangan ini dibatalkan. Minta pemilik mengirim yang baru.",
+      "invitation_not_found": "Kami tidak menemukan undangan ini. Minta tautan baru ke pemilik.",
+      "invitation_email_mismatch": "Undangan ini dikirim ke alamat email lain. Ganti ke akun yang menerimanya.",
+      "email_not_verified": "Verifikasi emailmu dulu, lalu buka undangan ini lagi.",
+      "ownership_transfer_expired": "Permintaan kepemilikan ini sudah kedaluwarsa. Minta pemilik memulai yang baru.",
+      "ownership_transfer_used": "Permintaan kepemilikan ini sudah diterima.",
+      "ownership_transfer_cancelled": "Permintaan kepemilikan ini dibatalkan oleh pemilik.",
+      "ownership_transfer_stale": "Workspace berubah sejak permintaan ini dikirim. Minta pemilik memulai yang baru.",
+      "fresh_session_required": "Demi keamanan, konfirmasi dulu bahwa ini kamu.",
+      "cannot_remove_last_sign_in_method": "Tambahkan cara masuk lain dulu.",
+      "account_in_use": "Akun itu sudah terhubung ke pengguna Sineva lain.",
+      "provider_already_linked": "Akun lain dari penyedia itu sudah terhubung. Putuskan dulu.",
+      "target_must_be_admin": "Pilih orang yang berperan sebagai admin.",
+      "allowlist_required": "Pilih minimal satu spesialis.",
+      "scope_not_applicable": "Akses spesialis hanya berlaku untuk anggota.",
+      "unknown_specialist": "Salah satu spesialis itu tidak ada.",
+      "oauth_account_mismatch": "Itu bukan akun yang tertaut ke kamu. Pakai akun yang terhubung ke akun Sineva kamu."
     },
     "not_found": {
       "title": "Sino tidak menemukan halaman ini"
@@ -383,7 +404,30 @@
       "password_set": "Sudah diatur",
       "password_not_set": "Belum diatur",
       "not_linked_helper": "Belum tertaut ke akunmu",
-      "linked_helper": "Tertaut ke akunmu"
+      "linked_helper": "Tertaut ke akunmu",
+      "connect_google": "Hubungkan Google",
+      "connect_github": "Hubungkan GitHub",
+      "disconnect": "Putuskan",
+      "disconnect_title": "Putuskan {provider}?",
+      "disconnect_body": "Kamu tidak bisa lagi masuk dengan {provider}. Kamu bisa menghubungkannya lagi kapan saja.",
+      "disconnect_blocked": "Tambahkan cara masuk lain dulu",
+      "disconnected": "{provider} diputuskan.",
+      "not_configured": "Masuk dengan {provider} belum tersedia.",
+      "set_password": "Atur kata sandi",
+      "set_password_helper": "Tambahkan kata sandi agar kamu tetap bisa masuk tanpa Google atau GitHub.",
+      "set_password_sent": "Kami mengirim tautan ke {email}. Buka untuk memilih kata sandi.",
+      "cancel": "Batal",
+      "dismiss": "Tutup",
+      "notice": {
+        "linked": "Terhubung. Kamu bisa memakainya untuk masuk mulai sekarang.",
+        "account_in_use": "Akun itu sudah terhubung ke pengguna Sineva lain.",
+        "provider_already_linked": "Akun lain dari penyedia itu sudah terhubung. Putuskan dulu.",
+        "fresh_required": "Sesi masukmu sudah agak lama untuk ini. Tekan Hubungkan lagi dan konfirmasi bahwa ini kamu.",
+        "not_configured": "Opsi masuk itu belum tersedia.",
+        "mismatch": "Sesi masukmu berubah saat menghubungkan. Coba lagi.",
+        "cancelled": "Kamu membatalkan, jadi tidak ada yang berubah.",
+        "failed": "Kami belum bisa menyelesaikannya. Coba lagi."
+      }
     }
   },
   "inbox": {
@@ -592,14 +636,13 @@
     "description": "Kelola siapa yang dapat bekerja di workspace ini.",
     "join_title": "Undangan workspace",
     "ownership_title": "Kepemilikan workspace",
-    "join_description": "kamu diundang ke {workspace}. Gunakan alamat email yang menerima undangan.",
+    "join_description": "kamu diundang ke {workspace} sebagai {role}. Gunakan alamat email yang menerima undangan.",
     "ownership_description": "kamu diminta menjadi pemilik {workspace}.",
     "join": "Gabung workspace",
     "accept_ownership": "Terima kepemilikan",
     "ownership_warning": "Jika diterima, kamu menjadi pemilik. Pemilik saat ini menjadi admin.",
-    "link_inactive": "Tautan ini sudah tidak aktif. Minta tautan baru kepada pemilik workspace.",
-    "wrong_account": "Undangan ini ditujukan ke akun lain. Masuk dengan email yang diundang.",
-    "switch_account": "Keluar dan ganti akun",
+    "wrong_account": "Tautan ini ditujukan ke akun lain. Ganti ke akun yang dituju.",
+    "switch_account": "Ganti akun",
     "sign_in": "Masuk",
     "create_account": "Buat akun",
     "invite": "Undang anggota",
@@ -631,16 +674,52 @@
     "send_transfer": "Kirim undangan kepemilikan",
     "pending_transfer": "Undangan kepemilikan dikirim ke {name}.",
     "cancel_transfer": "Batalkan pengalihan kepemilikan",
-    "reauth": "Konfirmasi kata sandi",
-    "password": "Kata sandi",
-    "reauth_body": "Konfirmasi kata sandi sebelum menghapus anggota atau mengalihkan kepemilikan.",
     "confirm": "Konfirmasi",
     "roles": {
       "owner": "Pemilik",
       "admin": "Admin",
       "member": "Anggota",
       "viewer": "Peninjau"
-    }
+    },
+    "invite_state": {
+      "expired": "Undangan ini sudah kedaluwarsa. Minta pemilik mengirim yang baru.",
+      "used": "Undangan ini sudah dipakai.",
+      "revoked": "Undangan ini dibatalkan. Minta pemilik mengirim yang baru."
+    },
+    "ownership_state": {
+      "expired": "Permintaan kepemilikan ini sudah kedaluwarsa. Minta pemilik memulai yang baru.",
+      "used": "Permintaan kepemilikan ini sudah diterima.",
+      "cancelled": "Permintaan kepemilikan ini dibatalkan oleh pemilik."
+    },
+    "go_home": "Buka Sineva",
+    "signed_out_hint_invite": "Masuk, atau buat akun dengan alamat email yang menerima undangan.",
+    "signed_out_hint_ownership": "Masuk dengan akun admin yang dituju permintaan ini.",
+    "reauth_done": "Sudah dikonfirmasi. Tekan tombol di bawah untuk menyelesaikan.",
+    "invite_sent": "Kami mengirim email ke {email}. Kamu juga bisa menyalin tautannya dan membagikannya sendiri.",
+    "invite_created": "Undangan dibuat.",
+    "link_copied": "Tautan disalin.",
+    "copy_failed": "Tidak bisa menyalin. Pilih tautannya dan salin manual.",
+    "copy_link": "Salin tautan",
+    "dismiss": "Tutup",
+    "col_name": "Nama",
+    "col_role": "Peran",
+    "col_access": "Akses spesialis",
+    "col_last_active": "Terakhir aktif",
+    "col_actions": "Aksi",
+    "never_active": "Belum pernah",
+    "scope_count": "{count} dipilih",
+    "edit_member": "Ubah akses {name}",
+    "remove_member": "Hapus {name}",
+    "expired_label": "Kedaluwarsa",
+    "resent": "Undangan dikirim ulang ke {email}.",
+    "revoke_title": "Cabut undangan ini?",
+    "revoke_body": "{email} tidak bisa lagi bergabung dengan tautan ini.",
+    "revoked": "Undangan dicabut.",
+    "transfer_cancelled": "Pengalihan kepemilikan dibatalkan.",
+    "left": "Kamu keluar dari workspace.",
+    "changes_saved": "Perubahan disimpan.",
+    "transfer_needs_admin": "Jadikan seseorang admin dulu. Kepemilikan hanya bisa dialihkan ke admin.",
+    "member_removed": "{name} dihapus."
   },
   "inbox_ui": {
     "title": "Inbox",
@@ -1209,5 +1288,23 @@
       "resume_action": "Lanjutkan penyiapan"
     }
   },
-  "mcp": {}
+  "mcp": {},
+  "reauth": {
+    "title": "Konfirmasi ini kamu",
+    "body": "Demi keamanan, konfirmasi bahwa ini kamu sebelum melanjutkan. Hanya sebentar.",
+    "password_label": "Kata sandi",
+    "continue_google": "Lanjutkan dengan Google",
+    "continue_github": "Lanjutkan dengan GitHub",
+    "or_password": "Atau pakai kata sandimu",
+    "confirm": "Konfirmasi",
+    "cancel": "Batal",
+    "wrong_password": "Kata sandinya belum tepat. Coba lagi.",
+    "no_method": "Belum ada cara masuk yang bisa mengonfirmasi ini sekarang. Keluar, masuk lagi, lalu coba sekali lagi.",
+    "notice": {
+      "mismatch": "Itu akun yang berbeda. Pakai akun yang terhubung ke akun Sineva kamu.",
+      "cancelled": "Kamu membatalkan, jadi tidak ada yang berubah.",
+      "failed": "Kami belum bisa mengonfirmasi bahwa ini kamu. Coba lagi.",
+      "not_configured": "Opsi masuk itu belum tersedia."
+    }
+  }
 }

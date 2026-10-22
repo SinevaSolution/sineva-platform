@@ -1,5 +1,6 @@
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
+import { sanitizeNextRedirect } from '@/server/domain/auth/safe_redirect';
 import {
   buildCspReportOnly,
   CSP_REPORT_ONLY_HEADER,
@@ -7,34 +8,7 @@ import {
   NONCE_REQUEST_HEADER,
 } from '@/server/http/csp';
 
-/**
- * Sanitizes the `next` redirect parameter to prevent open-redirect phishing attacks.
- * Only allows safe relative paths starting with `/` (and disallows protocol-relative `//`).
- */
-export function sanitizeNextRedirect(rawPath?: string | null, fallback: string = '/'): string {
-  if (!rawPath || typeof rawPath !== 'string') {
-    return fallback;
-  }
-
-  const trimmed = rawPath.trim();
-
-  // Must begin with single `/` and NOT `//`
-  if (!trimmed.startsWith('/') || trimmed.startsWith('//')) {
-    return fallback;
-  }
-
-  // Reject URLs containing protocol schemes before a query/hash
-  if (/^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(trimmed)) {
-    return fallback;
-  }
-
-  // Reject javascript:, data:, vbscript: pseudo-protocols
-  if (/^(javascript|data|vbscript):/i.test(trimmed)) {
-    return fallback;
-  }
-
-  return trimmed;
-}
+export { sanitizeNextRedirect };
 
 /**
  * Cheap edge/proxy page rejection: unauthenticated page requests are redirected

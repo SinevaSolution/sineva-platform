@@ -34,7 +34,7 @@ export const SNPopoverTrigger = PopoverPrimitive.Trigger;
 // Same surface as the dropdown menu so a popover and a menu look like one family.
 // anim-swap is a global keyframe class (see sn_tooltip).
 const SURFACE =
-  'anim-swap z-(--z-dropdown) rounded-md border border-border bg-surface p-1 text-text shadow-md outline-none';
+  'anim-swap z-(--z-popover) rounded-md border border-border bg-surface p-1 text-text shadow-md outline-none';
 
 export const SNPopoverContent = React.forwardRef<HTMLDivElement, SNPopoverContentProps>(function SNPopoverContent(
   { side, align, sideOffset = 6, collisionPadding = 8, className, onCloseAutoFocus, children },

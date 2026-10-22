@@ -1,5 +1,6 @@
 import 'server-only';
 import crypto from 'node:crypto';
+import { OAUTH_INTENTS, type OAuthIntent } from '@/server/domain/auth/oauth_intent';
 import { ValidationError } from '@/server/domain/errors/domain_error';
 
 export interface OAuthStatePayload {
@@ -8,6 +9,8 @@ export interface OAuthStatePayload {
   provider: string;
   returnTo?: string;
   createdAt: number;
+  intent: OAuthIntent;
+  userId?: string;
 }
 
 export function generatePkce(): { codeVerifier: string; codeChallenge: string } {
@@ -23,6 +26,7 @@ export function generateOAuthState(
   provider: string,
   authSecret: string,
   returnTo?: string,
+  binding: { intent?: OAuthIntent; userId?: string } = {},
 ): { state: string; codeVerifier: string; codeChallenge: string; signedCookieValue: string } {
   const { codeVerifier, codeChallenge } = generatePkce();
   const state = crypto.randomBytes(24).toString('base64url');
@@ -33,6 +37,8 @@ export function generateOAuthState(
     provider,
     returnTo,
     createdAt: Date.now(),
+    intent: binding.intent ?? 'sign_in',
+    userId: binding.userId,
   };
 
   const payloadB64 = Buffer.from(JSON.stringify(payload)).toString('base64url');
@@ -109,6 +115,11 @@ export function verifyOAuthState(
     throw new ValidationError('OAuth session has expired. Please try signing in again.', [
       { code: 'oauth_state_expired', field: 'state', detail: 'State expired' },
     ]);
+  }
+
+  // A cookie issued before intents existed has no field: it was a sign-in.
+  if (!OAUTH_INTENTS.includes(payload.intent)) {
+    payload = { ...payload, intent: 'sign_in' };
   }
 
   return payload;

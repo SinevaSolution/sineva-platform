@@ -7,6 +7,7 @@ import type { RequestContext } from '@/server/domain/context/request_context';
 import type { UserRole } from '@/server/domain/entities/user';
 import {
   ForbiddenError,
+  FreshSessionRequiredError,
   NotFoundError,
   UnauthorizedError,
 } from '@/server/domain/errors/domain_error';
@@ -230,9 +231,7 @@ export function withAuth<TParams = Record<string, string | string[]>>(
       // 4a. Fresh session check (FR-AUTH-06, FR-AUTH-01c)
       if (options.requireFreshSession) {
         if (!session.freshUntil || session.freshUntil.getTime() <= Date.now()) {
-          throw new ForbiddenError(
-            'A fresh session is required for this action. Please re-authenticate.',
-          );
+          throw new FreshSessionRequiredError();
         }
       }
 

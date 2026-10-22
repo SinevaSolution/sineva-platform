@@ -15,7 +15,7 @@
    * Layer stack, strictly increasing (tested). Tailwind has no z-index theme
    * namespace, so components write `z-(--z-modal)`. Arbitrary `z-[n]` is
    * banned by lint: a number written at the call site is how stacking bugs
-   * start. Toast sits above modal so "Saved" shows from inside a dialog.
+   * start. Popover lists sit above modal so a select works inside a dialog; toast sits above both so "Saved" shows from inside a dialog.
    */
   --z-base: 0;
   --z-raised: 1;
@@ -24,6 +24,8 @@
   --z-dropdown: 40;
   --z-drawer: 60;
   --z-modal: 100;
+  /* Lists that open from a control inside a dialog or drawer (select, combobox, popover, menu) must sit above it. */
+  --z-popover: 105;
   --z-toast: 110;
   --z-tooltip: 120;
   --z-skip: 130;

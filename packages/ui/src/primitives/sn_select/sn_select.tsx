@@ -96,7 +96,7 @@ export function SNSelect({
           position="popper"
           sideOffset={6}
           collisionPadding={8}
-          className="anim-swap z-(--z-dropdown) max-h-(--radix-select-content-available-height) min-w-(--radix-select-trigger-width) overflow-hidden rounded-md border border-border bg-surface shadow-md [--d:0ms]"
+          className="anim-swap z-(--z-popover) max-h-(--radix-select-content-available-height) min-w-(--radix-select-trigger-width) overflow-hidden rounded-md border border-border bg-surface shadow-md [--d:0ms]"
         >
           <SelectPrimitive.Viewport className="p-1">
             {options.map((option) => (

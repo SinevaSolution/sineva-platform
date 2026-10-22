@@ -36,3 +36,5 @@ apps/web/src/server/infrastructure/database/generated
 # Playwright output; approved baselines stay tracked in e2e/__screenshots__.
 apps/web/test-results/
 apps/web/playwright-report/
+apps/web/test-results-journeys/
+apps/web/test-results-journeys-server.log

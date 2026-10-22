@@ -18,7 +18,7 @@ supersedes: []
 
 # Architecture Decision Records
 
-An ADR records one decision: what was chosen, why, and what it costs. All 29 are Accepted. This folder holds decisions only. How-to guides, current-state descriptions and the rules derived from the decisions live elsewhere ([agent rules](../governance/agent_rules.md), [engineering](../engineering/README.md)). When a rule and its ADR disagree, the ADR wins and the rule gets fixed.
+An ADR records one decision: what was chosen, why, and what it costs. All 35 are Accepted. This folder holds decisions only. How-to guides, current-state descriptions and the rules derived from the decisions live elsewhere ([agent rules](../governance/agent_rules.md), [engineering](../engineering/README.md)). When a rule and its ADR disagree, the ADR wins and the rule gets fixed.
 
 Items marked "cross-service" are mirrored in `sineva-ai` (`docs/decisions/` there, a sineva-ai ADR of the same title). Change both repos together.
 
@@ -60,6 +60,7 @@ Items marked "cross-service" are mirrored in `sineva-ai` (`docs/decisions/` ther
 | [0034](0034-inbox-triage-views-and-updates-tab.md) | Inbox views Needs you, Updates and Done; results move to Updates; kind, source and text filters; chat link by conversation id | You touch the Inbox tabs, filters or counts |
 
 | [0033](0033-library-collections-access-and-plain-language.md) | Library collections carry 'Who can use this', documents inherit or override, Squad and Workflow scopes reserved, retrieval scope equals access, plain-language statuses and banned technical words | You touch Library access, the Library page or the technical-word copy rule |
+| [0041](0041-oauth-reauthentication-and-account-linking.md) | OAuth intents (sign in, link, re-confirm) bound to the signed-in user; re-confirming through a linked provider marks the session fresh | You touch OAuth, fresh-session recovery or sign-in methods |
 
 ## Suggested reading order
 

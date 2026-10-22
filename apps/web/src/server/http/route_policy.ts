@@ -128,7 +128,7 @@ export const MUTATING_ROUTE_POLICY: Record<string, MutatingRoutePolicy> = {
   },
   'GET /api/v1/auth/oauth/{provider}/callback': {
     effect: 'auth',
-    audit: ['user.signed_in', 'user.oauth_linked', 'user.signed_up'],
+    audit: ['user.signed_in', 'user.oauth_linked', 'user.signed_up', 'user.reauthenticated'],
   },
   'DELETE /api/v1/me/accounts/{provider}': {
     effect: 'delete',
