@@ -57,6 +57,7 @@ import { ListMessagesUseCase } from './application/use-cases/chat/list_messages_
 import { CreateMessageUseCase } from './application/use-cases/chat/create_message_use_case';
 import type { ChatRunRepository } from './domain/repositories/chat_run_repository';
 import { PrismaChatRunRepository } from './infrastructure/database/prisma_chat_run_repository';
+import { LoggerRunRelayLog } from './infrastructure/logging/log_run_relay_log';
 import { LogRunMetricsRecorder } from './infrastructure/metrics/log_run_metrics_recorder';
 import { passThroughFrameGuard } from './domain/chat/run_frame_guard';
 import { RunHub } from './application/chat/run_hub';
@@ -348,6 +349,7 @@ export const getStreamRunUseCase = memoize(
       // M0 emits no card events; the card validator plugs in here (FR-AX-09).
       guard: passThroughFrameGuard,
       metrics: new LogRunMetricsRecorder(),
+      log: new LoggerRunRelayLog(),
     }),
 );
 

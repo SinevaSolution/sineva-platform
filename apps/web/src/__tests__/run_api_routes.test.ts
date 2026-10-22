@@ -1,3 +1,4 @@
+import { installHeaderSessionResolver } from './fakes/header_session_resolver';
 import { NextRequest } from 'next/server';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { GET as getEvents } from '@/app/api/v1/workspaces/[workspace_id]/runs/[run_id]/events/route';
@@ -16,6 +17,8 @@ vi.mock('@/server/container', async (importOriginal) => {
     getCancelRunUseCase: () => ({ execute: mockCancel }),
   };
 });
+
+installHeaderSessionResolver();
 
 const WS = '11111111-1111-4111-8111-111111111111';
 const OTHER_WS = '22222222-2222-4222-8222-222222222222';
