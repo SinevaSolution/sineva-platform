@@ -131,11 +131,16 @@ describe('SignInMethods rendering', () => {
     const html = inLocale(
       'en',
       <SignInMethods
-        email="faishal@example.com"
-        accounts={[
-          { provider: 'google', provider_email: 'faishal@gmail.com', provider_username: null },
-          { provider: 'credential', provider_email: null, provider_username: null },
-        ]}
+        workspaceSlug="acme"
+        view={{
+          email: 'faishal@example.com',
+          accounts: [
+            { provider: 'google', provider_email: 'faishal@gmail.com', provider_username: null },
+            { provider: 'credential', provider_email: null, provider_username: null },
+          ],
+          configured: ['google', 'github'],
+          fresh: true,
+        }}
       />,
     );
     expect(html).toContain('faishal@gmail.com');

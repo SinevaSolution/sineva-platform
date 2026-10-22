@@ -33,7 +33,10 @@ Bodies are `strict` (unknown keys are 422). Mutating routes need the CSRF header
 | Transfer ownership | yes | no | no |
 | Leave | no (409 `last_owner`) | yes | yes |
 
-Nobody changes their own role. The owner cannot be removed, demoted or leave: 409 `last_owner`. Specialist scope applies to role `member` only (422 `scope_not_applicable` otherwise). Leaving the `member` role resets the scope to `all`. Removing a member and starting or accepting an ownership transfer need a fresh session (signed in within 15 minutes, FR-AUTH-06): a stale one is 403 `forbidden` and the client should call `POST /api/v1/auth/reauthenticate`, then retry.
+Nobody changes their own role. The owner cannot be removed, demoted or leave: 409 `last_owner`. Specialist scope applies to role `member` only (422 `scope_not_applicable` otherwise). Leaving the `member` role resets the scope to `all`. Removing a member and starting or accepting an ownership transfer need a fresh session (signed in within 15 minutes, FR-AUTH-06): a stale one is 403 `forbidden` with detail code `fresh_session_required` (never shown as "you cannot do this"). The client opens the "Confirm it's you" dialog and retries after one of two ways of re-confirming:
+
+- **Password:** `POST /api/v1/auth/reauthenticate` with `{ "password": string }` (401 for a wrong password).
+- **Google or GitHub** (people who have no password, [ADR-0041](../decisions/0041-oauth-reauthentication-and-account-linking.md)): navigate to `GET /api/v1/auth/oauth/{provider}?intent=reauth&return_to=<same page>`. The provider account must be linked to the signed-in user; the existing session is marked fresh (no new session) and the browser lands on `return_to` with `oauth=reauthenticated` (or `oauth=mismatch`, `cancelled`, `failed`). The page finishes the waiting action on return, except accepting an ownership transfer, which waits for one more deliberate click.
 
 ## Members
 

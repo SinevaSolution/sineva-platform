@@ -137,7 +137,28 @@
       "unsupported_image": "Use a JPG, PNG or WebP image.",
       "image_too_large": "That photo is over 2 MB. Choose a smaller one.",
       "invalid_image": "We couldn't read that image. Try another one.",
-      "upload_failed": "The photo didn't upload. Try again in a moment."
+      "upload_failed": "The photo didn't upload. Try again in a moment.",
+      "already_member": "That person is already in this workspace.",
+      "last_owner": "A workspace needs an owner. Hand over ownership to an admin first.",
+      "invitation_expired": "This invitation has expired. Ask the owner to send a new one.",
+      "invitation_used": "This invitation was already used.",
+      "invitation_revoked": "This invitation was cancelled. Ask the owner to send a new one.",
+      "invitation_not_found": "We could not find this invitation. Ask the owner for a new link.",
+      "invitation_email_mismatch": "This invitation was sent to a different email address. Switch to the account that received it.",
+      "email_not_verified": "Verify your email first, then open the invitation again.",
+      "ownership_transfer_expired": "This ownership request has expired. Ask the owner to start a new one.",
+      "ownership_transfer_used": "This ownership request was already accepted.",
+      "ownership_transfer_cancelled": "This ownership request was cancelled by the owner.",
+      "ownership_transfer_stale": "The workspace changed since this request was sent. Ask the owner to start a new one.",
+      "fresh_session_required": "For your security, confirm it's you first.",
+      "cannot_remove_last_sign_in_method": "Add another way to sign in first.",
+      "account_in_use": "That account is already connected to another Sineva user.",
+      "provider_already_linked": "A different account of that provider is already connected. Disconnect it first.",
+      "target_must_be_admin": "Choose someone who is an admin.",
+      "allowlist_required": "Choose at least one specialist.",
+      "scope_not_applicable": "Specialist access only applies to members.",
+      "unknown_specialist": "One of those specialists does not exist.",
+      "oauth_account_mismatch": "That is not the account linked to you. Use the one connected to your Sineva account."
     },
     "not_found": {
       "title": "Sino can't find this page"
@@ -372,7 +393,30 @@
       "password_set": "Set",
       "password_not_set": "Not set",
       "not_linked_helper": "Not linked to your account",
-      "linked_helper": "Linked to your account"
+      "linked_helper": "Linked to your account",
+      "connect_google": "Connect Google",
+      "connect_github": "Connect GitHub",
+      "disconnect": "Disconnect",
+      "disconnect_title": "Disconnect {provider}?",
+      "disconnect_body": "You will no longer be able to sign in with {provider}. You can connect it again any time.",
+      "disconnect_blocked": "Add another way to sign in first",
+      "disconnected": "{provider} was disconnected.",
+      "not_configured": "Sign in with {provider} is not available yet.",
+      "set_password": "Set a password",
+      "set_password_helper": "Add a password so you can sign in even without Google or GitHub.",
+      "set_password_sent": "We sent a link to {email}. Open it to choose a password.",
+      "cancel": "Cancel",
+      "dismiss": "Dismiss",
+      "notice": {
+        "linked": "Connected. You can use it to sign in from now on.",
+        "account_in_use": "That account is already connected to another Sineva user.",
+        "provider_already_linked": "A different account of that provider is already connected. Disconnect it first.",
+        "fresh_required": "Your sign-in is a bit old for this. Press Connect again and confirm it's you.",
+        "not_configured": "That sign-in option is not available yet.",
+        "mismatch": "Your sign-in changed while you were connecting. Try again.",
+        "cancelled": "You cancelled, so nothing was changed.",
+        "failed": "We could not finish that. Try again."
+      }
     }
   },
   "inbox": {
@@ -580,14 +624,13 @@
     "description": "Manage who can work in this workspace.",
     "join_title": "Workspace invitation",
     "ownership_title": "Workspace ownership",
-    "join_description": "You have been invited to {workspace}. Use the email address that received the invitation.",
+    "join_description": "You have been invited to {workspace} as {role}. Use the email address that received the invitation.",
     "ownership_description": "You have been asked to own {workspace}.",
     "join": "Join workspace",
     "accept_ownership": "Accept ownership",
     "ownership_warning": "Accepting makes you the owner. The current owner becomes an admin.",
-    "link_inactive": "This link is no longer active. Ask the workspace owner for a new link.",
-    "wrong_account": "This invitation belongs to another account. Sign in with the invited email.",
-    "switch_account": "Sign out and switch account",
+    "wrong_account": "This link was sent to a different account. Switch to the account it was meant for.",
+    "switch_account": "Switch account",
     "sign_in": "Sign in",
     "create_account": "Create account",
     "invite": "Invite member",
@@ -619,16 +662,52 @@
     "send_transfer": "Send ownership invitation",
     "pending_transfer": "Ownership invitation sent to {name}.",
     "cancel_transfer": "Cancel ownership transfer",
-    "reauth": "Confirm your password",
-    "password": "Password",
-    "reauth_body": "Confirm your password before removing members or transferring ownership.",
     "confirm": "Confirm",
     "roles": {
       "owner": "Owner",
       "admin": "Admin",
       "member": "Member",
       "viewer": "Viewer"
-    }
+    },
+    "invite_state": {
+      "expired": "This invitation has expired. Ask the owner to send a new one.",
+      "used": "This invitation was already used.",
+      "revoked": "This invitation was cancelled. Ask the owner to send a new one."
+    },
+    "ownership_state": {
+      "expired": "This ownership request has expired. Ask the owner to start a new one.",
+      "used": "This ownership request was already accepted.",
+      "cancelled": "This ownership request was cancelled by the owner."
+    },
+    "go_home": "Go to Sineva",
+    "signed_out_hint_invite": "Sign in, or create an account with the email address that received the invitation.",
+    "signed_out_hint_ownership": "Sign in with the admin account this request was sent to.",
+    "reauth_done": "Confirmed. Press the button below to finish.",
+    "invite_sent": "We emailed {email}. You can also copy the link and share it yourself.",
+    "invite_created": "Invitation created.",
+    "link_copied": "Link copied.",
+    "copy_failed": "Could not copy. Select the link and copy it by hand.",
+    "copy_link": "Copy link",
+    "dismiss": "Dismiss",
+    "col_name": "Name",
+    "col_role": "Role",
+    "col_access": "Specialist access",
+    "col_last_active": "Last active",
+    "col_actions": "Actions",
+    "never_active": "Not yet",
+    "scope_count": "{count} selected",
+    "edit_member": "Edit access for {name}",
+    "remove_member": "Remove {name}",
+    "expired_label": "Expired",
+    "resent": "Invitation sent again to {email}.",
+    "revoke_title": "Revoke this invitation?",
+    "revoke_body": "{email} will no longer be able to join with this link.",
+    "revoked": "Invitation revoked.",
+    "transfer_cancelled": "Ownership transfer cancelled.",
+    "left": "You left the workspace.",
+    "changes_saved": "Changes saved.",
+    "transfer_needs_admin": "Make someone an admin first. Ownership can only go to an admin.",
+    "member_removed": "{name} was removed."
   },
   "inbox_ui": {
     "title": "Inbox",
@@ -976,5 +1055,23 @@
       "resume_action": "Continue setup"
     }
   },
-  "mcp": {}
+  "mcp": {},
+  "reauth": {
+    "title": "Confirm it's you",
+    "body": "For your security, confirm it's you before you continue. It only takes a moment.",
+    "password_label": "Password",
+    "continue_google": "Continue with Google",
+    "continue_github": "Continue with GitHub",
+    "or_password": "Or use your password",
+    "confirm": "Confirm",
+    "cancel": "Cancel",
+    "wrong_password": "That password is not right. Try again.",
+    "no_method": "None of your sign-in methods can confirm this right now. Sign out, sign in again, then try once more.",
+    "notice": {
+      "mismatch": "That was a different account. Use the one connected to your Sineva account.",
+      "cancelled": "You cancelled, so nothing was changed.",
+      "failed": "We could not confirm it's you. Try again.",
+      "not_configured": "That sign-in option is not available yet."
+    }
+  }
 }
