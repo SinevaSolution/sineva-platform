@@ -1,17 +1,17 @@
 ---
-title: "Sineva Platform Documentation Index"
-category: "root"
-status: "active"
-version: "2.1.0"
-last_updated: "2026-10-21"
-owner: "Sineva Engineering"
-tags: ["sineva", "platform", "documentation", "index"]
-summary: "Index of every folder and document under docs/, with the folder READMEs and a pointer to the rules and decisions that govern changes."
+title: 'Sineva Platform Documentation Index'
+category: 'root'
+status: 'active'
+version: '2.1.0'
+last_updated: '2026-10-21'
+owner: 'Sineva Engineering'
+tags: ['sineva', 'platform', 'documentation', 'index']
+summary: 'Index of every folder and document under docs/, with the folder READMEs and a pointer to the rules and decisions that govern changes.'
 related_docs:
-  - "governance/README.md"
-  - "governance/agent_rules.md"
-  - "decisions/README.md"
-  - "project-structure/overview.md"
+  - 'governance/README.md'
+  - 'governance/agent_rules.md'
+  - 'decisions/README.md'
+  - 'project-structure/overview.md'
 ---
 
 # Sineva Platform Documentation
@@ -22,14 +22,14 @@ In these docs, "Current" means what the code does today and "Target" means decid
 
 ## Snapshot
 
-| Attribute | Value |
-| :--- | :--- |
-| Repository | Turborepo monorepo: `apps/web`, `packages/shared`, `packages/ui` |
-| Framework | Next.js 16.4 App Router, React 19.2, TypeScript 5.7 |
-| App structure | One BFF app: `src/app` (routes), `src/server` (backend layers and container), `src/client` (frontend), `src/shared` (wire types) |
-| Data | Postgres 17 database `sineva_platform`, schema `platform` (Prisma 7.10.1, UUID keys), shared with `sineva-ai` (schema `sineva_ai`); Redis 7.4; SeaweedFS S3 |
-| Wire contract | `snake_case` JSON, shared response envelope |
-| Internal AI engine | `sineva-ai`, internal network only, `X-Internal-Api-Key`; it owns the chat contract; failures return 502 or 503 |
+| Attribute          | Value                                                                                                                                                       |
+| :----------------- | :---------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Repository         | Turborepo monorepo: `apps/web`, `packages/shared`, `packages/ui`                                                                                            |
+| Framework          | Next.js 16.4 App Router, React 19.2, TypeScript 5.7                                                                                                         |
+| App structure      | One BFF app: `src/app` (routes), `src/server` (backend layers and container), `src/client` (frontend), `src/shared` (wire types)                            |
+| Data               | Postgres 17 database `sineva_platform`, schema `platform` (Prisma 7.10.1, UUID keys), shared with `sineva-ai` (schema `sineva_ai`); Redis 7.4; SeaweedFS S3 |
+| Wire contract      | `snake_case` JSON, shared response envelope                                                                                                                 |
+| Internal AI engine | `sineva-ai`, internal network only, `X-Internal-Api-Key`; it owns the chat contract; failures return 502 or 503                                             |
 
 ## Governance (`governance/`)
 
@@ -92,6 +92,8 @@ Folder guide: [README](api-spec/README.md).
 - [Sino Library Endpoints](api-spec/library_endpoints.md)
 - [Swagger and OpenAPI](api-spec/swagger_and_openapi.md): how `/api/openapi.json` and `/api-docs` work, and how to register a route.
 
+- [Onboarding and Business Profile](api-spec/onboarding_and_business_profile_endpoints.md): first workspace, resumable onboarding, confirmed profile, versions and scan proposal.
+
 ## Product (`product/`)
 
 Folder guide: [README](product/README.md).
@@ -132,6 +134,8 @@ Folder guide: [README](troubleshooting/README.md).
 - [Common Issues](troubleshooting/common_issues.md)
 - [Docker and Internal Network](troubleshooting/docker_and_internal_network.md)
 - [Storage, Database and Redis](troubleshooting/storage_db_and_redis.md)
+
+- [Checkpoint resume batch](development/resume-batch-2026-10-22.md): integrated M1 backends, functional UI, runtime fixes and outstanding acceptance work.
 
 ## Keeping the docs true
 
