@@ -272,7 +272,7 @@ The cross-tenant session issue in `sineva-ai` (AI-1) is also a security item; it
 | :--- | :--- |
 | Symptom | Controls under 44 px, `role="tab"` with no panel or arrow keys, a focus cue that is only a border color, no announcement of new replies, an input border under 3:1. |
 | Root cause | The UI was not checked against R-32. |
-| Location | `packages/ui/src/primitives/legacy.tsx` (`Button` `sm`), `client/components/sineva_dashboard.tsx`, `command_palette.tsx` |
+| Location | `client/components/sineva_dashboard.tsx`, `command_palette.tsx` (the legacy `Button` `sm` is gone: `SNButton` keeps a 44 px hit area on `xs` and `sm`) |
 | Severity | Medium |
 | Do not copy | A role the component does not implement. |
 | Suggested fix | The list and measured values are in [design system](../design-context/design_system.md). Fix with the UI rebuild and re-check by keyboard in both themes. |

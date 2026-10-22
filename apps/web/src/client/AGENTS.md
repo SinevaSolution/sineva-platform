@@ -17,6 +17,13 @@ Browser-side UI: `components/` and the Redux store in `store/`. Rules R-08, R-14
 - Semantic tokens only (`var(--color-surface)`), no raw hex (R-30). Check both themes. Never write `dark:`; semantic tokens swap under `data-theme` by themselves (lint bans it, with hex, `rgb(`, arbitrary `z-[n]` and physical-direction classes such as `ml-` or `left-`).
 - Keyboard access, visible focus, AA contrast, `prefers-reduced-motion` (R-32).
 
+## Components
+
+- Every shared component is an `SN` component from `@sineva/ui` ([ADR-0028](../../../../docs/decisions/0028-sn-component-prefix-and-form-controls.md)): `SNButton`, `SNIconButton`, `SNInput`, `SNField`, `SNSelect`, `SNCombobox`, `SNDialog`, `SNDropdownMenu`, `snToast`. A new shared component gets the `SN` prefix and the `sn_x/` folder; a feature component keeps its domain name.
+- Dropdown fields are `SNSelect` (short list) or `SNCombobox` (long, searchable). A native `<select>` fails lint (`sineva-design/no-native-select`). Do not import `@radix-ui/*` or `sonner` in app code; use the `SN` wrapper (`snToast.error(...)`, not `toast.error(...)`).
+- An icon-only button is an `SNIconButton` with a `label` (accessible name and tooltip). Menus use `SNDropdownMenu`, confirmations `SNConfirmDialog`, side sheets `SNDrawer`.
+- Without tailwind-merge in `@sineva/ui`, do not restyle a variant with `className`; pick the right size or variant, or add one to the component.
+
 ## Redux
 
 - Typed hooks only: `useAppDispatch`, `useAppSelector`.

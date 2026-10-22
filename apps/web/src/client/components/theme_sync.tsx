@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { toast } from 'sonner';
+import { snToast } from '@sineva/ui';
 import { savePreferences } from '@/client/lib/preferences';
 import { themeToApply } from '@/client/lib/preference_sync_model';
 import { useApiErrorText } from '@/client/lib/use_api_error';
@@ -61,7 +61,7 @@ export function usePersistedTheme() {
   const choose = React.useCallback(
     (next: PreferencesView['theme']) => {
       setPreference(next);
-      savePreferences({ theme: next }).catch((error: unknown) => toast.error(errorText(error)));
+      savePreferences({ theme: next }).catch((error: unknown) => snToast.error(errorText(error)));
     },
     [setPreference, errorText],
   );

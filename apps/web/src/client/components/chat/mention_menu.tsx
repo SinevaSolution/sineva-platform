@@ -1,7 +1,7 @@
 import * as React from 'react';
 import type { ShellSpecialistView } from '@/shared/shell_view';
 import { cn } from '@/client/components/ui/cn';
-import { SinoFigure } from '@/client/components/ui/sino_figure';
+import { SNSinoFigure } from '@/client/components/ui/sn_sino_figure';
 import { specialistPose } from '@/client/components/ui/specialist_accent';
 import { useTranslations } from '@/i18n/provider';
 
@@ -74,7 +74,7 @@ export function MentionMenu({
               i === activeIndex && 'bg-(--state-hover)',
             )}
           >
-            <SinoFigure pose={specialistPose(item.agent_slug)} size={32} />
+            <SNSinoFigure pose={specialistPose(item.agent_slug)} size={32} />
             <span className="font-medium">{item.display_name}</span>
             <span className="min-w-0 flex-1 truncate text-text-tertiary">{item.role_title}</span>
           </li>

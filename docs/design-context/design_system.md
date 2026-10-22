@@ -31,21 +31,26 @@ related_docs:
 
 ## Components
 
-`packages/ui/src/index.ts` exports the primitives (the legacy ones live in `primitives/legacy.tsx` until WP-M0-39 replaces them; the package layout is in [turborepo workspaces](../project-structure/turborepo_workspaces.md)). `apps/web` has no other shared components besides the dashboard, the command palette and the theme toggle.
+**Naming rule ([ADR-0028](../decisions/0028-sn-component-prefix-and-form-controls.md)).** Every design-system component and type exported from `@sineva/ui` starts with `SN` (`SNButton`, `SNButtonProps`, `SNSelect`). Files are snake_case with the prefix: `packages/ui/src/primitives/sn_button/sn_button.tsx`, `sn_button.test.tsx`, `sn_button.gallery.tsx`, one folder per component. Hooks and helpers keep normal names (`cx`, `focusRing`, `snToast`, `formatDate`). `packages/ui/src/__tests__/naming.test.ts` fails on an export that breaks the rule. Feature components in `apps/web/src/client/components/<feature>/` keep domain names (`ProfileForm`, `AppShell`); the shared Sino pieces in `components/ui/` carry the prefix (`SNSinoFigure`, `SNSinoLoop`, `SNSpecialistTile`).
 
-| Component | Variants and behavior |
+`packages/ui/src/index.ts` exports the components below; the package layout is in [turborepo workspaces](../project-structure/turborepo_workspaces.md). Static class maps and `cx`, never `tailwind-merge` or `cva`. Strings (labels, aria names, empty text) always come in as props so the app translates them.
+
+| Group | Components |
 | :--- | :--- |
-| `Button` | `variant`: `primary`, `secondary`, `ghost`, `sun`. `size`: `sm` (min height 38 px), `md` (44 px), `lg` (48 px), `icon` (44 by 44 px). `asChild` renders through Radix `Slot` (used for links). `focus-visible` outline: 2 px in `--color-focus`, 2 px offset. Disabled: 50 percent opacity and no pointer events. |
-| `Card` | Rounded, bordered surface. `elevated` adds a shadow. |
-| `Badge` | `tone`: `teal`, `sun`, `neutral`, `success`, `warning`. |
-| `StatusPill` | `status`: `online`, `degraded`, `offline`, `standby`, with a dot and a label. |
-| `Container` | `size`: `narrow` (`max-w-4xl`), `default` (`max-w-7xl`), `wide` (1440 px). Horizontal padding 16, 24, 32 px by breakpoint. |
-| `cn` | `clsx` plus `tailwind-merge`. |
+| Actions | `SNButton` (variants `primary`, `dark`, `secondary`, `ghost`, `danger`, `link`; sizes `xs` 28, `sm` 36, `md` 40 (44 on coarse pointers), `lg` 44, the small ones keep a 44 px hit area; `shape` `square` or `pill`; `loading` keeps the label and sets `aria-busy`; `asChild` for links), `SNIconButton` (`label` is required and doubles as the tooltip; optional `tooltip` text, `pressed` for toggles), `SNSpinner` |
+| Inputs | `SNField` (label, hint, error, `trailing`; wires `aria-describedby` and sets `aria-invalid` only with an error; the control inside reads it from context), `SNInput` (adornments, password reveal), `SNTextarea` (counter row, announced only near the limit), `SNSelect` (single choice, Radix Select), `SNCombobox` (single choice with search, Radix Popover plus cmdk), `SNCheckbox`, `SNRadioGroup` (`list` or `cards`), `SNSwitch`, `SNSegmented`, `SNFormSection` |
+| Display and state | `SNCard`, `SNBadge` (tones include `review`, `running`, `paused`, `failed`, always icon plus text), `SNPill`, `SNStatusChip`, `SNAvatar`, `SNListCard`, `SNSkeleton`, `SNBanner`, `SNProgressBar`, `SNSinoStill`, `SNEmptyState`, `SNErrorState` (error copy maps from the machine code, `errorCodeToMessageKey`) |
+| Overlays | `SNTooltip` and `SNTooltipProvider`, `SNPopover`, `SNDropdownMenu` (with `Trigger`, `Content`, `Item`, `Separator`, `Label`), `SNDialog`, `SNConfirmDialog`, `SNDrawer` (side sheet, bottom sheet under 768 px unless `mobile="side"`), `SNToaster` and `snToast` (Sonner restyled with tokens) |
+
+Dropdown fields: use `SNSelect` for a short list and `SNCombobox` for a long or searchable one (time zones). A native `<select>` is banned in app code (`sineva-design/no-native-select`). Radix Select rejects an empty-string item value, so `SNSelect` maps `''` to an internal sentinel and a "Not set" option still works.
+
+`SNIconButton`, `SNInput` with its password reveal and `SNDrawer` render an `SNTooltip`, so an `SNTooltipProvider` must sit above them (`AppProviders` mounts one). Radix Dialog returns focus only to its own trigger; `SNDialog` and `SNDrawer` are controlled, so they remember the opener and restore focus themselves.
 
 Rules for new UI:
 
-- Use the primitives before writing a new one. Variants go through `class-variance-authority`.
+- Use the components before writing a new one. Variants are static maps in the component file.
 - Reference semantic tokens as utilities (`bg-surface`, `text-text-secondary`, `bg-action-primary`). No hex, no `rgb(`, no Tailwind palette colors, no `dark:`, no arbitrary `z-[n]` (R-30; `packages/ui` and `src/client` lint enforce it). The Google sign-in logo is the one documented exception (third-party brand colors).
+- Without `tailwind-merge`, a caller `className` is for layout only. Two utilities of the same property on one element are ordered by the stylesheet, not by the string; add a size or variant to the component's map instead, or use the `!` modifier for a deliberate one-off.
 - Client code never imports `@/server/**` (R-08). Types come from `src/shared`.
 
 ## Theming
@@ -63,7 +68,7 @@ Target size: WCAG 2.2 SC 2.5.8 (Target Size, Minimum, Level AA) asks for 24 by 2
 ### What is in place
 
 - Reduced motion: `globals.css` shortens animation and transition durations to 0.01 ms under `prefers-reduced-motion: reduce`.
-- Visible focus on `Button`. The command palette is a Radix `Dialog` (focus trap, Escape closes) with `aria-label` and a screen-reader title. `Cmd+K` or `Ctrl+K` toggles it.
+- Visible focus on every `SN` component (`focusRing`: 2 px `--color-focus`, 2 px offset). The command palette is a Radix `Dialog` (focus trap, Escape closes) with `aria-label` and a screen-reader title. `Cmd+K` or `Ctrl+K` toggles it.
 - The chat input has an `sr-only` label. The tab-like filter has `aria-label`.
 - Icon buttons have `aria-label`.
 

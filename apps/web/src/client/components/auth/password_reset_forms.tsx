@@ -2,12 +2,10 @@
 
 import Link from 'next/link';
 import * as React from 'react';
-import { Button, buttonVariants } from '@/client/components/ui/button';
-import { cn } from '@/client/components/ui/cn';
-import { Field, FormAlert } from '@/client/components/ui/field';
 import { ApiError, apiRequest } from '@/client/lib/api';
 import { useApiErrorText } from '@/client/lib/use_api_error';
 import { useTranslations } from '@/i18n/provider';
+import { SNBanner, SNButton, SNField, SNInput } from '@sineva/ui';
 
 const MIN_PASSWORD = 12;
 
@@ -39,17 +37,19 @@ export function ForgotPasswordForm() {
   if (sent) {
     // Same message whether or not the account exists.
     return (
-      <FormAlert tone="success">{t('forgot_password.sent')}</FormAlert>
+      <SNBanner tone="success">{t('forgot_password.sent')}</SNBanner>
     );
   }
 
   return (
     <form onSubmit={onSubmit} className="space-y-4" noValidate>
-      <Field label={t('fields.email')} name="email" type="email" autoComplete="email" required autoFocus />
-      {error ? <FormAlert>{error}</FormAlert> : null}
-      <Button type="submit" variant="primary" size="lg" className="w-full" disabled={pending}>
+      <SNField label={t('fields.email')} required>
+        <SNInput name="email" type="email" autoComplete="email" autoFocus />
+      </SNField>
+      {error ? <SNBanner tone="danger">{error}</SNBanner> : null}
+      <SNButton type="submit" variant="primary" size="lg" className="w-full" disabled={pending}>
         {pending ? t('forgot_password.submitting') : t('forgot_password.submit')}
-      </Button>
+      </SNButton>
     </form>
   );
 }
@@ -63,7 +63,7 @@ export function ResetPasswordForm({ token }: { token: string | null }) {
   const [fieldError, setFieldError] = React.useState<string | null>(null);
 
   if (!token) {
-    return <FormAlert>{t('reset_password.incomplete')}</FormAlert>;
+    return <SNBanner tone="danger">{t('reset_password.incomplete')}</SNBanner>;
   }
 
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
@@ -101,31 +101,31 @@ export function ResetPasswordForm({ token }: { token: string | null }) {
   if (done) {
     return (
       <div className="space-y-4">
-        <FormAlert tone="success">{t('reset_password.done')}</FormAlert>
-        <Link href="/sign-in" className={cn(buttonVariants({ variant: 'primary', size: 'lg' }), 'w-full')}>
-          {t('reset_password.go_sign_in')}
-        </Link>
+        <SNBanner tone="success">{t('reset_password.done')}</SNBanner>
+        <SNButton asChild variant="primary" size="lg" className="w-full">
+          <Link href="/sign-in">{t('reset_password.go_sign_in')}</Link>
+        </SNButton>
       </div>
     );
   }
 
   return (
     <form onSubmit={onSubmit} className="space-y-4" noValidate>
-      <Field
+      <SNField
         label={t('fields.new_password')}
-        name="password"
-        type="password"
-        autoComplete="new-password"
         required
-        autoFocus
         hint={t('sign_up.password_hint', { min: MIN_PASSWORD })}
         error={fieldError}
-      />
-      <Field label={t('fields.confirm_password')} name="confirm" type="password" autoComplete="new-password" required />
-      {error ? <FormAlert>{error}</FormAlert> : null}
-      <Button type="submit" variant="primary" size="lg" className="w-full" disabled={pending}>
+      >
+        <SNInput name="password" type="password" autoComplete="new-password" autoFocus />
+      </SNField>
+      <SNField label={t('fields.confirm_password')} required>
+        <SNInput name="confirm" type="password" autoComplete="new-password" />
+      </SNField>
+      {error ? <SNBanner tone="danger">{error}</SNBanner> : null}
+      <SNButton type="submit" variant="primary" size="lg" className="w-full" disabled={pending}>
         {pending ? t('reset_password.submitting') : t('reset_password.submit')}
-      </Button>
+      </SNButton>
     </form>
   );
 }

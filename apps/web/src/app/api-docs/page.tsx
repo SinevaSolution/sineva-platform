@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { ArrowLeft, FileCode2 } from 'lucide-react';
-import { Badge, Button, Card, Container } from '@sineva/ui';
+import { SNBadge, SNButton, SNCard } from '@sineva/ui';
 import { getOpenApiSpec } from '@/server/infrastructure/openapi/spec';
 
 export default function ApiDocsPage() {
@@ -11,7 +11,7 @@ export default function ApiDocsPage() {
 
   return (
     <div className="min-h-screen bg-[var(--color-canvas)] py-10 text-[var(--color-text)]">
-      <Container size="wide" className="space-y-8">
+      <div className="mx-auto w-full max-w-[1440px] space-y-8 px-4 sm:px-6 lg:px-8">
         <div className="flex flex-wrap items-center justify-between gap-4 border-b border-[var(--color-border)] pb-6">
           <div className="space-y-1">
             <div className="flex items-center gap-2">
@@ -19,7 +19,7 @@ export default function ApiDocsPage() {
               <h1 className="text-2xl font-bold tracking-tight">
                 Sineva Platform OpenAPI 3.1 Explorer
               </h1>
-              <Badge tone="teal">OAS 3.1.0</Badge>
+              <SNBadge tone="brand">OAS 3.1.0</SNBadge>
             </div>
             <p className="text-sm text-[var(--color-text-muted)]">
               All endpoints enforce the standardized `snake_case` response
@@ -28,7 +28,7 @@ export default function ApiDocsPage() {
           </div>
 
           <div className="flex items-center gap-3">
-            <Button variant="secondary" size="sm" asChild>
+            <SNButton variant="secondary" size="sm" asChild>
               <a
                 href="/api/openapi.json"
                 target="_blank"
@@ -36,13 +36,13 @@ export default function ApiDocsPage() {
               >
                 Raw /api/openapi.json
               </a>
-            </Button>
-            <Button variant="primary" size="sm" asChild>
+            </SNButton>
+            <SNButton variant="primary" size="sm" asChild>
               <Link href="/">
                 <ArrowLeft className="h-4 w-4" />
                 <span>Back to Companion Hub</span>
               </Link>
-            </Button>
+            </SNButton>
           </div>
         </div>
 
@@ -50,7 +50,7 @@ export default function ApiDocsPage() {
           <div className="space-y-4 lg:col-span-5">
             <h2 className="text-lg font-bold">Registered BFF Endpoints</h2>
             {paths.map(([routePath, methods]) => (
-              <Card key={routePath} elevated className="space-y-3">
+              <SNCard key={routePath} elevated padding="lg" className="space-y-3">
                 <code className="text-sm font-bold text-[var(--color-action-primary)]">
                   {routePath}
                 </code>
@@ -61,7 +61,7 @@ export default function ApiDocsPage() {
                       className="flex items-center justify-between rounded-md border border-[var(--color-border)] bg-[var(--color-surface-muted)]/60 px-3 py-2 text-xs"
                     >
                       <div className="flex items-center gap-2">
-                        <Badge tone="teal">{httpVerb.toUpperCase()}</Badge>
+                        <SNBadge tone="brand">{httpVerb.toUpperCase()}</SNBadge>
                         <span className="font-medium">{meta.summary}</span>
                       </div>
                       <span className="font-mono text-[var(--color-text-muted)]">
@@ -70,23 +70,23 @@ export default function ApiDocsPage() {
                     </div>
                   ))}
                 </div>
-              </Card>
+              </SNCard>
             ))}
           </div>
 
-          <Card elevated className="lg:col-span-7 space-y-3">
+          <SNCard elevated padding="lg" className="lg:col-span-7 space-y-3">
             <div className="flex items-center justify-between">
               <h2 className="text-lg font-bold">
                 Full OpenAPI 3.1 Specification JSON
               </h2>
-              <Badge tone="neutral">snake_case schema</Badge>
+              <SNBadge tone="neutral">snake_case schema</SNBadge>
             </div>
             <pre className="max-h-[680px] overflow-auto rounded-md border border-[var(--color-border)] bg-[var(--ink-950)] p-4 font-mono text-xs text-emerald-300 leading-relaxed">
               {JSON.stringify(spec, null, 2)}
             </pre>
-          </Card>
+          </SNCard>
         </div>
-      </Container>
+      </div>
     </div>
   );
 }

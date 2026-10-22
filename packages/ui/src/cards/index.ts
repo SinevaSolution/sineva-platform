@@ -1,9 +1,9 @@
-export { CardRenderer } from './card_renderer';
-export { FallbackCard } from './fallback_card';
+export { SNCardRenderer } from './sn_card_renderer';
+export { SNFallbackCard } from './sn_fallback_card';
 export { CARD_RENDERERS, cardKey, resolveCardRenderer } from './registry';
 export type {
-  CardComponent,
-  CardComponentProps,
-  CardLabels,
-  CardRenderInput,
+  SNCardComponent,
+  SNCardComponentProps,
+  SNCardLabels,
+  SNCardRenderInput,
 } from './types';

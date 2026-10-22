@@ -5,7 +5,7 @@ import { PreferencesForm } from '@/client/components/settings/preferences_form';
 import { ProfileForm } from '@/client/components/settings/profile_form';
 import { SettingsShell } from '@/client/components/settings/settings_shell';
 import { SignInMethods } from '@/client/components/settings/sign_in_methods';
-import { TooltipProvider } from '@/client/components/ui/tooltip';
+import { SNTooltipProvider } from '@sineva/ui';
 import { CATALOGS } from '@/i18n/catalogs';
 import { I18nProvider } from '@/i18n/provider';
 import type { PreferencesView, ProfileView } from '@/shared/profile_view';
@@ -42,7 +42,7 @@ const preferences: PreferencesView = {
 const inLocale = (locale: 'en' | 'id', node: React.ReactNode) =>
   renderToStaticMarkup(
     <I18nProvider locale={locale} messages={CATALOGS[locale]}>
-      <TooltipProvider>{node}</TooltipProvider>
+      <SNTooltipProvider>{node}</SNTooltipProvider>
     </I18nProvider>,
   );
 
@@ -74,6 +74,18 @@ describe('ProfileForm rendering', () => {
     }
     expect(html).toContain('role="switch"');
     expect(html).toContain('7 of 280');
+  });
+
+  it('uses SNSelect and SNCombobox for every dropdown, never a native select', () => {
+    const html = inLocale('en', form);
+    // Locale, time zone, salutation and department are four combobox buttons.
+    expect(html.match(/role="combobox"/g)).toHaveLength(4);
+    // Radix renders its hidden native select only for the form value; the
+    // visible controls are buttons.
+    expect(html).toContain('aria-haspopup="listbox"');
+    expect(html).toContain('Asia/Jakarta');
+    // The searchable one is the time zone.
+    expect(html).toMatch(/id="[^"]*-timezone"[^>]*role="combobox"|role="combobox"[^>]*id="[^"]*-timezone"/);
   });
 
   it('starts clean: no save bar until something changes', () => {

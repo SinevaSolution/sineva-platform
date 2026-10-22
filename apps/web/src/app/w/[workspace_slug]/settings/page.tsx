@@ -2,8 +2,8 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { ComingSoon } from '@/client/components/shell/coming_soon';
 import { FEATURES } from '@/client/components/shell/nav_model';
-import { buttonVariants } from '@/client/components/ui/button';
 import { getTranslations } from '@/i18n/server';
+import { SNButton } from '@sineva/ui';
 
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getTranslations('shell');
@@ -20,9 +20,9 @@ export default async function SettingsPage({ params }: { params: Promise<{ works
       blurb={t(FEATURES.settings.blurbKey)}
       workspaceSlug={workspace_slug}
     >
-      <Link href={`/w/${workspace_slug}/settings/profile`} className={buttonVariants({ variant: 'secondary' })}>
-        {tAccount('settings.edit_profile')}
-      </Link>
+      <SNButton asChild variant="secondary" size="sm">
+        <Link href={`/w/${workspace_slug}/settings/profile`}>{tAccount('settings.edit_profile')}</Link>
+      </SNButton>
     </ComingSoon>
   );
 }

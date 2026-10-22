@@ -38,7 +38,7 @@ describe('packages/ui structure (FR-DS-02)', () => {
     const index = readFileSync(join(SRC, 'index.ts'), 'utf8');
     expect(index).not.toMatch(/export\s+default/);
     expect(index).not.toMatch(/export\s+\*/);
-    expect(index).toMatch(/export\s*\{[^}]*\bButton\b[^}]*\}/);
+    expect(index).toMatch(/export\s*\{[^}]*\bSNButton\b[^}]*\}/);
   });
 
   it('has no default exports anywhere in the package', () => {
@@ -61,10 +61,10 @@ describe('packages/ui structure (FR-DS-02)', () => {
     expect(missing).toEqual([]);
   });
 
-  it('uses tailwind-merge only in the legacy primitives, never in new components (static class maps)', () => {
+  it('never uses tailwind-merge or cva in components (static class maps)', () => {
     const users = sources
-      .filter((file) => /from\s+['"]tailwind-merge['"]/.test(readFileSync(file, 'utf8')))
+      .filter((file) => /from\s+['"](tailwind-merge|class-variance-authority)['"]/.test(readFileSync(file, 'utf8')))
       .map((file) => file.replace(`${SRC}/`, ''));
-    expect(users).toEqual(['primitives/legacy.tsx']);
+    expect(users).toEqual([]);
   });
 });

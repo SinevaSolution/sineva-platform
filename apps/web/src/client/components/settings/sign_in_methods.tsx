@@ -3,7 +3,7 @@
 import { Mail } from 'lucide-react';
 import * as React from 'react';
 import { GitHubMark, GoogleMark } from '@/client/components/auth/oauth_buttons';
-import { Pill } from '@/client/components/ui/controls';
+import { SNPill } from '@sineva/ui';
 import { useTranslations } from '@/i18n/provider';
 import { SettingsRow, SettingsSection } from './settings_layout';
 
@@ -53,9 +53,9 @@ export function SignInMethods({
             <Mark>
               <GoogleMark />
             </Mark>
-            <Pill tone={byProvider.has('google') ? 'positive' : 'neutral'}>
+            <SNPill tone={byProvider.has('google') ? 'positive' : 'neutral'}>
               {byProvider.has('google') ? t('profile.linked') : t('profile.not_linked')}
-            </Pill>
+            </SNPill>
           </span>
         </SettingsRow>
         <SettingsRow inline label={t('sign_in.github')} helper={detail(byProvider.get('github'))}>
@@ -63,9 +63,9 @@ export function SignInMethods({
             <Mark>
               <GitHubMark />
             </Mark>
-            <Pill tone={byProvider.has('github') ? 'positive' : 'neutral'}>
+            <SNPill tone={byProvider.has('github') ? 'positive' : 'neutral'}>
               {byProvider.has('github') ? t('profile.linked') : t('profile.not_linked')}
-            </Pill>
+            </SNPill>
           </span>
         </SettingsRow>
         <SettingsRow inline label={t('sign_in.password')} helper={email}>
@@ -73,9 +73,9 @@ export function SignInMethods({
             <Mark>
               <Mail className="text-text-secondary" />
             </Mark>
-            <Pill tone={hasPassword ? 'positive' : 'neutral'}>
+            <SNPill tone={hasPassword ? 'positive' : 'neutral'}>
               {hasPassword ? t('sign_in.password_set') : t('sign_in.password_not_set')}
-            </Pill>
+            </SNPill>
           </span>
         </SettingsRow>
       </SettingsSection>

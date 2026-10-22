@@ -3,11 +3,10 @@
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import * as React from 'react';
-import { Button } from '@/client/components/ui/button';
-import { Field, FormAlert } from '@/client/components/ui/field';
 import { ApiError, apiRequest } from '@/client/lib/api';
 import { useApiErrorText } from '@/client/lib/use_api_error';
 import { useTranslations } from '@/i18n/provider';
+import { SNBanner, SNButton, SNField, SNInput } from '@sineva/ui';
 
 export function SignInForm({
   initialError,
@@ -45,23 +44,24 @@ export function SignInForm({
 
   return (
     <form onSubmit={onSubmit} className="space-y-4" noValidate>
-      <Field label={t('fields.email')} name="email" type="email" autoComplete="email" required autoFocus />
-      <Field
+      <SNField label={t('fields.email')} required>
+        <SNInput name="email" type="email" autoComplete="email" autoFocus />
+      </SNField>
+      <SNField
         label={t('fields.password')}
-        name="password"
-        type="password"
-        autoComplete="current-password"
         required
         trailing={
           <Link href="/forgot-password" className="text-[13px] text-text-brand underline-offset-4 hover:underline">
             {t('sign_in.forgot_link')}
           </Link>
         }
-      />
-      {error ? <FormAlert>{error}</FormAlert> : null}
-      <Button type="submit" variant="primary" size="lg" className="w-full" disabled={pending}>
+      >
+        <SNInput name="password" type="password" autoComplete="current-password" />
+      </SNField>
+      {error ? <SNBanner tone="danger">{error}</SNBanner> : null}
+      <SNButton type="submit" variant="primary" size="lg" className="w-full" disabled={pending}>
         {pending ? t('sign_in.submitting') : t('sign_in.submit')}
-      </Button>
+      </SNButton>
     </form>
   );
 }

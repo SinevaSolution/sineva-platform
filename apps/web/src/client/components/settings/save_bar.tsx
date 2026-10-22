@@ -1,7 +1,7 @@
 'use client';
 
-import { Button } from '@/client/components/ui/button';
 import { useTranslations } from '@/i18n/provider';
+import { SNButton } from '@sineva/ui';
 
 /**
  * Appears at the bottom of the content column as soon as the form differs from
@@ -29,12 +29,12 @@ export function SaveBar({
         <p className="min-w-0 flex-1 text-[13px] font-medium text-text" aria-live="polite">
           {t('save_bar.unsaved')}
         </p>
-        <Button variant="ghost" size="md" onClick={onDiscard} disabled={pending}>
+        <SNButton variant="ghost" size="sm" onClick={onDiscard} disabled={pending}>
           {t('save_bar.discard')}
-        </Button>
-        <Button variant="primary" size="md" onClick={onSave} disabled={!canSave || pending}>
+        </SNButton>
+        <SNButton variant="primary" size="sm" onClick={onSave} disabled={!canSave || pending}>
           {pending ? t('save_bar.saving') : t('save_bar.save')}
-        </Button>
+        </SNButton>
       </div>
     </div>
   );

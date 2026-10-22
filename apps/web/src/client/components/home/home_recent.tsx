@@ -6,7 +6,7 @@ import { ConversationActions } from '@/client/components/conversation/conversati
 import { InlineTitleEdit } from '@/client/components/conversation/inline_title_edit';
 import { useConversationActions } from '@/client/components/conversation/use_conversation_actions';
 import { chatMarker } from '@/client/components/shell/nav_model';
-import { SinoFigure } from '@/client/components/ui/sino_figure';
+import { SNSinoFigure } from '@/client/components/ui/sn_sino_figure';
 import { apiRequest } from '@/client/lib/api';
 import { useAppSelector } from '@/client/store/hooks';
 import { formatRelativeTime } from '@sineva/ui/format';
@@ -67,7 +67,7 @@ export function HomeRecent({
   if (items.length === 0) {
     return (
       <div className="flex items-center gap-3 rounded-md border border-dashed border-border-strong p-4">
-        <SinoFigure pose="wave" size={44} />
+        <SNSinoFigure pose="wave" size={44} />
         <p className="text-sm text-text-secondary">
           {t.rich('home.recent_empty', {
             link: (
@@ -93,7 +93,7 @@ export function HomeRecent({
           <li key={c.id} className="group relative">
             {editingId === c.id ? (
               <div className="flex items-center gap-3 rounded-md border border-border-strong bg-(--state-hover) p-2 pe-3">
-                <SinoFigure pose={marker.pose} size={40} />
+                <SNSinoFigure pose={marker.pose} size={40} />
                 <span className="min-w-0 flex-1">
                   <InlineTitleEdit
                     value={c.title}
@@ -125,7 +125,7 @@ export function HomeRecent({
                   href={`/w/${workspaceSlug}/chat/${c.id}`}
                   className="flex items-center gap-3 rounded-md border border-border p-2 pe-11 transition-colors hover:border-border-strong hover:bg-(--state-hover)"
                 >
-                  <SinoFigure pose={marker.pose} size={40} />
+                  <SNSinoFigure pose={marker.pose} size={40} />
                   <span className="min-w-0 flex-1">
                     <span className="block truncate text-sm font-medium text-text">{title}</span>
                     <span className="text-xs text-text-tertiary">

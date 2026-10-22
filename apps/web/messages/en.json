@@ -2,6 +2,7 @@
   "common": {
     "loading": "Loading",
     "try_again": "Try again",
+    "close": "Close",
     "theme": {
       "toggle": "Toggle color theme",
       "aria_to_light": "Switch to light theme",
@@ -244,6 +245,9 @@
       "language_helper": "The language of the app. Sino's replies follow your messages.",
       "time_zone": "Time zone",
       "time_zone_helper": "Used for dates, times and schedules.",
+      "time_zone_placeholder": "Choose a time zone",
+      "time_zone_search": "Search time zones",
+      "time_zone_empty": "No time zone found",
       "section_workspace": "In {workspace}",
       "job_title": "Job title",
       "job_title_helper": "Shown to the people in this workspace.",

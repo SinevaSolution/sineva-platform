@@ -51,6 +51,7 @@ Items marked "cross-service" are mirrored in `sineva-ai` (`docs/decisions/` ther
 | [0025](0025-card-schema-registry.md) | Card schema registry, validation, `message_cards`, fallback renderer (cross-service) | You add a card type or touch card validation |
 | [0026](0026-profile-preferences-and-avatar-pipeline.md) | `/me` profile resource, `user_preferences` table, presigned avatar upload re-encoded with sharp | You touch profile fields, preferences or avatars |
 | [0027](0027-design-token-source-and-vendoring.md) | Compro tokens vendored into `packages/ui/src/styles`, snapshot plus drift test, compro wins | You touch colors, type, radius, shadows, z-index or theme |
+| [0028](0028-sn-component-prefix-and-form-controls.md) | Every design-system component starts with `SN`; dropdown fields are `SNSelect` and `SNCombobox`, never a native select | You add or rename a shared component, or need a dropdown |
 
 ## Suggested reading order
 

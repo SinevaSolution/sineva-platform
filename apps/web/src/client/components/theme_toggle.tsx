@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 import { Moon, Sun } from 'lucide-react';
-import { Button } from '@sineva/ui';
+import { SNIconButton } from '@sineva/ui';
 import { useTheme } from '@/client/lib/use_theme';
 import { useTranslations } from '@/i18n/provider';
 
@@ -19,32 +19,23 @@ export function ThemeToggle() {
 
   if (!mounted) {
     return (
-      <Button
-        variant="secondary"
-        size="icon"
-        aria-label={t('theme.toggle')}
-        disabled
-      >
-        <Sun className="h-4 w-4" />
-      </Button>
+      <SNIconButton variant="secondary" size="lg" label={t('theme.toggle')} disabled>
+        <Sun aria-hidden="true" />
+      </SNIconButton>
     );
   }
 
   const isDark = theme === 'dark';
 
   return (
-    <Button
+    <SNIconButton
       variant="secondary"
-      size="icon"
+      size="lg"
       onClick={toggle}
-      aria-label={isDark ? t('theme.aria_to_light') : t('theme.aria_to_dark')}
-      title={isDark ? t('theme.title_to_light') : t('theme.title_to_dark')}
+      label={isDark ? t('theme.aria_to_light') : t('theme.aria_to_dark')}
+      tooltip={isDark ? t('theme.title_to_light') : t('theme.title_to_dark')}
     >
-      {isDark ? (
-        <Sun className="h-4 w-4 text-warning" />
-      ) : (
-        <Moon className="h-4 w-4 text-text-brand" />
-      )}
-    </Button>
+      {isDark ? <Sun aria-hidden="true" className="text-warning" /> : <Moon aria-hidden="true" className="text-text-brand" />}
+    </SNIconButton>
   );
 }

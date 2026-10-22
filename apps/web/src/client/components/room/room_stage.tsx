@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 import { cn } from '@/client/components/ui/cn';
-import { SinoLoop } from '@/client/components/ui/sino_loop';
+import { SNSinoLoop } from '@/client/components/ui/sn_sino_loop';
 import { roomFor, roomLoop, type RoomMood } from './room_model';
 
 /**
@@ -11,7 +11,7 @@ import { roomFor, roomLoop, type RoomMood } from './room_model';
  * stands on the room floor on the right, switching loops with the chat's
  * mood. The pointer moves the room and Sino a few pixels in opposite
  * directions for depth. Under reduced motion the parallax is off and Sino is
- * a still poster (SinoLoop handles that).
+ * a still poster (SNSinoLoop handles that).
  *
  * The background is a CSS image-set (AVIF, then WebP) over a tinted
  * gradient, so a room that is not rendered yet still looks intentional.
@@ -103,7 +103,7 @@ export function RoomStage({
             <span className={cn('size-1.5 rounded-full', mood === 'working' ? 'animate-pulse bg-warning' : 'bg-success')} />
             {label}
           </div>
-          <SinoLoop key={roomLoop(slug, mood)} loop={roomLoop(slug, mood)} priority className="anim-fade relative" />
+          <SNSinoLoop key={roomLoop(slug, mood)} loop={roomLoop(slug, mood)} priority className="anim-fade relative" />
         </div>
       </div>
       {/* Scrim: darker behind the chat column, clear where Sino stands. */}

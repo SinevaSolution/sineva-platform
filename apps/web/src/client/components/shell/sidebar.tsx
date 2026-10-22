@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import * as React from 'react';
 import { cn } from '@/client/components/ui/cn';
-import { Tooltip } from '@/client/components/ui/tooltip';
+import { SNTooltip } from '@sineva/ui';
 import { useAppDispatch, useAppSelector } from '@/client/store/hooks';
 import { useTranslations } from '@/i18n/provider';
 import { toggleSidebarSection } from '@/client/store/slices/ui_slice';
@@ -77,7 +77,7 @@ export function Sidebar({
       <div className={cn('flex items-center gap-1', collapsed ? 'flex-col' : 'justify-between')}>
         <WorkspaceMenu workspace={workspace} workspaces={workspaces} user={user} compact={collapsed} />
         {onToggleCollapsed ? (
-          <Tooltip label={collapsed ? t('sidebar.expand') : t('sidebar.collapse')} shortcut="[" side={collapsed ? 'right' : 'bottom'}>
+          <SNTooltip label={collapsed ? t('sidebar.expand') : t('sidebar.collapse')} shortcut="[" side={collapsed ? 'right' : 'bottom'}>
             <button
               type="button"
               onClick={onToggleCollapsed}
@@ -90,7 +90,7 @@ export function Sidebar({
                 <PanelLeftClose aria-hidden="true" className="size-4" strokeWidth={1.75} />
               )}
             </button>
-          </Tooltip>
+          </SNTooltip>
         ) : null}
       </div>
 
@@ -191,9 +191,9 @@ function NavRow({
       {/* Expanded rows show their label, so only "soon" rows need a tooltip
           there; in the rail every icon gets one. */}
       {compact || item.soon ? (
-        <Tooltip label={item.soon ? t('sidebar.tooltip_soon', { label }) : label} side="right">
+        <SNTooltip label={item.soon ? t('sidebar.tooltip_soon', { label }) : label} side="right">
           {link}
-        </Tooltip>
+        </SNTooltip>
       ) : (
         link
       )}

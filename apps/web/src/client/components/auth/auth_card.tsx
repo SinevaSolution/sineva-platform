@@ -1,9 +1,9 @@
 import Link from 'next/link';
 import * as React from 'react';
 import { cn } from '@/client/components/ui/cn';
-import { SinoFigure } from '@/client/components/ui/sino_figure';
+import { SNSinoFigure } from '@/client/components/ui/sn_sino_figure';
 import type { SinoPose } from '@/client/components/ui/specialist_accent';
-import { SinoLoop } from '@/client/components/ui/sino_loop';
+import { SNSinoLoop } from '@/client/components/ui/sn_sino_loop';
 import { ActivityTicker } from './activity_ticker';
 import { SceneCopy, type AuthScene } from './scene_copy';
 
@@ -76,7 +76,7 @@ export function AuthCard({
         </Link>
         <div className="mx-auto flex w-full max-w-[380px] flex-1 flex-col justify-center py-10">
           <div className="anim-rise">
-            <SinoFigure pose={pose} size={72} priority className="anim-float -ms-2 lg:hidden" />
+            <SNSinoFigure pose={pose} size={72} priority className="anim-float -ms-2 lg:hidden" />
             <h1 className="mt-2 text-2xl font-semibold tracking-[-0.02em] text-text">{title}</h1>
             {subtitle ? <p className="mt-1.5 text-sm text-text-secondary">{subtitle}</p> : null}
           </div>
@@ -137,14 +137,14 @@ function Lineup() {
             style={delay(120 + i * 110)}
           >
             <span className="anim-float block" style={delay(i * 600)}>
-              <SinoFigure pose={c.pose} size={84} priority />
+              <SNSinoFigure pose={c.pose} size={84} priority />
             </span>
           </li>
         ))}
       </ul>
       <div className="absolute bottom-0 start-1/2 w-[min(260px,19vw)] -translate-x-1/2 rtl:translate-x-1/2">
         <span className="absolute bottom-[4%] start-1/2 h-[7%] w-1/2 -translate-x-1/2 rtl:translate-x-1/2 rounded-[50%] bg-(image:--gradient-contact-shadow)" />
-        <SinoLoop loop="wave" priority className="anim-rise relative [--d:700ms]" />
+        <SNSinoLoop loop="wave" priority className="anim-rise relative [--d:700ms]" />
       </div>
     </div>
   );
@@ -165,7 +165,7 @@ function MailFlight() {
           className="anim-dash"
         />
       </svg>
-      <SinoLoop loop="flyby-mail" priority className="anim-rise relative" />
+      <SNSinoLoop loop="flyby-mail" priority className="anim-rise relative" />
     </div>
   );
 }
@@ -175,7 +175,7 @@ function SoloLoop({ loop }: { loop: 'build' | 'thumbs' }) {
   return (
     <div className="relative w-[min(380px,30vw,48vh)]">
       <span className="absolute bottom-[5%] start-1/2 h-[7%] w-1/2 -translate-x-1/2 rtl:translate-x-1/2 rounded-[50%] bg-(image:--gradient-contact-shadow)" />
-      <SinoLoop loop={loop} priority className="anim-rise relative" />
+      <SNSinoLoop loop={loop} priority className="anim-rise relative" />
     </div>
   );
 }
@@ -210,7 +210,7 @@ function Orbit() {
 
       {/* Sino */}
       <div className="anim-rise absolute inset-0 flex items-center justify-center">
-        <SinoFigure pose="wave" size={150} priority className="anim-float" />
+        <SNSinoFigure pose="wave" size={150} priority className="anim-float" />
       </div>
 
       {/* Cast */}
@@ -233,7 +233,7 @@ function Orbit() {
             >
               <div className="anim-orbit-upright">
                 <span className="anim-rise block" style={delay(200 + i * 70)}>
-                  <SinoFigure pose={c.pose} size={FIGURE} priority />
+                  <SNSinoFigure pose={c.pose} size={FIGURE} priority />
                 </span>
               </div>
             </div>

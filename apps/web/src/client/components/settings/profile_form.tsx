@@ -2,10 +2,17 @@
 
 import { useRouter } from 'next/navigation';
 import * as React from 'react';
-import { toast } from 'sonner';
-import { Pill, SelectInput, Switch, TextArea, TextInput } from '@/client/components/ui/controls';
-import { FormAlert } from '@/client/components/ui/field';
-import { SinoFigure } from '@/client/components/ui/sino_figure';
+import {
+  SNBanner,
+  SNCombobox,
+  SNInput,
+  SNPill,
+  SNSelect,
+  snToast,
+  SNSwitch,
+  SNTextarea,
+} from '@sineva/ui';
+import { SNSinoFigure } from '@/client/components/ui/sn_sino_figure';
 import { apiRequest } from '@/client/lib/api';
 import { useApiErrorText } from '@/client/lib/use_api_error';
 import { useTranslations } from '@/i18n/provider';
@@ -64,7 +71,10 @@ export function ProfileForm({
   const [serverErrors, setServerErrors] = React.useState<Partial<Record<keyof ProfileDraft, string>>>({});
   const [touched, setTouched] = React.useState<ReadonlySet<keyof ProfileDraft>>(new Set());
 
-  const zones = React.useMemo(() => timeZoneOptions(saved.timezone, timeZones), [saved.timezone, timeZones]);
+  const zoneOptions = React.useMemo(
+    () => timeZoneOptions(saved.timezone, timeZones).map((zone) => ({ value: zone, label: zone })),
+    [saved.timezone, timeZones],
+  );
   const patch = React.useMemo(() => buildProfilePatch(saved, draft), [saved, draft]);
   const dirty = hasChanges(patch);
   const clientErrors = validateDraft(draft);
@@ -134,7 +144,7 @@ export function ProfileForm({
       // Signed-out pages (sign-in after a sign-out) read the language from
       // this cookie, since the profile is only known while signed in.
       document.cookie = `${LOCALE_COOKIE}=${nextProfile.locale}; path=/; max-age=31536000; samesite=lax`;
-      toast.success(t('profile.saved'));
+      snToast.success(t('profile.saved'));
       // The shell and greetings read the name from the session on the server.
       router.refresh();
     } catch (err) {
@@ -152,7 +162,6 @@ export function ProfileForm({
   }
 
   const greeting = greetingName(draft);
-  const aboutCount = [...draft.about_me].length;
   const id = React.useId();
 
   return (
@@ -179,14 +188,14 @@ export function ProfileForm({
           <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1.5">
             <span className="min-w-0 truncate text-[13px] text-text-tertiary">{profile.email}</span>
             {profile.email_verified ? (
-              <Pill tone="positive">{t('profile.verified')}</Pill>
+              <SNPill tone="positive">{t('profile.verified')}</SNPill>
             ) : (
-              <Pill tone="neutral">{t('profile.not_verified')}</Pill>
+              <SNPill tone="neutral">{t('profile.not_verified')}</SNPill>
             )}
-            <Pill tone="neutral">{roleLabel(workspace.role)}</Pill>
+            <SNPill tone="neutral">{roleLabel(workspace.role)}</SNPill>
           </div>
         </div>
-        <SinoFigure pose="wave" size={84} className="hidden sm:inline-flex" />
+        <SNSinoFigure pose="wave" size={84} className="hidden sm:inline-flex" />
       </div>
 
       <SettingsSection title={t('profile.section_about')} delay={60}>
@@ -196,7 +205,7 @@ export function ProfileForm({
           htmlFor={`${id}-full_name`}
           error={fieldError('full_name')}
         >
-          <TextInput
+          <SNInput
             id={`${id}-full_name`}
             name="full_name"
             autoComplete="name"
@@ -214,7 +223,7 @@ export function ProfileForm({
           htmlFor={`${id}-preferred_name`}
           error={fieldError('preferred_name')}
         >
-          <TextInput
+          <SNInput
             id={`${id}-preferred_name`}
             name="preferred_name"
             autoComplete="nickname"
@@ -231,20 +240,20 @@ export function ProfileForm({
           helper={t('profile.salutation_helper')}
           htmlFor={`${id}-salutation`}
         >
-          <SelectInput
+          <SNSelect
             id={`${id}-salutation`}
             name="salutation"
             value={draft.salutation}
             aria-describedby={`${id}-salutation-helper`}
-            onChange={(e) => set('salutation', e.target.value as ProfileDraft['salutation'])}
-          >
-            <option value="">{t('profile.salutation_unset')}</option>
-            {SALUTATIONS.map((value) => (
-              <option key={value} value={value}>
-                {value === 'none' ? t('profile.salutation_none') : SALUTATION_WORDS[value]}
-              </option>
-            ))}
-          </SelectInput>
+            onValueChange={(value) => set('salutation', value as ProfileDraft['salutation'])}
+            options={[
+              { value: '', label: t('profile.salutation_unset') },
+              ...SALUTATIONS.map((value) => ({
+                value,
+                label: value === 'none' ? t('profile.salutation_none') : SALUTATION_WORDS[value],
+              })),
+            ]}
+          />
         </SettingsRow>
         <SettingsRow
           label={t('profile.about_me')}
@@ -252,7 +261,7 @@ export function ProfileForm({
           htmlFor={`${id}-about_me`}
           error={fieldError('about_me')}
         >
-          <TextArea
+          <SNTextarea
             id={`${id}-about_me`}
             name="about_me"
             rows={4}
@@ -261,10 +270,9 @@ export function ProfileForm({
             aria-describedby={`${id}-about_me-helper`}
             onChange={(e) => set('about_me', e.target.value)}
             onBlur={touch('about_me')}
+            max={ABOUT_ME_MAX}
+            formatCounter={(count, max) => t('profile.about_me_count', { count, max })}
           />
-          <p className="mt-1 text-end text-xs text-text-tertiary">
-            {t('profile.about_me_count', { count: aboutCount, max: ABOUT_ME_MAX })}
-          </p>
         </SettingsRow>
         <SettingsRow
           inline
@@ -272,7 +280,7 @@ export function ProfileForm({
           helper={t('profile.use_context_helper')}
           htmlFor={`${id}-use_context`}
         >
-          <Switch
+          <SNSwitch
             id={`${id}-use_context`}
             checked={draft.use_profile_in_context}
             aria-describedby={`${id}-use_context-helper`}
@@ -283,7 +291,7 @@ export function ProfileForm({
 
       <SettingsSection title={t('profile.section_contact')} delay={120}>
         <SettingsRow label={t('profile.email')} helper={t('profile.email_helper')} htmlFor={`${id}-email`}>
-          <TextInput id={`${id}-email`} name="email" type="email" value={profile.email} readOnly />
+          <SNInput id={`${id}-email`} name="email" type="email" value={profile.email} readOnly />
         </SettingsRow>
         <SettingsRow
           label={t('profile.phone')}
@@ -291,7 +299,7 @@ export function ProfileForm({
           htmlFor={`${id}-phone`}
           error={fieldError('phone_number')}
         >
-          <TextInput
+          <SNInput
             id={`${id}-phone`}
             name="phone_number"
             type="tel"
@@ -308,34 +316,28 @@ export function ProfileForm({
 
       <SettingsSection title={t('profile.section_region')} delay={180}>
         <SettingsRow label={t('profile.language')} helper={t('profile.language_helper')} htmlFor={`${id}-locale`}>
-          <SelectInput
+          <SNSelect
             id={`${id}-locale`}
             name="locale"
             value={draft.locale}
             aria-describedby={`${id}-locale-helper`}
-            onChange={(e) => set('locale', e.target.value)}
-          >
-            {LOCALE_OPTIONS.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </SelectInput>
+            onValueChange={(value) => set('locale', value)}
+            options={LOCALE_OPTIONS}
+          />
         </SettingsRow>
         <SettingsRow label={t('profile.time_zone')} helper={t('profile.time_zone_helper')} htmlFor={`${id}-timezone`}>
-          <SelectInput
+          <SNCombobox
             id={`${id}-timezone`}
             name="timezone"
             value={draft.timezone}
             aria-describedby={`${id}-timezone-helper`}
-            onChange={(e) => set('timezone', e.target.value)}
-          >
-            {zones.map((zone) => (
-              <option key={zone} value={zone}>
-                {zone}
-              </option>
-            ))}
-          </SelectInput>
+            onValueChange={(value) => set('timezone', value)}
+            options={zoneOptions}
+            placeholder={t('profile.time_zone_placeholder')}
+            searchPlaceholder={t('profile.time_zone_search')}
+            searchLabel={t('profile.time_zone_search')}
+            emptyLabel={t('profile.time_zone_empty')}
+          />
         </SettingsRow>
       </SettingsSection>
 
@@ -346,7 +348,7 @@ export function ProfileForm({
           htmlFor={`${id}-job_title`}
           error={fieldError('job_title')}
         >
-          <TextInput
+          <SNInput
             id={`${id}-job_title`}
             name="job_title"
             autoComplete="organization-title"
@@ -363,24 +365,21 @@ export function ProfileForm({
           helper={t('profile.department_helper')}
           htmlFor={`${id}-department`}
         >
-          <SelectInput
+          <SNSelect
             id={`${id}-department`}
             name="department"
             value={draft.department}
             aria-describedby={`${id}-department-helper`}
-            onChange={(e) => set('department', e.target.value as ProfileDraft['department'])}
-          >
-            <option value="">{t('profile.department_unset')}</option>
-            {DEPARTMENTS.map((value) => (
-              <option key={value} value={value}>
-                {departmentLabel(value)}
-              </option>
-            ))}
-          </SelectInput>
+            onValueChange={(value) => set('department', value as ProfileDraft['department'])}
+            options={[
+              { value: '', label: t('profile.department_unset') },
+              ...DEPARTMENTS.map((value) => ({ value, label: departmentLabel(value) })),
+            ]}
+          />
         </SettingsRow>
       </SettingsSection>
 
-      {formError ? <FormAlert>{formError}</FormAlert> : null}
+      {formError ? <SNBanner tone="danger">{formError}</SNBanner> : null}
 
       <SaveBar visible={dirty} pending={pending} canSave={canSave} onSave={() => void save()} onDiscard={discard} />
     </form>

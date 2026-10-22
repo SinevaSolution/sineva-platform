@@ -1,6 +1,7 @@
 {
   "common": {
     "loading": "Memuat",
+    "close": "Tutup",
     "try_again": "Coba lagi",
     "theme": {
       "toggle": "Ganti tema warna",
@@ -244,6 +245,9 @@
       "language_helper": "Bahasa aplikasi. Balasan Sino mengikuti pesanmu.",
       "time_zone": "Zona waktu",
       "time_zone_helper": "Dipakai untuk tanggal, jam, dan jadwal.",
+      "time_zone_placeholder": "Pilih zona waktu",
+      "time_zone_search": "Cari zona waktu",
+      "time_zone_empty": "Zona waktu tidak ditemukan",
       "section_workspace": "Di {workspace}",
       "job_title": "Jabatan",
       "job_title_helper": "Terlihat oleh orang-orang di workspace ini.",

@@ -10,7 +10,7 @@ import { ConversationActions } from '@/client/components/conversation/conversati
 import { InlineTitleEdit } from '@/client/components/conversation/inline_title_edit';
 import { useConversationActions } from '@/client/components/conversation/use_conversation_actions';
 import { cn } from '@/client/components/ui/cn';
-import { SinoFigure } from '@/client/components/ui/sino_figure';
+import { SNSinoFigure } from '@/client/components/ui/sn_sino_figure';
 import type { ConversationView } from '@/shared/chat_view';
 import { chatMarker } from './nav_model';
 
@@ -106,7 +106,7 @@ export function RecentChats({
           return (
             <li key={c.id}>
               <div className="flex h-8 items-center gap-1.5 rounded-sm bg-(--state-hover) ps-1 pe-1.5 text-[13px]">
-                <SinoFigure pose={marker.pose} size={22} className="-my-1" />
+                <SNSinoFigure pose={marker.pose} size={22} className="-my-1" />
                 <InlineTitleEdit
                   value={c.title}
                   label={tConversation('rename_label')}
@@ -137,7 +137,7 @@ export function RecentChats({
                 active && 'bg-surface-tint font-medium text-text',
               )}
             >
-              <SinoFigure pose={marker.pose} size={22} className="-my-1" />
+              <SNSinoFigure pose={marker.pose} size={22} className="-my-1" />
               <span className="min-w-0 flex-1 truncate">{title}</span>
               {/* The badge gives its slot to the menu button while it shows. */}
               <span

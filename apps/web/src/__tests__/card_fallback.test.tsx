@@ -7,14 +7,14 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   CARD_RENDERERS,
-  CardRenderer,
-  FallbackCard,
+  SNCardRenderer,
+  SNFallbackCard,
   resolveCardRenderer,
-  type CardLabels,
-  type CardRenderInput,
+  type SNCardLabels,
+  type SNCardRenderInput,
 } from '@sineva/ui/cards';
 
-const labels: CardLabels = {
+const labels: SNCardLabels = {
   title: 'Heads up',
   rejected_notice: 'Could not show this result as a card.',
   no_text: 'This result could not be shown.',
@@ -23,7 +23,7 @@ const labels: CardLabels = {
   copy_failed: 'Could not copy',
 };
 
-const card = (over: Partial<CardRenderInput> = {}): CardRenderInput => ({
+const card = (over: Partial<SNCardRenderInput> = {}): SNCardRenderInput => ({
   id: 'c1',
   card_type: 'guardrail_notice',
   schema_version: 1,
@@ -41,7 +41,7 @@ afterEach(() => {
 
 describe('fallback card renderer (WP-M0-32, FR-AX-02, FR-AX-10, FR-AX-42)', () => {
   it('is an <article> labelled by its title heading (aria-level 4)', () => {
-    render(<FallbackCard card={card()} labels={labels} />);
+    render(<SNFallbackCard card={card()} labels={labels} />);
     const article = screen.getByRole('article', { name: 'Heads up' });
     const heading = screen.getByRole('heading', { name: 'Heads up', level: 4 });
     expect(article.getAttribute('aria-labelledby')).toBe(heading.id);
@@ -49,7 +49,7 @@ describe('fallback card renderer (WP-M0-32, FR-AX-02, FR-AX-10, FR-AX-42)', () =
   });
 
   it('shows the fallback text as readable text', () => {
-    render(<FallbackCard card={card()} labels={labels} />);
+    render(<SNFallbackCard card={card()} labels={labels} />);
     expect(screen.getByText('I cannot move money. I can prepare the details for you.')).toBeTruthy();
     expect(screen.queryByText(labels.rejected_notice)).toBeNull();
   });
@@ -57,8 +57,8 @@ describe('fallback card renderer (WP-M0-32, FR-AX-02, FR-AX-10, FR-AX-42)', () =
   it('gives two cards on one page different heading ids', () => {
     render(
       <>
-        <FallbackCard card={card({ id: 'a' })} labels={labels} />
-        <FallbackCard card={card({ id: 'b' })} labels={labels} />
+        <SNFallbackCard card={card({ id: 'a' })} labels={labels} />
+        <SNFallbackCard card={card({ id: 'b' })} labels={labels} />
       </>,
     );
     const ids = screen.getAllByRole('heading', { level: 4 }).map((h) => h.id);
@@ -66,16 +66,16 @@ describe('fallback card renderer (WP-M0-32, FR-AX-02, FR-AX-10, FR-AX-42)', () =
   });
 
   it('says so when a card was rejected, and when there is no text at all', () => {
-    render(<FallbackCard card={card({ validation_status: 'rejected' })} labels={labels} />);
+    render(<SNFallbackCard card={card({ validation_status: 'rejected' })} labels={labels} />);
     expect(screen.getByText(labels.rejected_notice)).toBeTruthy();
     cleanup();
-    render(<FallbackCard card={card({ validation_status: 'rejected', fallback_text: null })} labels={labels} />);
+    render(<SNFallbackCard card={card({ validation_status: 'rejected', fallback_text: null })} labels={labels} />);
     expect(screen.getByText(labels.no_text)).toBeTruthy();
   });
 
   it('renders fallback text as text, never as HTML (no raw HTML path)', () => {
     const html = renderToStaticMarkup(
-      <FallbackCard
+      <SNFallbackCard
         card={card({ fallback_text: '<img src=x onerror=alert(1)><script>alert(2)</script>' })}
         labels={labels}
       />,
@@ -87,7 +87,7 @@ describe('fallback card renderer (WP-M0-32, FR-AX-02, FR-AX-10, FR-AX-42)', () =
 
   it('never prints card data, only the fallback text', () => {
     const html = renderToStaticMarkup(
-      <FallbackCard card={card({ data: { note: '<b>secret data</b>' } })} labels={labels} />,
+      <SNFallbackCard card={card({ data: { note: '<b>secret data</b>' } })} labels={labels} />,
     );
     expect(html).not.toContain('secret data');
   });
@@ -95,7 +95,7 @@ describe('fallback card renderer (WP-M0-32, FR-AX-02, FR-AX-10, FR-AX-42)', () =
   it('copies exactly the fallback text', async () => {
     const writeText = vi.fn().mockResolvedValue(undefined);
     Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true });
-    render(<FallbackCard card={card()} labels={labels} />);
+    render(<SNFallbackCard card={card()} labels={labels} />);
     fireEvent.click(screen.getByRole('button', { name: 'Copy' }));
     expect(writeText).toHaveBeenCalledWith('I cannot move money. I can prepare the details for you.');
     await waitFor(() => expect(screen.getAllByText('Copied').length).toBeGreaterThan(0));
@@ -104,18 +104,18 @@ describe('fallback card renderer (WP-M0-32, FR-AX-02, FR-AX-10, FR-AX-42)', () =
   it('announces a failed copy instead of failing silently', async () => {
     const writeText = vi.fn().mockRejectedValue(new Error('denied'));
     Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true });
-    render(<FallbackCard card={card()} labels={labels} />);
+    render(<SNFallbackCard card={card()} labels={labels} />);
     fireEvent.click(screen.getByRole('button', { name: 'Copy' }));
     await waitFor(() => expect(screen.getByText('Could not copy')).toBeTruthy());
   });
 
   it('has no copy button when there is no text to copy', () => {
-    render(<FallbackCard card={card({ fallback_text: null })} labels={labels} />);
+    render(<SNFallbackCard card={card({ fallback_text: null })} labels={labels} />);
     expect(screen.queryByRole('button')).toBeNull();
   });
 
   it('keeps a 44 px touch target on the copy button', () => {
-    render(<FallbackCard card={card()} labels={labels} />);
+    render(<SNFallbackCard card={card()} labels={labels} />);
     expect(screen.getByRole('button', { name: 'Copy' }).className).toContain('min-h-[44px]');
   });
 });
@@ -128,11 +128,11 @@ describe('static card registry (FR-AX-10)', () => {
   });
 
   it('falls back for an unknown type, an unknown version and inherited property names', () => {
-    expect(resolveCardRenderer('runway_metrics', 1)).toBe(FallbackCard);
-    expect(resolveCardRenderer('guardrail_notice', 2)).toBe(FallbackCard);
-    expect(resolveCardRenderer('__proto__', 1)).toBe(FallbackCard);
-    expect(resolveCardRenderer('constructor', 1)).toBe(FallbackCard);
-    expect(resolveCardRenderer('toString', 1)).toBe(FallbackCard);
+    expect(resolveCardRenderer('runway_metrics', 1)).toBe(SNFallbackCard);
+    expect(resolveCardRenderer('guardrail_notice', 2)).toBe(SNFallbackCard);
+    expect(resolveCardRenderer('__proto__', 1)).toBe(SNFallbackCard);
+    expect(resolveCardRenderer('constructor', 1)).toBe(SNFallbackCard);
+    expect(resolveCardRenderer('toString', 1)).toBe(SNFallbackCard);
   });
 
   it('a card that fails to render shows its fallback text instead of crashing', () => {
@@ -141,7 +141,7 @@ describe('static card registry (FR-AX-10)', () => {
       throw new Error('render failed');
     };
     render(
-      <CardRenderer card={card()} labels={labels} renderers={{ 'guardrail_notice@1': broken }} />,
+      <SNCardRenderer card={card()} labels={labels} renderers={{ 'guardrail_notice@1': broken }} />,
     );
     expect(screen.getByText('I cannot move money. I can prepare the details for you.')).toBeTruthy();
     expect(screen.getByText(labels.rejected_notice)).toBeTruthy();
@@ -150,7 +150,7 @@ describe('static card registry (FR-AX-10)', () => {
   it('a rejected card never reaches a type-specific component', () => {
     const typed = vi.fn(() => <p>typed</p>);
     render(
-      <CardRenderer
+      <SNCardRenderer
         card={card({ validation_status: 'rejected', data: {} })}
         labels={labels}
         renderers={{ 'guardrail_notice@1': typed }}

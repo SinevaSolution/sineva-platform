@@ -1,6 +1,6 @@
 'use client';
 
-import { CardRenderer, type CardLabels } from '@sineva/ui/cards';
+import { SNCardRenderer, type SNCardLabels } from '@sineva/ui/cards';
 import { useTranslations } from '@/i18n/provider';
 import type { MessageCardView } from '@/shared/chat_view';
 
@@ -35,9 +35,9 @@ export function MessageCards({ cards }: { cards: MessageCardView[] | undefined }
   return (
     <>
       {cards.map((card) => {
-        const labels: CardLabels = { ...common, title: titleFor(card.card_type) };
+        const labels: SNCardLabels = { ...common, title: titleFor(card.card_type) };
         return (
-          <CardRenderer
+          <SNCardRenderer
             key={card.id}
             labels={labels}
             card={{

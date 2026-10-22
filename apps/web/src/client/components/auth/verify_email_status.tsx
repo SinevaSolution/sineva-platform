@@ -2,11 +2,9 @@
 
 import Link from 'next/link';
 import * as React from 'react';
-import { buttonVariants } from '@/client/components/ui/button';
-import { cn } from '@/client/components/ui/cn';
-import { FormAlert } from '@/client/components/ui/field';
 import { apiRequest } from '@/client/lib/api';
 import { useTranslations } from '@/i18n/provider';
+import { SNBanner, SNButton } from '@sineva/ui';
 
 type Status = 'verifying' | 'verified' | 'failed';
 
@@ -34,12 +32,12 @@ export function VerifyEmailStatus({ token }: { token: string | null }) {
   if (status === 'verified') {
     return (
       <div className="space-y-4">
-        <FormAlert tone="success">{t('verify_email.verified')}</FormAlert>
-        <Link href="/sign-in" className={cn(buttonVariants({ variant: 'primary', size: 'lg' }), 'w-full')}>
-          {t('verify_email.continue')}
-        </Link>
+        <SNBanner tone="success">{t('verify_email.verified')}</SNBanner>
+        <SNButton asChild variant="primary" size="lg" className="w-full">
+          <Link href="/sign-in">{t('verify_email.continue')}</Link>
+        </SNButton>
       </div>
     );
   }
-  return <FormAlert>{t('verify_email.failed')}</FormAlert>;
+  return <SNBanner tone="danger">{t('verify_email.failed')}</SNBanner>;
 }
