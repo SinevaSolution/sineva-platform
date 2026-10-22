@@ -19,7 +19,8 @@
     "predev": "node ../../scripts/check_node_runtime.mjs",
     "prestart": "node ../../scripts/check_node_runtime.mjs",
     "test:e2e": "playwright test",
-    "test:e2e:list": "playwright test --list"
+    "test:e2e:list": "playwright test --list",
+    "test:journeys": "node scripts/e2e_journeys.mjs"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.758.0",

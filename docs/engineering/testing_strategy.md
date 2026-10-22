@@ -114,6 +114,10 @@ The URL shape comes from the setup's own error message. If you also run `migrate
 
 The `server-only` package throws when imported outside a React Server Components build. Vitest runs plain Node, so both configs alias it to `src/__tests__/stubs/server_only.ts`, an empty module. Without the alias every test that touches `server/infrastructure` or the container fails on the guard import. Keep the alias in both `vitest.config.ts` and `vitest.integration.config.ts`. If a new Vitest config appears, it needs the alias too.
 
+## Browser journeys (people, mail and sign-in)
+
+`npm --workspace=@sineva/web run test:journeys` runs `apps/web/e2e/journeys` against a temporary production build. `scripts/e2e_journeys.mjs` starts a throwaway Postgres and Redis container, a fake Google/GitHub identity provider (`OAUTH_TEST_IDP_URL`, with `OAUTH_TEST_IDP_ALLOW=true` in production mode) and `next start` on a free port (never `next dev`, never 3001), reads the invitation and verification emails from the local Mailpit (`127.0.0.1:8025`), and removes everything afterwards. It builds with `next build --webpack --experimental-build-mode compile` (a webpack build's route-type validation rejects the route wrappers' optional request argument, and Turbopack does not run from a worktree with symlinked `node_modules`); types are checked by `npm run typecheck`. Pass `--build` to force a rebuild.
+
 ## TDD in practice
 
 1. Write the test. Run it. It must fail for the reason you expect: an assertion about the missing behavior, not a typo, an import error or a missing file.
