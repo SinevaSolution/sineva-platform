@@ -100,6 +100,18 @@ export class InMemoryConnectionRepository implements ConnectionRepository {
       .map((row) => ({ ...row }));
   }
 
+  async listRotationDue(rotatedBefore: Date, limit: number): Promise<ConnectionEntity[]> {
+    return [...this.rows.values()]
+      .filter(
+        (row) =>
+          row.auth_type === 'api_key' &&
+          ['connected', 'partial', 'error'].includes(row.status) &&
+          (row.secret_rotated_at ?? row.created_at).getTime() < rotatedBefore.getTime(),
+      )
+      .slice(0, limit)
+      .map((row) => ({ ...row }));
+  }
+
   async listHealthDue(checkedBefore: Date, limit: number): Promise<ConnectionEntity[]> {
     return [...this.rows.values()]
       .filter(
@@ -116,6 +128,31 @@ export class InMemoryConnectionRepository implements ConnectionRepository {
     return [...this.rows.values()]
       .filter((row) => row.status !== 'revoked' && (afterId === null || row.id > afterId))
       .sort((a, b) => (a.id < b.id ? -1 : 1))
+      .slice(0, limit)
+      .map((row) => ({ ...row }));
+  }
+
+  async listVisible(
+    workspaceId: string,
+    viewerUserId: string,
+    filter: { provider_id?: string; status?: ConnectionEntity['status']; include_revoked?: boolean } = {},
+  ): Promise<ConnectionEntity[]> {
+    return [...this.rows.values()]
+      .filter(
+        (row) =>
+          row.workspace_id === workspaceId &&
+          isVisibleTo(row, viewerUserId) &&
+          (!filter.provider_id || row.provider_id === filter.provider_id) &&
+          (!filter.status || row.status === filter.status) &&
+          (filter.include_revoked || filter.status === 'revoked' || row.status !== 'revoked'),
+      )
+      .sort((a, b) => a.created_at.getTime() - b.created_at.getTime())
+      .map((row) => ({ ...row }));
+  }
+
+  async listActiveByProvider(providerId: string, limit: number): Promise<ConnectionEntity[]> {
+    return [...this.rows.values()]
+      .filter((row) => row.provider_id === providerId && row.status !== 'revoked')
       .slice(0, limit)
       .map((row) => ({ ...row }));
   }

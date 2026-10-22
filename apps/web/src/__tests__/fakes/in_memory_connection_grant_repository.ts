@@ -18,6 +18,17 @@ export class InMemoryConnectionGrantRepository implements ConnectionGrantReposit
       }));
   }
 
+  async listForConnections(workspaceId: string, connectionIds: readonly string[]): Promise<ConnectionGrantEntity[]> {
+    return this.rows
+      .filter((row) => row.workspace_id === workspaceId && connectionIds.includes(row.connection_id))
+      .map(({ connection_id, agent_slug, access_level, approval_policy }) => ({
+        connection_id,
+        agent_slug,
+        access_level,
+        approval_policy,
+      }));
+  }
+
   async replaceAll(
     workspaceId: string,
     connectionId: string,

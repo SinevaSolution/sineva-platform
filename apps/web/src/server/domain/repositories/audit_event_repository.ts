@@ -5,6 +5,9 @@ export interface AuditEventQuery {
   workspace_id: string;
   action?: string;
   actor_id?: string;
+  /** Events about one resource, for example `connection` and its id. */
+  target_type?: string;
+  target_id?: string;
   /** Exclusive upper bound on `occurred_at`, for paging backwards. */
   before?: Date;
   limit?: number;

@@ -108,7 +108,7 @@ export function buildRefreshWorld(options: Parameters<typeof buildWorld>[0] = {}
   });
   const reconcile = new ReconcileConnectionsUseCase({ connections: world.connections, queue, log: world.log, now });
   const runner = new JobRunner({ queue, log: jobLog, workerId: 'w1', now, random: () => 0.5 });
-  registerConnectionJobs(runner, { refresh, health, reconcile, connections: world.connections, queue });
+  registerConnectionJobs(runner, { refresh, health, reconcile, incidents: notifier, connections: world.connections, queue });
   const refreshPlanner = new RefreshPlanner({ connections: world.connections, queue, random: () => 0.5 });
   const healthPlanner = new HealthPlanner({ connections: world.connections, queue });
 

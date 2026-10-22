@@ -132,6 +132,22 @@ export class PrismaConnectionRepository implements ConnectionRepository {
     return rows.map(mapConnection);
   }
 
+  async listRotationDue(rotatedBefore: Date, limit: number): Promise<ConnectionEntity[]> {
+    const rows = await this.db.connection.findMany({
+      where: {
+        auth_type: 'api_key',
+        status: { in: ['connected', 'partial', 'error'] },
+        OR: [
+          { secret_rotated_at: { lt: rotatedBefore } },
+          { secret_rotated_at: null, created_at: { lt: rotatedBefore } },
+        ],
+      },
+      orderBy: { id: 'asc' },
+      take: limit,
+    });
+    return rows.map(mapConnection);
+  }
+
   async listHealthDue(checkedBefore: Date, limit: number): Promise<ConnectionEntity[]> {
     const rows = await this.db.connection.findMany({
       where: {
@@ -147,6 +163,37 @@ export class PrismaConnectionRepository implements ConnectionRepository {
   async listActiveAfter(afterId: string | null, limit: number): Promise<ConnectionEntity[]> {
     const rows = await this.db.connection.findMany({
       where: { status: { not: 'revoked' }, ...(afterId ? { id: { gt: afterId } } : {}) },
+      orderBy: { id: 'asc' },
+      take: limit,
+    });
+    return rows.map(mapConnection);
+  }
+
+  async listVisible(
+    workspaceId: string,
+    viewerUserId: string,
+    filter: { provider_id?: string; status?: ConnectionStatus; include_revoked?: boolean } = {},
+  ): Promise<ConnectionEntity[]> {
+    const rows = await this.db.connection.findMany({
+      where: {
+        workspace_id: workspaceId,
+        // The privacy rule of personal connections lives in this clause.
+        OR: [{ owner_scope: 'workspace' }, { owner_user_id: viewerUserId }],
+        ...(filter.provider_id ? { provider_id: filter.provider_id } : {}),
+        ...(filter.status
+          ? { status: filter.status }
+          : filter.include_revoked
+            ? {}
+            : { status: { not: 'revoked' } }),
+      },
+      orderBy: [{ created_at: 'asc' }, { id: 'asc' }],
+    });
+    return rows.map(mapConnection);
+  }
+
+  async listActiveByProvider(providerId: string, limit: number): Promise<ConnectionEntity[]> {
+    const rows = await this.db.connection.findMany({
+      where: { provider_id: providerId, status: { not: 'revoked' } },
       orderBy: { id: 'asc' },
       take: limit,
     });

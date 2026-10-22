@@ -5,6 +5,7 @@ import type { JobQueue } from '@/server/domain/jobs/job_queue';
 import type { ConnectionRepository } from '@/server/domain/repositories/connection_repository';
 import type { JobRunner } from '../../jobs/job_runner';
 import type { JobPlanner } from '../../jobs/tick_jobs_use_case';
+import type { ConnectionIncidentNotifier } from './connection_incident_notifier';
 import type { ConnectionHealthService } from './connection_health_service';
 import type { ReconcileConnectionsUseCase } from './reconcile_connections_use_case';
 import type { RefreshConnectionTokenUseCase } from './refresh_connection_token_use_case';
@@ -13,7 +14,10 @@ export const CONNECTION_JOBS = {
   REFRESH: 'connection.refresh',
   HEALTH: 'connection.health',
   RECONCILE: 'connection.reconcile',
+  ROTATION_REMINDER: 'connection.rotation_reminder',
 } as const;
+
+export const SECRET_ROTATION_MS = 90 * 24 * 3_600_000;
 
 const DAY_MS = 24 * 3_600_000;
 // How far ahead of expiry a connection can be and still be looked at, and how far
@@ -40,6 +44,7 @@ export interface ConnectionJobDeps {
   refresh: Pick<RefreshConnectionTokenUseCase, 'execute'>;
   health: Pick<ConnectionHealthService, 'probe'>;
   reconcile: Pick<ReconcileConnectionsUseCase, 'execute'>;
+  incidents: Pick<ConnectionIncidentNotifier, 'rotationDue'>;
   connections: ConnectionRepository;
   queue: JobQueue;
 }
@@ -62,6 +67,13 @@ export function registerConnectionJobs(runner: JobRunner, deps: ConnectionJobDep
     const connection = await deps.connections.findById(payload.workspace_id, payload.connection_id);
     if (!connection) return;
     await deps.health.probe(connection, { request_id: job.id, allow_recovery: true });
+  });
+
+  runner.register(CONNECTION_JOBS.ROTATION_REMINDER, async (job) => {
+    const payload = parsePayload(job);
+    const connection = await deps.connections.findById(payload.workspace_id, payload.connection_id);
+    if (!connection || connection.status === 'revoked' || connection.auth_type !== 'api_key') return;
+    await deps.incidents.rotationDue(connection);
   });
 
   runner.register(CONNECTION_JOBS.RECONCILE, async (job, context) => {
@@ -144,6 +156,36 @@ export class HealthPlanner implements JobPlanner {
           workspace_id: connection.workspace_id,
           concurrency_key: `connection:${connection.id}`,
           idempotency_key: `health:${connection.id}:${day}`,
+        },
+        now,
+      );
+      if (created) planned += 1;
+    }
+    return planned;
+  }
+}
+
+/**
+ * Queues the 90 day reminder for pasted keys (FR-CONN-30), once per key: the
+ * idempotency key carries the time the key was saved, so a replaced key restarts
+ * the clock and a tick that runs twice makes one job.
+ */
+export class RotationReminderPlanner implements JobPlanner {
+  readonly name = 'connection_rotation_reminder';
+
+  constructor(private readonly deps: { connections: ConnectionRepository; queue: JobQueue }) {}
+
+  async plan(now: Date): Promise<number> {
+    const due = await this.deps.connections.listRotationDue(new Date(now.getTime() - SECRET_ROTATION_MS), PLANNER_BATCH);
+    let planned = 0;
+    for (const connection of due) {
+      const keyAge = (connection.secret_rotated_at ?? connection.created_at).getTime();
+      const { created } = await this.deps.queue.enqueue(
+        {
+          job_type: CONNECTION_JOBS.ROTATION_REMINDER,
+          payload: { workspace_id: connection.workspace_id, connection_id: connection.id },
+          workspace_id: connection.workspace_id,
+          idempotency_key: `rotation:${connection.id}:${keyAge}`,
         },
         now,
       );

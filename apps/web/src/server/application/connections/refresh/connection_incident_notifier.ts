@@ -87,6 +87,36 @@ export class ConnectionIncidentNotifier {
     }
   }
 
+  /** The 90 day reminder for a pasted key (FR-CONN-30): an Inbox item, once per key. No email: nothing is broken. */
+  async rotationDue(connection: ConnectionEntity): Promise<void> {
+    const providerName = this.deps.registry.provider(connection.provider_id)?.display_name ?? connection.provider_id;
+    const keyAge = (connection.secret_rotated_at ?? connection.created_at).getTime();
+    try {
+      await this.deps.inbox.create(
+        {
+          kind: 'result',
+          workspace_id: connection.workspace_id,
+          recipient_user_id: connection.owner_user_id ?? connection.created_by_user_id,
+          agent_slug: 'sino',
+          title: providerName,
+          source: { type: 'system', id: connection.id },
+          // One reminder per key: replacing the key moves the time, so the next key gets its own.
+          dedupe_key: `connection_rotation_due:${connection.id}:${keyAge}`,
+          summary_key: 'inbox.sentence.connection_rotation_due',
+          summary_params: { provider: providerName },
+        },
+        {
+          ...createAnonymousRequestContext(`connection_${connection.id}`),
+          user_id: 'system:connections',
+          workspace_id: connection.workspace_id,
+          actor: { type: 'system', id: 'connections' },
+        },
+      );
+    } catch (error) {
+      this.fail(connection, error);
+    }
+  }
+
   private fail(connection: ConnectionEntity, error: unknown): void {
     this.deps.log.failed('inbox_notify_failed', {
       workspace_id: connection.workspace_id,

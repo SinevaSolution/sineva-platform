@@ -18,7 +18,7 @@ related_docs:
 
 # Connections endpoints
 
-Status: shapes are final and stable; the UI may build against them now. Routes are added in commits after this file, in the order of the work packages (job runner, vault, registry, OAuth, refresh, API). Where a route is not live yet, its entry says so in the commit that adds it; the shape does not change. Envelope, `request_id` and error `code` mapping are in [overview](overview.md). Identity is the session user and the workspace is in the URL: no body, query or header names a user or a workspace. A workspace the caller is not a member of answers 404 on every route. Decisions: ADR-0036 to ADR-0039.
+Status: every route below is implemented, with the shapes unchanged since this file was first published. The TypeScript types of the views are in `apps/web/src/shared/connection_view.ts`; the UI may import them. Not built yet: rate limits on these routes (WP-M2-07), webhooks (WP-M2-16) and the Tool Gateway that uses the grants (WP-M2-10). Envelope, `request_id` and error `code` mapping are in [overview](overview.md). Identity is the session user and the workspace is in the URL: no body, query or header names a user or a workspace. A workspace the caller is not a member of answers 404 on every route. Decisions: ADR-0036 to ADR-0039.
 
 All JSON keys are snake_case. Timestamps are ISO 8601 strings in UTC. `LocalizedText` is `{"en": string, "id": string}`; the UI picks the active locale. Provider names (Google Calendar, Notion, Xendit, Midtrans) are proper names, not copy.
 
@@ -34,13 +34,13 @@ Prefix `/api/v1/workspaces/{workspace_id}/connections` unless noted.
 | `POST /oauth/start` | `connection.connect_workspace` or `connection.connect_personal` (by `owner_scope`) | Starts a flow, returns the provider URL |
 | `POST /secret` | same as start | Connects an API-key provider (tests first), or rotates a key |
 | `POST /{connection_id}/reconnect` | `connection.disconnect` | Starts a new flow that keeps the connection id |
-| `POST /{connection_id}/test` | `connection.view` | Runs the health probe now |
+| `POST /{connection_id}/test` | `connection.disconnect` (a member: own personal connection only) | Runs the health probe now |
 | `PUT /{connection_id}/grants` | `connection.grant` | Replaces the access matrix |
 | `DELETE /{connection_id}` | `connection.disconnect` | Revokes, erases and tombstones |
 | `GET /{connection_id}/activity?cursor=&limit=` | `connection.view_activity` | Audit events of this connection |
 | `GET /api/v1/connections/oauth/callback` | session cookie, no workspace segment | Provider redirect target (not called by the UI) |
 
-Permissions: `connection.view` all roles; `connection.connect_workspace` owner, admin; `connection.connect_personal` owner, admin, member; `connection.grant` owner, admin; `connection.disconnect` owner, admin, and a member for their own personal connection; `connection.view_activity` owner, admin. A viewer can list but `can` flags are all false.
+Permissions: a request below the table's permission is 403, a connection the caller may not see is 404. `connection.view` all roles; `connection.connect_workspace` owner, admin; `connection.connect_personal` owner, admin, member; `connection.grant` owner, admin; `connection.disconnect` owner, admin, and a member for their own personal connection; `connection.view_activity` owner, admin. A viewer can list but `can` flags are all false.
 
 Mutating routes accept a Sineva session only (CSRF check applies to cookie auth).
 
@@ -144,6 +144,8 @@ An unknown or mismatched `state` redirects to `/` with `connection_result=expire
 
 ### `POST /secret`
 
+Shown again later only as a hint: `account_label` is the first four characters and the last four of the key (`xnd_…1234`, for Midtrans with the environment, `SB-M…5678 (sandbox)`). Pasted-key connections have no `external_account_id`, so connecting two keys makes two connections. `secret_rotation_due_at` is 90 days after the key was saved; when it passes, the owner gets a system item in the Inbox (no email).
+
 Body: `{ provider_id, owner_scope?: 'workspace', connection_id?: string, secret: { [field_key]: string } }`. `owner_scope` is `workspace` for API-key providers. With `connection_id` the key of that connection is replaced (audit `connection.secret_rotated`). The key is tested with the provider before anything is stored; a failed test stores nothing. Response 201 (new) or 200 (rotated): `data: { connection: ConnectionView }`. The secret is never echoed and never returned later.
 
 ### `POST /{id}/reconnect`
@@ -152,7 +154,7 @@ Body: `{ scope_bundle?: string, return_to?: string }`. OAuth connections answer 
 
 ### `POST /{id}/test`
 
-Response 200: `data: { result: 'ok' | 'failed', status: ConnectionStatus, error_code: string | null, checked_at: string }`. Updates `last_health_at` and `last_error_code`. A failed probe of an OAuth connection does not change its status by itself; a revoked grant at the provider (`invalid_grant`) sets `needs_reconnect`.
+Response 200: `data: { result: 'ok' | 'failed', status: ConnectionStatus, error_code: string | null, checked_at: string }`. Updates `last_health_at` and `last_error_code`. It never refreshes a token: an expired access token is reported as `error_code: token_expired` and left alone (the scheduled refresh handles it). A credential the provider rejects (a revoked token, an invalid key) sets `needs_reconnect` and tells the owner; a provider outage is recorded as `provider_unreachable` and changes no status. Needs `connection.disconnect`, so a viewer cannot make Sineva call a provider.
 
 ### `PUT /{id}/grants`
 
@@ -160,7 +162,7 @@ Body: `{ grants: GrantRow[] }`, at most one row per specialist; specialists not 
 
 ### `DELETE /{id}`
 
-Revokes at the provider (best effort), crypto-erases the secret, tombstones the row. Response 200: `data: { id, status: 'revoked', revoked_at, provider_revoked: boolean }`. Repeating it is 200 with the same body. A member may delete only their own personal connection.
+Revokes at the provider (best effort), crypto-erases the secret, tombstones the row and removes its grants. Response 200: `data: { id, status: 'revoked', revoked_at, provider_revoked: boolean }`. Repeating it is 200 with the first `revoked_at` and `provider_revoked: false` (the answer of the first call is not stored), and writes no second audit event. A member may delete only their own personal connection. If the vault cannot erase the secret the answer is 503 `vault_unavailable` and nothing changes: try again.
 
 ### `GET /{id}/activity`
 
@@ -200,6 +202,7 @@ Cursor-paginated audit events whose target is this connection: `data: { events: 
 | `POST /internal/v1/jobs/tick` | Body optional `{ max_jobs?: number }` (1 to 100, default 25). Plans due jobs, reaps expired leases, runs ready jobs. Response `data: { planned, reaped, ran, succeeded, retried, failed }`. Call every minute |
 | `GET /internal/v1/jobs/stats` | Queue depth: `queued`, `running`, `failed`, `oldest_due_seconds` |
 | `POST /internal/v1/connections/reconcile` | Runbook, after a database restore. No body, 202 with `{ job_id }`. Queues a sweep that probes every connection through health jobs and marks the ones that fail `needs_reconnect`; later batches queue themselves |
+| `POST /internal/v1/connections/mass-revoke` | Incident runbook. Body `{ provider_id, confirm: "revoke-all:<provider_id>", limit?: 1 to 200, default 100 }`. Revokes and erases every active connection of the provider in every workspace, as the system, each audited like a disconnect. Answer `{ revoked, more }`; call again while `more` is true |
 | `POST /internal/v1/vault/rotate-keys` | Runbook, key rotation. Body optional `{ limit?: 1 to 500, default 100 }`. Rewraps data keys the current key did not wrap; answer `{ rotated, skipped, failed, more }`. Repeat until `more` is false and `failed` is 0 |
 
 What the tick runs: a refresh job per OAuth connection when its access token is due (about 80 percent of its lifetime, plus or minus 10 percent, never later than 5 minutes before expiry) and a health probe per connection per day. A refresh the provider refuses with `invalid_grant` stops at once: the connection becomes `needs_reconnect`, a system item appears in the Inbox and an email goes to the person who set the connection up. Outages are retried with backoff; any other refusal marks the connection `error` without a notice.

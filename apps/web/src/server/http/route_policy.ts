@@ -352,6 +352,35 @@ export const MUTATING_ROUTE_POLICY: Record<string, MutatingRoutePolicy> = {
     effect: 'ingest',
     audit: ['connection.token_refreshed', 'connection.refresh_failed', 'connection.needs_reconnect'],
   },
+  'POST /api/v1/workspaces/{workspace_id}/connections/secret': {
+    effect: 'create',
+    audit: ['connection.created', 'connection.secret_rotated'],
+    entitlement: ENTITLEMENT_KEYS.CONNECTIONS,
+  },
+  'POST /api/v1/workspaces/{workspace_id}/connections/{connection_id}/reconnect': {
+    effect: 'change',
+    audit: ['connection.oauth_started'],
+  },
+  'POST /api/v1/workspaces/{workspace_id}/connections/{connection_id}/test': {
+    effect: 'change',
+    audit: ['connection.needs_reconnect'],
+  },
+  'PUT /api/v1/workspaces/{workspace_id}/connections/{connection_id}/grants': {
+    effect: 'change',
+    audit: ['connection.grant_changed'],
+  },
+  'DELETE /api/v1/workspaces/{workspace_id}/connections/{connection_id}': {
+    effect: 'delete',
+    audit: ['connection.revoked'],
+  },
+  'POST /internal/v1/connections/mass-revoke': {
+    effect: 'ingest',
+    audit: ['connection.revoked'],
+  },
+  'POST /api/internal/v1/connections/mass-revoke': {
+    effect: 'ingest',
+    audit: ['connection.revoked'],
+  },
   'POST /internal/v1/vault/rotate-keys': {
     effect: 'ingest',
     audit: 'none',

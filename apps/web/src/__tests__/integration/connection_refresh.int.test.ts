@@ -90,7 +90,7 @@ function stack(providerOverrides = {}) {
   const reconcile = new ReconcileConnectionsUseCase({ connections, queue, log, now });
   const makeRunner = (workerId: string) => {
     const runner = new JobRunner({ queue, log: { record: () => undefined }, workerId, now, random: () => 0.5 });
-    registerConnectionJobs(runner, { refresh, health, reconcile, connections, queue });
+    registerConnectionJobs(runner, { refresh, health, reconcile, incidents: notifier, connections, queue });
     return runner;
   };
   return { connections, vault, provider, queue, inbox, log, refresh, health, makeRunner, resolver };

@@ -100,6 +100,11 @@ export function getOpenApiSpec(): Record<string, unknown> {
           'Sino Library: documents, folders, scopes, uploads, quotas and retrieval tests (ADR-0030)',
       },
       {
+        name: 'Connections',
+        description:
+          'Connected tools: provider catalog, OAuth and pasted-key connections, the access matrix, disconnect (ADR-0036 to ADR-0039)',
+      },
+      {
         name: 'Internal',
         description: 'Internal service-to-service endpoints guarded by X-Internal-Api-Key',
       },

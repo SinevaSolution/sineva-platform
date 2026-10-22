@@ -10,10 +10,26 @@ import { ConnectorRegistry } from './application/connections/connector_registry'
 import { ConnectionHealthService } from './application/connections/refresh/connection_health_service';
 import { ConnectionIncidentNotifier } from './application/connections/refresh/connection_incident_notifier';
 import { ConnectionStateService } from './application/connections/refresh/connection_state_service';
-import { HealthPlanner, RefreshPlanner, registerConnectionJobs } from './application/connections/refresh/connection_jobs';
+import { HealthPlanner, RefreshPlanner, RotationReminderPlanner, registerConnectionJobs } from './application/connections/refresh/connection_jobs';
 import { ReconcileConnectionsUseCase } from './application/connections/refresh/reconcile_connections_use_case';
 import { EnqueueConnectionReconcileUseCase } from './application/connections/refresh/enqueue_connection_reconcile_use_case';
 import { RefreshConnectionTokenUseCase } from './application/connections/refresh/refresh_connection_token_use_case';
+import { ConnectionViewBuilder } from './application/connections/connection_view_builder';
+import {
+  GetConnectionUseCase,
+  ListConnectionActivityUseCase,
+  ListConnectionsUseCase,
+  ListProvidersUseCase,
+} from './application/connections/connection_queries';
+import { ReconnectConnectionUseCase, TestConnectionUseCase } from './application/connections/connection_actions';
+import {
+  ConnectionRevoker,
+  DisconnectConnectionUseCase,
+  MassRevokeConnectionsUseCase,
+} from './application/connections/disconnect_connection_use_case';
+import { SaveApiKeyConnectionUseCase } from './application/connections/save_api_key_connection_use_case';
+import { UpdateConnectionGrantsUseCase } from './application/connections/update_connection_grants_use_case';
+import { ApiKeyDriver } from './infrastructure/connectors/api_key_driver';
 import { StartOAuthFlowUseCase } from './application/connections/oauth/start_oauth_flow_use_case';
 import { HandleOAuthCallbackUseCase } from './application/connections/oauth/handle_oauth_callback_use_case';
 import type { ConnectionLog } from './domain/connections/connection_errors';
@@ -1155,6 +1171,7 @@ export const getConnectorDriverResolver = memoize<ConnectorDriverResolver>(
         const client_secret = keys && envValue(keys.client_secret);
         return client_id && client_secret ? { client_id, client_secret } : null;
       },
+      apiKeyDriver: (manifest, http) => new ApiKeyDriver(manifest, http),
     }),
 );
 
@@ -1256,6 +1273,86 @@ export const getEnqueueConnectionReconcileUseCase = memoize(
   () => new EnqueueConnectionReconcileUseCase({ queue: getJobQueue() }),
 );
 
+// The Connections API (WP-M2-17). Specialist slugs come from the roster manifest, so the
+// access matrix has one row per specialist and a new specialist appears with no migration.
+const connectionSpecialistSlugs = () => SPECIALIST_MANIFEST.map((entry) => entry.agent_slug);
+const getConnectionViewBuilder = memoize(
+  () =>
+    new ConnectionViewBuilder({
+      registry: getConnectorRegistry(),
+      grants: getConnectionGrantRepository(),
+      specialistSlugs: connectionSpecialistSlugs(),
+    }),
+);
+const getConnectionRevoker = memoize(
+  () =>
+    new ConnectionRevoker({
+      connections: getConnectionRepository(),
+      grants: getConnectionGrantRepository(),
+      resolver: getCredentialResolver(),
+      secrets: getSecretWriter(),
+      drivers: getConnectorDriverResolver(),
+      audit: getAuditLogger(),
+      transactions: getTransactionRunner(),
+      log: getConnectionLog(),
+    }),
+);
+export const getListProvidersUseCase = memoize(
+  () => new ListProvidersUseCase({ registry: getConnectorRegistry(), builder: getConnectionViewBuilder() }),
+);
+export const getListConnectionsUseCase = memoize(
+  () => new ListConnectionsUseCase({ connections: getConnectionRepository(), builder: getConnectionViewBuilder() }),
+);
+export const getGetConnectionUseCase = memoize(
+  () => new GetConnectionUseCase({ connections: getConnectionRepository(), builder: getConnectionViewBuilder() }),
+);
+export const getListConnectionActivityUseCase = memoize(
+  () => new ListConnectionActivityUseCase({ connections: getConnectionRepository(), audit: getAuditEventRepository() }),
+);
+export const getSaveApiKeyConnectionUseCase = memoize(
+  () =>
+    new SaveApiKeyConnectionUseCase({
+      registry: getConnectorRegistry(),
+      drivers: getConnectorDriverResolver(),
+      connections: getConnectionRepository(),
+      grants: getConnectionGrantRepository(),
+      secrets: getSecretWriter(),
+      audit: getAuditLogger(),
+      transactions: getTransactionRunner(),
+      entitlements: getEntitlementService(),
+      builder: getConnectionViewBuilder(),
+    }),
+);
+export const getUpdateConnectionGrantsUseCase = memoize(
+  () =>
+    new UpdateConnectionGrantsUseCase({
+      registry: getConnectorRegistry(),
+      connections: getConnectionRepository(),
+      grants: getConnectionGrantRepository(),
+      audit: getAuditLogger(),
+      transactions: getTransactionRunner(),
+      builder: getConnectionViewBuilder(),
+      specialistSlugs: connectionSpecialistSlugs(),
+    }),
+);
+export const getDisconnectConnectionUseCase = memoize(
+  () => new DisconnectConnectionUseCase({ connections: getConnectionRepository(), revoker: getConnectionRevoker() }),
+);
+export const getMassRevokeConnectionsUseCase = memoize(
+  () =>
+    new MassRevokeConnectionsUseCase({
+      connections: getConnectionRepository(),
+      revoker: getConnectionRevoker(),
+      registry: getConnectorRegistry(),
+    }),
+);
+export const getTestConnectionUseCase = memoize(
+  () => new TestConnectionUseCase({ connections: getConnectionRepository(), health: getConnectionHealthService() }),
+);
+export const getReconnectConnectionUseCase = memoize(
+  () => new ReconnectConnectionUseCase({ connections: getConnectionRepository(), start: getStartOAuthFlowUseCase() }),
+);
+
 // Resolved on first use, so a missing key fails the first connection call with a
 // typed 503 instead of failing the whole app at boot.
 const getKms = memoize<KmsPort>(() => {
@@ -1304,6 +1401,7 @@ export const getJobRunner = memoize(() => {
     refresh: getRefreshConnectionTokenUseCase(),
     health: getConnectionHealthService(),
     reconcile: getReconcileConnectionsUseCase(),
+    incidents: getConnectionIncidentNotifier(),
     connections: getConnectionRepository(),
     queue: getJobQueue(),
   });
@@ -1314,6 +1412,7 @@ export const getJobRunner = memoize(() => {
 const getJobPlanners = memoize<readonly JobPlanner[]>(() => [
   new RefreshPlanner({ connections: getConnectionRepository(), queue: getJobQueue() }),
   new HealthPlanner({ connections: getConnectionRepository(), queue: getJobQueue() }),
+  new RotationReminderPlanner({ connections: getConnectionRepository(), queue: getJobQueue() }),
 ]);
 
 export const getTickJobsUseCase = memoize(

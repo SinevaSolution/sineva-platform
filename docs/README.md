@@ -117,6 +117,7 @@ Folder guide: [README](deployment/README.md).
 - [Docker Compose Topology](deployment/docker_compose_topology.md)
 - [Internal Network Security](deployment/internal_network_security.md)
 - [CI/CD Pipeline](deployment/ci_cd_pipeline.md)
+- [Connections Runbook](deployment/connections_runbook.md)
 - [Environment Variables](deployment/environment_variables.md)
 
 ## Development (`development/`)

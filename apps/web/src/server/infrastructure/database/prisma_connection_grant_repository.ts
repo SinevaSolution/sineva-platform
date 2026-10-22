@@ -23,6 +23,20 @@ export class PrismaConnectionGrantRepository implements ConnectionGrantRepositor
     }));
   }
 
+  async listForConnections(workspaceId: string, connectionIds: readonly string[]): Promise<ConnectionGrantEntity[]> {
+    if (connectionIds.length === 0) return [];
+    const rows = await activeClient(this.prisma).connectionGrant.findMany({
+      where: { workspace_id: workspaceId, connection_id: { in: [...connectionIds] } },
+      orderBy: [{ connection_id: 'asc' }, { agent_slug: 'asc' }],
+    });
+    return rows.map((row) => ({
+      connection_id: row.connection_id,
+      agent_slug: row.agent_slug,
+      access_level: row.access_level as AccessLevel,
+      approval_policy: row.approval_policy,
+    }));
+  }
+
   async replaceAll(
     workspaceId: string,
     connectionId: string,

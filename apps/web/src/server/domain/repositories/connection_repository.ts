@@ -1,4 +1,9 @@
-import type { ConnectionEntity, ConnectionPatch, NewConnection } from '@/server/domain/connections/connection';
+import type {
+  ConnectionEntity,
+  ConnectionPatch,
+  ConnectionStatus,
+  NewConnection,
+} from '@/server/domain/connections/connection';
 
 /**
  * Connection rows (never secrets). Every method takes the workspace: a row of
@@ -19,6 +24,18 @@ export interface ConnectionRepository {
     ownerUserId: string | null,
     externalAccountId: string,
   ): Promise<ConnectionEntity | null>;
+  /**
+   * Connections a person may see: workspace connections and their own personal
+   * ones, never another member's. The filter is part of the query, not a step
+   * after it. Revoked tombstones only when `include_revoked` is set.
+   */
+  listVisible(
+    workspaceId: string,
+    viewerUserId: string,
+    filter?: { provider_id?: string; status?: ConnectionStatus; include_revoked?: boolean },
+  ): Promise<ConnectionEntity[]>;
+  /** Non-revoked connections of one provider across workspaces, for the incident runbook. */
+  listActiveByProvider(providerId: string, limit: number): Promise<ConnectionEntity[]>;
   /** Non-revoked connections of the workspace, personal ones included: the figure the plan limit counts. */
   countActive(workspaceId: string): Promise<number>;
   /**
@@ -27,6 +44,8 @@ export interface ConnectionRepository {
    * secret. The refresh planner decides from these when each one is due.
    */
   listRefreshCandidates(now: Date, windowMs: number, limit: number): Promise<ConnectionEntity[]>;
+  /** Pasted-key connections whose key was last saved before `rotatedBefore`, for the 90 day reminder. */
+  listRotationDue(rotatedBefore: Date, limit: number): Promise<ConnectionEntity[]>;
   /** Connections not revoked whose last health probe is older than `checkedBefore` (or never ran). */
   listHealthDue(checkedBefore: Date, limit: number): Promise<ConnectionEntity[]>;
   /** Non-revoked connections in id order after `afterId`, for the reconcile sweep. */
