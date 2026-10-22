@@ -1,6 +1,7 @@
 import type { NextRequest } from 'next/server';
 import { z } from 'zod';
 import { LocaleSchema } from '@/server/application/dtos/locale_dto';
+import { isLinkNextPath } from '@/server/domain/auth/next_path';
 import { getJwtAuthService } from '@/server/container';
 import {
   extractRequestId,
@@ -23,6 +24,11 @@ const SignUpSchema = z.object({
   marketing_opt_in: z.boolean().optional(),
   locale: LocaleSchema.optional(),
   timezone: z.string().optional(),
+  // Invitation or ownership link to come back to after email verification.
+  next: z
+    .string()
+    .refine(isLinkNextPath, 'next must be an invitation or ownership link path')
+    .optional(),
 });
 
 export const POST = withAuth(
@@ -44,6 +50,7 @@ export const POST = withAuth(
         marketing_opt_in: validated.marketing_opt_in,
         locale: validated.locale,
         timezone: validated.timezone,
+        next: validated.next,
       });
 
       return sendSuccessJson(

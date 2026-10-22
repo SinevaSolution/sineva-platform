@@ -18,7 +18,7 @@ supersedes: []
 
 # Architecture Decision Records
 
-An ADR records one decision: what was chosen, why, and what it costs. All 27 are Accepted. This folder holds decisions only. How-to guides, current-state descriptions and the rules derived from the decisions live elsewhere ([agent rules](../governance/agent_rules.md), [engineering](../engineering/README.md)). When a rule and its ADR disagree, the ADR wins and the rule gets fixed.
+An ADR records one decision: what was chosen, why, and what it costs. All 29 are Accepted. This folder holds decisions only. How-to guides, current-state descriptions and the rules derived from the decisions live elsewhere ([agent rules](../governance/agent_rules.md), [engineering](../engineering/README.md)). When a rule and its ADR disagree, the ADR wins and the rule gets fixed.
 
 Items marked "cross-service" are mirrored in `sineva-ai` (`docs/decisions/` there, a sineva-ai ADR of the same title). Change both repos together.
 
@@ -52,6 +52,7 @@ Items marked "cross-service" are mirrored in `sineva-ai` (`docs/decisions/` ther
 | [0026](0026-profile-preferences-and-avatar-pipeline.md) | `/me` profile resource, `user_preferences` table, presigned avatar upload re-encoded with sharp | You touch profile fields, preferences or avatars |
 | [0027](0027-design-token-source-and-vendoring.md) | Compro tokens vendored into `packages/ui/src/styles`, snapshot plus drift test, compro wins | You touch colors, type, radius, shadows, z-index or theme |
 | [0028](0028-sn-component-prefix-and-form-controls.md) | Every design-system component starts with `SN`; dropdown fields are `SNSelect` and `SNCombobox`, never a native select | You add or rename a shared component, or need a dropdown |
+| [0029](0029-members-invitations-and-ownership-transfer.md) | Invitation token hashing and binding, 7-day expiry, role limits, ownership transfer by target confirmation | You touch members, invitations, roles or ownership |
 
 ## Suggested reading order
 

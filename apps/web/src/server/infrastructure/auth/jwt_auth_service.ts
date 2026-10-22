@@ -18,6 +18,7 @@ import {
 } from '@/server/domain/errors/domain_error';
 import { createAnonymousRequestContext } from '@/server/domain/context/request_context';
 import type { UserRole } from '@/server/domain/entities/user';
+import { isLinkNextPath } from '@/server/domain/auth/next_path';
 
 export interface JwtAuthServiceConfig {
   prisma: PrismaClient;
@@ -38,6 +39,8 @@ export interface SignUpParams {
   marketing_opt_in?: boolean;
   locale?: string;
   timezone?: string;
+  /** An invitation or ownership link to return to after verifying (see `isLinkNextPath`). */
+  next?: string;
 }
 
 export interface SignInParams {
@@ -185,15 +188,19 @@ export class JwtAuthService {
           )(executeCreation)
         : await executeCreation(this.prisma);
 
-    // 7. Send verification email
+    // 7. Send verification email. A valid `next` rides along so a person who
+    // signed up from an invitation link lands back on it after verifying;
+    // anything that is not such a link is dropped, never forwarded.
+    const nextParam =
+      input.next && isLinkNextPath(input.next) ? `&next=${encodeURIComponent(input.next)}` : '';
     await this.emailSender.send({
       to: email,
       template: 'verify_email',
       locale: input.locale === 'en' ? 'en' : 'id',
       params: {
         recipient_name: input.full_name,
-        url: `${this.appUrl}/verify-email?token=${verificationToken}`,
-        verification_url: `${this.appUrl}/verify-email?token=${verificationToken}`,
+        url: `${this.appUrl}/verify-email?token=${verificationToken}${nextParam}`,
+        verification_url: `${this.appUrl}/verify-email?token=${verificationToken}${nextParam}`,
         expires_in_minutes: 24 * 60,
       },
     });

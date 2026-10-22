@@ -1,4 +1,5 @@
 import 'server-only';
+import { membersPaths } from './members_paths';
 
 // Response object of the standard envelope, for the profile family below.
 function envelopeResponse(description: string) {
@@ -67,6 +68,10 @@ export function getOpenApiSpec(): Record<string, unknown> {
         description: 'Multi-tenant workspace lifecycle, isolation, and configuration',
       },
       {
+        name: 'Members',
+        description: 'Members, roles, specialist scope, invitations and ownership transfer (ADR-0029)',
+      },
+      {
         name: 'Conversations',
         description: 'Multi-tenant conversations and messages persistence and ownership (FR-HUB-20, FR-HUB-32)',
       },
@@ -76,6 +81,7 @@ export function getOpenApiSpec(): Record<string, unknown> {
       },
     ],
     paths: {
+      ...membersPaths(),
       '/api/internal/v1/keys': {
         get: {
           tags: ['Internal'],
@@ -304,6 +310,8 @@ export function getOpenApiSpec(): Record<string, unknown> {
           tags: ['Auth'],
           summary: 'Register a new user account with email and password',
           operationId: 'auth_sign_up',
+          description:
+            'Optional body field next (string): an invitation or ownership link path, /invite/{token} or /ownership/{token}. When present it is appended to the verification email link as &next=..., so a person who signed up from an invitation lands back on it after verifying. Any other value is rejected with 422.',
           responses: {
             '201': {
               description: 'User registered successfully and verification email dispatched',
@@ -932,6 +940,21 @@ export function getOpenApiSpec(): Record<string, unknown> {
             '403': envelopeResponse('Missing CSRF header or a mismatched origin'),
             '404': envelopeResponse('The caller is not a member of this workspace'),
             '422': envelopeResponse('Validation failed'),
+          },
+        },
+        delete: {
+          tags: ['Members'],
+          summary: 'Leave this workspace',
+          description:
+            'Any role except the owner. The owner gets 409 last_owner and must transfer ownership first. Sessions pinned to the workspace are revoked and authored content stays attributed to a Former member.',
+          operationId: 'leave_workspace',
+          parameters: [{ name: 'workspace_id', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } }],
+          responses: {
+            '200': envelopeResponse('Left the workspace'),
+            '401': envelopeResponse('Unauthenticated'),
+            '403': envelopeResponse('Missing CSRF header or a mismatched origin'),
+            '404': envelopeResponse('The caller is not a member of this workspace'),
+            '409': envelopeResponse('last_owner'),
           },
         },
       },

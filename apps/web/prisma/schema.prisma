@@ -48,14 +48,15 @@ model Workspace {
   created_at DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updated_at DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  owner              User?                       @relation("WorkspaceOwner", fields: [owner_user_id], references: [id], onDelete: SetNull)
-  members            WorkspaceMember[]
-  member_specialists WorkspaceMemberSpecialist[]
-  invitations        WorkspaceInvitation[]
-  conversations      Conversation[]
-  storage_objects    StorageObject[]
-  chat_runs          ChatRun[]
-  message_cards      MessageCard[]
+  owner               User?                       @relation("WorkspaceOwner", fields: [owner_user_id], references: [id], onDelete: SetNull)
+  members             WorkspaceMember[]
+  member_specialists  WorkspaceMemberSpecialist[]
+  invitations         WorkspaceInvitation[]
+  ownership_transfers OwnershipTransfer[]
+  conversations       Conversation[]
+  storage_objects     StorageObject[]
+  chat_runs           ChatRun[]
+  message_cards       MessageCard[]
 
   @@map("workspaces")
   @@schema("platform")
@@ -101,17 +102,24 @@ model WorkspaceMemberSpecialist {
 }
 
 model WorkspaceInvitation {
-  id               String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  workspace_id     String    @map("workspace_id") @db.Uuid
-  email            String    @map("email")
-  role             String    @default("member") @map("role") // owner | admin | member | viewer
-  inviter_user_id  String    @map("inviter_user_id") @db.Uuid
-  token_hash       String    @unique @map("token_hash")
-  specialist_scope String    @default("all") @map("specialist_scope")
-  expires_at       DateTime  @map("expires_at") @db.Timestamptz(6)
-  accepted_at      DateTime? @map("accepted_at") @db.Timestamptz(6)
-  created_at       DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
-  updated_at       DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  id                String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  workspace_id      String    @map("workspace_id") @db.Uuid
+  email             String    @map("email")
+  role              String    @default("member") @map("role") // owner | admin | member | viewer
+  inviter_user_id   String    @map("inviter_user_id") @db.Uuid
+  token_hash        String    @unique @map("token_hash")
+  specialist_scope  String    @default("all") @map("specialist_scope")
+  // Allowlist of agent_slug for scope `selected` (ADR-0029); applied to
+  // workspace_member_specialists on accept. Empty for scope `all`.
+  scope_agent_slugs String[]  @default([]) @map("scope_agent_slugs")
+  expires_at        DateTime  @map("expires_at") @db.Timestamptz(6)
+  accepted_at       DateTime? @map("accepted_at") @db.Timestamptz(6)
+  revoked_at        DateTime? @map("revoked_at") @db.Timestamptz(6)
+  last_sent_at      DateTime  @default(now()) @map("last_sent_at") @db.Timestamptz(6)
+  // Set once when an expiry was first noticed, so `invitation.expired` is audited once.
+  expired_logged_at DateTime? @map("expired_logged_at") @db.Timestamptz(6)
+  created_at        DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updated_at        DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   workspace Workspace @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
   inviter   User      @relation("InviterUser", fields: [inviter_user_id], references: [id], onDelete: Cascade)
@@ -119,6 +127,29 @@ model WorkspaceInvitation {
   @@index([workspace_id])
   @@index([email])
   @@map("workspace_invitations")
+  @@schema("platform")
+}
+
+// One open row per workspace (partial unique index, raw SQL in the migration):
+// the owner names an existing admin, who confirms through an emailed link.
+model OwnershipTransfer {
+  id           String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  workspace_id String    @map("workspace_id") @db.Uuid
+  from_user_id String    @map("from_user_id") @db.Uuid
+  to_user_id   String    @map("to_user_id") @db.Uuid
+  token_hash   String    @unique @map("token_hash")
+  expires_at   DateTime  @map("expires_at") @db.Timestamptz(6)
+  accepted_at  DateTime? @map("accepted_at") @db.Timestamptz(6)
+  cancelled_at DateTime? @map("cancelled_at") @db.Timestamptz(6)
+  created_at   DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updated_at   DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  workspace Workspace @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
+  from_user User      @relation("OwnershipTransferFrom", fields: [from_user_id], references: [id], onDelete: Cascade)
+  to_user   User      @relation("OwnershipTransferTo", fields: [to_user_id], references: [id], onDelete: Cascade)
+
+  @@index([workspace_id])
+  @@map("ownership_transfers")
   @@schema("platform")
 }
 
@@ -146,14 +177,16 @@ model User {
   created_at             DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
   updated_at             DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  owned_workspaces Workspace[]           @relation("WorkspaceOwner")
-  memberships      WorkspaceMember[]
-  invitations_sent WorkspaceInvitation[] @relation("InviterUser")
-  accounts         Account[]
-  sessions         Session[]
-  staff_profile    PlatformStaff?
-  conversations    Conversation[]
-  preferences      UserPreferences?
+  owned_workspaces         Workspace[]           @relation("WorkspaceOwner")
+  memberships              WorkspaceMember[]
+  invitations_sent         WorkspaceInvitation[] @relation("InviterUser")
+  ownership_transfers_from OwnershipTransfer[]   @relation("OwnershipTransferFrom")
+  ownership_transfers_to   OwnershipTransfer[]   @relation("OwnershipTransferTo")
+  accounts                 Account[]
+  sessions                 Session[]
+  staff_profile            PlatformStaff?
+  conversations            Conversation[]
+  preferences              UserPreferences?
 
   @@map("users")
   @@schema("platform")
@@ -303,8 +336,8 @@ model Conversation {
   created_at        DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
   updated_at        DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  workspace Workspace @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
-  user      User      @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  workspace     Workspace     @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
+  user          User          @relation(fields: [user_id], references: [id], onDelete: Cascade)
   messages      Message[]
   chat_runs     ChatRun[]
   message_cards MessageCard[]

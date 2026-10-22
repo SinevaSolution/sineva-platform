@@ -193,6 +193,26 @@ describe('system-authored content: email templates', () => {
       new_email: 'budi.new@example.com',
       revert_url: 'https://app.sineva.id/support',
     },
+    workspace_invitation: {
+      url: 'https://app.sineva.id/invite/tok',
+      workspace_name: 'Warung Sari',
+      inviter_name: 'Sari',
+      role: 'member',
+      expires_in_days: 7,
+    },
+    ownership_transfer_request: {
+      recipient_name: 'Budi',
+      url: 'https://app.sineva.id/ownership/tok',
+      workspace_name: 'Warung Sari',
+      from_name: 'Sari',
+      expires_in_days: 7,
+    },
+    ownership_transferred_notice: {
+      recipient_name: 'Budi',
+      workspace_name: 'Warung Sari',
+      other_name: 'Sari',
+      new_role: 'owner',
+    },
   } as const;
 
   for (const name of Object.keys(params) as EmailTemplateName[]) {

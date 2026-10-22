@@ -1,4 +1,9 @@
 import type { UserRole } from '@/server/domain/entities/user';
+import {
+  canChangeRole,
+  canInviteRole,
+  canRemoveMember,
+} from '@/server/domain/members/member_policy';
 
 export type PermissionKey =
   | 'workspace.view'
@@ -99,32 +104,30 @@ export interface PolicyContext {
   targetUserId?: string;
   actorRole: UserRole;
   targetRole?: UserRole;
+  /** The role a role change would set (`member.update_role`). */
+  newRole?: UserRole;
   specialistSlug?: string;
   allowedSpecialists?: string[];
 }
 
 export type PermissionPolicy = (context: PolicyContext) => boolean;
 
+// The member.* policies delegate to `members/member_policy.ts`, the one place
+// the role rules live. With a context that lacks the facts a rule needs (the
+// route guard knows the actor but not yet the target), a policy answers true:
+// the use case repeats the check once it has loaded the target, so the guard
+// is a coarse gate and never the last word.
 export const PERMISSION_POLICIES: Partial<Record<PermissionKey, PermissionPolicy>> = {
-  'member.invite': ({ actorRole, targetRole }) => {
-    // Admins cannot invite an owner
-    if (actorRole === 'admin' && targetRole === 'owner') return false;
-    return true;
+  'member.invite': ({ actorRole, targetRole }) =>
+    targetRole === undefined ? true : canInviteRole(actorRole, targetRole),
+  'member.update_role': ({ actorRole, targetRole, newRole, actorUserId, targetUserId }) => {
+    if (targetRole === undefined || newRole === undefined) return true;
+    return canChangeRole(actorRole, targetRole, newRole, actorUserId === targetUserId);
   },
-  'member.update_role': ({ actorRole, targetRole, actorUserId, targetUserId }) => {
-    // Cannot change own role
-    if (actorUserId === targetUserId) return false;
-    // Admins cannot promote to owner or alter an owner's role
-    if (actorRole === 'admin' && (targetRole === 'owner')) return false;
-    return true;
-  },
-  'member.remove': ({ actorRole, targetRole, actorUserId, targetUserId }) => {
-    // Cannot remove self via member.remove (use member.leave instead)
-    if (actorUserId === targetUserId) return false;
-    // Admins cannot remove an owner
-    if (actorRole === 'admin' && targetRole === 'owner') return false;
-    return true;
-  },
+  'member.remove': ({ actorRole, targetRole, actorUserId, targetUserId }) =>
+    targetRole === undefined
+      ? true
+      : canRemoveMember(actorRole, targetRole, actorUserId === targetUserId),
   'specialist.use': ({ allowedSpecialists, specialistSlug }) => {
     // If scoped to selected specialists, check membership
     if (allowedSpecialists && specialistSlug) {
@@ -133,6 +136,16 @@ export const PERMISSION_POLICIES: Partial<Record<PermissionKey, PermissionPolicy
     return true;
   },
 };
+
+// Policies that also bind roles whose matrix cell is a plain `yes`: even the
+// owner cannot invite an owner, change their own role or remove themselves.
+// `specialist.use` is deliberately not here: its allowlist is applied by the
+// route guard for `selected` scope only.
+const POLICY_BINDS_ALL_ROLES: ReadonlySet<PermissionKey> = new Set([
+  'member.invite',
+  'member.update_role',
+  'member.remove',
+]);
 
 export interface PermissionDecision {
   allowed: boolean;
@@ -156,6 +169,15 @@ export function hasPermission(
   }
 
   if (access === 'yes') {
+    const bound = PERMISSION_POLICIES[permission];
+    if (bound && context && POLICY_BINDS_ALL_ROLES.has(permission)) {
+      const allowed = bound(context);
+      return {
+        allowed,
+        isLimited: false,
+        reason: allowed ? undefined : `Policy check failed for ${permission}`,
+      };
+    }
     return { allowed: true, isLimited: false };
   }
 

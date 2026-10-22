@@ -5,7 +5,10 @@ export type EmailTemplateName =
   | 'reset_password'
   | 'lockout_notice'
   | 'email_change_confirm'
-  | 'email_change_notice';
+  | 'email_change_notice'
+  | 'workspace_invitation'
+  | 'ownership_transfer_request'
+  | 'ownership_transferred_notice';
 
 export interface RenderedEmail {
   subject: string;
@@ -44,12 +47,41 @@ export interface EmailChangeNoticeParams {
   revert_url?: string;
 }
 
+export interface WorkspaceInvitationParams {
+  url: string;
+  workspace_name: string;
+  inviter_name: string;
+  /** owner | admin | member | viewer; the template turns it into the localized role name. */
+  role: string;
+  expires_in_days?: number;
+}
+
+export interface OwnershipTransferRequestParams {
+  url: string;
+  recipient_name?: string;
+  workspace_name: string;
+  from_name: string;
+  expires_in_days?: number;
+}
+
+export interface OwnershipTransferredNoticeParams {
+  recipient_name?: string;
+  workspace_name: string;
+  /** The other party of the transfer. */
+  other_name: string;
+  /** The role this recipient holds now. */
+  new_role: 'owner' | 'admin';
+}
+
 export type EmailParamsMap = {
   verify_email: VerifyEmailParams;
   reset_password: ResetPasswordParams;
   lockout_notice: LockoutNoticeParams;
   email_change_confirm: EmailChangeConfirmParams;
   email_change_notice: EmailChangeNoticeParams;
+  workspace_invitation: WorkspaceInvitationParams;
+  ownership_transfer_request: OwnershipTransferRequestParams;
+  ownership_transferred_notice: OwnershipTransferredNoticeParams;
 };
 
 export interface EmailSendOptions<T extends EmailTemplateName = EmailTemplateName> {
