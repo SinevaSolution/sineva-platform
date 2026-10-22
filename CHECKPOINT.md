@@ -1,11 +1,11 @@
 # Sineva Platform Implementation Checkpoint
 
-> **Last Updated:** 2026-10-21 23:36 WIB  
-> **Current Git Branch:** `main`  
-> **Latest Commit:** `61855a0` (`fix(client): suppress React 19 false-positive script warning from next-themes`)  
+> **Last Updated:** 2026-10-22 WIB  
+> **Current Git Branch:** `feat/m0-platform` (integration branch, local, not pushed)  
+> **Latest Commit:** see `git log feat/m0-platform`  
 > **Current Milestone:** **M0 — Foundations**  
-> **Last Completed Work Package:** **WP-M0-29** (Conversations persistence and ownership API) + Client Hydration Fix  
-> **Next Work Package:** **WP-M0-30** (SSE relay and client stream helper)  
+> **Last Completed Work Packages:** WP-M0-06..09, 30, 33, 34, 42, 48 (platform halves) + UI revamp  
+> **Next:** batch 2: WP-M0-31, 32, 36, 37, 38; then 39 to 41, 43 to 46, 35, 47  
 
 ---
 
@@ -62,11 +62,24 @@ The database has been migrated and seeded (`npm run db:seed`):
 | **WP-M0-27** | **DONE** | Ed25519 signed context minting (`InternalAiEngineGateway`), key rotation, `/internal/v1/keys`. |
 | **WP-M0-28** | **DONE** | AI Gateway v2 client (`InternalAiEngineGateway`), chat contract v2 adaptation. |
 | **WP-M0-29** | **DONE** | Conversations & messages persistence, migration `20261021230000_conversations_and_messages`, private ownership (FR-HUB-32), idempotency on `client_message_id`, server mention re-parsing, room specialist pinning. |
+| **UI revamp** | **DONE** | Chat-first shell (collapsible Linear-style sidebar, every planned feature with coming-soon pages, recent chats marked Team or specialist, user menu with Profile and Sign out, tooltips), Home vs New chat, Sintra-style rooms (Blender renders in `public/rooms`, living Sino loops), per-page auth scenes, @mention composer, profile API and page. |
+| **WP-M0-06..09** | **DONE** | Hardening: test backdoors removed from `with_auth.ts` (header session resolver for tests), no secret defaults, nonce CSP (report-only), honest errors and request id. |
+| **WP-M0-30** | **DONE (platform)** | SSE relay, `chat_runs` (migration `20261022090000_chat_runs`), cancel, client stream helper, streaming UI. ADR-0022. Live replies blocked on sineva-ai WP-M0-18. |
+| **WP-M0-33 / 48** | **DONE (platform)** | `audit_events` (migration `20261022100000_audit_events`), route policy inventory, internal ingest; entitlement seam in `open` mode (`ENTITLEMENTS_MODE`). |
+| **WP-M0-34** | **DONE (platform)** | PII detectors and `mask()` in `@sineva/shared`, allowlisted logger, lint bans `console` in server code. sineva-ai copy of vectors pending. |
+| **WP-M0-42** | **DONE** | i18n EN/ID (in-repo translator, ADR-0023), catalogs in `apps/web/messages`, copy lint, all UI strings migrated. Indonesian needs native review. |
 | **Hotfix (React 19)** | **DONE** | Commit `61855a0`: Suppressed React 19 false-positive console error regarding `<script>` tag in `next-themes` (`apps/web/src/client/store/provider.tsx`). |
 
 ---
 
-## 4. Next Tasks
+## 4. Pending integrator actions
+
+- Apply migrations to the shared DB: `DATABASE_URL='...?schema=platform' npx prisma migrate deploy` (chat_runs, audit_events).
+- Run `npm run test:integration` on a throwaway test DB (not run in batch 1: local Docker hung).
+- Add `ENTITLEMENTS_MODE=open` to `.env.example`.
+- Blocked on sineva-ai team: WP-M0-13..20 (v2 contract, SSE, catalog), PII vectors copy, audit publisher.
+
+## 5. Next Tasks (superseded list below kept for history)
 
 1. **WP-M0-30: SSE relay and client stream helper**
    - Route: `/api/v1/workspaces/[workspace_id]/runs/[run_id]/events/route.ts` & cancel route.
