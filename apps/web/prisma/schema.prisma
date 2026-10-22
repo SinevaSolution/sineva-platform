@@ -56,6 +56,13 @@ model Workspace {
   storage_objects    StorageObject[]
   chat_runs          ChatRun[]
   message_cards      MessageCard[]
+  business_profile   BusinessProfile?
+  business_offerings BusinessOffering[]
+  business_policies  BusinessPolicy[]
+  profile_versions   BusinessProfileVersion[]
+  onboarding_states  OnboardingState[]
+  profile_scans      ProfileScan[]
+  checklist_items    WorkspaceChecklistState[]
 
   @@map("workspaces")
   @@schema("platform")
@@ -146,14 +153,15 @@ model User {
   created_at             DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
   updated_at             DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  owned_workspaces Workspace[]           @relation("WorkspaceOwner")
-  memberships      WorkspaceMember[]
-  invitations_sent WorkspaceInvitation[] @relation("InviterUser")
-  accounts         Account[]
-  sessions         Session[]
-  staff_profile    PlatformStaff?
-  conversations    Conversation[]
-  preferences      UserPreferences?
+  owned_workspaces  Workspace[]           @relation("WorkspaceOwner")
+  memberships       WorkspaceMember[]
+  invitations_sent  WorkspaceInvitation[] @relation("InviterUser")
+  accounts          Account[]
+  sessions          Session[]
+  staff_profile     PlatformStaff?
+  conversations     Conversation[]
+  preferences       UserPreferences?
+  onboarding_states OnboardingState[]
 
   @@map("users")
   @@schema("platform")
@@ -303,8 +311,8 @@ model Conversation {
   created_at        DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
   updated_at        DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  workspace Workspace @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
-  user      User      @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  workspace     Workspace     @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
+  user          User          @relation(fields: [user_id], references: [id], onDelete: Cascade)
   messages      Message[]
   chat_runs     ChatRun[]
   message_cards MessageCard[]
@@ -425,6 +433,171 @@ model StorageObject {
   workspace Workspace @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
 
   @@map("storage_objects")
+  @@schema("platform")
+}
+
+// ---------------------------------------------------------------------------
+// Business Profile, onboarding and website scan (ADR-0031)
+// ---------------------------------------------------------------------------
+
+// One profile per workspace. A field counts as confirmed when `field_meta`
+// holds an entry for it (source and `confirmed_at`); only confirmed values
+// reach the profile pack. List-like fields are jsonb so "never set" (null)
+// stays distinct from "set to an empty list". `updated_by` has no foreign key
+// on purpose: authorship of a version must outlive the person's account.
+model BusinessProfile {
+  id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  workspace_id   String    @unique @db.Uuid
+  version        Int       @default(0)
+  display_name   String?
+  legal_name     String?
+  industry       String?
+  city           String?
+  province       String?
+  languages      Json?
+  website_url    String?
+  social_handles Json?
+  business_hours Json?
+  brand_voice    Json?
+  audience       String?
+  goals          Json?
+  field_meta     Json      @default("{}")
+  confirmed_at   DateTime? @db.Timestamptz(6)
+  updated_by     String?   @db.Uuid
+  created_at     DateTime  @default(now()) @db.Timestamptz(6)
+  updated_at     DateTime  @default(now()) @db.Timestamptz(6)
+
+  workspace Workspace @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
+
+  @@map("business_profiles")
+  @@schema("platform")
+}
+
+// Price is integer IDR (`bigint`, conventions section 2) and exists only when
+// the user typed it (FR-ONB-16).
+model BusinessOffering {
+  id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  workspace_id   String    @db.Uuid
+  name           String
+  description    String?
+  price_amount   BigInt?
+  price_currency String    @default("IDR")
+  url            String?
+  position       Int
+  source         String    @default("user") // user | scan
+  confirmed_at   DateTime? @db.Timestamptz(6)
+  created_at     DateTime  @default(now()) @db.Timestamptz(6)
+  updated_at     DateTime  @default(now()) @db.Timestamptz(6)
+
+  workspace Workspace @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
+
+  @@index([workspace_id, position])
+  @@map("business_offerings")
+  @@schema("platform")
+}
+
+model BusinessPolicy {
+  id           String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  workspace_id String    @db.Uuid
+  kind         String // returns | shipping | payment | hours | faq | other
+  title        String
+  body         String    @db.Text
+  source       String    @default("user") // user | scan
+  confirmed_at DateTime? @db.Timestamptz(6)
+  updated_by   String?   @db.Uuid
+  created_at   DateTime  @default(now()) @db.Timestamptz(6)
+  updated_at   DateTime  @default(now()) @db.Timestamptz(6)
+
+  workspace Workspace @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
+
+  @@index([workspace_id, kind])
+  @@map("business_policies")
+  @@schema("platform")
+}
+
+// Frozen copy of the profile, offers and policies after each save. Unique per
+// workspace and version, which is also what makes two concurrent saves of the
+// same base version fail instead of both succeeding.
+model BusinessProfileVersion {
+  id            String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  workspace_id  String   @db.Uuid
+  version       Int
+  snapshot      Json
+  changed_paths Json     @default("[]")
+  change_kind   String // save | restore
+  restored_from Int?
+  changed_by    String   @db.Uuid
+  created_at    DateTime @default(now()) @db.Timestamptz(6)
+
+  workspace Workspace @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
+
+  @@unique([workspace_id, version])
+  @@map("business_profile_versions")
+  @@schema("platform")
+}
+
+model OnboardingState {
+  id              String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  workspace_id    String    @db.Uuid
+  user_id         String    @db.Uuid
+  flow            String    @default("owner") // owner | member
+  status          String    @default("in_progress") // in_progress | completed | abandoned
+  current_step    Int       @default(1)
+  answers         Json      @default("{}")
+  skipped_steps   Json      @default("[]")
+  dismissed_tasks Json      @default("[]")
+  started_at      DateTime  @default(now()) @db.Timestamptz(6)
+  completed_at    DateTime? @db.Timestamptz(6)
+  created_at      DateTime  @default(now()) @db.Timestamptz(6)
+  updated_at      DateTime  @default(now()) @db.Timestamptz(6)
+
+  workspace Workspace @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
+  user      User      @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@unique([workspace_id, user_id])
+  @@index([user_id])
+  @@map("onboarding_states")
+  @@schema("platform")
+}
+
+// One row per scan request. `deleted_at` is a soft delete on purpose: a
+// deleted row still counts toward the 5 per hour quota, so deleting cannot
+// reset the limit. `result` is the unconfirmed suggestion and is blanked after
+// `expires_at` (24 hours).
+model ProfileScan {
+  id           String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  workspace_id String    @db.Uuid
+  requested_by String    @db.Uuid
+  url          String
+  status       String    @default("running") // queued | running | partial | succeeded | failed
+  result       Json?
+  error_code   String?
+  deleted_at   DateTime? @db.Timestamptz(6)
+  created_at   DateTime  @default(now()) @db.Timestamptz(6)
+  updated_at   DateTime  @default(now()) @db.Timestamptz(6)
+  expires_at   DateTime  @db.Timestamptz(6)
+
+  workspace Workspace @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
+
+  @@index([workspace_id, created_at(sort: Desc)])
+  @@map("profile_scans")
+  @@schema("platform")
+}
+
+model WorkspaceChecklistState {
+  id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  workspace_id String   @db.Uuid
+  item_key     String
+  status       String   @default("done") // done | dismissed
+  source       String
+  completed_at DateTime @default(now()) @db.Timestamptz(6)
+  created_at   DateTime @default(now()) @db.Timestamptz(6)
+  updated_at   DateTime @default(now()) @db.Timestamptz(6)
+
+  workspace Workspace @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
+
+  @@unique([workspace_id, item_key])
+  @@map("workspace_checklist_state")
   @@schema("platform")
 }
 
