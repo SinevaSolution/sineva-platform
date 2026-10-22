@@ -112,9 +112,19 @@ export function libraryOpenApiPaths(): Record<string, Json> {
         operationId: 'list_library_documents',
         permission: 'library.read',
         query: [
-          queryParam('status', { type: 'string', enum: ['queued', 'processing', 'ready', 'needs_attention', 'failed', 'deleting'] }),
+          queryParam(
+            'status',
+            { type: 'string', enum: ['queued', 'processing', 'ready', 'needs_attention', 'failed', 'deleting', 'reading'] },
+            '`reading` is queued and processing together',
+          ),
           queryParam('scope_type', { type: 'string', enum: ['workspace', 'specialist'] }),
           queryParam('scope_ref', { type: 'string' }),
+          queryParam(
+            'used_by',
+            { type: 'string', example: 'sinosales' },
+            'Documents this specialist can use: marked Everyone, or chosen for it',
+          ),
+          queryParam('sort', { type: 'string', enum: ['newest', 'oldest', 'name', 'size'], default: 'newest' }),
           queryParam('source_type', { type: 'string', enum: ['upload', 'url', 'crawl', 'sync', 'chat_save', 'note', 'ai_tool'] }),
           queryParam('language', { type: 'string', enum: ['id', 'en', 'mixed', 'unknown'] }),
           queryParam('folder_id', { type: 'string' }, 'A folder id, or `root` for documents outside every folder'),
@@ -211,7 +221,9 @@ export function libraryOpenApiPaths(): Record<string, Json> {
         success: { status: '200', description: 'Folders', schema: 'LibraryFolderList' },
       }),
       post: operation({
-        summary: 'Create a folder (depth at most 3, unique name per parent)',
+        summary: 'Create a collection (a folder: depth at most 3, unique name per parent)',
+        description:
+          'Omitting `scopes` takes the parent collection\'s access, or Everyone at the top level. Squad and workflow scopes are reserved and answer 422 until those features ship.',
         operationId: 'create_library_folder',
         permission: 'library.manage',
         requestSchema: {
@@ -221,6 +233,7 @@ export function libraryOpenApiPaths(): Record<string, Json> {
           properties: {
             name: { type: 'string', minLength: 1, maxLength: 80 },
             parent_id: { type: ['string', 'null'], format: 'uuid' },
+            scopes: { type: 'array', items: scopeInput, description: 'Who can use this collection' },
           },
         },
         success: { status: '201', description: 'The folder', schema: 'LibraryFolder' },
@@ -229,7 +242,9 @@ export function libraryOpenApiPaths(): Record<string, Json> {
     },
     [`${WORKSPACE}/folders/{folder_id}`]: {
       patch: operation({
-        summary: 'Rename or move a folder',
+        summary: 'Rename, move or change who can use a collection',
+        description:
+          'Changing `scopes` rewrites the access of the documents that follow the collection (a relabel, never a re-read). A document whose relabel fails stays flagged `acl_sync_pending`; the collection change itself still succeeds.',
         operationId: 'update_library_folder',
         permission: 'library.manage',
         params: [folderParam],
@@ -239,6 +254,7 @@ export function libraryOpenApiPaths(): Record<string, Json> {
           properties: {
             name: { type: 'string', minLength: 1, maxLength: 80 },
             parent_id: { type: ['string', 'null'], format: 'uuid' },
+            scopes: { type: 'array', items: scopeInput },
           },
         },
         success: { status: '200', description: 'The folder', schema: 'LibraryFolder' },
@@ -273,6 +289,26 @@ export function libraryOpenApiPaths(): Record<string, Json> {
         },
         success: { status: '200', description: 'Passages, or an honest abstention', schema: 'LibraryTryResult' },
         also: ['502', '503'],
+      }),
+    },
+    [`${WORKSPACE}/summary`]: {
+      get: operation({
+        summary: 'Counts for the Library header and the collections list',
+        description:
+          'Ready, being read, needs a look and could not read, plus documents per collection, over what the caller may see.',
+        operationId: 'get_library_summary',
+        permission: 'library.read',
+        success: { status: '200', description: 'Status and collection counts', schema: 'LibrarySummary' },
+      }),
+    },
+    [`${WORKSPACE}/knowledge`]: {
+      get: operation({
+        summary: 'What Sino and each specialist know',
+        description:
+          'Ready documents each companion can use: Everyone\'s for Sino in team chats, Everyone\'s plus the ones chosen for it for a specialist. Only the specialists the caller may use are listed.',
+        operationId: 'get_library_knowledge',
+        permission: 'library.read',
+        success: { status: '200', description: 'Document counts per companion', schema: 'LibraryKnowledge' },
       }),
     },
     [`${WORKSPACE}/usage`]: {
@@ -318,7 +354,7 @@ export const LIBRARY_COMPONENT_SCHEMAS: Record<string, Json> = {
   LibraryScope: {
     type: 'object',
     properties: {
-      scope_type: { type: 'string', enum: ['workspace', 'specialist', 'squad'] },
+      scope_type: { type: 'string', enum: ['workspace', 'specialist', 'squad', 'workflow'], description: 'squad and workflow are reserved' },
       scope_ref: { ...nullableString, description: 'Agent slug or squad id; null for the workspace scope' },
     },
   },
@@ -343,6 +379,7 @@ export const LIBRARY_COMPONENT_SCHEMAS: Record<string, Json> = {
       review_due_at: { type: ['string', 'null'], format: 'date-time' },
       scopes: { type: 'array', items: { $ref: '#/components/schemas/LibraryScope' } },
       acl_sync_pending: { type: 'boolean' },
+      access_inherited: { type: 'boolean', description: 'True while the document follows its collection\'s access' },
       created_by: uuid,
       created_at: { type: 'string', format: 'date-time' },
       updated_at: { type: 'string', format: 'date-time' },
@@ -361,6 +398,7 @@ export const LIBRARY_COMPONENT_SCHEMAS: Record<string, Json> = {
       id: uuid,
       parent_id: { type: ['string', 'null'], format: 'uuid' },
       name: { type: 'string' },
+      scopes: { type: 'array', items: { $ref: '#/components/schemas/LibraryScope' }, description: 'Who can use this collection' },
       created_at: { type: 'string', format: 'date-time' },
       updated_at: { type: 'string', format: 'date-time' },
     },
@@ -379,7 +417,11 @@ export const LIBRARY_COMPONENT_SCHEMAS: Record<string, Json> = {
       byte_size: { type: 'integer', minimum: 1, maximum: 26214400 },
       sha256: { type: 'string', pattern: '^[0-9a-f]{64}$', description: 'Computed by the browser; checked against the stored bytes' },
       folder_id: { type: ['string', 'null'], format: 'uuid' },
-      scopes: { type: 'array', items: scopeInput, description: 'Defaults to the workspace' },
+      scopes: {
+        type: 'array',
+        items: scopeInput,
+        description: 'Omit to take the collection\'s access (Everyone at the top level); sending scopes is an override',
+      },
       review_interval_days: { type: ['integer', 'null'], minimum: 1, maximum: 730 },
     },
   },
@@ -431,7 +473,8 @@ export const LIBRARY_COMPONENT_SCHEMAS: Record<string, Json> = {
     properties: {
       title: { type: 'string', maxLength: 200 },
       folder_id: { type: ['string', 'null'], format: 'uuid' },
-      scopes: { type: 'array', items: scopeInput },
+      scopes: { type: 'array', items: scopeInput, description: 'An override: the document stops following its collection' },
+      inherit_access: { const: true, description: 'Put the document back on its collection\'s access; not with scopes' },
       review_interval_days: { type: ['integer', 'null'], minimum: 1, maximum: 730 },
     },
   },
@@ -499,6 +542,31 @@ export const LIBRARY_COMPONENT_SCHEMAS: Record<string, Json> = {
         type: 'object',
         properties: { documents: { type: 'boolean' }, storage: { type: 'boolean' }, ocr_pages: { type: 'boolean' } },
       },
+      storage_limit_bytes: { type: ['integer', 'null'], description: 'Null when the workspace has no storage limit' },
+    },
+  },
+  LibrarySummary: {
+    type: 'object',
+    properties: {
+      total: { type: 'integer' },
+      by_status: {
+        type: 'object',
+        properties: {
+          ready: { type: 'integer' },
+          reading: { type: 'integer' },
+          needs_attention: { type: 'integer' },
+          failed: { type: 'integer' },
+        },
+      },
+      by_folder: { type: 'object', additionalProperties: { type: 'integer' }, description: 'Documents per collection id' },
+      in_root: { type: 'integer' },
+    },
+  },
+  LibraryKnowledge: {
+    type: 'object',
+    properties: {
+      everyone: { type: 'integer' },
+      specialists: { type: 'object', additionalProperties: { type: 'integer' }, description: 'Per specialist slug' },
     },
   },
   LibraryIngestEvent: {

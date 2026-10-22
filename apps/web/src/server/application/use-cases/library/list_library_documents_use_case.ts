@@ -19,6 +19,8 @@ export class ListLibraryDocumentsUseCase {
       ...(query.status ? { status: query.status } : {}),
       ...(query.scope_type ? { scope_type: query.scope_type } : {}),
       ...(query.scope_ref ? { scope_ref: query.scope_ref } : {}),
+      ...(query.used_by ? { used_by: query.used_by } : {}),
+      ...(query.sort ? { sort: query.sort } : {}),
       ...(query.source_type ? { source_type: query.source_type } : {}),
       ...(query.language ? { language: query.language } : {}),
       ...(query.folder_id !== undefined ? { folder_id: query.folder_id === 'root' ? null : query.folder_id } : {}),

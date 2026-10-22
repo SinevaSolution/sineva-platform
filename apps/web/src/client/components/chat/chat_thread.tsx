@@ -3,6 +3,7 @@
 import { Square } from 'lucide-react';
 import * as React from 'react';
 import { SNButton, snToast, SNTooltip } from '@sineva/ui';
+import { LibraryKnowsChip } from '@/client/components/library/library_knows_chip';
 import { ConversationActions } from '@/client/components/conversation/conversation_actions';
 import { InlineTitleEdit } from '@/client/components/conversation/inline_title_edit';
 import { useConversationActions } from '@/client/components/conversation/use_conversation_actions';
@@ -21,6 +22,7 @@ import type {
   MessageView,
   SendMessageResultView,
 } from '@/shared/chat_view';
+import type { LibraryKnowledgeView } from '@/shared/library_view';
 import type { ShellSpecialistView } from '@/shared/shell_view';
 import { Composer } from './composer';
 import { MessageCards } from './message_cards';
@@ -86,11 +88,14 @@ export function ChatThread({
   workspaceSlug,
   conversationId,
   specialists,
+  knowledge,
 }: {
   workspaceId: string;
   workspaceSlug: string;
   conversationId: string;
   specialists: ShellSpecialistView[];
+  /** What Sino and each specialist can use from the Library ("Knows N documents"). */
+  knowledge: LibraryKnowledgeView;
 }) {
   const t = useTranslations('chat');
   const tCommon = useTranslations('common');
@@ -347,6 +352,14 @@ export function ChatThread({
           <h1 className="truncate text-[15px] font-semibold text-text-inverse">{displayTitle}</h1>
         )}
         <p className="text-xs text-text-inverse/65">{isTeam ? t('thread.subtitle_team') : t('thread.subtitle_private', { name: companionName })}</p>
+      </div>
+      <div className="ms-auto hidden sm:block">
+        <LibraryKnowsChip
+          workspaceSlug={workspaceSlug}
+          knowledge={knowledge}
+          agentSlug={isTeam ? null : (specialist?.agent_slug ?? null)}
+          name={companionName}
+        />
       </div>
       {renaming ? null : (
         <ConversationActions

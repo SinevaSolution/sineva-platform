@@ -176,7 +176,7 @@ describe('presigned upload request (FR-LIB-06, FR-LIB-07)', () => {
     await expect(
       new RequestLibraryUploadUseCase(h.deps).execute(uploadDto({ scopes: [{ scope_type: 'specialist', scope_ref: 'sino-evil' }] }), ctx()),
     ).rejects.toBeInstanceOf(ValidationError);
-    const foreign = await h.folders.create({ workspace_id: OTHER_WS, parent_id: null, name: 'Theirs', created_by: OTHER_USER });
+    const foreign = await h.folders.create({ workspace_id: OTHER_WS, parent_id: null, name: 'Theirs', created_by: OTHER_USER, scopes: [{ scope_type: 'workspace', scope_ref: OTHER_WS }] });
     await expect(
       new RequestLibraryUploadUseCase(h.deps).execute(uploadDto({ folder_id: foreign.id }), ctx()),
     ).rejects.toBeInstanceOf(NotFoundError);

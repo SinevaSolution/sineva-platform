@@ -30,6 +30,15 @@ describe('apiErrorKey: copy maps from the machine code, never from the API messa
     expect(apiErrorKey(err(422, 'validation_failed', ['terms_required']))).toBe('api.terms_required');
   });
 
+  it('maps the Library detail codes and the plan limit to plain copy', () => {
+    expect(apiErrorKey(err(409, 'already_in_library', ['already_in_library']))).toBe('api.already_in_library');
+    expect(apiErrorKey(err(409, 'folder_not_empty', ['folder_not_empty']))).toBe('api.folder_not_empty');
+    expect(apiErrorKey(err(422, 'validation_failed', ['folder_depth_exceeded']))).toBe('api.folder_depth_exceeded');
+    expect(apiErrorKey(err(422, 'validation_failed', ['unsupported_file_type']))).toBe('api.unsupported_file_type');
+    expect(apiErrorKey(err(422, 'validation_failed', ['file_too_large']))).toBe('api.file_too_large');
+    expect(apiErrorKey(err(403, 'entitlement_required'))).toBe('api.entitlement_required');
+  });
+
   it('falls back to the status when the envelope had no code', () => {
     expect(apiErrorKey(err(429))).toBe('api.rate_limited');
     expect(apiErrorKey(err(503))).toBe('api.dependency_unavailable');
@@ -57,6 +66,12 @@ describe('apiErrorKey: copy maps from the machine code, never from the API messa
       apiErrorKey(err(422, 'x', ['invalid_password'])),
       apiErrorKey(err(422, 'x', ['terms_required'])),
       apiErrorKey(err(422, 'x', ['privacy_required'])),
+      apiErrorKey(err(409, 'x', ['already_in_library'])),
+      apiErrorKey(err(409, 'x', ['folder_not_empty'])),
+      apiErrorKey(err(422, 'x', ['folder_depth_exceeded'])),
+      apiErrorKey(err(422, 'x', ['unsupported_file_type'])),
+      apiErrorKey(err(422, 'x', ['file_too_large'])),
+      apiErrorKey(err(403, 'entitlement_required')),
       apiErrorKey(null),
     ];
     for (const catalog of [en, id]) {

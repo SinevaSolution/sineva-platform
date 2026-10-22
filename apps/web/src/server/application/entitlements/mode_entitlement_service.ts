@@ -63,6 +63,18 @@ export class ModeEntitlementService implements EntitlementService {
     }
   }
 
+  async numericLimit(workspaceId: string | null, key: EntitlementKey): Promise<number | null> {
+    if (!isEntitlementKey(key)) {
+      throw new Error(`Unknown entitlement key: ${String(key)}`);
+    }
+    // `open` mode has no plans to consult, so there is no ceiling to show.
+    if (this.mode === 'open') {
+      return null;
+    }
+    const entry = await this.limits.resolve(workspaceId, key);
+    return typeof entry?.limit === 'number' ? entry.limit : null;
+  }
+
   private async decide(
     workspaceId: string | null,
     key: EntitlementKey,

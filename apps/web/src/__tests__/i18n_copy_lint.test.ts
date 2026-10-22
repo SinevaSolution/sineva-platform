@@ -51,6 +51,50 @@ describe('copy rules: every violating fixture must fail', () => {
     expect(rules('Sent through the BFF')).toContain('internal_term');
   });
 
+  it.each([
+    'Monthly OCR',
+    'Run OCR on this file',
+    'Stored as an embedding',
+    'Each chunk is small',
+    'Split into chunks',
+    'A vector store',
+    'Could not index this document',
+    'Indexing your file',
+    'Search index',
+    'Ingest started',
+    'Paste your API token',
+    'Tokens used',
+    'RAG answers',
+    'The payload is large',
+    'Set up a webhook',
+    'Download the JSON',
+    'Sent through the BFF',
+  ])('rejects the technical word in English copy "%s"', (text) => {
+    expect(rules(text)).toContain('technical_term');
+  });
+
+  it.each([
+    'Halaman OCR bulan ini',
+    'Gagal mengindeks dokumen ini',
+    'Pengindeksan selesai',
+    'Indeks pencarian',
+    'Simpan sebagai vektor',
+    'Tokenisasi teks',
+    'Penyematan dokumen',
+    'Unduh file JSON',
+    'Pasang webhook',
+    'Payload terlalu besar',
+  ])('rejects the technical word in Indonesian copy "%s"', (text) => {
+    expect(rules(text, 'id')).toContain('technical_term');
+  });
+
+  it('matches whole words, so "indexed" style look-alikes and "tokoh" pass', () => {
+    expect(rules('Pages read from photos and scans')).toEqual([]);
+    expect(rules('Sino is reading your file')).toEqual([]);
+    expect(rules('Tokoh utama dan indah sekali', 'id')).toEqual([]);
+    expect(rules('Frag your ragged rags')).toEqual([]);
+  });
+
   it('rejects "Submit" and "Click here"', () => {
     expect(rules('Submit')).toContain('banned_phrase');
     expect(rules('Click here to continue')).toContain('banned_phrase');

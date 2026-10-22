@@ -48,29 +48,30 @@ model Workspace {
   created_at DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updated_at DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  owner               User?                       @relation("WorkspaceOwner", fields: [owner_user_id], references: [id], onDelete: SetNull)
-  members             WorkspaceMember[]
-  member_specialists  WorkspaceMemberSpecialist[]
-  invitations         WorkspaceInvitation[]
-  ownership_transfers OwnershipTransfer[]
-  conversations       Conversation[]
-  storage_objects     StorageObject[]
-  chat_runs           ChatRun[]
-  message_cards       MessageCard[]
-  inbox_items        InboxItem[]
-  approvals          Approval[]
-  input_requests     InputRequest[]
-  library_folders    LibraryFolder[]
-  library_documents  LibraryDocument[]
-  library_scopes     LibraryDocumentScope[]
-  library_events     LibraryIngestEvent[]
-  business_profile   BusinessProfile?
-  business_offerings BusinessOffering[]
-  business_policies  BusinessPolicy[]
-  profile_versions   BusinessProfileVersion[]
-  onboarding_states  OnboardingState[]
-  profile_scans      ProfileScan[]
-  checklist_items    WorkspaceChecklistState[]
+  owner                 User?                       @relation("WorkspaceOwner", fields: [owner_user_id], references: [id], onDelete: SetNull)
+  members               WorkspaceMember[]
+  member_specialists    WorkspaceMemberSpecialist[]
+  invitations           WorkspaceInvitation[]
+  ownership_transfers   OwnershipTransfer[]
+  conversations         Conversation[]
+  storage_objects       StorageObject[]
+  chat_runs             ChatRun[]
+  message_cards         MessageCard[]
+  inbox_items           InboxItem[]
+  approvals             Approval[]
+  input_requests        InputRequest[]
+  library_folders       LibraryFolder[]
+  library_documents     LibraryDocument[]
+  library_scopes        LibraryDocumentScope[]
+  library_folder_scopes LibraryFolderScope[]
+  library_events        LibraryIngestEvent[]
+  business_profile      BusinessProfile?
+  business_offerings    BusinessOffering[]
+  business_policies     BusinessPolicy[]
+  profile_versions      BusinessProfileVersion[]
+  onboarding_states     OnboardingState[]
+  profile_scans         ProfileScan[]
+  checklist_items       WorkspaceChecklistState[]
 
   @@map("workspaces")
   @@schema("platform")
@@ -201,7 +202,7 @@ model User {
   staff_profile            PlatformStaff?
   conversations            Conversation[]
   preferences              UserPreferences?
-  onboarding_states OnboardingState[]
+  onboarding_states        OnboardingState[]
 
   @@map("users")
   @@schema("platform")
@@ -649,10 +650,11 @@ model LibraryFolder {
   created_at   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updated_at   DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  workspace Workspace         @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
-  parent    LibraryFolder?    @relation("LibraryFolderTree", fields: [parent_id], references: [id], onDelete: NoAction)
-  children  LibraryFolder[]   @relation("LibraryFolderTree")
+  workspace Workspace            @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
+  parent    LibraryFolder?       @relation("LibraryFolderTree", fields: [parent_id], references: [id], onDelete: NoAction)
+  children  LibraryFolder[]      @relation("LibraryFolderTree")
   documents LibraryDocument[]
+  scopes    LibraryFolderScope[]
 
   @@unique([workspace_id, parent_key, name])
   @@index([workspace_id, parent_id])
@@ -693,6 +695,9 @@ model LibraryDocument {
   ingest_attempted_at  DateTime? @map("ingest_attempted_at") @db.Timestamptz(6)
   last_ingest_sequence Int       @default(0) @map("last_ingest_sequence")
   acl_synced_at        DateTime? @map("acl_synced_at") @db.Timestamptz(6)
+  // True while the document follows its collection's access (ADR-0033). The
+  // default is false so existing documents keep the scopes they already have.
+  access_inherited     Boolean   @default(false) @map("access_inherited")
   uploaded_at          DateTime? @map("uploaded_at") @db.Timestamptz(6)
   created_by           String    @map("created_by") @db.Uuid
   created_at           DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
@@ -717,7 +722,7 @@ model LibraryDocumentScope {
   id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   document_id  String   @map("document_id") @db.Uuid
   workspace_id String   @map("workspace_id") @db.Uuid
-  scope_type   String   @map("scope_type") // workspace | specialist | squad
+  scope_type   String   @map("scope_type") // workspace | specialist | squad | workflow
   scope_ref    String   @map("scope_ref")
   created_at   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
 
@@ -727,6 +732,26 @@ model LibraryDocumentScope {
   @@unique([document_id, scope_type, scope_ref])
   @@index([workspace_id, scope_type, scope_ref])
   @@map("library_document_scopes")
+  @@schema("platform")
+}
+
+// Who can use what is in a collection (ADR-0033): the same shape as a
+// document's scopes, `workspace` meaning Everyone. A collection always has at
+// least one row; the migration backfilled the existing ones with `workspace`.
+model LibraryFolderScope {
+  id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  folder_id    String   @map("folder_id") @db.Uuid
+  workspace_id String   @map("workspace_id") @db.Uuid
+  scope_type   String   @map("scope_type") // workspace | specialist | squad | workflow
+  scope_ref    String   @map("scope_ref")
+  created_at   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  folder    LibraryFolder @relation(fields: [folder_id], references: [id], onDelete: Cascade)
+  workspace Workspace     @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
+
+  @@unique([folder_id, scope_type, scope_ref])
+  @@index([workspace_id, scope_type, scope_ref])
+  @@map("library_folder_scopes")
   @@schema("platform")
 }
 

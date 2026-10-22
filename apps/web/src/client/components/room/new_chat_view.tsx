@@ -4,12 +4,14 @@ import { useRouter } from 'next/navigation';
 import * as React from 'react';
 import type { ComposerHandle } from '@/client/components/chat/composer';
 import { StartChat } from '@/client/components/chat/start_chat';
+import { LibraryKnowsChip } from '@/client/components/library/library_knows_chip';
 import { cn } from '@/client/components/ui/cn';
 import { PresetEmptyState } from '@/client/components/ui/empty_state';
 import { SNSinoFigure } from '@/client/components/ui/sn_sino_figure';
 import { specialistPose } from '@/client/components/ui/specialist_accent';
 import { SNTooltip } from '@sineva/ui';
 import { useTranslations } from '@/i18n/provider';
+import type { LibraryKnowledgeView } from '@/shared/library_view';
 import type { ShellSpecialistView } from '@/shared/shell_view';
 import { teamStarterKeys, type RoomMood } from './room_model';
 import { RoomBubble, RoomStage } from './room_stage';
@@ -27,6 +29,7 @@ export function NewChatView({
   specialists,
   initialWith,
   initialPrompt,
+  knowledge,
 }: {
   /** Prefills the box (Home "Ideas for today"); never sent automatically. */
   initialPrompt?: string | null;
@@ -35,6 +38,8 @@ export function NewChatView({
   firstName: string;
   specialists: ShellSpecialistView[];
   initialWith: string | null;
+  /** What Sino and each specialist can use from the Library ("Knows N documents"). */
+  knowledge: LibraryKnowledgeView;
 }) {
   const router = useRouter();
   const t = useTranslations('room');
@@ -123,7 +128,10 @@ export function NewChatView({
             {current ? t('intro_specialist', { role: current.role_title }) : t('intro_team')}
           </RoomBubble>
         </div>
-        {starterTexts.length === 0 ? (
+        <div className="anim-rise [--d:90ms]">
+          <LibraryKnowsChip workspaceSlug={workspaceSlug} knowledge={knowledge} agentSlug={withSlug} name={name} />
+        </div>
+                {starterTexts.length === 0 ? (
           <PresetEmptyState
             preset="new_chat_starters"
             className="rounded-lg bg-surface p-3 shadow-md ring-1 ring-border"

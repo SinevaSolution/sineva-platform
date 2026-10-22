@@ -4,4 +4,5 @@ import type { EntitlementService } from '@/server/domain/entitlements/entitlemen
 export const allowAllEntitlements: EntitlementService = {
   check: async () => ({ allowed: true, reason: 'open_mode' }),
   assert: async () => undefined,
+  numericLimit: async () => null,
 };

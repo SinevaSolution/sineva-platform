@@ -16,7 +16,7 @@ import type {
   TextPreviewRequest,
 } from '@/server/domain/library/knowledge_ingest_gateway';
 import type { DocumentAccess, ScopeRef } from '@/server/domain/library/library_access';
-import { canAccessScopes } from '@/server/domain/library/library_access';
+import { canAccessScopes, usableBy } from '@/server/domain/library/library_access';
 import type {
   LibraryDocumentEntity,
   LibraryFolderEntity,
@@ -29,7 +29,9 @@ import type {
   LibraryDocumentRepository,
   LibraryFolderRepository,
   LibraryIngestEventRepository,
+  LibraryKnowledgeCounts,
   LibraryUsage,
+  LibrarySummaryCounts,
   NewLibraryDocument,
   NewLibraryFolder,
   NewLibraryIngestEvent,
@@ -88,6 +90,7 @@ export class FakeLibraryDocuments implements LibraryDocumentRepository {
       created_at: now,
       updated_at: now,
       scopes: [{ scope_type: 'workspace', scope_ref: entity.workspace_id }],
+      access_inherited: false,
       ...entity,
     };
     this.rows.set(row.id, row);
@@ -133,6 +136,7 @@ export class FakeLibraryDocuments implements LibraryDocumentRepository {
       created_at: now,
       updated_at: now,
       scopes: input.scopes.map((s) => ({ ...s })),
+      access_inherited: input.access_inherited,
     };
     this.rows.set(row.id, row);
     return { ...row };
@@ -146,14 +150,30 @@ export class FakeLibraryDocuments implements LibraryDocumentRepository {
   async list(filter: LibraryDocumentFilter): Promise<{ items: LibraryDocumentEntity[]; next_cursor: string | null }> {
     const matching = [...this.rows.values()]
       .filter((row) => row.workspace_id === filter.workspace_id && row.uploaded_at !== null)
-      .filter((row) => (filter.status ? row.status === filter.status : row.status !== 'deleting'))
+      .filter((row) => {
+        if (!filter.status) return row.status !== 'deleting';
+        if (filter.status === 'reading') return row.status === 'queued' || row.status === 'processing';
+        return row.status === filter.status;
+      })
+      .filter((row) => !filter.used_by || usableBy(row.scopes, filter.used_by))
       .filter((row) => canAccessScopes(filter.access as DocumentAccess, row.scopes))
       .filter((row) => !filter.source_type || row.source_type === filter.source_type)
       .filter((row) => !filter.language || row.language === filter.language)
       .filter((row) => filter.folder_id === undefined || row.folder_id === filter.folder_id)
       .filter((row) => !filter.scope_type || row.scopes.some((s) => s.scope_type === filter.scope_type && (!filter.scope_ref || s.scope_ref === filter.scope_ref)))
       .filter((row) => !filter.q || row.title.toLowerCase().includes(filter.q.toLowerCase()))
-      .sort((a, b) => (a.created_at < b.created_at ? 1 : -1));
+      .sort((a, b) => {
+        switch (filter.sort) {
+          case 'oldest':
+            return a.created_at < b.created_at ? -1 : 1;
+          case 'name':
+            return a.title.localeCompare(b.title);
+          case 'size':
+            return b.byte_size - a.byte_size;
+          default:
+            return a.created_at < b.created_at ? 1 : -1;
+        }
+      });
     const start = filter.cursor ? matching.findIndex((row) => row.id === filter.cursor) + 1 : 0;
     const page = matching.slice(start, start + filter.limit);
     const hasMore = start + filter.limit < matching.length;
@@ -225,6 +245,58 @@ export class FakeLibraryDocuments implements LibraryDocumentRepository {
     };
   }
 
+  async summary(workspaceId: string, access: DocumentAccess): Promise<LibrarySummaryCounts> {
+    const visible = [...this.rows.values()].filter(
+      (row) =>
+        row.workspace_id === workspaceId &&
+        row.uploaded_at !== null &&
+        row.status !== 'deleting' &&
+        canAccessScopes(access, row.scopes),
+    );
+    const by_folder: Record<string, number> = {};
+    for (const row of visible) {
+      if (row.folder_id) by_folder[row.folder_id] = (by_folder[row.folder_id] ?? 0) + 1;
+    }
+    const count = (...statuses: string[]) => visible.filter((row) => statuses.includes(row.status)).length;
+    return {
+      total: visible.length,
+      by_status: {
+        ready: count('ready'),
+        reading: count('queued', 'processing'),
+        needs_attention: count('needs_attention'),
+        failed: count('failed'),
+      },
+      by_folder,
+      in_root: visible.filter((row) => row.folder_id === null).length,
+    };
+  }
+
+  async knowledgeCounts(workspaceId: string): Promise<LibraryKnowledgeCounts> {
+    const ready = [...this.rows.values()].filter(
+      (row) => row.workspace_id === workspaceId && row.uploaded_at !== null && row.status === 'ready',
+    );
+    const specialist_only: Record<string, number> = {};
+    let everyone = 0;
+    for (const row of ready) {
+      if (row.scopes.some((s) => s.scope_type === 'workspace')) {
+        everyone += 1;
+        continue;
+      }
+      for (const scope of row.scopes) {
+        if (scope.scope_type === 'specialist') {
+          specialist_only[scope.scope_ref] = (specialist_only[scope.scope_ref] ?? 0) + 1;
+        }
+      }
+    }
+    return { everyone, specialist_only };
+  }
+
+  async listInheriting(workspaceId: string, folderId: string): Promise<LibraryDocumentEntity[]> {
+    return [...this.rows.values()]
+      .filter((row) => row.workspace_id === workspaceId && row.folder_id === folderId && row.access_inherited)
+      .map((row) => ({ ...row, scopes: row.scopes.map((s) => ({ ...s })) }));
+  }
+
   async delete(workspaceId: string, id: string): Promise<void> {
     this.guard();
     const row = this.rows.get(id);
@@ -264,16 +336,24 @@ export class FakeLibraryFolders implements LibraryFolderRepository {
       created_by: input.created_by,
       created_at: now,
       updated_at: now,
+      scopes: input.scopes.map((s) => ({ ...s })),
     };
     this.rows.set(row.id, row);
     return { ...row };
   }
   async findById(workspaceId: string, id: string): Promise<LibraryFolderEntity | null> {
     const row = this.rows.get(id);
-    return row && row.workspace_id === workspaceId ? { ...row } : null;
+    return row && row.workspace_id === workspaceId ? { ...row, scopes: row.scopes.map((s) => ({ ...s })) } : null;
   }
   async listAll(workspaceId: string): Promise<LibraryFolderEntity[]> {
-    return [...this.rows.values()].filter((row) => row.workspace_id === workspaceId).map((row) => ({ ...row }));
+    return [...this.rows.values()]
+      .filter((row) => row.workspace_id === workspaceId)
+      .map((row) => ({ ...row, scopes: row.scopes.map((s) => ({ ...s })) }));
+  }
+  async replaceScopes(workspaceId: string, id: string, scopes: ScopeRef[]): Promise<void> {
+    const row = this.rows.get(id);
+    if (!row || row.workspace_id !== workspaceId) throw new Error('folder not found');
+    row.scopes = scopes.map((s) => ({ ...s }));
   }
   async update(workspaceId: string, id: string, patch: { name?: string; parent_id?: string | null }): Promise<LibraryFolderEntity> {
     const row = this.rows.get(id);
@@ -425,6 +505,8 @@ export class FakeContextSigner implements ContextSigner {
 /** Entitlements that deny the listed keys (as `enforced` mode would) and record every check. */
 export class RecordingEntitlements implements EntitlementService {
   readonly checks: Array<{ workspace_id: string | null; key: EntitlementKey; quantity?: number }> = [];
+  /** Ceilings `numericLimit` reports; empty means "no limit", as in open mode. */
+  readonly limits = new Map<EntitlementKey, number>();
   constructor(private readonly denied: ReadonlySet<EntitlementKey> = new Set()) {}
   async check(workspaceId: string | null, key: EntitlementKey, quantity?: number): Promise<EntitlementCheckResult> {
     this.checks.push({ workspace_id: workspaceId, key, quantity });
@@ -435,5 +517,8 @@ export class RecordingEntitlements implements EntitlementService {
   async assert(workspaceId: string | null, key: EntitlementKey, quantity?: number): Promise<void> {
     const result = await this.check(workspaceId, key, quantity);
     if (!result.allowed) throw new EntitlementRequiredError(key, result.plan_required);
+  }
+  async numericLimit(_workspaceId: string | null, key: EntitlementKey): Promise<number | null> {
+    return this.limits.get(key) ?? null;
   }
 }

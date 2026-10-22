@@ -29,6 +29,27 @@ export function formatIdr(amount: number, _locale?: string): string {
   }).format(amount);
 }
 
+const FILE_SIZE_UNITS = ['KB', 'MB', 'GB'] as const;
+
+/**
+ * "250 KB", "3.5 MB", "2.3 GB": always one of those units, never raw bytes
+ * (a person has no use for 3670016). Binary steps (1024), because that is what
+ * a file manager shows. Under 1 KB rounds up to 1 KB, 0 stays 0, and the unit
+ * moves up at 1000 so "1,020 KB" never appears. One decimal below 10, none
+ * above. The unit labels are international, so they are not catalog strings.
+ */
+export function formatFileSize(bytes: number, locale: string): string {
+  if (!Number.isFinite(bytes) || bytes <= 0) return `${formatNumber(0, locale)} ${FILE_SIZE_UNITS[0]}`;
+  let unit = 0;
+  let value = Math.max(bytes / 1024, 1);
+  while (unit < FILE_SIZE_UNITS.length - 1 && value >= 1000) {
+    value /= 1024;
+    unit += 1;
+  }
+  const text = new Intl.NumberFormat(intl(locale), { maximumFractionDigits: value < 10 ? 1 : 0 }).format(value);
+  return `${text} ${FILE_SIZE_UNITS[unit]}`;
+}
+
 export function formatDate(
   value: Date | string | number,
   locale: string,
