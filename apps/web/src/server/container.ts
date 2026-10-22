@@ -1,8 +1,7 @@
 import 'server-only';
-import { GetAgentsUseCase } from './application/use-cases/get_agents_use_case';
+import { ListWorkspaceSpecialistsUseCase } from './application/use-cases/list_workspace_specialists_use_case';
 import { GetSystemHealthUseCase } from './application/use-cases/get_system_health_use_case';
 import { PresignStorageUploadUseCase } from './application/use-cases/presign_storage_upload_use_case';
-import type { AgentRepository } from './domain/repositories/agent_repository';
 import type { AiEngineGateway } from './domain/repositories/ai_engine_gateway';
 import type { CacheRepository } from './domain/repositories/cache_repository';
 import type { DatabaseHealthProbe } from './domain/repositories/database_health_probe';
@@ -25,7 +24,6 @@ import { FakeEmailSender } from './infrastructure/email/fake_email_sender';
 import { SmtpEmailSender } from './infrastructure/email/smtp_email_sender';
 import { RedisCacheRepository } from './infrastructure/cache/redis_cache_repository';
 import { getEnvConfig } from './infrastructure/config/env';
-import { PrismaAgentRepository } from './infrastructure/database/prisma_agent_repository';
 import { PrismaDatabaseHealthProbe } from './infrastructure/database/prisma_database_health_probe';
 import { getPrismaClient } from './infrastructure/database/prisma_client';
 import { InternalAiEngineGateway } from './infrastructure/gateways/internal_ai_engine_gateway';
@@ -42,6 +40,7 @@ import { PwnedPasswordsBreachedChecker } from './infrastructure/security/pwned_p
 import { JwtAuthService } from './infrastructure/auth/jwt_auth_service';
 import type { SigningKeyRepository } from './domain/repositories/signing_key_repository';
 import { PrismaSigningKeyRepository } from './infrastructure/database/prisma_signing_key_repository';
+import { SPECIALIST_MANIFEST } from '@/shared/specialists/manifest';
 import type { ContextSigner } from './domain/context/signed_context';
 import { createDefaultContextSigner } from './infrastructure/security/context_signer';
 import type { OAuthProvider } from './domain/auth/oauth_provider';
@@ -58,8 +57,14 @@ import { generateOAuthState, verifyOAuthState } from './infrastructure/security/
 import { ValidationError } from './domain/errors/domain_error';
 import type { ConversationRepository } from './domain/repositories/conversation_repository';
 import type { MessageRepository } from './domain/repositories/message_repository';
+import type { MessageCardRepository } from './domain/repositories/message_card_repository';
+import type { CardValidator } from './domain/chat/card_validator';
 import { PrismaConversationRepository } from './infrastructure/database/prisma_conversation_repository';
 import { PrismaMessageRepository } from './infrastructure/database/prisma_message_repository';
+import { PrismaMessageCardRepository } from './infrastructure/database/prisma_message_card_repository';
+import { CardSchemaValidator } from './infrastructure/cards/card_schema_validator';
+import { LoggerCardRejectionLog } from './infrastructure/logging/log_card_rejection_log';
+import { CardFrameGuard } from './application/chat/card_frame_guard';
 import { CreateConversationUseCase } from './application/use-cases/chat/create_conversation_use_case';
 import { GetConversationUseCase } from './application/use-cases/chat/get_conversation_use_case';
 import { ListConversationsUseCase } from './application/use-cases/chat/list_conversations_use_case';
@@ -69,14 +74,33 @@ import type { ChatRunRepository } from './domain/repositories/chat_run_repositor
 import { PrismaChatRunRepository } from './infrastructure/database/prisma_chat_run_repository';
 import { LoggerRunRelayLog } from './infrastructure/logging/log_run_relay_log';
 import { LogRunMetricsRecorder } from './infrastructure/metrics/log_run_metrics_recorder';
-import { passThroughFrameGuard } from './domain/chat/run_frame_guard';
 import { RunHub } from './application/chat/run_hub';
 import { StreamRunUseCase } from './application/use-cases/chat/stream_run_use_case';
 import { CancelRunUseCase } from './application/use-cases/chat/cancel_run_use_case';
+import { RenameConversationUseCase } from './application/use-cases/chat/rename_conversation_use_case';
+import { DeleteConversationUseCase } from './application/use-cases/chat/delete_conversation_use_case';
 import type { UserProfileRepository } from './domain/repositories/user_profile_repository';
 import { PrismaUserProfileRepository } from './infrastructure/database/prisma_user_profile_repository';
 import { GetProfileUseCase } from './application/use-cases/profile/get_profile_use_case';
 import { UpdateProfileUseCase } from './application/use-cases/profile/update_profile_use_case';
+import { GetMeUseCase } from './application/use-cases/profile/get_me_use_case';
+import { GetPreferencesUseCase } from './application/use-cases/profile/get_preferences_use_case';
+import { UpdatePreferencesUseCase } from './application/use-cases/profile/update_preferences_use_case';
+import { UpdateMemberProfileUseCase } from './application/use-cases/profile/update_member_profile_use_case';
+import { RequestAvatarUploadUseCase } from './application/use-cases/profile/request_avatar_upload_use_case';
+import { CompleteAvatarUploadUseCase } from './application/use-cases/profile/complete_avatar_upload_use_case';
+import { RemoveAvatarUseCase } from './application/use-cases/profile/remove_avatar_use_case';
+import { ReadAvatarUseCase } from './application/use-cases/profile/read_avatar_use_case';
+import { ImportOAuthAvatarUseCase } from './application/use-cases/profile/import_oauth_avatar_use_case';
+import type { AvatarDeps } from './application/use-cases/profile/avatar_pipeline';
+import type { UserPreferencesRepository } from './domain/repositories/user_preferences_repository';
+import type { ObjectStore } from './domain/repositories/object_store';
+import type { AvatarImageProcessor } from './domain/repositories/avatar_image_processor';
+import type { RemoteImageFetcher } from './domain/repositories/remote_image_fetcher';
+import { PrismaUserPreferencesRepository } from './infrastructure/database/prisma_user_preferences_repository';
+import { SeaweedObjectStore } from './infrastructure/storage/seaweed_object_store';
+import { SharpAvatarImageProcessor } from './infrastructure/media/sharp_avatar_image_processor';
+import { AllowlistedRemoteImageFetcher } from './infrastructure/media/allowlisted_remote_image_fetcher';
 
 // Composition root: the only module that knows which concrete adapter backs
 // each port. Route handlers and pages ask for use cases here instead of
@@ -133,9 +157,6 @@ export const getEntitlementService = memoize<EntitlementService>(
     ),
 );
 
-const getAgentRepository = memoize<AgentRepository>(
-  () => new PrismaAgentRepository(getPrismaClient()),
-);
 const getDatabaseHealthProbe = memoize<DatabaseHealthProbe>(
   () => new PrismaDatabaseHealthProbe(getPrismaClient()),
 );
@@ -183,8 +204,8 @@ export const getJwtAuthService = memoize<JwtAuthService>(() => {
   });
 });
 
-export const getGetAgentsUseCase = memoize(
-  () => new GetAgentsUseCase(getAgentRepository(), getCacheRepository()),
+export const getListWorkspaceSpecialistsUseCase = memoize(
+  () => new ListWorkspaceSpecialistsUseCase(getAiEngineGateway(), SPECIALIST_MANIFEST),
 );
 
 export const getPresignStorageUploadUseCase = memoize(
@@ -329,6 +350,21 @@ export async function handleOAuthCallback(params: {
     userAgent: params.userAgent,
   });
 
+  // First sign-up only: a returning user's picture is theirs to manage, and
+  // the provider's current picture must not replace one they chose.
+  if (result.isNewUser && profile.avatar_url) {
+    try {
+      await getImportOAuthAvatarUseCase().execute({
+        user_id: result.userId,
+        remote_url: profile.avatar_url,
+        provider: params.provider,
+      });
+    } catch (error) {
+      // A picture never fails a sign-up; the failure is logged by class name.
+      logger.warn('avatar.remote_fetch_failed', { reason: error instanceof Error ? error.name : 'unknown' });
+    }
+  }
+
   return {
     sessionToken: result.session.token,
     targetPath: statePayload.returnTo ?? '/',
@@ -366,8 +402,20 @@ export const getListConversationsUseCase = memoize(
   () => new ListConversationsUseCase(getConversationRepository()),
 );
 
+export const getMessageCardRepository = memoize<MessageCardRepository>(
+  () => new PrismaMessageCardRepository(getPrismaClient()),
+);
+
+export const getCardValidator = memoize<CardValidator>(() => new CardSchemaValidator());
+
 export const getListMessagesUseCase = memoize(
-  () => new ListMessagesUseCase(getConversationRepository(), getMessageRepository()),
+  () =>
+    new ListMessagesUseCase(
+      getConversationRepository(),
+      getMessageRepository(),
+      getMessageCardRepository(),
+      getCardValidator(),
+    ),
 );
 
 export const getCreateMessageUseCase = memoize(
@@ -390,12 +438,14 @@ export const getStreamRunUseCase = memoize(
     new StreamRunUseCase({
       conversations: getConversationRepository(),
       messages: getMessageRepository(),
+      cards: getMessageCardRepository(),
       chatRuns: getChatRunRepository(),
       gateway: getAiEngineGateway(),
       contextSigner: getContextSigner(),
       hub: getRunHub(),
-      // M0 emits no card events; the card validator plugs in here (FR-AX-09).
-      guard: passThroughFrameGuard,
+      // The platform is the authority on cards: every card frame is validated
+      // here before it is stored or forwarded (FR-AX-09, ADR-0025).
+      guard: new CardFrameGuard(getCardValidator(), new LoggerCardRejectionLog()),
       metrics: new LogRunMetricsRecorder(),
       log: new LoggerRunRelayLog(),
     }),
@@ -414,6 +464,28 @@ export const getCancelRunUseCase = memoize(
     }),
 );
 
+export const getRenameConversationUseCase = memoize(
+  () =>
+    new RenameConversationUseCase(
+      getConversationRepository(),
+      getAuditLogger(),
+      getTransactionRunner(),
+    ),
+);
+
+export const getDeleteConversationUseCase = memoize(
+  () =>
+    new DeleteConversationUseCase({
+      conversations: getConversationRepository(),
+      messages: getMessageRepository(),
+      chatRuns: getChatRunRepository(),
+      cancelRun: getCancelRunUseCase(),
+      audit: getAuditLogger(),
+      log: new LoggerRunRelayLog(),
+      transactions: getTransactionRunner(),
+    }),
+);
+
 export const getUserProfileRepository = memoize<UserProfileRepository>(
   () => new PrismaUserProfileRepository(getPrismaClient()),
 );
@@ -424,6 +496,49 @@ export const getGetProfileUseCase = memoize(
 
 export const getUpdateProfileUseCase = memoize(
   () => new UpdateProfileUseCase(getUserProfileRepository(), getAuditLogger()),
+);
+
+export const getGetMeUseCase = memoize(() => new GetMeUseCase(getUserProfileRepository()));
+
+const getUserPreferencesRepository = memoize<UserPreferencesRepository>(
+  () => new PrismaUserPreferencesRepository(getPrismaClient()),
+);
+export const getGetPreferencesUseCase = memoize(
+  () => new GetPreferencesUseCase(getUserPreferencesRepository()),
+);
+export const getUpdatePreferencesUseCase = memoize(
+  () => new UpdatePreferencesUseCase(getUserPreferencesRepository(), getAuditLogger()),
+);
+export const getUpdateMemberProfileUseCase = memoize(
+  () => new UpdateMemberProfileUseCase(getWorkspaceMemberRepository(), getAuditLogger()),
+);
+
+const getObjectStore = memoize<ObjectStore>(() => new SeaweedObjectStore());
+const getAvatarImageProcessor = memoize<AvatarImageProcessor>(() => new SharpAvatarImageProcessor());
+const getRemoteImageFetcher = memoize<RemoteImageFetcher>(() => new AllowlistedRemoteImageFetcher());
+// Version and upload ids are random per upload; they are not database ids.
+const newAvatarId = (): string => crypto.randomUUID();
+const getAvatarDeps = memoize<AvatarDeps>(() => ({
+  profiles: getUserProfileRepository(),
+  store: getObjectStore(),
+  processor: getAvatarImageProcessor(),
+  audit: getAuditLogger(),
+  newId: newAvatarId,
+}));
+export const getRequestAvatarUploadUseCase = memoize(
+  () => new RequestAvatarUploadUseCase(getObjectStore(), newAvatarId),
+);
+export const getCompleteAvatarUploadUseCase = memoize(
+  () => new CompleteAvatarUploadUseCase(getAvatarDeps()),
+);
+export const getRemoveAvatarUseCase = memoize(
+  () => new RemoveAvatarUseCase(getUserProfileRepository(), getObjectStore(), getAuditLogger()),
+);
+export const getReadAvatarUseCase = memoize(
+  () => new ReadAvatarUseCase(getUserProfileRepository(), getObjectStore()),
+);
+export const getImportOAuthAvatarUseCase = memoize(
+  () => new ImportOAuthAvatarUseCase({ ...getAvatarDeps(), fetcher: getRemoteImageFetcher() }),
 );
 
 export const getIngestAuditEventUseCase = memoize(

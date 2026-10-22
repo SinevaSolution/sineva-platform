@@ -67,6 +67,34 @@ export const MUTATING_ROUTE_POLICY: Record<string, MutatingRoutePolicy> = {
     effect: 'change',
     audit: ['user.profile_updated'],
   },
+  'PATCH /api/v1/me': {
+    effect: 'change',
+    audit: ['user.profile_updated'],
+  },
+  'PATCH /api/v1/me/preferences': {
+    effect: 'change',
+    audit: ['user.preferences_updated'],
+  },
+  'PATCH /api/v1/workspaces/{workspace_id}/members/me': {
+    effect: 'change',
+    audit: ['member.profile_updated'],
+  },
+  'POST /api/v1/me/avatar': {
+    effect: 'create',
+    audit: 'none',
+    reason:
+      'Only issues a presigned URL for a pending object and changes nothing the person can see; the avatar switch is audited by the complete step.',
+    entitlement: 'none',
+    // One reason covers both `none` values; avatars are not plan-gated.
+  },
+  'POST /api/v1/me/avatar/complete': {
+    effect: 'change',
+    audit: ['user.avatar_updated'],
+  },
+  'DELETE /api/v1/me/avatar': {
+    effect: 'delete',
+    audit: ['user.avatar_updated'],
+  },
   'POST /api/v1/workspaces': {
     effect: 'create',
     audit: ['workspace.created'],
@@ -82,6 +110,18 @@ export const MUTATING_ROUTE_POLICY: Record<string, MutatingRoutePolicy> = {
     entitlement: 'none',
     reason: 'Conversations are not plan-gated; the entitlement list has no conversation key and usage is metered per reply from M1.',
   },
+  'PATCH /api/v1/workspaces/{workspace_id}/conversations/{conversation_id}': {
+    effect: 'change',
+    audit: ['conversation.renamed'],
+    entitlement: 'none',
+    reason: 'Renaming your own chat spends nothing, so no plan limit applies.',
+  },
+  'DELETE /api/v1/workspaces/{workspace_id}/conversations/{conversation_id}': {
+    effect: 'delete',
+    audit: ['conversation.deleted'],
+    entitlement: 'none',
+    reason: 'Deleting your own chat spends nothing, so no plan limit applies.',
+  },
   'POST /api/v1/workspaces/{workspace_id}/conversations/{conversation_id}/messages': {
     effect: 'run',
     audit: 'none',
@@ -95,13 +135,6 @@ export const MUTATING_ROUTE_POLICY: Record<string, MutatingRoutePolicy> = {
     audit: ['chat.run.cancel_requested'],
     entitlement: 'none',
     reason: 'Stopping a reply spends nothing, so no plan limit applies.',
-  },
-  'POST /api/v1/agents': {
-    effect: 'create',
-    audit: 'none',
-    reason:
-      'Catalog registration is an owner or internal operation replaced by the specialist registry; it is not in any PRD auditable events list.',
-    entitlement: 'none',
   },
   'POST /api/v1/storage/presign': {
     effect: 'create',

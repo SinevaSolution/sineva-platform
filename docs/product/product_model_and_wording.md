@@ -66,8 +66,8 @@ Slugs and handles are fixed across repositories ([ADR-0012](../decisions/0012-ca
 | SinoInsights | `sinoinsights` | `@SinoInsights` | `data_insights` | Business intelligence: executive KPIs, retention cohorts, anomaly detection | Read-only |
 
 - Purposes are paraphrased from `role_summary` in `sineva-ai/src/sineva_ai/agentic/agents/specialists.py`. They are internal descriptions, not approved marketing copy.
-- `category` is the enum in `server/application/dtos/agent_dto.ts`, stored in `agent_configs.category`. The orchestrator `sino` has no platform category.
-- The six slugs are the seed rows in `apps/web/prisma/seed.ts`. A database seeded earlier with `sino-*` slugs keeps the old rows; the seed upserts by slug and never removes them (see [known issues](../development/known_issues_and_tech_debt.md)).
+- `category` is the sineva-ai category enum, mirrored by `AGENT_CATEGORIES` in `server/domain/specialists/agent_catalog.ts` (13 values: the six above plus the wave 2 and 3 categories). The platform stores no category; the roster route returns the one sineva-ai reports. The orchestrator `sino` has no platform category.
+- The six slugs are the entries of the static manifest `apps/web/src/shared/specialists/manifest.ts`, which also holds each specialist's localized role title, description and starter prompts ([ADR-0024](../decisions/0024-specialist-manifest-and-catalog-split.md)).
 
 ## Guardrails
 

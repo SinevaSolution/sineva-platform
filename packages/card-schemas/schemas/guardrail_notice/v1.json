@@ -1,0 +1,29 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sineva.id/schemas/cards/guardrail_notice/v1.json",
+  "title": "GuardrailNotice",
+  "description": "A specialist explains a limit it will not cross and offers what it can do instead. Both keys are message keys resolved by the platform, never model prose.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["specialist", "limit_key", "offer_key"],
+  "properties": {
+    "specialist": {
+      "type": "string",
+      "pattern": "^sino[a-z]{0,32}$",
+      "maxLength": 40,
+      "x-origin": "source"
+    },
+    "limit_key": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_]*$",
+      "maxLength": 64,
+      "x-origin": "source"
+    },
+    "offer_key": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_]*$",
+      "maxLength": 64,
+      "x-origin": "source"
+    }
+  }
+}

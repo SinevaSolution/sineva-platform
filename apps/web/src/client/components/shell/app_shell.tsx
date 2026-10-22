@@ -4,7 +4,13 @@ import * as Dialog from '@radix-ui/react-dialog';
 import { Menu, X } from 'lucide-react';
 import { usePathname } from 'next/navigation';
 import * as React from 'react';
+import { toast } from 'sonner';
+import { ThemeSync } from '@/client/components/theme_sync';
+import { collapsedCookieNeedsSeed } from '@/client/lib/preference_sync_model';
+import { savePreferences } from '@/client/lib/preferences';
+import { useApiErrorText } from '@/client/lib/use_api_error';
 import { useAppDispatch, useAppSelector } from '@/client/store/hooks';
+import type { PreferencesView } from '@/shared/profile_view';
 import { useTranslations } from '@/i18n/provider';
 import { setMobileNavOpen } from '@/client/store/slices/ui_slice';
 import { cn } from '@/client/components/ui/cn';
@@ -13,27 +19,47 @@ import { SIDEBAR_COOKIE } from './nav_model';
 import { Sidebar, type SidebarProps } from './sidebar';
 
 /**
- * App frame: sidebar on the canvas, content in a rounded inset panel
+ * App frame: sidebar on the canvas, content in a rounded-xs inset panel
  * (Linear pattern). On desktop the sidebar collapses to a 56 px icon rail
  * (button or the "[" key); the choice is a cookie so the server renders the
- * right width and nothing jumps on load. Below 1024 px it is a drawer.
+ * right width and nothing jumps on load, and it is also saved to the account
+ * (`sidebar_collapsed`) so a new device starts the same way. Below 1024 px it
+ * is a drawer.
  */
 export function AppShell({
   children,
   initialCollapsed,
+  storedTheme,
   ...sidebarProps
 }: Omit<SidebarProps, 'onNavigate' | 'collapsed' | 'onToggleCollapsed'> & {
   children: React.ReactNode;
   initialCollapsed: boolean;
+  /** The theme saved on the account, applied once per session by `ThemeSync`. */
+  storedTheme: PreferencesView['theme'];
 }) {
   const t = useTranslations('shell');
+  const errorText = useApiErrorText();
   const [collapsed, setCollapsed] = React.useState(initialCollapsed);
+  // The toggle needs the current value to compute the next one and to save it;
+  // a ref keeps that out of a state updater, which React may run twice.
+  const collapsedRef = React.useRef(initialCollapsed);
   const toggleCollapsed = React.useCallback(() => {
-    setCollapsed((was) => {
-      const next = !was;
-      document.cookie = `${SIDEBAR_COOKIE}=${next ? 'collapsed' : 'expanded'}; path=/; max-age=31536000; samesite=lax`;
-      return next;
-    });
+    const next = !collapsedRef.current;
+    collapsedRef.current = next;
+    setCollapsed(next);
+    document.cookie = `${SIDEBAR_COOKIE}=${next ? 'collapsed' : 'expanded'}; path=/; max-age=31536000; samesite=lax`;
+    // The cookie already decided what the person sees; a failed save only
+    // means the next device will not inherit it, so it is reported, not undone.
+    savePreferences({ sidebar_collapsed: next }).catch((error: unknown) => toast.error(errorText(error)));
+  }, [errorText]);
+
+  // A device with no cookie yet renders from the account preference (the
+  // layout passes it as `initialCollapsed`); write the cookie so the next load
+  // takes the fast path.
+  React.useEffect(() => {
+    if (collapsedCookieNeedsSeed(document.cookie)) {
+      document.cookie = `${SIDEBAR_COOKIE}=${collapsedRef.current ? 'collapsed' : 'expanded'}; path=/; max-age=31536000; samesite=lax`;
+    }
   }, []);
 
   // "[" toggles the sidebar, like Linear, unless the user is typing.
@@ -61,9 +87,10 @@ export function AppShell({
 
   return (
     <div className="flex h-dvh overflow-hidden bg-canvas-alt">
+      <ThemeSync stored={storedTheme} />
       <aside
         className={cn(
-          'hidden shrink-0 bg-canvas-alt transition-[width] duration-200 ease-[var(--ease-out-quint)] lg:block',
+          'hidden shrink-0 bg-canvas-alt transition-[width] duration-200 ease-out lg:block',
           collapsed ? 'w-14' : 'w-[248px]',
         )}
       >

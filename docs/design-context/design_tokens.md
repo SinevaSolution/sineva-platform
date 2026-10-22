@@ -99,9 +99,21 @@ Specialist accents: put `data-product-accent="<key>"` on a wrapper and read only
 
 ## Theme mechanism
 
-`<html data-theme>` is set before the first paint by an inline script (`THEME_SCRIPT` in `packages/ui/src/lib/theme.ts`, rendered by `ThemeScript` in `app/layout.tsx` with the CSP nonce). The first visit follows the OS; a choice is stored under `sineva-theme`. `useTheme` (`client/lib/use_theme.ts`) reads the attribute and writes it through `applyTheme`; `ThemeFollowSystem` keeps following the OS while there is no stored choice. `next-themes` is not used.
+`<html data-theme>` is set before the first paint by an inline script (`THEME_SCRIPT` in `packages/ui/src/lib/theme.ts`, rendered by `ThemeScript` in `app/layout.tsx` with the CSP nonce). The first visit follows the OS. A person's choice is light, dark or system: light and dark are stored under `sineva-theme`, system removes the key so the page follows the OS (also when it flips while the page is open, through `ThemeFollowSystem`). `useTheme` (`client/lib/use_theme.ts`) exposes the resolved `theme` and the `preference`. `next-themes` is not used.
 
-Target: after sign-in the choice is also stored in `user_preferences.theme` (WP-M0-36); this change only owns the local half.
+Account sync (WP-M0-36): `usePersistedTheme` and `ThemeSync` (`client/components/theme_sync.tsx`) sit on `useTheme`. A change in Preferences or the user menu is applied at once and saved with `PATCH /api/v1/me/preferences`; the account value is applied once per session on a new device (an explicit light or dark only; `system` is the stored default and is ignored).
+
+## Specialist accents
+
+A specialist's accent is `accent_key`, a fixed 13-value enum in the specialist manifest (`src/shared/specialists/manifest.ts`, [ADR-0024](../decisions/0024-specialist-manifest-and-catalog-split.md)). It replaces the old seeded `accent_token` (a CSS variable name that no UI read and that data could have set to anything). No data can inject a color: the key picks one of the ramps defined in CSS through `data-product-accent="<key>"` on a wrapper.
+
+| Specialist | `accent_key` |
+| :--- | :--- |
+| SinoPeople, SinoFinance, SinoSales, SinoSocial, SinoHelp, SinoInsights | `people`, `finance`, `sales`, `social`, `help`, `insights` (compro ramps, `product-accents.css`) |
+| Sino (orchestrator, no manifest entry) | `brand` in the UI: the neutral brand tint, no ramp |
+| Waves 2 and 3 | `desk`, `write`, `shop`, `guard`, `tax`, `legal`, `ops` (proposed ramps, `product-accents-proposed.css`) |
+
+The old `--accent-people` style variables no longer exist; read `--accent-surface`, `--accent-tile`, `--accent-text` and `--accent-glow` inside the wrapper.
 
 ## Adding or changing a token
 

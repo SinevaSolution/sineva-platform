@@ -10,7 +10,7 @@ import { specialistPose } from '@/client/components/ui/specialist_accent';
 import { Tooltip } from '@/client/components/ui/tooltip';
 import { useTranslations } from '@/i18n/provider';
 import type { ShellSpecialistView } from '@/shared/shell_view';
-import { startersFor, type RoomMood } from './room_model';
+import { teamStarterKeys, type RoomMood } from './room_model';
 import { RoomBubble, RoomStage } from './room_stage';
 
 /**
@@ -43,6 +43,9 @@ export function NewChatView({
   const composer = React.useRef<ComposerHandle>(null);
   const current = specialists.find((s) => s.agent_slug === withSlug) ?? null;
   const name = current?.display_name ?? 'Sino';
+  // A specialist's prompts come from the manifest, already in the page language;
+  // the team chat's are catalog messages.
+  const starterTexts = current ? [...current.starter_prompts] : teamStarterKeys().map((key) => t(key));
 
   React.useEffect(() => {
     if (initialPrompt) composer.current?.fill(initialPrompt);
@@ -56,14 +59,22 @@ export function NewChatView({
     router.replace(slug ? `/w/${workspaceSlug}/new?with=${slug}` : `/w/${workspaceSlug}/new`, { scroll: false });
   }
 
+  // The cast spans the whole room, not just the chat column: a frosted
+  // track with one chip per companion. Chips share the width evenly on wide
+  // screens (name and role), and scroll sideways on narrow ones.
   const picker = (
-    <div className="px-4 pt-4 sm:px-6">
-      <div role="radiogroup" aria-label={t('picker_label')} className="flex gap-1.5 overflow-x-auto pb-1">
+    <div className="relative px-4 pt-4 sm:px-6">
+      <div
+        role="radiogroup"
+        aria-label={t('picker_label')}
+        className="flex gap-1 overflow-x-auto rounded-[28px] bg-scrim p-1.5 ring-1 ring-text-inverse/10 backdrop-blur-xl [scrollbar-width:none] lg:overflow-visible"
+      >
         <CastChip
           checked={withSlug === null}
           onSelect={() => choose(null)}
           pose="wave"
           label={tSpecialists('marker.team')}
+          role={t('team_role')}
           hint={t('team_hint')}
         />
         {specialists.map((s) => (
@@ -73,6 +84,7 @@ export function NewChatView({
             onSelect={() => choose(s.agent_slug)}
             pose={specialistPose(s.agent_slug)}
             label={s.display_name}
+            role={s.role_title}
             hint={t('specialist_hint', { name: s.display_name, role: s.role_title })}
           />
         ))}
@@ -100,7 +112,7 @@ export function NewChatView({
   );
 
   return (
-    <RoomStage slug={withSlug} mood={mood} label={withSlug ? name : t('stage_team')} header={picker} footer={footer}>
+    <RoomStage slug={withSlug} mood={mood} topBar={picker} label={withSlug ? name : t('stage_team')} footer={footer}>
       <div key={withSlug ?? 'team'} className="flex min-h-full flex-col justify-end gap-3 px-4 pb-4 pt-8 sm:px-6">
         <div className="anim-rise flex items-end gap-2">
           <SinoFigure pose={specialistPose(withSlug ?? 'sino')} size={36} className="md:hidden" />
@@ -111,10 +123,9 @@ export function NewChatView({
           </RoomBubble>
         </div>
         <ul className="flex flex-wrap gap-2" aria-label={t('starters_label')}>
-          {startersFor(withSlug).map((key, i) => {
-            const text = t(key);
+          {starterTexts.map((text, i) => {
             return (
-              <li key={key} className="anim-rise" style={{ '--d': `${120 + i * 70}ms` } as React.CSSProperties}>
+              <li key={text} className="anim-rise" style={{ '--d': `${120 + i * 70}ms` } as React.CSSProperties}>
                 <button
                   type="button"
                   onClick={() => composer.current?.fill(text)}
@@ -136,12 +147,15 @@ function CastChip({
   onSelect,
   pose,
   label,
+  role,
   hint,
 }: {
   checked: boolean;
   onSelect: () => void;
   pose: Parameters<typeof SinoFigure>[0]['pose'];
   label: string;
+  /** Second line on wide screens, so a chip says who the companion is. */
+  role: string;
   hint: string;
 }) {
   return (
@@ -152,18 +166,28 @@ function CastChip({
         aria-checked={checked}
         onClick={onSelect}
         className={cn(
-          'group flex h-11 shrink-0 items-center gap-1.5 rounded-full ps-0.5 pe-3.5 text-[13px] font-medium ring-1 backdrop-blur-md transition-[background-color,color,box-shadow] duration-200',
+          'group flex h-14 min-w-[148px] shrink-0 items-center gap-2 rounded-full ps-1 pe-4 text-start ring-1 transition-[background-color,color,box-shadow] duration-200 lg:min-w-0 lg:flex-1',
           checked
-            ? 'bg-surface/94 text-text ring-text-inverse/60'
-            : 'bg-text-inverse/10 text-text-inverse/85 ring-text-inverse/15 hover:bg-text-inverse/20 hover:text-text-inverse',
+            ? 'bg-surface/95 text-text shadow-md ring-text-inverse/70'
+            : 'text-text-inverse/85 ring-transparent hover:bg-text-inverse/12 hover:text-text-inverse',
         )}
       >
         <SinoFigure
           pose={pose}
-          size={40}
-          className="transition-transform duration-300 ease-[var(--ease-out-quint)] group-hover:-translate-y-0.5"
+          size={46}
+          className="transition-transform duration-300 ease-out group-hover:-translate-y-0.5"
         />
-        {label}
+        <span className="min-w-0">
+          <span className="block truncate text-[13px] font-semibold leading-4">{label}</span>
+          <span
+            className={cn(
+              'mt-0.5 hidden truncate text-[11px] leading-4 xl:block',
+              checked ? 'text-text-tertiary' : 'text-text-inverse/60',
+            )}
+          >
+            {role}
+          </span>
+        </span>
       </button>
     </Tooltip>
   );

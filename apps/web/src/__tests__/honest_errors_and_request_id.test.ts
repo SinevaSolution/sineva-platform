@@ -1,7 +1,6 @@
 import { installHeaderSessionResolver } from './fakes/header_session_resolver';
 import { NextRequest } from 'next/server';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { POST as postAgent } from '@/app/api/v1/agents/route';
 import { POST as postStoragePresign } from '@/app/api/v1/storage/presign/route';
 import { DomainError } from '@/server/domain/errors/domain_error';
 import { extractRequestId, handleRouteError } from '@/server/http/response_helper';
@@ -9,9 +8,6 @@ import { InternalAiEngineGateway } from '@/server/infrastructure/gateways/intern
 
 // We mock the container so we can test route handling without real external services
 vi.mock('@/server/container', () => ({
-  getGetAgentsUseCase: () => ({
-    registerAgent: vi.fn(),
-  }),
   getPresignStorageUploadUseCase: () => ({
     execute: vi.fn(),
   }),
@@ -28,13 +24,13 @@ describe('Honest Errors & Request ID (WP-M0-07)', () => {
   });
 
   it('malformed or invalid JSON returns 422 with validation_failed code (API-1)', async () => {
-    const malformedReq = new NextRequest('http://localhost:3000/api/v1/agents', {
+    const malformedReq = new NextRequest('http://localhost:3000/api/v1/storage/presign', {
       method: 'POST',
       body: '{"invalid_json": ',
       headers: { 'Content-Type': 'application/json' },
     });
 
-    const res = await postAgent(malformedReq);
+    const res = await postStoragePresign(malformedReq);
     const body = await res.json();
 
     expect(res.status).toBe(422);
@@ -45,13 +41,13 @@ describe('Honest Errors & Request ID (WP-M0-07)', () => {
   });
 
   it('empty body on POST returns 422 with validation_failed code (API-1)', async () => {
-    const emptyReq = new NextRequest('http://localhost:3000/api/v1/agents', {
+    const emptyReq = new NextRequest('http://localhost:3000/api/v1/storage/presign', {
       method: 'POST',
       body: '',
       headers: { 'Content-Type': 'application/json' },
     });
 
-    const res = await postAgent(emptyReq);
+    const res = await postStoragePresign(emptyReq);
     const body = await res.json();
 
     expect(res.status).toBe(422);
@@ -93,7 +89,7 @@ describe('Honest Errors & Request ID (WP-M0-07)', () => {
 
   it('accepts incoming X-Request-Id and echoes it in headers and envelope (API-5)', async () => {
     const customRequestId = 'req_custom_uuid_12345';
-    const req = new NextRequest('http://localhost:3000/api/v1/agents', {
+    const req = new NextRequest('http://localhost:3000/api/v1/storage/presign', {
       method: 'POST',
       body: 'invalid',
       headers: {
@@ -102,7 +98,7 @@ describe('Honest Errors & Request ID (WP-M0-07)', () => {
       },
     });
 
-    const res = await postAgent(req);
+    const res = await postStoragePresign(req);
     const body = await res.json();
 
     expect(res.headers.get('X-Request-Id')).toBe(customRequestId);
@@ -187,12 +183,12 @@ describe('Honest Errors & Request ID (WP-M0-07)', () => {
   });
   it('replaces a client X-Request-Id that is not a safe token with a generated one (API-5)', async () => {
     const hostile = 'abc\r\n[server-error] forged log line';
-    const req = new NextRequest('http://localhost:3000/api/v1/agents', {
+    const req = new NextRequest('http://localhost:3000/api/v1/storage/presign', {
       method: 'POST',
       body: 'invalid',
       headers: { 'Content-Type': 'application/json', 'X-Request-Id': 'x'.repeat(300) },
     });
-    const res = await postAgent(req);
+    const res = await postStoragePresign(req);
     const body = await res.json();
     expect(res.headers.get('X-Request-Id')).not.toContain('xxxx');
     expect(body.meta.request_id).toMatch(

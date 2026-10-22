@@ -68,14 +68,14 @@ The database has been migrated and seeded (`npm run db:seed`):
 | **WP-M0-33 / 48** | **DONE (platform)** | `audit_events` (migration `20261022100000_audit_events`), route policy inventory, internal ingest; entitlement seam in `open` mode (`ENTITLEMENTS_MODE`). |
 | **WP-M0-34** | **DONE (platform)** | PII detectors and `mask()` in `@sineva/shared`, allowlisted logger, lint bans `console` in server code. sineva-ai copy of vectors pending. |
 | **WP-M0-42** | **DONE** | i18n EN/ID (in-repo translator, ADR-0023), catalogs in `apps/web/messages`, copy lint, all UI strings migrated. Indonesian needs native review. |
-| **Hotfix (React 19)** | **DONE** | Commit `61855a0`: Suppressed React 19 false-positive console error regarding `<script>` tag in `next-themes` (`apps/web/src/client/store/provider.tsx`). |
+| **Hotfix (React 19)** | **DONE** | Commit `61855a0`: Suppressed React 19 false-positive console error regarding `<script>` tag in `next-themes` (`apps/web/src/client/store/provider.tsx`). Superseded: `next-themes` was removed in WP-M0-37 (compro theme script and `useTheme` replace it), so the console-error suppression is gone too. |
 
 ---
 
 ## 4. Pending integrator actions
 
-- Apply migrations to the shared DB: `DATABASE_URL='...?schema=platform' npx prisma migrate deploy` (chat_runs, audit_events).
-- Run `npm run test:integration` on a throwaway test DB (not run in batch 1: local Docker hung).
+- Done 2026-10-22: `chat_runs` and `audit_events` deployed to the shared DB; `test:integration` green (5 files, 33 tests) on a throwaway DB, since dropped.
+- Gotcha for this local DB: `_prisma_migrations` lives in `public` (the DB was first migrated with a plain URL) while every table is in `platform`. Run `migrate status`/`deploy` with the plain `DATABASE_URL` from `.env`; adding `?schema=platform` makes Prisma look for `platform._prisma_migrations`, see nothing applied and try to re-run `init`. All migration SQL is schema-qualified, so tables still land in `platform`.
 - Add `ENTITLEMENTS_MODE=open` to `.env.example`.
 - Blocked on sineva-ai team: WP-M0-13..20 (v2 contract, SSE, catalog), PII vectors copy, audit publisher.
 

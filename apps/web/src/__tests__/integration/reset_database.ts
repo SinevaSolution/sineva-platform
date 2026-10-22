@@ -10,7 +10,7 @@ async function truncatePlatformTables(): Promise<void> {
   // CASCADE covers any dependent table that is not listed.
   await prisma.$executeRawUnsafe(
     'TRUNCATE TABLE "platform"."chat_runs", "platform"."messages", "platform"."conversations", ' +
-      '"platform"."storage_objects", "platform"."agent_configs", ' +
+      '"platform"."storage_objects", ' +
       '"platform"."workspace_member_specialists", "platform"."workspace_members", ' +
       '"platform"."workspace_invitations", "platform"."sessions", "platform"."accounts", ' +
       '"platform"."verifications", "platform"."platform_staff", "platform"."auth_login_attempts", ' +

@@ -39,7 +39,7 @@ The first four run in `npm run test` and need no Docker. Integration tests run s
 
 ### Unit tests with fakes
 
-Use cases take ports, so tests hand them in-memory fakes from `src/__tests__/fakes/`: `fake_agent_repository.ts`, `fake_ai_engine_gateway.ts`, `fake_cache.ts`, `fake_storage.ts`. The fake gateway records the requests it receives and throws `failure` when set, the way the real adapter throws a domain error. A fake is only worth something while it behaves like the real adapter. When a port changes, update the fake and the integration test in the same change.
+Use cases take ports, so tests hand them in-memory fakes from `src/__tests__/fakes/`: `fake_ai_engine_gateway.ts`, `fake_cache.ts`, `fake_storage.ts`. The fake gateway records the requests it receives and throws `failure` when set, the way the real adapter throws a domain error. A fake is only worth something while it behaves like the real adapter. When a port changes, update the fake and the integration test in the same change.
 
 ### Architecture test
 
@@ -73,7 +73,7 @@ This is the only place the suite uses `vi.mock`, and only for the container. Eve
 
 ### Integration tests
 
-`integration/prisma_agent_repository.int.test.ts` runs `PrismaAgentRepository` against a real database. Its rows are inserted through Prisma directly, not through the repository under test, so reads are checked against data the adapter did not shape.
+`integration/*.int.test.ts` run the Prisma adapters against a real database (for example `audit_event_repository.int.test.ts`, `prisma_chat_run_repository.int.test.ts`, and `drop_agent_configs.int.test.ts`, which proves a dropped table stays dropped). Insert rows through Prisma directly, not through the adapter under test, so reads are checked against data the adapter did not shape.
 
 How the setup keeps this safe:
 

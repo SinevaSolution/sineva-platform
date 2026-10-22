@@ -10,6 +10,19 @@
       "title_to_dark": "Ganti ke mode gelap"
     }
   },
+  "conversation": {
+    "options_tooltip": "Opsi obrolan",
+    "options_for": "Opsi untuk {title}",
+    "rename": "Ganti nama",
+    "delete": "Hapus",
+    "rename_label": "Nama obrolan",
+    "delete_title": "Hapus obrolan ini?",
+    "delete_body": "Obrolan dan semua pesannya akan dihapus. Ini tidak bisa dibatalkan.",
+    "delete_confirm": "Hapus obrolan",
+    "delete_cancel": "Batal",
+    "deleting": "Menghapus...",
+    "deleted": "Obrolan dihapus"
+  },
   "errors": {
     "not_found": {
       "title": "Sino tidak menemukan halaman ini",
@@ -35,7 +48,11 @@
       "invalid_password": "Pakai 12 sampai 128 karakter.",
       "terms_required": "Setujui ketentuan untuk melanjutkan.",
       "privacy_required": "Setujui kebijakan privasi untuk melanjutkan.",
-      "generic": "Ada yang tidak beres. Coba lagi."
+      "generic": "Ada yang tidak beres. Coba lagi.",
+      "unsupported_image": "Pakai gambar JPG, PNG, atau WebP.",
+      "image_too_large": "Foto itu lebih dari 2 MB. Pilih yang lebih kecil.",
+      "invalid_image": "Gambar itu tidak bisa dibaca. Coba yang lain.",
+      "upload_failed": "Foto tidak terunggah. Coba lagi sebentar lagi."
     }
   },
   "meta": {
@@ -155,25 +172,123 @@
     }
   },
   "account": {
+    "settings": {
+      "title": "Pengaturan",
+      "edit_profile": "Ubah profilmu"
+    },
+    "tabs": {
+      "label": "Pengaturan akun",
+      "profile": "Profil",
+      "preferences": "Preferensi",
+      "sign_in": "Cara masuk"
+    },
+    "save_bar": {
+      "label": "Perubahan belum disimpan",
+      "unsaved": "Ada perubahan yang belum disimpan",
+      "discard": "Batalkan",
+      "save": "Simpan perubahan",
+      "saving": "Menyimpan..."
+    },
+    "avatar": {
+      "change": "Ganti foto",
+      "remove": "Hapus foto",
+      "updated": "Foto diperbarui",
+      "removed": "Foto dihapus"
+    },
+    "roles": {
+      "owner": "Pemilik",
+      "admin": "Admin",
+      "member": "Anggota",
+      "viewer": "Pelihat"
+    },
+    "departments": {
+      "management": "Manajemen",
+      "finance": "Keuangan",
+      "sales": "Penjualan",
+      "marketing": "Pemasaran",
+      "operations": "Operasional",
+      "hr": "SDM",
+      "it": "IT",
+      "customer_support": "Layanan pelanggan",
+      "legal": "Hukum",
+      "other": "Lainnya"
+    },
     "profile": {
-      "title": "Profil",
-      "section_details": "Detailmu",
-      "full_name": "Nama lengkap",
-      "email": "Email",
+      "call_you": "Sino akan memanggilmu {name}",
       "verified": "Terverifikasi",
       "not_verified": "Belum terverifikasi",
-      "section_language": "Bahasa dan zona waktu",
-      "language": "Bahasa",
-      "time_zone": "Zona waktu",
-      "save": "Simpan perubahan",
-      "saving": "Menyimpan...",
-      "saved": "Profil disimpan",
-      "section_sign_in": "Cara masuk",
       "linked": "Tertaut",
-      "not_linked": "Belum tertaut"
+      "not_linked": "Belum tertaut",
+      "saved": "Profil disimpan",
+      "section_about": "Tentangmu",
+      "full_name": "Nama lengkap",
+      "full_name_helper": "Sesuai dokumenmu. 2 sampai 100 karakter.",
+      "preferred_name": "Nama panggilan",
+      "preferred_name_helper": "Nama yang dipakai Sino untuk memanggilmu. Kosongkan untuk memakai nama depanmu.",
+      "salutation": "Sapaan",
+      "salutation_helper": "Dipakai bersama namamu, misalnya Kak Faishal.",
+      "salutation_unset": "Belum diatur",
+      "salutation_none": "Tanpa sapaan",
+      "about_me": "Tentangmu",
+      "about_me_helper": "Satu atau dua kalimat tentang kamu dan pekerjaanmu. Sino bisa memakainya untuk menjawab lebih tepat.",
+      "about_me_count": "{count} dari {max}",
+      "use_context": "Izinkan Sino memakainya",
+      "use_context_helper": "Bagikan namamu, sapaan, bahasa, dan catatan ini ke Sino. Email, nomor telepon, dan fotomu tidak pernah dibagikan.",
+      "section_contact": "Kontak",
+      "email": "Email",
+      "email_helper": "Email untuk masukmu. Belum bisa diubah di sini.",
+      "phone": "Nomor telepon",
+      "phone_helper": "Opsional. Disimpan sebagai +62..., misalnya 0812 3456 7890 menjadi +6281234567890.",
+      "section_region": "Bahasa dan wilayah",
+      "language": "Bahasa",
+      "language_helper": "Bahasa aplikasi. Balasan Sino mengikuti pesanmu.",
+      "time_zone": "Zona waktu",
+      "time_zone_helper": "Dipakai untuk tanggal, jam, dan jadwal.",
+      "section_workspace": "Di {workspace}",
+      "job_title": "Jabatan",
+      "job_title_helper": "Terlihat oleh orang-orang di workspace ini.",
+      "department": "Departemen",
+      "department_helper": "Hanya untuk workspace ini.",
+      "department_unset": "Belum diatur",
+      "errors": {
+        "name_length": "Pakai 2 sampai 100 karakter.",
+        "name_chars": "Pakai huruf, spasi, apostrof, titik, atau tanda hubung saja.",
+        "preferred_name_length": "Pakai maksimal 40 karakter.",
+        "phone_invalid": "Masukkan nomor telepon yang valid, misalnya 0812 3456 7890.",
+        "about_me_length": "Pakai maksimal 280 karakter.",
+        "job_title_length": "Pakai maksimal 60 karakter."
+      }
     },
-    "settings": {
-      "edit_profile": "Ubah profilmu"
+    "preferences": {
+      "section_appearance": "Tampilan",
+      "theme": "Tema",
+      "theme_helper": "Disimpan di akunmu, jadi perangkat lain ikut berubah.",
+      "theme_light": "Terang",
+      "theme_dark": "Gelap",
+      "theme_system": "Sistem",
+      "density": "Kepadatan",
+      "density_helper": "Seberapa lega daftar dan barisnya.",
+      "density_comfortable": "Lega",
+      "density_compact": "Rapat",
+      "section_motion": "Gerakan dan Room",
+      "reduce_motion": "Kurangi gerakan",
+      "reduce_motion_helper": "Gerakan lebih sedikit di seluruh aplikasi. Pengaturan sistemmu selalu dihormati.",
+      "pause_character": "Hentikan Sino",
+      "pause_character_helper": "Biarkan Sino diam di Room.",
+      "focus_mode": "Mode fokus",
+      "focus_mode_helper": "Latar polos di Room, tanpa karakter.",
+      "room_view": "Tampilan Room di obrolan dengan Sino",
+      "room_view_helper": "Tampilkan Room spesialis yang menjawab."
+    },
+    "sign_in": {
+      "section_methods": "Cara kamu masuk",
+      "google": "Google",
+      "github": "GitHub",
+      "password": "Email dan kata sandi",
+      "password_set": "Sudah diatur",
+      "password_not_set": "Belum diatur",
+      "not_linked_helper": "Belum tertaut ke akunmu",
+      "linked_helper": "Tertaut ke akunmu"
     }
   },
   "shell": {
@@ -296,6 +411,7 @@
   "room": {
     "picker_label": "Kamu mau bekerja dengan siapa?",
     "team_hint": "Sino dan semua spesialis. Ketik @ untuk memanggil seseorang.",
+    "team_role": "Sino bersama semua",
     "specialist_hint": "Obrolan pribadi dengan {name} ({role})",
     "placeholder_team": "Tanya Sino apa saja. Ketik @ untuk memanggil spesialis",
     "placeholder_specialist": "Kirim pesan ke {name}",
@@ -311,38 +427,19 @@
         "a": "@SinoSales buatkan draf tindak lanjut untuk pertemuan klien kemarin",
         "b": "Susun rencana minggu ini dengan tiga prioritas",
         "c": "@SinoFinance dan @SinoInsights tinjau pengeluaran bulan lalu"
-      },
-      "sinopeople": {
-        "a": "Tulis iklan lowongan untuk barista paruh waktu",
-        "b": "Buat draf daftar periksa onboarding yang ramah untuk karyawan baru",
-        "c": "Bantu aku menyiapkan pertanyaan untuk evaluasi kinerja"
-      },
-      "sinofinance": {
-        "a": "Buat rencana arus kas sederhana untuk bulan depan",
-        "b": "Jelaskan invoice ini dan apa yang perlu aku periksa",
-        "c": "Buat draf pengingat pembayaran yang sopan untuk klien"
-      },
-      "sinosales": {
-        "a": "Tulis email tindak lanjut setelah demo produk",
-        "b": "Ubah catatanku jadi proposal penjualan singkat",
-        "c": "Sarankan tiga cara menjangkau pelanggan lokal baru"
-      },
-      "sinosocial": {
-        "a": "Rencanakan lima unggahan Instagram untuk minggu ini",
-        "b": "Tulis caption untuk menu baru kami",
-        "c": "Ubah pengumuman ini jadi unggahan LinkedIn"
-      },
-      "sinohelp": {
-        "a": "Buat draf balasan untuk pelanggan yang minta pengembalian dana",
-        "b": "Tulis jawaban untuk lima pertanyaan yang paling sering muncul",
-        "c": "Buat balasan yang tenang untuk ulasan yang kurang puas"
-      },
-      "sinoinsights": {
-        "a": "Apa yang perlu aku lihat di angka penjualan bulananku?",
-        "b": "Bandingkan bulan ini dan bulan lalu, lalu kasih tahu apa yang berubah",
-        "c": "Sarankan tiga angka yang perlu aku pantau tiap minggu"
       }
     }
+  },
+  "cards": {
+    "title": {
+      "generic": "Hasil",
+      "guardrail_notice": "Yang tidak bisa aku lakukan"
+    },
+    "rejected_notice": "Hasil ini tidak bisa ditampilkan sebagai kartu.",
+    "no_text": "Hasil ini tidak bisa ditampilkan.",
+    "copy": "Salin",
+    "copied": "Tersalin",
+    "copy_failed": "Gagal menyalin"
   },
   "chat": {
     "composer": {

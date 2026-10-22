@@ -52,10 +52,10 @@ model Workspace {
   members            WorkspaceMember[]
   member_specialists WorkspaceMemberSpecialist[]
   invitations        WorkspaceInvitation[]
-  agent_configs      AgentConfig[]
   conversations      Conversation[]
   storage_objects    StorageObject[]
   chat_runs          ChatRun[]
+  message_cards      MessageCard[]
 
   @@map("workspaces")
   @@schema("platform")
@@ -153,8 +153,28 @@ model User {
   sessions         Session[]
   staff_profile    PlatformStaff?
   conversations    Conversation[]
+  preferences      UserPreferences?
 
   @@map("users")
+  @@schema("platform")
+}
+
+model UserPreferences {
+  id                String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id           String   @unique @map("user_id") @db.Uuid
+  theme             String   @default("system") @map("theme") // light | dark | system
+  density           String   @default("comfortable") @map("density") // comfortable | compact
+  focus_mode        Boolean  @default(false) @map("focus_mode")
+  reduce_motion     Boolean  @default(false) @map("reduce_motion")
+  sidebar_collapsed Boolean  @default(false) @map("sidebar_collapsed")
+  pause_character   Boolean  @default(false) @map("pause_character")
+  room_view         Boolean  @default(false) @map("room_view")
+  created_at        DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updated_at        DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  user User @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@map("user_preferences")
   @@schema("platform")
 }
 
@@ -267,30 +287,6 @@ model SigningKey {
 // Agents & Operations (Carried over from Init)
 // ---------------------------------------------------------------------------
 
-model AgentConfig {
-  id                    String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  workspace_id          String?  @db.Uuid
-  agent_slug            String   @unique
-  display_name          String
-  role_title            String
-  category              String
-  status                String   @default("online")
-  short_description     String
-  capabilities          Json     @default("[]")
-  model_name            String   @default("sineva-core-v2")
-  avg_latency_ms        Int      @default(420)
-  active_sessions_count Int      @default(0)
-  daily_tokens_used     Int      @default(0)
-  accent_token          String   @default("--teal-500")
-  created_at            DateTime @default(now()) @db.Timestamptz(6)
-  updated_at            DateTime @default(now()) @db.Timestamptz(6)
-
-  workspace Workspace? @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
-
-  @@map("agent_configs")
-  @@schema("platform")
-}
-
 model Conversation {
   id                String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   workspace_id      String    @map("workspace_id") @db.Uuid
@@ -309,8 +305,9 @@ model Conversation {
 
   workspace Workspace @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
   user      User      @relation(fields: [user_id], references: [id], onDelete: Cascade)
-  messages  Message[]
-  chat_runs ChatRun[]
+  messages      Message[]
+  chat_runs     ChatRun[]
+  message_cards MessageCard[]
 
   @@index([workspace_id, user_id, last_message_at])
   @@index([workspace_id, kind])
@@ -334,8 +331,9 @@ model Message {
   created_at        DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updated_at        DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  conversation Conversation @relation(fields: [conversation_id], references: [id], onDelete: Cascade)
-  chat_runs    ChatRun[]
+  conversation  Conversation  @relation(fields: [conversation_id], references: [id], onDelete: Cascade)
+  chat_runs     ChatRun[]
+  message_cards MessageCard[]
 
   @@index([conversation_id, created_at])
   @@index([conversation_id, client_message_id])
@@ -367,6 +365,49 @@ model ChatRun {
 
   @@index([workspace_id, conversation_id, created_at])
   @@map("chat_runs")
+  @@schema("platform")
+}
+
+// A typed result card of an assistant message (ADR-0025, FR-AX-13). Written
+// when the relay has validated `card_completed`; patches are never stored. A
+// rejected card keeps only its code (`rejected_code`), `data` stays `{}`.
+// `connection_id` and `approval_id` have no foreign key yet: their tables
+// arrive with the connections and approvals work packages.
+model MessageCard {
+  id                String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  message_id        String    @map("message_id") @db.Uuid
+  conversation_id   String    @map("conversation_id") @db.Uuid
+  workspace_id      String    @map("workspace_id") @db.Uuid
+  run_id            String?   @map("run_id")
+  call_id           String?   @map("call_id")
+  position          Int       @map("position")
+  card_type         String    @map("card_type")
+  schema_version    Int       @map("schema_version")
+  state             String    @map("state") // drafting | ready | needs_review | done | failed | disconnected | cancelled | expired
+  provider_slug     String?   @map("provider_slug")
+  connection_id     String?   @map("connection_id") @db.Uuid
+  approval_id       String?   @map("approval_id") @db.Uuid
+  data              Json      @default("{}") @map("data")
+  actions           Json      @default("[]") @map("actions")
+  fallback_text     String?   @map("fallback_text") @db.Text
+  payload_hash      String?   @map("payload_hash")
+  validation_status String    @map("validation_status") // valid | rejected
+  rejected_code     String?   @map("rejected_code")
+  search_text       String?   @map("search_text") @db.Text
+  version           Int       @default(1) @map("version")
+  data_expires_at   DateTime? @map("data_expires_at") @db.Timestamptz(6)
+  created_at        DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updated_at        DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  message      Message      @relation(fields: [message_id], references: [id], onDelete: Cascade)
+  conversation Conversation @relation(fields: [conversation_id], references: [id], onDelete: Cascade)
+  workspace    Workspace    @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
+
+  @@unique([message_id, position])
+  @@index([conversation_id, position])
+  @@index([approval_id])
+  @@index([workspace_id, conversation_id])
+  @@map("message_cards")
   @@schema("platform")
 }
 

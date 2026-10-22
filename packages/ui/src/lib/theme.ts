@@ -44,3 +44,39 @@ export function storedTheme(): Theme | null {
     return null;
   }
 }
+
+/** What a person chooses in Preferences: a theme, or "follow the operating system". */
+export type ThemePreference = Theme | 'system';
+
+/** Fired on `window` after every theme or preference change, so subscribers can re-read. */
+export const THEME_CHANGE_EVENT = 'sineva-theme-change';
+
+/** `system` when nothing is stored: the page then follows the operating system. */
+export function readThemePreference(): ThemePreference {
+  return storedTheme() ?? 'system';
+}
+
+function systemTheme(): Theme {
+  return typeof window !== 'undefined' && window.matchMedia?.('(prefers-color-scheme: dark)').matches
+    ? 'dark'
+    : 'light';
+}
+
+/**
+ * Applies a preference. `system` removes the stored choice (the inline script
+ * and the OS listener then follow the OS); there is no separate "system" value
+ * in storage, so the script stays the one-liner it is in compro.
+ */
+export function applyThemePreference(preference: ThemePreference): void {
+  if (preference === 'system') {
+    try {
+      localStorage.removeItem(THEME_STORAGE_KEY);
+    } catch {
+      // Blocked storage: the choice lasts for this page only.
+    }
+    applyTheme(systemTheme(), false);
+  } else {
+    applyTheme(preference);
+  }
+  window.dispatchEvent(new Event(THEME_CHANGE_EVENT));
+}

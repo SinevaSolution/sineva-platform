@@ -75,7 +75,7 @@ Migrations are an explicit release step. They are not in `CMD` and not in compos
 
 1. Merge to `main` after CI passes.
 2. Build the image.
-3. Run `db:migrate:deploy` with `?schema=platform` on the database URL ([migrations workflow](../engineering/database_migrations_workflow.md)). On a new environment, also run `db:seed`.
+3. Run `db:migrate:deploy` with `?schema=platform` on the database URL ([migrations workflow](../engineering/database_migrations_workflow.md)). On a new development environment, also run `db:seed` (two test tenants; there are no specialist rows).
 4. Run `sineva-ai`'s own `alembic upgrade head` if its release changed its schema.
 5. Start or recreate `sineva-platform`.
 
@@ -87,6 +87,6 @@ Order matters in one direction: apply the migration before the code that needs i
 - [ ] `docker compose ps` shows `0.0.0.0:3000->3000/tcp` for `sineva-platform` and `8000/tcp` with no host address for `sineva-ai`. Decide on purpose what to do with the published Postgres, Redis, Qdrant and SeaweedFS ports ([topology](docker_compose_topology.md)).
 - [ ] `db:migrate:deploy` ran with `?schema=platform`, and `platform._prisma_migrations` exists (not `public._prisma_migrations`).
 - [ ] `GET /api/v1/health` returns 200 and `data.subsystems.sineva_ai_engine.status` is `healthy`. This is the only real check in that response: the Postgres entry reports `healthy` whenever `DATABASE_URL` is set, Redis always reports `healthy`, and S3 reports `healthy` whenever an endpoint is configured.
-- [ ] `GET /api/v1/agents` returns the six companions. This reaches Postgres, so it proves the database, the schema and the seed.
+- [ ] `GET /api/v1/workspaces/{workspace_id}/agents` returns the six companions. This reaches sineva-ai (503 when it is down) and the membership lookup, so it proves the engine catalog and the database together. If a deployment may have used the removed `POST /api/v1/agents`, run the check in `20261022120000_drop_agent_configs` before migrating.
 - [ ] A chat request to one companion returns 200. A 502 or 503 here points at the key, the slug or the engine ([troubleshooting](../troubleshooting/docker_and_internal_network.md)).
 - [ ] `/api/openapi.json` loads and lists every route.

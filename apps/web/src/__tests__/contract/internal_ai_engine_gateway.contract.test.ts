@@ -351,18 +351,84 @@ describe('InternalAiEngineGateway Contract v2 (WP-M0-28)', () => {
   });
 
   describe('listAgents, getRunEvents, cancelRun', () => {
-    it('listAgents sends GET /api/v2/agents with internal headers', async () => {
-      const fetchMock = stubFetch(() =>
-        jsonResponse([
-          { agent_slug: 'sinofinance', display_name: 'Sino Finance', status: 'online' },
-        ]),
-      );
+    const CATALOG_BODY = {
+      catalog_version: 'cat-2026-10-22-a',
+      agents: [
+        {
+          agent_slug: 'sinofinance',
+          handle: 'SinoFinance',
+          category: 'finance_ops',
+          wave: 1,
+          status: 'live',
+          // Fields the platform does not read must be tolerated (additive contract).
+          tier: 'balanced',
+          tool_allowlist: [],
+          guardrail: { read_only: false },
+        },
+        { agent_slug: 'sinodesk', handle: 'SinoDesk', category: 'personal_ops', wave: 2, status: 'coming_soon' },
+      ],
+    };
+
+    it('listAgents sends GET /api/v2/agents with the internal key and parses the catalog', async () => {
+      const fetchMock = stubFetch(() => jsonResponse({ success: true, data: CATALOG_BODY }));
 
       const gateway = new InternalAiEngineGateway();
-      const agents = await gateway.listAgents({ contextToken: TEST_CONTEXT_TOKEN });
+      const catalog = await gateway.listAgents({ requestId: 'req-catalog' });
 
-      expect(agents).toHaveLength(1);
-      expect(lastCall(fetchMock).url).toBe(`${AI_URL}/api/v2/agents`);
+      const { url, init } = lastCall(fetchMock);
+      expect(url).toBe(`${AI_URL}/api/v2/agents`);
+      expect(init.method).toBe('GET');
+      const headers = init.headers as Record<string, string>;
+      expect(headers['X-Internal-Api-Key']).toBe(AI_KEY);
+      expect(headers['X-Request-Id']).toBe('req-catalog');
+      expect(catalog.catalog_version).toBe('cat-2026-10-22-a');
+      expect(catalog.agents.map((a) => a.agent_slug)).toEqual(['sinofinance', 'sinodesk']);
+      expect(catalog.agents[0]).toEqual({
+        agent_slug: 'sinofinance',
+        handle: 'SinoFinance',
+        category: 'finance_ops',
+        wave: 1,
+        status: 'live',
+      });
+    });
+
+    it('listAgents also accepts the catalog without an envelope', async () => {
+      stubFetch(() => jsonResponse(CATALOG_BODY));
+      const catalog = await new InternalAiEngineGateway().listAgents({});
+      expect(catalog.agents).toHaveLength(2);
+    });
+
+    it('listAgents maps a network failure to 503 (UpstreamUnavailableError)', async () => {
+      stubFetch(() => {
+        throw new TypeError('fetch failed');
+      });
+      await expect(new InternalAiEngineGateway().listAgents({})).rejects.toBeInstanceOf(
+        UpstreamUnavailableError,
+      );
+    });
+
+    it('listAgents maps a 503 answer to 503', async () => {
+      stubFetch(() => jsonResponse({ success: false, errors: [{ code: 'dependency_unavailable' }] }, 503));
+      await expect(new InternalAiEngineGateway().listAgents({})).rejects.toMatchObject({ status: 503 });
+    });
+
+    it('listAgents maps a non-JSON body to 502, not 503', async () => {
+      stubFetch(() => new Response('<html>nope</html>', { status: 200 }));
+      await expect(new InternalAiEngineGateway().listAgents({})).rejects.toBeInstanceOf(
+        UpstreamServiceError,
+      );
+    });
+
+    it.each([
+      ['a missing catalog_version', { agents: CATALOG_BODY.agents }],
+      ['an unknown category', { ...CATALOG_BODY, agents: [{ ...CATALOG_BODY.agents[0], category: 'astrology' }] }],
+      ['an unknown status', { ...CATALOG_BODY, agents: [{ ...CATALOG_BODY.agents[0], status: 'beta' }] }],
+      ['a bare array', [CATALOG_BODY.agents[0]]],
+    ])('listAgents maps %s to 502', async (_label, body) => {
+      stubFetch(() => jsonResponse(body));
+      await expect(new InternalAiEngineGateway().listAgents({})).rejects.toBeInstanceOf(
+        UpstreamServiceError,
+      );
     });
 
     it('getRunEvents sends GET /api/v2/runs/{run_id}/events?after={seq}', async () => {

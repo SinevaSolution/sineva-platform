@@ -3,6 +3,9 @@
 import { Square } from 'lucide-react';
 import * as React from 'react';
 import { toast } from 'sonner';
+import { ConversationActions } from '@/client/components/conversation/conversation_actions';
+import { InlineTitleEdit } from '@/client/components/conversation/inline_title_edit';
+import { useConversationActions } from '@/client/components/conversation/use_conversation_actions';
 import { RoomBubble, RoomStage } from '@/client/components/room/room_stage';
 import { SinoFigure } from '@/client/components/ui/sino_figure';
 import { specialistPose } from '@/client/components/ui/specialist_accent';
@@ -13,10 +16,23 @@ import { openRunStream, type RunDoneResult, type RunStreamEvent, type RunStreamH
 import { streamErrorText } from '@/client/lib/stream_errors';
 import { useApiErrorText } from '@/client/lib/use_api_error';
 import { useTranslations } from '@/i18n/provider';
-import type { ConversationView, MessageView, SendMessageResultView } from '@/shared/chat_view';
+import type {
+  ConversationView,
+  MessageCardView,
+  MessageView,
+  SendMessageResultView,
+} from '@/shared/chat_view';
 import type { ShellSpecialistView } from '@/shared/shell_view';
 import { Composer } from './composer';
-import { moodForLive, pendingRunToAttach, reduceLiveReply, type LiveReply } from './live_reply_model';
+import { MessageCards } from './message_cards';
+import {
+  liveCardFromFrame,
+  moodForLive,
+  pendingRunToAttach,
+  reduceLiveReply,
+  type LiveReply,
+} from './live_reply_model';
+import { splitMentions } from './mention_segments';
 
 const IDLE: LiveReply = { phase: 'idle' };
 
@@ -29,7 +45,12 @@ const FINAL_STATUSES: ReadonlyArray<MessageView['status']> = [
   'cancelled',
 ];
 
-function assistantFromDone(result: RunDoneResult, runId: string, conversationId: string): MessageView {
+function assistantFromDone(
+  result: RunDoneResult,
+  runId: string,
+  conversationId: string,
+  cards: MessageCardView[],
+): MessageView {
   const cancelled = result.finish_reason === 'cancelled';
   const status = cancelled
     ? 'cancelled'
@@ -47,6 +68,7 @@ function assistantFromDone(result: RunDoneResult, runId: string, conversationId:
     run_id: runId,
     channel: 'web',
     client_message_id: null,
+    cards,
     created_at: now,
     updated_at: now,
   };
@@ -62,24 +84,33 @@ type ThreadState =
 
 export function ChatThread({
   workspaceId,
+  workspaceSlug,
   conversationId,
   specialists,
 }: {
   workspaceId: string;
+  workspaceSlug: string;
   conversationId: string;
   specialists: ShellSpecialistView[];
 }) {
   const t = useTranslations('chat');
   const tCommon = useTranslations('common');
+  const tConversation = useTranslations('conversation');
   // Empty namespace: stream error keys are full catalog paths (`chat.error.*`).
   const tFull = useTranslations('');
   const errorText = useApiErrorText();
   const [state, setState] = React.useState<ThreadState>({ status: 'loading' });
   const [attempt, setAttempt] = React.useState(0);
   const [sendFailed, setSendFailed] = React.useState(false);
+  const [renaming, setRenaming] = React.useState(false);
+  const actions = useConversationActions({ workspaceId, workspaceSlug });
   const [live, dispatchLive] = React.useReducer(reduceLiveReply, IDLE);
   const bottomRef = React.useRef<HTMLLIElement>(null);
   const streamRef = React.useRef<RunStreamHandle | null>(null);
+  // Cards that finished while the reply streams. The ref is what the done
+  // handler reads (it runs inside a stream callback); the state is what renders.
+  const liveCardsRef = React.useRef<MessageCardView[]>([]);
+  const [liveCards, setLiveCards] = React.useState<MessageCardView[]>([]);
   // Which load already looked for a run to attach to (see the effect below).
   const autoAttachKey = React.useRef<string | null>(null);
   const base = `/api/v1/workspaces/${workspaceId}/conversations/${conversationId}`;
@@ -96,6 +127,7 @@ export function ChatThread({
 
   function attach(runId: string) {
     streamRef.current?.close();
+    liveCardsRef.current = [];
     dispatchLive({ type: 'start', run_id: runId });
     streamRef.current = openRunStream({
       workspaceId,
@@ -103,15 +135,26 @@ export function ChatThread({
       onEvent: (event: RunStreamEvent) => {
         if (event.type === 'token') {
           dispatchLive({ type: 'token', token: event.token });
+        } else if (event.type === 'other' && event.event === 'card_completed') {
+          const card = liveCardFromFrame(event.data, runId, liveCardsRef.current.length);
+          if (card) {
+            liveCardsRef.current = [...liveCardsRef.current, card];
+            setLiveCards(liveCardsRef.current);
+          }
         } else if (event.type === 'done') {
-          const reply = assistantFromDone(event.result, runId, conversationId);
+          const reply = assistantFromDone(event.result, runId, conversationId, liveCardsRef.current);
           setState((prev) =>
-            prev.status !== 'ready' || !reply.content
+            prev.status !== 'ready' || (!reply.content && (reply.cards ?? []).length === 0)
               ? prev
               : { ...prev, messages: [...prev.messages, reply] },
           );
+          // The stored reply now carries the cards; the live bubble goes away.
+          liveCardsRef.current = [];
+          setLiveCards([]);
           dispatchLive({ type: 'done', cancelled: reply.status === 'cancelled' });
         } else if (event.type === 'error') {
+          liveCardsRef.current = [];
+          setLiveCards([]);
           dispatchLive({ type: 'error', code: event.code, retryable: event.retryable });
         }
       },
@@ -266,15 +309,43 @@ export function ChatThread({
           ? streamErrorText(tFull, live.code, companionName)
           : '';
 
+  const displayTitle = conversation.title?.trim() || t('thread.title_default', { name: companionName });
+  const setTitle = (title: string | null) =>
+    setState((prev) =>
+      prev.status !== 'ready' ? prev : { ...prev, conversation: { ...prev.conversation, title } },
+    );
+
   const header = (
     <div className="flex items-center gap-2 px-4 pb-2 pt-3 sm:px-6">
       <SinoFigure pose={specialistPose(specialist?.agent_slug ?? 'sino')} size={34} />
       <div className="min-w-0">
-        <h1 className="truncate text-[15px] font-semibold text-text-inverse">
-          {conversation.title?.trim() || t('thread.title_default', { name: companionName })}
-        </h1>
+        {renaming ? (
+          <InlineTitleEdit
+            value={conversation.title}
+            label={tConversation('rename_label')}
+            className="h-7 w-full min-w-[12rem] text-[15px] font-semibold"
+            onCancel={() => setRenaming(false)}
+            onSave={(next) => {
+              setRenaming(false);
+              void actions.rename(conversation.id, next, {
+                previous: conversation.title,
+                apply: setTitle,
+              });
+            }}
+          />
+        ) : (
+          <h1 className="truncate text-[15px] font-semibold text-text-inverse">{displayTitle}</h1>
+        )}
         <p className="text-xs text-text-inverse/65">{isTeam ? t('thread.subtitle_team') : t('thread.subtitle_private', { name: companionName })}</p>
       </div>
+      {renaming ? null : (
+        <ConversationActions
+          title={displayTitle}
+          triggerClassName="size-8 text-text-inverse/75 hover:bg-text-inverse/15 hover:text-text-inverse data-[state=open]:bg-text-inverse/15 data-[state=open]:text-text-inverse"
+          onRename={() => setRenaming(true)}
+          onDelete={() => actions.remove(conversation.id)}
+        />
+      )}
     </div>
   );
 
@@ -326,6 +397,7 @@ export function ChatThread({
               <span className="block text-xs font-semibold text-text-brand">{companionName}</span>
               {/* Plain text on purpose: model output is never rendered as HTML. */}
               {live.text || <span className="text-text-secondary">{t('thread.working', { name: companionName })}</span>}
+              <MessageCards cards={liveCards} />
             </RoomBubble>
           </li>
         ) : null}
@@ -372,7 +444,20 @@ function MessageRow({
   if (message.role === 'user') {
     return (
       <li className="anim-rise flex">
-        <RoomBubble from="user">{message.content}</RoomBubble>
+        <RoomBubble from="user">
+          {splitMentions(
+            message.content,
+            specialists.map((sp) => sp.display_name),
+          ).map((seg, i) =>
+            seg.mention ? (
+              <span key={i} className="rounded-xs bg-text-inverse/20 shadow-[0_0_0_2px_color-mix(in_srgb,var(--color-text-inverse)_20%,transparent)]">
+                {seg.text}
+              </span>
+            ) : (
+              <React.Fragment key={i}>{seg.text}</React.Fragment>
+            ),
+          )}
+        </RoomBubble>
       </li>
     );
   }
@@ -385,6 +470,7 @@ function MessageRow({
         <span className="block text-xs font-semibold text-text-brand">{name}</span>
         {/* Plain text until the sanitized markdown renderer lands (M1). */}
         {message.content}
+        <MessageCards cards={message.cards} />
         {message.status === 'error' ? (
           <span className="mt-1 block text-[13px] text-text-secondary">
             {streamErrorText(tFull, message.finish_reason ?? 'upstream_interrupted', name)}

@@ -21,6 +21,7 @@ export function RoomStage({
   mood,
   label,
   header,
+  topBar,
   footer,
   children,
 }: {
@@ -30,6 +31,8 @@ export function RoomStage({
   /** Name tag over Sino, e.g. "SinoFinance". */
   label: string;
   header?: React.ReactNode;
+  /** Full-width strip above the chat column and Sino (New chat's cast picker). */
+  topBar?: React.ReactNode;
   footer?: React.ReactNode;
   children: React.ReactNode;
 }) {
@@ -60,7 +63,7 @@ export function RoomStage({
   return (
     <section
       ref={ref}
-      className="relative isolate flex min-h-0 flex-1 overflow-hidden bg-(--room-scene-base) [container-type:size] [--px:0] [--py:0]"
+      className="relative isolate flex min-h-0 flex-1 flex-col overflow-hidden bg-(--room-scene-base) [container-type:size] [--px:0] [--py:0]"
     >
       {/* Room. A 16:9 box that always covers the panel (container units),
           anchored at 70% across and 60% down so Sino and the floor stay in
@@ -109,6 +112,7 @@ export function RoomStage({
         className="absolute inset-0 -z-10 bg-(image:--room-scrim-side)"
       />
 
+      {topBar}
       {/* Chat column */}
       <div className="relative flex min-h-0 w-full flex-1 flex-col md:max-w-[min(640px,58%)]">
         {header}
@@ -133,7 +137,7 @@ export function RoomBubble({
         'max-w-[88%] whitespace-pre-wrap rounded-lg px-4 py-2.5 text-[15px] leading-6 shadow-md backdrop-blur-md',
         from === 'user'
           ? 'ms-auto rounded-ee-xs bg-(--room-bubble-user) text-text-inverse'
-          : 'rounded-ss-xs bg-(--room-bubble-companion) text-text',
+          : 'rounded-ss-xs bg-[color-mix(in_oklab,var(--color-surface)_92%,transparent)] text-text',
       )}
     >
       {children}

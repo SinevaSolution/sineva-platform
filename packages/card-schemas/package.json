@@ -1,0 +1,27 @@
+{
+  "name": "@sineva/card-schemas",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "generate": "tsx scripts/generate_types.ts",
+    "build": "tsc --noEmit",
+    "lint": "tsc --noEmit",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "ajv": "8.20.0"
+  },
+  "devDependencies": {
+    "@types/node": "^24.19.2",
+    "tsx": "4.23.15",
+    "typescript": "^5.7.3",
+    "vitest": "^4.1.11"
+  }
+}

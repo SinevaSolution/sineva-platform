@@ -2,6 +2,11 @@ import { randomUUID } from 'node:crypto';
 import type { ConversationEntity } from '@/server/domain/entities/conversation';
 import type { MessageEntity } from '@/server/domain/entities/message';
 import type { ChatRunEntity, ChatRunStatus } from '@/server/domain/entities/chat_run';
+import type { MessageCardEntity } from '@/server/domain/entities/message_card';
+import type {
+  MessageCardRepository,
+  NewMessageCard,
+} from '@/server/domain/repositories/message_card_repository';
 import type { ConversationRepository } from '@/server/domain/repositories/conversation_repository';
 import type {
   CreateMessageInput,
@@ -28,6 +33,19 @@ export class InMemoryConversations implements ConversationRepository {
   }
   async updateLastMessageAt(): Promise<void> {
     this.lastMessageAtUpdates += 1;
+  }
+  async rename(id: string, title: string): Promise<ConversationEntity> {
+    const row = this.rows.get(id);
+    if (!row) throw new Error(`conversation ${id} not found`);
+    row.title = title;
+    row.title_source = 'user';
+    return { ...row };
+  }
+  /** Callbacks standing in for the database's ON DELETE CASCADE. */
+  readonly cascades: Array<(conversationId: string) => void> = [];
+  async delete(id: string): Promise<void> {
+    this.rows.delete(id);
+    for (const cascade of this.cascades) cascade(id);
   }
 }
 
@@ -66,6 +84,9 @@ export class InMemoryMessages implements MessageRepository {
   }
   async findUserMessageByRunId(runId: string): Promise<MessageEntity | null> {
     return this.rows.find((m) => m.run_id === runId && m.role === 'user') ?? null;
+  }
+  async countByConversation(conversationId: string): Promise<number> {
+    return this.rows.filter((m) => m.conversation_id === conversationId).length;
   }
   async listByConversation(): Promise<{ items: MessageEntity[]; next_cursor: string | null }> {
     throw new Error('not used by the relay tests');
@@ -146,6 +167,13 @@ export class InMemoryChatRuns implements ChatRunRepository {
     this.byId(id).assistant_message_id = assistantMessageId;
   }
 
+  async listByConversation(conversationId: string): Promise<ChatRunEntity[]> {
+    return [...this.rows.values()]
+      .filter((r) => r.conversation_id === conversationId)
+      .sort((a, b) => a.created_at.localeCompare(b.created_at))
+      .map((r) => ({ ...r }));
+  }
+
   async findLatestSessionId(conversationId: string): Promise<string | null> {
     const rows = [...this.rows.values()]
       .filter((r) => r.conversation_id === conversationId && r.upstream_session_id)
@@ -157,5 +185,39 @@ export class InMemoryChatRuns implements ChatRunRepository {
     const row = this.rows.get(handle);
     if (!row) throw new Error(`no run ${handle}`);
     return row;
+  }
+}
+
+export class InMemoryMessageCards implements MessageCardRepository {
+  readonly rows: MessageCardEntity[] = [];
+  /** Set to make the next createMany throw, like a database outage. */
+  failure: Error | null = null;
+
+  async createMany(cards: NewMessageCard[]): Promise<MessageCardEntity[]> {
+    if (this.failure) throw this.failure;
+    const positions = new Set(
+      this.rows.map((r) => `${r.message_id}:${r.position}`),
+    );
+    for (const card of cards) {
+      if (positions.has(`${card.message_id}:${card.position}`)) {
+        throw new Error('unique violation on (message_id, position)');
+      }
+    }
+    const now = new Date().toISOString();
+    const created = cards.map((card) => ({
+      ...card,
+      id: randomUUID(),
+      version: 1,
+      created_at: now,
+      updated_at: now,
+    }));
+    this.rows.push(...created);
+    return created;
+  }
+
+  async listByMessageIds(workspaceId: string, messageIds: string[]): Promise<MessageCardEntity[]> {
+    return this.rows
+      .filter((r) => r.workspace_id === workspaceId && messageIds.includes(r.message_id))
+      .sort((a, b) => a.message_id.localeCompare(b.message_id) || a.position - b.position);
   }
 }

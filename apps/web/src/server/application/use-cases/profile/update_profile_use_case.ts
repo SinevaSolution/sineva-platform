@@ -10,7 +10,9 @@ import type {
   UserProfileRepository,
 } from '@/server/domain/repositories/user_profile_repository';
 
-export interface UpdateProfileUseCaseInput extends UpdateUserProfileInput {
+export type UpdateProfileChanges = Omit<UpdateUserProfileInput, 'reset_phone_verification'>;
+
+export interface UpdateProfileUseCaseInput extends UpdateProfileChanges {
   user_id: string;
   /** The request being served, so the audit row carries its request id and client address. */
   context?: RequestContext;
@@ -34,13 +36,20 @@ export class UpdateProfileUseCase {
       throw new NotFoundError('User', user_id);
     }
 
-    const updated = await this.profiles.update(user_id, changes);
+    // Verification belongs to a number, not to the account: a new number
+    // starts unverified. Saving the same number again keeps the proof.
+    const phoneChanged = changes.phone_number !== undefined && changes.phone_number !== before.phone_number;
+    const updated = await this.profiles.update(user_id, {
+      ...changes,
+      ...(phoneChanged ? { reset_phone_verification: true } : {}),
+    });
 
-    const changedFields = (Object.keys(changes) as Array<keyof UpdateUserProfileInput>).filter(
+    const changedFields = (Object.keys(changes) as Array<keyof UpdateProfileChanges>).filter(
       (field) => changes[field] !== undefined,
     );
-    // Values go through `change`, whose redaction replaces name values and
-    // keeps locale and timezone; the field list alone says what happened.
+    // Values go through `change`, whose key-based redaction replaces names,
+    // phone numbers and free text and keeps locale, timezone and flags; the
+    // field list alone says what happened.
     await this.auditLogger.log({
       action: 'user.profile_updated',
       context: context ?? { ...createAnonymousRequestContext('profile-update'), user_id },

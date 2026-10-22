@@ -4,6 +4,8 @@ import {
   THEME_SCRIPT,
   THEME_STORAGE_KEY,
   applyTheme,
+  applyThemePreference,
+  readThemePreference,
   readTheme,
   storedTheme,
 } from '../lib/theme';
@@ -107,5 +109,37 @@ describe('theme helpers', () => {
     expect(() => applyTheme('dark')).not.toThrow();
     expect(readTheme()).toBe('dark');
     expect(storedTheme()).toBeNull();
+  });
+});
+
+describe('theme preference (light, dark or system)', () => {
+  it('reads system when no choice is stored, and the stored choice otherwise', () => {
+    expect(readThemePreference()).toBe('system');
+    localStorage.setItem(THEME_STORAGE_KEY, 'dark');
+    expect(readThemePreference()).toBe('dark');
+  });
+
+  it('light and dark are applied and stored', () => {
+    applyThemePreference('dark');
+    expect(readTheme()).toBe('dark');
+    expect(localStorage.getItem(THEME_STORAGE_KEY)).toBe('dark');
+  });
+
+  it('system forgets the stored choice and follows the operating system', () => {
+    localStorage.setItem(THEME_STORAGE_KEY, 'light');
+    setSystemDark(true);
+    applyThemePreference('system');
+    expect(localStorage.getItem(THEME_STORAGE_KEY)).toBeNull();
+    expect(readTheme()).toBe('dark');
+    expect(readThemePreference()).toBe('system');
+  });
+
+  it('notifies listeners so a preference-only change re-renders', () => {
+    let calls = 0;
+    const listener = () => (calls += 1);
+    window.addEventListener('sineva-theme-change', listener);
+    applyThemePreference('light');
+    window.removeEventListener('sineva-theme-change', listener);
+    expect(calls).toBe(1);
   });
 });

@@ -5,7 +5,7 @@ Browser-side UI: `components/` and the Redux store in `store/`. Rules R-08, R-14
 ## Boundary
 
 - Never import `@/server/**` or `server-only`. ESLint and `architecture.test.ts` both fail on it. A type the client needs goes in `src/shared`.
-- Wire types come from `@/shared` (`AgentView`, `ChatReplyView`). Primitives come from `@sineva/ui`.
+- Wire types come from `@/shared` (`WorkspaceSpecialistRosterView`, `ChatReplyView`). A specialist's display copy, accent and starter prompts come from the static manifest `@/shared/specialists/manifest`, not from a fetch. Primitives come from `@sineva/ui`.
 
 ## New UI
 

@@ -1,0 +1,36 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sineva.id/schemas/cards/test_only_card/v1.json",
+  "title": "TestOnlyCard",
+  "description": "Test-only schema, never part of the production registry. Covers every typed string kind so the validation rules have negative cases.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["name"],
+  "x-ttl": "30d",
+  "properties": {
+    "name": { "type": "string", "maxLength": 80, "x-sanitize": true, "x-editable": true },
+    "subject": { "type": "string", "maxLength": 120, "x-sanitize": true },
+    "note": { "type": "string", "maxLength": 200, "x-origin": "model", "x-streamable": true },
+    "website": { "type": "string", "maxLength": 2048, "x-link": true },
+    "email": { "type": "string", "maxLength": 254, "x-contact": true, "x-pii": true },
+    "image": { "type": "string", "maxLength": 36, "x-media-ref": true },
+    "tags": {
+      "type": "array",
+      "maxItems": 5,
+      "items": { "type": "string", "maxLength": 20 }
+    },
+    "items": {
+      "type": "array",
+      "maxItems": 3,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["label"],
+        "properties": {
+          "label": { "type": "string", "maxLength": 40 },
+          "link": { "type": "string", "maxLength": 2048, "x-link": true }
+        }
+      }
+    }
+  }
+}

@@ -11,6 +11,7 @@ related_docs:
   - "overview.md"
   - "agents_and_chat_endpoints.md"
   - "storage_and_health_endpoints.md"
+  - "profile_and_preferences_endpoints.md"
   - "swagger_and_openapi.md"
   - "../README.md"
 ---
@@ -24,8 +25,9 @@ This folder documents the HTTP routes under `apps/web/src/app/api` exactly as th
 | File | What it covers | Read it when |
 | :--- | :--- | :--- |
 | [overview.md](overview.md) | Route inventory, the `@sineva/shared` envelope, request id and timestamp, error codes, conventions, what the API does not have yet | You call the API, or you add or change a route |
-| [agents_and_chat_endpoints.md](agents_and_chat_endpoints.md) | `GET` and `POST /api/v1/agents`, `POST /api/v1/agents/{agent_slug}/chat`, and the internal contract with `sineva-ai` | You build the chat UI, change the gateway, or touch the fixtures |
+| [agents_and_chat_endpoints.md](agents_and_chat_endpoints.md) | `GET /api/v1/workspaces/{workspace_id}/agents` (the specialist roster), and the internal contract with `sineva-ai` | You build the chat UI, change the gateway, or touch the fixtures |
 | [storage_and_health_endpoints.md](storage_and_health_endpoints.md) | `POST /api/v1/storage/presign` and `GET /api/v1/health`, including what "healthy" really checks | You upload files, wire a health probe, or debug a standby subsystem |
+| [profile_and_preferences_endpoints.md](profile_and_preferences_endpoints.md) | `/api/v1/me`, member attributes, preferences, avatar upload and its image checks | You touch the profile page, preferences or avatars |
 | [swagger_and_openapi.md](swagger_and_openapi.md) | Where the OpenAPI document lives, what `/api-docs` is (and is not), how to register a route | You add a route or change a schema |
 
 ## Reading order

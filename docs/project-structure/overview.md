@@ -57,7 +57,7 @@ What is real today:
 | :--- | :--- |
 | Browser to platform | Real. Public routes under `/api/v1/*`. |
 | Platform to sineva-ai | Real. `InternalAiEngineGateway` calls it with `X-Internal-Api-Key` ([ADR-0013](../decisions/0013-internal-service-auth-header.md)). Failures surface as 502 or 503. |
-| Platform to Postgres | Real for agents: `PrismaAgentRepository` over `@prisma/adapter-pg`. Only `agent_configs` has an adapter. The schema also defines `workspaces`, `users`, `chat_sessions`, `chat_messages` and `storage_objects`, which no code reads or writes yet. |
+| Platform to Postgres | Real, over `@prisma/adapter-pg`, for identity, workspaces, conversations, chat runs and audit events. There is no specialist table: the roster is sineva-ai's catalog presented through a static manifest in `src/shared/specialists/manifest.ts` ([ADR-0024](../decisions/0024-specialist-manifest-and-catalog-split.md)). |
 | Platform to Redis | Real. `RedisCacheRepository` uses `ioredis` with a key prefix and TTL, and `ping()` sends `PING`. There is no in-memory fallback when Redis is down. |
 | Platform to SeaweedFS | Real. `SeaweedStorageRepository` presigns against `S3_PUBLIC_ENDPOINT` and a signing failure is a 502. Its health check is `HeadBucket`. |
 
@@ -76,10 +76,10 @@ sineva-platform/
         domain/                entities, ports (repositories/), errors
         application/           use-cases/, dtos/
         infrastructure/        database, cache, storage, gateways, config, openapi
-        http/                  response_helper, agent_view_contract, chat_view_contract
+        http/                  response_helper, specialist_view_contract, chat_view_contract
         container.ts           composition root
       client/                  components/, store/
-      shared/                  agent_view.ts, chat_view.ts (wire types)
+      shared/                  specialist_view.ts, chat_view.ts, specialists/manifest.ts (wire types and static data)
       __tests__/               unit tests, fakes/, contract/, integration/, stubs/
   packages/shared/             @sineva/shared: response envelope, snake_case helpers
   packages/ui/                 @sineva/ui: tokens, lib, primitives, shell, chat, domain

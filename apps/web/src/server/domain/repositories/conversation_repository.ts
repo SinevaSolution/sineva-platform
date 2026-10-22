@@ -32,4 +32,15 @@ export interface ConversationRepository {
     next_cursor: string | null;
   }>;
   updateLastMessageAt(id: string, date: Date): Promise<void>;
+  /**
+   * Sets the title and marks it as the person's own (`title_source = 'user'`),
+   * so a later automatic title never overwrites it.
+   */
+  rename(id: string, title: string): Promise<ConversationEntity>;
+  /**
+   * Hard delete. Messages and chat runs go with it through the foreign keys'
+   * `ON DELETE CASCADE`; no soft-delete flag exists on purpose (the person
+   * asked for the data to be gone).
+   */
+  delete(id: string): Promise<void>;
 }

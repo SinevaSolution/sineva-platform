@@ -99,6 +99,29 @@
   --room-bubble-companion: color-mix(in oklab, var(--color-surface) 92%, transparent);
 }
 
+/*
+ * Theme preview cards in Preferences. Fixed values per theme, independent of
+ * the live theme: the dark theme applies only at :root, so a nested
+ * data-theme attribute cannot show the other theme inside a preview.
+ */
+[data-theme-preview='light'] {
+  --pv-canvas: var(--ink-50);
+  --pv-rail: var(--ink-100);
+  --pv-panel: var(--white);
+  --pv-text: var(--ink-950);
+  --pv-line: var(--ink-200);
+  --pv-action: var(--teal-700);
+}
+
+[data-theme-preview='dark'] {
+  --pv-canvas: #0c2227;
+  --pv-rail: #08181c;
+  --pv-panel: #0f272d;
+  --pv-text: #eef4f5;
+  --pv-line: #29494f;
+  --pv-action: #00686d;
+}
+
 /* ---- Layer 2: semantic tokens mapped to Tailwind utilities ------------- */
 @theme static {
   /*

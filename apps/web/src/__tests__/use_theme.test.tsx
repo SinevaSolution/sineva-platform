@@ -43,4 +43,27 @@ describe('useTheme (FR-UX-06)', () => {
     });
     expect(result.current.theme).toBe('light');
   });
+
+  it('exposes the preference separately from the resolved theme (system follows the OS)', async () => {
+    window.matchMedia = ((query: string) => ({
+      matches: query.includes('dark'),
+      media: query,
+      addEventListener() {},
+      removeEventListener() {},
+    })) as unknown as typeof window.matchMedia;
+    const { result } = renderHook(() => useTheme());
+    expect(result.current.preference).toBe('system');
+    await act(async () => {
+      result.current.setPreference('system');
+      await Promise.resolve();
+    });
+    expect(result.current.theme).toBe('dark');
+    expect(result.current.preference).toBe('system');
+    await act(async () => {
+      result.current.setPreference('light');
+      await Promise.resolve();
+    });
+    expect(result.current.theme).toBe('light');
+    expect(result.current.preference).toBe('light');
+  });
 });

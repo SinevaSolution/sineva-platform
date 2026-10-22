@@ -49,12 +49,8 @@ When you fix an item, delete it here in the same change (R-38) and remove its li
 | API-6 | `swagger-ui-react` unused, "Swagger UI" labels wrong | Low |
 | API-7 | R-23's check names a test that does not exist | Low |
 | DOM-1 | Domain errors carry HTTP status and import `@sineva/shared` | Low |
-| DOM-3 | New-agent defaults live in the repository | Low |
-| DOM-4 | Two companion registries | Medium |
 | DOM-5 | Unused tables and columns | Low |
-| DOM-6 | Databases seeded with old slugs keep stale rows | Medium |
 | COPY-1 | UI copy breaks the wording rules | Medium |
-| COPY-2 | Seed data holds invented metrics and unsourced claims | Medium |
 | UI-1 | One 777-line dashboard component | Medium |
 | UI-2 | Selection is not in the URL | Low |
 | UI-3 | Server data is copied into Redux in an effect | Low |
@@ -167,28 +163,6 @@ The cross-tenant session issue in `sineva-ai` (AI-1) is also a security item; it
 | Do not copy | Putting a transport concern in the domain. |
 | Suggested fix | Give errors a `code` only, and map code to status in `server/http`. Keep `ErrorDetail` out of the domain. |
 
-### DOM-3 New-agent defaults live in the repository
-
-| | |
-| :--- | :--- |
-| Symptom | A new agent starts with `status: online`, `avg_latency_ms: 350`, `active_sessions_count: 1` and `accent_token: --teal-500`. These are not measurements. |
-| Root cause | The defaults are written in `PrismaAgentRepository.create`, not in the domain. |
-| Location | `server/infrastructure/database/prisma_agent_repository.ts` |
-| Severity | Low |
-| Do not copy | Business defaults in an adapter. |
-| Suggested fix | A domain factory that builds a new agent, with honest zero values for runtime counters. |
-
-### DOM-4 Two companion registries
-
-| | |
-| :--- | :--- |
-| Symptom | The platform registry and `sineva-ai` disagree on names (`SinoFinance` and `Sino Finance`). An agent registered in the platform has no engine behind it, so chat returns 502. |
-| Root cause | Two sources of truth: platform `agent_configs`, and `sineva-ai`'s static catalog (`build_canonical_agent_entities`) plus its `ai_agents` table. |
-| Location | `apps/web/prisma/schema.prisma` (`AgentConfig`), `sineva-ai/src/sineva_ai/agentic/agents/specialists.py` |
-| Severity | Medium |
-| Do not copy | A second copy of data another service owns. |
-| Suggested fix | Decide one owner for slug, name and category (ADR). The platform may keep only presentation fields keyed by slug. Until then, document that `POST /api/v1/agents` does not create an engine agent. |
-
 ### DOM-5 Unused tables and columns
 
 | | |
@@ -199,17 +173,6 @@ The cross-tenant session issue in `sineva-ai` (AI-1) is also a security item; it
 | Severity | Low |
 | Do not copy | Adding columns no code fills. |
 | Suggested fix | Partially resolved in WP-M0-21 (`users` and `workspaces` reshaped into multi-tenant identity and RBAC schema). Chat persistence tables will be reshaped in WP-M0-29. |
-
-### DOM-6 Databases seeded with old slugs keep stale rows
-
-| | |
-| :--- | :--- |
-| Symptom | A database seeded earlier with `sino-*` slugs shows both old and canonical rows after a re-seed. |
-| Root cause | `seed.ts` upserts by `agent_slug`, so it adds the canonical rows and never renames or removes the old ones. |
-| Location | `apps/web/prisma/seed.ts` |
-| Severity | Medium |
-| Do not copy | Relying on a seed to migrate data. |
-| Suggested fix | A one-off data migration (or a manual SQL step in the release notes) that renames the old slugs. Follow the migration rules (R-18 to R-20, R-42). |
 
 ## Product copy and data
 
@@ -223,17 +186,6 @@ The cross-tenant session issue in `sineva-ai` (AI-1) is also a security item; it
 | Severity | Medium |
 | Do not copy | Any string on the full list in [product model and wording](../product/product_model_and_wording.md). |
 | Suggested fix | Fix strings when a file is touched, or all at once with the one-chat UI. |
-
-### COPY-2 Seed data holds invented metrics and unsourced claims
-
-| | |
-| :--- | :--- |
-| Symptom | Cards show session counts, token counts and latency that were never measured. Descriptions carry "99.4% SLA adherence", "high-converting", and platform names. |
-| Root cause | `seed.ts` was written as demo data and is displayed as real. |
-| Location | `apps/web/prisma/seed.ts` |
-| Severity | Medium |
-| Do not copy | A number with no source. |
-| Suggested fix | Seed zero runtime counters, or show none. Rewrite descriptions with the Founder against the guardrails. |
 
 ## Dashboard and UI
 

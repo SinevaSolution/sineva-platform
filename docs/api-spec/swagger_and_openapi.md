@@ -44,19 +44,19 @@ related_docs:
 | Path | Methods | Documented responses |
 | :--- | :--- | :--- |
 | `/api/v1/health` | GET | 200 |
-| `/api/v1/agents` | GET, POST | GET: 200. POST: 201, 409, 422 |
+| `/api/v1/workspaces/{workspace_id}/agents` | GET | 200, 401, 404, 422, 502, 503 |
 | `/api/v1/agents/{agent_slug}/chat` | POST | 200, 404, 422, 502, 503 |
 | `/api/v1/storage/presign` | POST | 201 |
 
-Operation ids: `get_system_health`, `list_agents`, `create_agent`, `send_agent_chat_message`, `presign_storage_upload`. Schemas: `StandardEnvelope`, `CreateAgentRequest`, `SendAgentChatRequest`, `AgentChatReply`, `AgentChatResponseEnvelope`, `PresignUploadRequest`. `servers` lists only `http://localhost:3000`.
+Operation ids: `get_system_health`, `list_workspace_agents`, `send_agent_chat_message`, `presign_storage_upload`. Schemas: `StandardEnvelope`, `SendAgentChatRequest`, `AgentChatReply`, `AgentChatResponseEnvelope`, `PresignUploadRequest`. `servers` lists only `http://localhost:3000`.
 
 The chat route is the complete one: request, reply schema and example, and the 404, 422, 502 and 503 examples.
 
 ### Gaps against the implementation
 
-- Health, list and presign responses reference the generic `StandardEnvelope`. There is no schema for the health subsystems, `AgentView` or the presign result.
-- Query and body constraints are mostly missing: no `minimum` or `maximum` on `page` and `per_page`, no length limits, no slug pattern, no 100 MiB cap on `file_size_bytes`, and `category` in `CreateAgentRequest` has no enum.
-- `422` and `500` are not documented on the health, list and presign operations. The 422 on `POST /api/v1/agents` has no body schema.
+- Health, list and presign responses reference the generic `StandardEnvelope`. There is no schema for the health subsystems, the specialist roster view or the presign result.
+- Query and body constraints are mostly missing: no `minimum` or `maximum` on `page` and `per_page`, no length limits, no slug pattern, no 100 MiB cap on `file_size_bytes`.
+- `422` and `500` are not documented on the health, list and presign operations. 
 - Example request ids (`req_1760980000_ab12cd`) do not match the real format (`req_<13 digit ms>_<up to 8 chars>`).
 - The `503` description on the chat operation states that the turn may have completed upstream and that a retry can run it twice. The earlier text said "Safe to retry", which was wrong (see [agents and chat endpoints](agents_and_chat_endpoints.md)).
 - The tag description "multi-agent chat" no longer describes the product model ([ADR-0010](../decisions/0010-one-chat-with-mentions.md)). OpenAPI text is outside the user-facing wording rule ([ADR-0011](../decisions/0011-user-facing-wording.md)), but it should not mislead.
@@ -69,7 +69,7 @@ What guards it today (`src/__tests__/api_routes.test.ts`, verified by reading th
 
 - the document is `3.1.0` and contains `/api/v1/health`;
 - the chat operation has responses `200`, `404`, `422`, `502`, `503`, a `sinofinance` path example, a `session_id` that is optional and a UUID, and the exact `AgentChatReply` property list;
-- `POST /api/v1/agents` has a `409` response;
+- `/api/v1/agents` is absent and the workspace roster operation documents `502` and `503` (`specialists_api_routes.test.ts`);
 - the serialized document contains no `sino-` or `sino_` string.
 
 `src/__tests__/openapi_guard.test.ts` lists every `src/app/api/**/route.ts`, converts the folder path to an OpenAPI path (`[agent_slug]` to `{agent_slug}`) and fails when a route or exported HTTP method has no entry in `spec.paths`, or a spec path has no route file.

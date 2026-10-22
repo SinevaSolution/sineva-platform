@@ -1,8 +1,10 @@
 import 'server-only';
 import { cache } from 'react';
 import { notFound, redirect } from 'next/navigation';
-import { getGetAgentsUseCase, getListUserWorkspacesUseCase } from '@/server/container';
+import { getListUserWorkspacesUseCase } from '@/server/container';
+import { getLocale } from '@/i18n/server';
 import { getPageSession } from '@/server/http/page_session';
+import { localizeSpecialists } from '@/shared/specialists/manifest';
 import type {
   ShellSpecialistView,
   ShellUserView,
@@ -28,9 +30,9 @@ export const loadWorkspaceContext = cache(async (workspaceSlug: string): Promise
     redirect('/sign-in');
   }
 
-  const [memberships, agents] = await Promise.all([
+  const [memberships, locale] = await Promise.all([
     getListUserWorkspacesUseCase().execute({ user_id: session.user_id }),
-    getGetAgentsUseCase().execute({ page: 1, per_page: 50 }),
+    getLocale(),
   ]);
 
   const workspaces: ShellWorkspaceView[] = memberships.map(({ workspace, role }) => ({
@@ -54,11 +56,9 @@ export const loadWorkspaceContext = cache(async (workspaceSlug: string): Promise
       timezone: current.workspace.timezone,
     },
     workspaces,
-    specialists: agents.items.map((a) => ({
-      agent_slug: a.agent_slug,
-      display_name: a.display_name,
-      role_title: a.role_title,
-      short_description: a.short_description,
-    })),
+    // Presentation comes from the static manifest on purpose: the shell must keep
+    // working when sineva-ai is down. Availability is the roster route's job
+    // (ADR-0024).
+    specialists: localizeSpecialists(locale),
   };
 });

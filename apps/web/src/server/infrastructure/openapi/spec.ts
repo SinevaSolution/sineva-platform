@@ -1,24 +1,26 @@
 import 'server-only';
 
-function errorExample(
-  status: number,
-  message: string,
-  code: string,
-  field: string | null = null,
-  detail: string = message,
-) {
+// Response object of the standard envelope, for the profile family below.
+function envelopeResponse(description: string) {
   return {
-    success: false,
-    status,
-    message,
-    data: null,
-    meta: {
-      request_id: 'req_1760980000_ab12cd',
-      timestamp: '2026-10-21T01:44:35.000Z',
-    },
-    errors: [{ code, field, detail }],
+    description,
+    content: { 'application/json': { schema: { $ref: '#/components/schemas/StandardEnvelope' } } },
   };
 }
+
+const PROFILE_PATCH_PROPERTIES = {
+  full_name: { type: 'string', minLength: 2, maxLength: 100, description: 'Letters, spaces, apostrophe, period and hyphen; trimmed' },
+  preferred_name: { type: ['string', 'null'], minLength: 1, maxLength: 40 },
+  salutation: { type: ['string', 'null'], enum: ['none', 'pak', 'bu', 'kak', 'mas', 'mbak', null] },
+  phone_number: {
+    type: ['string', 'null'],
+    description: 'Normalised to E.164 (0812... becomes +62812...). Changing it clears phone_verified',
+  },
+  about_me: { type: ['string', 'null'], maxLength: 280 },
+  use_profile_in_context: { type: 'boolean' },
+  locale: { type: 'string', description: 'A code enabled in the locale registry (packages/i18n)' },
+  timezone: { type: 'string', description: 'IANA time zone, for example Asia/Jakarta' },
+};
 
 export function getOpenApiSpec(): Record<string, unknown> {
   return {
@@ -46,7 +48,7 @@ export function getOpenApiSpec(): Record<string, unknown> {
       },
       {
         name: 'Agents',
-        description: 'Specialized AI companion registry',
+        description: 'Specialist roster: sineva-ai catalog merged with the static presentation manifest',
       },
       {
         name: 'Storage',
@@ -55,6 +57,10 @@ export function getOpenApiSpec(): Record<string, unknown> {
       {
         name: 'Auth',
         description: 'Identity, custom JWT authentication, session, and password lifecycle',
+      },
+      {
+        name: 'Profile',
+        description: 'Own profile, member attributes, avatar and UI preferences (/api/v1/me family)',
       },
       {
         name: 'Workspaces',
@@ -191,23 +197,26 @@ export function getOpenApiSpec(): Record<string, unknown> {
           },
         },
       },
-      '/api/v1/agents': {
+      '/api/v1/workspaces/{workspace_id}/agents': {
         get: {
           tags: ['Agents'],
-          summary: 'List specialized Sineva AI companions with pagination',
-          operationId: 'list_agents',
+          summary: 'List the specialists of a workspace',
+          description:
+            "sineva-ai's specialist catalog (GET /api/v2/agents) merged with the platform's static presentation manifest. " +
+            'Availability (existence, wave, status, category) comes from sineva-ai on every call; display copy (role title, description, ' +
+            'starter prompts in en and id), accent_key, room_theme_id and order come from the manifest. ' +
+            'When sineva-ai is unreachable the answer is 503, and when it answers badly 502: the manifest is never served as a roster. ' +
+            '`enabled` is derived in this release (a wave 1 specialist that sineva-ai reports live is on) because per-workspace enablement ' +
+            'arrives with workspace_specialists; it is not a stored setting yet. ' +
+            '`my_access` is computed from the caller role and specialist scope; a specialist the caller may not use has the same shape as one that is not enabled. ' +
+            'The roster is returned whole, without pagination.',
+          operationId: 'list_workspace_agents',
           parameters: [
             {
-              name: 'page',
-              in: 'query',
-              required: false,
-              schema: { type: 'integer', default: 1 },
-            },
-            {
-              name: 'per_page',
-              in: 'query',
-              required: false,
-              schema: { type: 'integer', default: 10 },
+              name: 'workspace_id',
+              in: 'path',
+              required: true,
+              schema: { type: 'string', format: 'uuid' },
             },
             {
               name: 'category_filter',
@@ -222,63 +231,41 @@ export function getOpenApiSpec(): Record<string, unknown> {
                   'social_marketing',
                   'customer_support',
                   'data_insights',
+                  'personal_ops',
+                  'content_studio',
+                  'marketplace_ops',
+                  'it_security',
+                  'tax_compliance',
+                  'legal_drafting',
+                  'inventory_procurement',
                 ],
               },
             },
           ],
           responses: {
             '200': {
-              description: 'Paginated list of specialized AI companions',
-              content: {
-                'application/json': {
-                  schema: {
-                    $ref: '#/components/schemas/StandardEnvelope',
-                  },
-                },
-              },
+              description: 'The specialist roster with the sineva-ai catalog_version it was built from',
+              content: { 'application/json': { schema: { $ref: '#/components/schemas/StandardEnvelope' } } },
             },
-          },
-        },
-        post: {
-          tags: ['Agents'],
-          summary: 'Register a custom workspace AI companion configuration',
-          operationId: 'create_agent',
-          requestBody: {
-            required: true,
-            content: {
-              'application/json': {
-                schema: {
-                  $ref: '#/components/schemas/CreateAgentRequest',
-                },
-              },
+            '401': {
+              description: 'Authentication required',
+              content: { 'application/json': { schema: { $ref: '#/components/schemas/StandardEnvelope' } } },
             },
-          },
-          responses: {
-            '201': {
-              description: 'Created agent companion configuration',
-              content: {
-                'application/json': {
-                  schema: {
-                    $ref: '#/components/schemas/StandardEnvelope',
-                  },
-                },
-              },
-            },
-            '409': {
-              description: 'An agent with this agent_slug already exists',
-              content: {
-                'application/json': {
-                  schema: { $ref: '#/components/schemas/StandardEnvelope' },
-                  example: errorExample(
-                    409,
-                    "Agent 'sinofinance' already exists",
-                    'RESOURCE_CONFLICT',
-                  ),
-                },
-              },
+            '404': {
+              description: 'Workspace not found, or the caller is not a member',
+              content: { 'application/json': { schema: { $ref: '#/components/schemas/StandardEnvelope' } } },
             },
             '422': {
-              description: 'Validation error',
+              description: 'Invalid category_filter',
+              content: { 'application/json': { schema: { $ref: '#/components/schemas/StandardEnvelope' } } },
+            },
+            '502': {
+              description: 'sineva-ai answered badly, or its catalog does not list a specialist this app presents',
+              content: { 'application/json': { schema: { $ref: '#/components/schemas/StandardEnvelope' } } },
+            },
+            '503': {
+              description: 'sineva-ai is unreachable',
+              content: { 'application/json': { schema: { $ref: '#/components/schemas/StandardEnvelope' } } },
             },
           },
         },
@@ -666,7 +653,7 @@ export function getOpenApiSpec(): Record<string, unknown> {
           operationId: 'get_my_profile',
           responses: {
             '200': {
-              description: 'Profile: id, email, email_verified, full_name, avatar_url, locale, timezone, created_at',
+              description: 'Profile (alias of GET /api/v1/me without memberships): identity, name fields, phone, about_me, avatar_url, locale, timezone',
               content: {
                 'application/json': {
                   schema: { $ref: '#/components/schemas/StandardEnvelope' },
@@ -703,11 +690,7 @@ export function getOpenApiSpec(): Record<string, unknown> {
                   type: 'object',
                   additionalProperties: false,
                   minProperties: 1,
-                  properties: {
-                    full_name: { type: 'string', minLength: 1, maxLength: 100, description: 'Trimmed before validation' },
-                    locale: { type: 'string', enum: ['en', 'id'] },
-                    timezone: { type: 'string', description: 'IANA time zone, for example Asia/Jakarta' },
-                  },
+                  properties: PROFILE_PATCH_PROPERTIES,
                 },
               },
             },
@@ -753,6 +736,202 @@ export function getOpenApiSpec(): Record<string, unknown> {
                 },
               },
             },
+          },
+        },
+      },
+      '/api/v1/me': {
+        get: {
+          tags: ['Profile'],
+          summary: 'Get the profile and workspace memberships (with roles) of the authenticated user',
+          operationId: 'get_me',
+          responses: {
+            '200': envelopeResponse('Profile fields plus memberships: workspace_id, workspace_slug, workspace_name, role, job_title, department'),
+            '401': envelopeResponse('Unauthenticated'),
+            '404': envelopeResponse('The session user no longer exists'),
+          },
+        },
+        patch: {
+          tags: ['Profile'],
+          summary: 'Update the editable profile fields of the authenticated user. Read-only fields (email, status, verification timestamps) are rejected',
+          operationId: 'update_me',
+          requestBody: {
+            required: true,
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  additionalProperties: false,
+                  minProperties: 1,
+                  properties: PROFILE_PATCH_PROPERTIES,
+                },
+              },
+            },
+          },
+          responses: {
+            '200': envelopeResponse('Updated profile with memberships'),
+            '401': envelopeResponse('Unauthenticated'),
+            '403': envelopeResponse('Missing CSRF header (x-sineva-action) or a mismatched origin on a cookie-authenticated request'),
+            '404': envelopeResponse('The session user no longer exists'),
+            '422': envelopeResponse('Validation failed: empty body, unknown or read-only key, invalid name, salutation, phone number, about_me, locale or time zone'),
+          },
+        },
+      },
+      '/api/v1/me/preferences': {
+        get: {
+          tags: ['Profile'],
+          summary: 'Get the UI preferences of the authenticated user (defaults when none were saved)',
+          operationId: 'get_my_preferences',
+          responses: {
+            '200': envelopeResponse('theme, density, focus_mode, reduce_motion, sidebar_collapsed, pause_character, room_view'),
+            '401': envelopeResponse('Unauthenticated'),
+          },
+        },
+        patch: {
+          tags: ['Profile'],
+          summary: 'Update UI preferences; only the provided fields change',
+          operationId: 'update_my_preferences',
+          requestBody: {
+            required: true,
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  additionalProperties: false,
+                  minProperties: 1,
+                  properties: {
+                    theme: { type: 'string', enum: ['light', 'dark', 'system'] },
+                    density: { type: 'string', enum: ['comfortable', 'compact'] },
+                    focus_mode: { type: 'boolean' },
+                    reduce_motion: { type: 'boolean' },
+                    sidebar_collapsed: { type: 'boolean' },
+                    pause_character: { type: 'boolean' },
+                    room_view: { type: 'boolean' },
+                  },
+                },
+              },
+            },
+          },
+          responses: {
+            '200': envelopeResponse('Updated preferences'),
+            '401': envelopeResponse('Unauthenticated'),
+            '403': envelopeResponse('Missing CSRF header or a mismatched origin'),
+            '422': envelopeResponse('Validation failed: empty body, unknown key or an invalid value'),
+          },
+        },
+      },
+      '/api/v1/me/avatar': {
+        get: {
+          tags: ['Profile'],
+          summary: 'Read the avatar image of the authenticated user (WebP, private cache)',
+          operationId: 'get_my_avatar',
+          parameters: [{ name: 'size', in: 'query', required: false, schema: { type: 'integer', enum: [256, 64], default: 256 } }],
+          responses: {
+            '200': { description: 'The image bytes', content: { 'image/webp': { schema: { type: 'string', format: 'binary' } } } },
+            '401': envelopeResponse('Unauthenticated'),
+            '404': envelopeResponse('No avatar set'),
+            '422': envelopeResponse('Unsupported size'),
+            '502': envelopeResponse('The storage service did not answer correctly'),
+          },
+        },
+        post: {
+          tags: ['Profile'],
+          summary: 'Step 1 of an avatar upload: returns a presigned PUT URL for a pending object (JPEG, PNG or WebP, up to 2 MB)',
+          operationId: 'request_my_avatar_upload',
+          requestBody: {
+            required: true,
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  additionalProperties: false,
+                  required: ['content_type', 'file_size_bytes'],
+                  properties: {
+                    content_type: { type: 'string', enum: ['image/jpeg', 'image/png', 'image/webp'] },
+                    file_size_bytes: { type: 'integer', minimum: 1, maximum: 2097152 },
+                  },
+                },
+              },
+            },
+          },
+          responses: {
+            '201': envelopeResponse('upload_id, upload_url, method, headers, expires_in_seconds, max_bytes'),
+            '401': envelopeResponse('Unauthenticated'),
+            '403': envelopeResponse('Missing CSRF header or a mismatched origin'),
+            '422': envelopeResponse('Unsupported type or size'),
+            '502': envelopeResponse('The storage service could not sign the request'),
+          },
+        },
+        delete: {
+          tags: ['Profile'],
+          summary: 'Remove the avatar (both stored sizes)',
+          operationId: 'delete_my_avatar',
+          responses: {
+            '200': envelopeResponse('The profile without an avatar'),
+            '401': envelopeResponse('Unauthenticated'),
+            '403': envelopeResponse('Missing CSRF header or a mismatched origin'),
+            '502': envelopeResponse('The storage service did not answer correctly'),
+          },
+        },
+      },
+      '/api/v1/me/avatar/complete': {
+        post: {
+          tags: ['Profile'],
+          summary: 'Step 2 of an avatar upload: the server reads the uploaded object, checks the magic bytes, re-encodes to square WebP at 256 and 64 px without metadata and switches the avatar',
+          operationId: 'complete_my_avatar_upload',
+          requestBody: {
+            required: true,
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  additionalProperties: false,
+                  required: ['upload_id'],
+                  properties: { upload_id: { type: 'string', format: 'uuid' } },
+                },
+              },
+            },
+          },
+          responses: {
+            '200': envelopeResponse('Updated profile'),
+            '401': envelopeResponse('Unauthenticated'),
+            '403': envelopeResponse('Missing CSRF header or a mismatched origin'),
+            '404': envelopeResponse('Nothing was uploaded under that upload_id for this user'),
+            '422': envelopeResponse('Not a JPEG, PNG or WebP (SVG and other types are refused), over 2 MB, or not decodable'),
+            '502': envelopeResponse('The storage service did not answer correctly'),
+          },
+        },
+      },
+      '/api/v1/workspaces/{workspace_id}/members/me': {
+        patch: {
+          tags: ['Profile'],
+          summary: 'Update job_title and department of the caller own membership in this workspace',
+          operationId: 'update_my_member_profile',
+          parameters: [{ name: 'workspace_id', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } }],
+          requestBody: {
+            required: true,
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  additionalProperties: false,
+                  minProperties: 1,
+                  properties: {
+                    job_title: { type: ['string', 'null'], maxLength: 60 },
+                    department: {
+                      type: ['string', 'null'],
+                      enum: ['management', 'finance', 'sales', 'marketing', 'operations', 'hr', 'it', 'customer_support', 'legal', 'other', null],
+                    },
+                  },
+                },
+              },
+            },
+          },
+          responses: {
+            '200': envelopeResponse('job_title and department'),
+            '401': envelopeResponse('Unauthenticated'),
+            '403': envelopeResponse('Missing CSRF header or a mismatched origin'),
+            '404': envelopeResponse('The caller is not a member of this workspace'),
+            '422': envelopeResponse('Validation failed'),
           },
         },
       },
@@ -1060,11 +1239,145 @@ export function getOpenApiSpec(): Record<string, unknown> {
             },
           },
         },
+        patch: {
+          tags: ['Conversations'],
+          summary: 'Rename a conversation',
+          description:
+            'Sets the title (trimmed, 1 to 120 characters) and marks it as the caller\'s own (`title_source = user`), so automatic titles never overwrite it. Only the owner can rename; anyone else gets 404 (FR-HUB-32).',
+          operationId: 'rename_conversation',
+          parameters: [
+            {
+              name: 'workspace_id',
+              in: 'path',
+              required: true,
+              schema: { type: 'string', format: 'uuid' },
+            },
+            {
+              name: 'conversation_id',
+              in: 'path',
+              required: true,
+              schema: { type: 'string', format: 'uuid' },
+            },
+          ],
+          requestBody: {
+            required: true,
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  required: ['title'],
+                  properties: {
+                    title: { type: 'string', minLength: 1, maxLength: 120, example: 'Q4 budget review' },
+                  },
+                },
+              },
+            },
+          },
+          responses: {
+            '200': {
+              description: 'The renamed conversation',
+              content: {
+                'application/json': {
+                  schema: { $ref: '#/components/schemas/StandardEnvelope' },
+                },
+              },
+            },
+            '401': {
+              description: 'Authentication required',
+              content: {
+                'application/json': {
+                  schema: { $ref: '#/components/schemas/StandardEnvelope' },
+                },
+              },
+            },
+            '403': {
+              description: 'The role cannot manage chats (viewer)',
+              content: {
+                'application/json': {
+                  schema: { $ref: '#/components/schemas/StandardEnvelope' },
+                },
+              },
+            },
+            '404': {
+              description: 'Conversation not found or not owned by caller (FR-HUB-32)',
+              content: {
+                'application/json': {
+                  schema: { $ref: '#/components/schemas/StandardEnvelope' },
+                },
+              },
+            },
+            '422': {
+              description: 'Title missing, empty after trimming, or longer than 120 characters',
+              content: {
+                'application/json': {
+                  schema: { $ref: '#/components/schemas/StandardEnvelope' },
+                },
+              },
+            },
+          },
+        },
+        delete: {
+          tags: ['Conversations'],
+          summary: 'Delete a conversation',
+          description:
+            'Permanently deletes the conversation with its messages and chat runs in one transaction, after cancelling any active run. Cannot be undone. Attachments in object storage are purged by the retention job. Only the owner can delete; anyone else gets 404 (FR-HUB-32).',
+          operationId: 'delete_conversation',
+          parameters: [
+            {
+              name: 'workspace_id',
+              in: 'path',
+              required: true,
+              schema: { type: 'string', format: 'uuid' },
+            },
+            {
+              name: 'conversation_id',
+              in: 'path',
+              required: true,
+              schema: { type: 'string', format: 'uuid' },
+            },
+          ],
+          responses: {
+            '200': {
+              description: 'Deleted; data is { id, deleted: true }',
+              content: {
+                'application/json': {
+                  schema: { $ref: '#/components/schemas/StandardEnvelope' },
+                },
+              },
+            },
+            '401': {
+              description: 'Authentication required',
+              content: {
+                'application/json': {
+                  schema: { $ref: '#/components/schemas/StandardEnvelope' },
+                },
+              },
+            },
+            '403': {
+              description: 'The role cannot manage chats (viewer)',
+              content: {
+                'application/json': {
+                  schema: { $ref: '#/components/schemas/StandardEnvelope' },
+                },
+              },
+            },
+            '404': {
+              description: 'Conversation not found or not owned by caller (FR-HUB-32)',
+              content: {
+                'application/json': {
+                  schema: { $ref: '#/components/schemas/StandardEnvelope' },
+                },
+              },
+            },
+          },
+        },
       },
       '/api/v1/workspaces/{workspace_id}/conversations/{conversation_id}/messages': {
         get: {
           tags: ['Conversations'],
           summary: 'List messages in a conversation in chronological order',
+          description:
+            'Each message carries `cards[]`: the typed result cards of an assistant message, validated again and upcast on read (ADR-0025). A rejected card has empty `data`, its `rejected_code` and its `fallback_text`.',
           operationId: 'list_conversation_messages',
           parameters: [
             {
@@ -1404,36 +1717,6 @@ export function getOpenApiSpec(): Record<string, unknown> {
                 },
               },
             },
-          },
-        },
-        CreateAgentRequest: {
-          type: 'object',
-          required: [
-            'agent_slug',
-            'display_name',
-            'role_title',
-            'category',
-            'short_description',
-            'capabilities',
-          ],
-          properties: {
-            agent_slug: { type: 'string', example: 'sinolegal' },
-            display_name: { type: 'string', example: 'SinoLegal' },
-            role_title: {
-              type: 'string',
-              example: 'Contract & Compliance Counsel',
-            },
-            category: { type: 'string', example: 'finance_ops' },
-            short_description: {
-              type: 'string',
-              example: 'Reviews MSA clauses and DPA schedules.',
-            },
-            capabilities: {
-              type: 'array',
-              items: { type: 'string' },
-              example: ['msa_redlining', 'gdpr_dpa_audit'],
-            },
-            model_name: { type: 'string', example: 'sineva-core-v2' },
           },
         },
         PresignUploadRequest: {

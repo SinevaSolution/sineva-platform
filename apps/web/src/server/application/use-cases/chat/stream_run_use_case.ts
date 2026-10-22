@@ -7,7 +7,7 @@ import {
 import type { RunHub, RunSession } from '@/server/application/chat/run_hub';
 import { resolveOwnedRun, type OwnedRun } from '@/server/application/chat/resolve_owned_run';
 import { findMentionSpans } from '@/server/domain/chat/mention_spans';
-import type { RunFrameGuard } from '@/server/domain/chat/run_frame_guard';
+import type { GuardedCard, RunFrameGuard, RunFrameScope } from '@/server/domain/chat/run_frame_guard';
 import type { RunRelayLog } from '@/server/domain/chat/run_relay_log';
 import type { RunMetricsRecorder, RunOutcome } from '@/server/domain/chat/run_metrics';
 import type { RequestContext } from '@/server/domain/context/request_context';
@@ -29,6 +29,10 @@ import {
 import type { AiEngineGateway } from '@/server/domain/repositories/ai_engine_gateway';
 import type { ChatRunRepository } from '@/server/domain/repositories/chat_run_repository';
 import type { ConversationRepository } from '@/server/domain/repositories/conversation_repository';
+import type {
+  MessageCardRepository,
+  NewMessageCard,
+} from '@/server/domain/repositories/message_card_repository';
 import type { MessageRepository } from '@/server/domain/repositories/message_repository';
 import {
   SseParser,
@@ -41,6 +45,7 @@ import {
 export interface StreamRunDeps {
   conversations: ConversationRepository;
   messages: MessageRepository;
+  cards: MessageCardRepository;
   chatRuns: ChatRunRepository;
   gateway: AiEngineGateway;
   contextSigner: ContextSigner;
@@ -76,6 +81,15 @@ interface Terminal {
   replyLanguage: string;
   upstreamRunId: string | null;
   upstreamSessionId: string | null;
+}
+
+/** What one drain tracks while it reads the upstream stream. */
+interface DrainState {
+  text: string;
+  firstTokenAt: number | null;
+  terminal: boolean;
+  /** Cards the guard validated or rejected, stored with the reply. */
+  scope: RunFrameScope;
 }
 
 const encoder = new TextEncoder();
@@ -255,7 +269,12 @@ export class StreamRunUseCase {
       return;
     }
 
-    const state = { text: '', firstTokenAt: null as number | null, terminal: false };
+    const state: DrainState = {
+      text: '',
+      firstTokenAt: null,
+      terminal: false,
+      scope: { run_handle: run.run_handle, cards: [] },
+    };
     const reader = body.getReader();
     const decoder = new TextDecoder();
     const parser = new SseParser();
@@ -295,7 +314,7 @@ export class StreamRunUseCase {
     item: SseItem,
     run: ChatRunEntity,
     session: RunSession,
-    state: { text: string; firstTokenAt: number | null; terminal: boolean },
+    state: DrainState,
     startedAt: number,
     context: RequestContext,
   ): Promise<boolean> {
@@ -303,7 +322,7 @@ export class StreamRunUseCase {
       session.publish(item);
       return false;
     }
-    const frame = this.deps.guard.transform(item.frame);
+    const frame = this.deps.guard.transform(item.frame, state.scope);
     if (!frame) return false;
 
     if (frame.event === 'token') {
@@ -340,7 +359,7 @@ export class StreamRunUseCase {
       state.terminal = true;
       // Store first, forward second: when the browser sees `done` the message
       // is already on disk, so a reload cannot lose it.
-      const stored = await this.storeTerminal(run, session, terminal);
+      const stored = await this.storeTerminal(run, session, terminal, state.scope.cards);
       if (stored) {
         session.publish({ kind: 'frame', frame });
       } else {
@@ -381,13 +400,13 @@ export class StreamRunUseCase {
   private async failBadResponse(
     run: ChatRunEntity,
     session: RunSession,
-    state: { text: string; firstTokenAt: number | null; terminal: boolean },
+    state: DrainState,
     startedAt: number,
   ): Promise<void> {
     this.deps.log.failed('bad_frame', { run_handle: run.run_handle });
     state.terminal = true;
     const terminal = this.errorTerminal('upstream_bad_response', state.text);
-    await this.storeTerminal(run, session, terminal);
+    await this.storeTerminal(run, session, terminal, state.scope.cards);
     session.publish({
       kind: 'frame',
       frame: relayErrorFrame({
@@ -404,7 +423,7 @@ export class StreamRunUseCase {
   private async endWithoutTerminal(
     run: ChatRunEntity,
     session: RunSession,
-    state: { text: string; firstTokenAt: number | null },
+    state: DrainState,
     startedAt: number,
   ): Promise<void> {
     if (session.cancelAcknowledged) {
@@ -417,7 +436,7 @@ export class StreamRunUseCase {
         outcome: 'cancelled',
         errorCode: null,
       };
-      await this.storeTerminal(run, session, terminal);
+      await this.storeTerminal(run, session, terminal, state.scope.cards);
       session.publish({
         kind: 'frame',
         frame: relayErrorFrame({
@@ -432,7 +451,7 @@ export class StreamRunUseCase {
     }
 
     const terminal = this.errorTerminal('upstream_interrupted', state.text);
-    await this.storeTerminal(run, session, terminal);
+    await this.storeTerminal(run, session, terminal, state.scope.cards);
     session.publish({
       kind: 'frame',
       frame: relayErrorFrame({
@@ -501,6 +520,7 @@ export class StreamRunUseCase {
     run: ChatRunEntity,
     session: RunSession | null,
     terminal: Terminal,
+    cards: GuardedCard[],
   ): Promise<boolean> {
     try {
       const won = await this.deps.chatRuns.finalize(run.id, {
@@ -529,11 +549,75 @@ export class StreamRunUseCase {
       });
       await this.deps.chatRuns.setAssistantMessage(run.id, message.id);
       await this.deps.conversations.updateLastMessageAt(run.conversation_id, new Date());
+      await this.storeCards(run, message.id, cards);
       return true;
     } catch (error) {
       this.deps.log.failed('store_reply_failed', { run_handle: run.run_handle, cause: error });
       return false;
     }
+  }
+
+  /**
+   * Saves the cards of a reply. A failure here is logged and does not fail the
+   * reply: the text is already stored, and a missing card degrades to the
+   * message text on reload, which is the same fallback a rejected card gets.
+   */
+  private async storeCards(run: ChatRunEntity, messageId: string, cards: GuardedCard[]): Promise<void> {
+    if (cards.length === 0) return;
+    try {
+      await this.deps.cards.createMany(cards.map((card) => this.toNewCard(run, messageId, card)));
+    } catch (error) {
+      this.deps.log.failed('store_cards_failed', { run_handle: run.run_handle, cause: error });
+    }
+  }
+
+  private toNewCard(run: ChatRunEntity, messageId: string, card: GuardedCard): NewMessageCard {
+    const base = {
+      message_id: messageId,
+      conversation_id: run.conversation_id,
+      workspace_id: run.workspace_id,
+      run_id: run.run_handle,
+      call_id: card.call_id,
+      position: card.position,
+      approval_id: card.approval_id,
+    };
+    if (!card.outcome.ok) {
+      // A rejected card keeps its code and the producer's fallback text, never its data.
+      return {
+        ...base,
+        approval_id: null,
+        card_type: card.outcome.claimed_type ?? 'unknown',
+        schema_version: card.outcome.claimed_version ?? 0,
+        state: 'failed',
+        provider_slug: null,
+        connection_id: null,
+        data: {},
+        actions: [],
+        fallback_text: card.outcome.fallback_text,
+        payload_hash: null,
+        validation_status: 'rejected',
+        rejected_code: card.outcome.code,
+        search_text: card.outcome.fallback_text,
+        data_expires_at: null,
+      };
+    }
+    const valid = card.outcome.card;
+    return {
+      ...base,
+      card_type: valid.card_type,
+      schema_version: valid.schema_version,
+      state: card.state,
+      provider_slug: valid.provider?.slug ?? null,
+      connection_id: valid.provider?.connection_id ?? null,
+      data: valid.data,
+      actions: valid.actions,
+      fallback_text: valid.fallback_text,
+      payload_hash: valid.payload_hash,
+      validation_status: 'valid',
+      rejected_code: null,
+      search_text: valid.fallback_text,
+      data_expires_at: valid.data_expires_at,
+    };
   }
 
   private recordMetrics(
@@ -610,6 +694,7 @@ export class StreamRunUseCase {
 
       let after = Number(lastEventId);
       if (!Number.isFinite(after)) after = 0;
+      const scope: RunFrameScope = { run_handle: initial.run_handle, cards: [] };
       const deadline = this.now() + this.replayDeadlineMs;
       let run = initial;
 
@@ -632,7 +717,7 @@ export class StreamRunUseCase {
             event: event.event,
             data: typeof event.data === 'string' ? event.data : JSON.stringify(event.data),
           };
-          const frame = this.deps.guard.transform(raw);
+          const frame = this.deps.guard.transform(raw, scope);
           if (!frame) continue;
           if (frame.id !== undefined && Number.isFinite(Number(frame.id))) {
             after = Number(frame.id);
@@ -640,7 +725,7 @@ export class StreamRunUseCase {
           emit(frame);
           if (frame.event === 'done' || frame.event === 'error') {
             sawTerminal = true;
-            await this.adopt(run, frame);
+            await this.adopt(run, frame, scope.cards);
           }
         }
         if (sawTerminal) return;
@@ -690,11 +775,11 @@ export class StreamRunUseCase {
    * resume that sees the terminal event finishes the job; the conditional
    * finalize makes this a no-op when the drain did store it.
    */
-  private async adopt(run: ChatRunEntity, frame: SseFrame): Promise<void> {
+  private async adopt(run: ChatRunEntity, frame: SseFrame, cards: GuardedCard[]): Promise<void> {
     const current = await this.deps.chatRuns.findByHandle(run.run_handle);
     if (!current || current.status !== 'streaming') return;
     const terminal = this.terminalFromFrame(frame, '');
     if (!terminal) return;
-    await this.storeTerminal(current, null, terminal);
+    await this.storeTerminal(current, null, terminal, cards);
   }
 }

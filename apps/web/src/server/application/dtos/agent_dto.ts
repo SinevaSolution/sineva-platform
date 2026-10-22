@@ -1,32 +1,14 @@
 import { z } from 'zod';
-import { paginationQuerySchema } from './pagination_dto';
+import { AGENT_CATEGORIES } from '@/server/domain/specialists/agent_catalog';
 
-export const agentCategorySchema = z.enum([
-  'people_hr',
-  'finance_ops',
-  'sales_growth',
-  'social_marketing',
-  'customer_support',
-  'data_insights',
-]);
+// Built from the domain list, which follows the sineva-ai category enum, so
+// the route, the gateway schema and the types cannot drift apart.
+export const agentCategorySchema = z.enum(AGENT_CATEGORIES);
 
-export const listAgentsQuerySchema = paginationQuerySchema.extend({
+// The roster is at most a few dozen entries and is returned whole: there is no
+// page or per_page. Identity (workspace) comes from the URL, never the query.
+export const listAgentsQuerySchema = z.object({
   category_filter: agentCategorySchema.optional(),
 });
 
-export const createAgentDtoSchema = z.object({
-  agent_slug: z
-    .string()
-    .min(3)
-    .max(64)
-    .regex(/^[a-z0-9-]+$/, 'agent_slug must be lowercase alphanumeric or hyphenated'),
-  display_name: z.string().min(2).max(80),
-  role_title: z.string().min(2).max(120),
-  category: agentCategorySchema,
-  short_description: z.string().min(10).max(400),
-  capabilities: z.array(z.string().min(2)).min(1),
-  model_name: z.string().min(2).max(80).default('sineva-core-v2'),
-});
-
 export type ListAgentsQueryDto = z.infer<typeof listAgentsQuerySchema>;
-export type CreateAgentDto = z.infer<typeof createAgentDtoSchema>;
