@@ -51,6 +51,7 @@ describe('GET /api/v1/me/profile', () => {
     expect(json.success).toBe(true);
     expect(Object.keys(json.data).sort()).toEqual(
       [
+        'about_me',
         'avatar_url',
         'created_at',
         'email',
@@ -58,7 +59,12 @@ describe('GET /api/v1/me/profile', () => {
         'full_name',
         'id',
         'locale',
+        'phone_number',
+        'phone_verified',
+        'preferred_name',
+        'salutation',
         'timezone',
+        'use_profile_in_context',
       ].sort(),
     );
     expect(json.data.email_verified).toBe(true);
@@ -123,7 +129,7 @@ describe('PATCH /api/v1/me/profile', () => {
   });
 
   it('rejects a body that tries to set identity (user_id) with 422', async () => {
-    const res = await patchProfile(patchRequest({ full_name: 'A', user_id: 'usr-2' }));
+    const res = await patchProfile(patchRequest({ full_name: 'Amira', user_id: 'usr-2' }));
 
     expect(res.status).toBe(422);
     expect(mockUpdateProfile).not.toHaveBeenCalled();
@@ -146,7 +152,7 @@ describe('PATCH /api/v1/me/profile', () => {
 
   it('returns 401 without a session', async () => {
     const res = await patchProfile(
-      patchRequest({ full_name: 'A' }, { 'x-test-unauthenticated': 'true' }),
+      patchRequest({ full_name: 'Amira' }, { 'x-test-unauthenticated': 'true' }),
     );
 
     expect(res.status).toBe(401);
@@ -161,7 +167,7 @@ describe('PATCH /api/v1/me/profile', () => {
         'x-test-session-user-id': 'usr-1',
         cookie: 'sineva_session=abc',
       },
-      body: JSON.stringify({ full_name: 'A' }),
+      body: JSON.stringify({ full_name: 'Amira' }),
     });
 
     const res = await patchProfile(req);
@@ -173,7 +179,7 @@ describe('PATCH /api/v1/me/profile', () => {
   it('returns 404 when the session user no longer exists', async () => {
     mockUpdateProfile.mockRejectedValue(new NotFoundError('User', 'usr-1'));
 
-    const res = await patchProfile(patchRequest({ full_name: 'A' }));
+    const res = await patchProfile(patchRequest({ full_name: 'Amira' }));
 
     expect(res.status).toBe(404);
   });

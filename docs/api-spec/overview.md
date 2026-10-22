@@ -53,7 +53,7 @@ related_docs:
 | `GET` | `/api/openapi.json` | `app/api/openapi.json/route.ts` | none (static) | 200 | none |
 | `POST` | `/internal/v1/audit-events` (alias `/api/internal/v1/audit-events`) | `app/internal/v1/audit-events/route.ts` | `IngestAuditEventUseCase` | 201 | 401, 404, 422, 500 |
 
-This table is not complete (the auth, workspace, conversation and profile routes are listed in the OpenAPI document). The audit ingest route is internal: `X-Internal-Api-Key` only, `actor_type` limited to `specialist` or `system`, a `workspace_id` must exist, and sensitive metadata keys are redacted. Every route that changes state is listed in `server/http/route_policy.ts` with the audit events it emits (or a reasoned `none`) and, for create and run paths, its entitlement key; `route_policy_inventory.test.ts` fails when a mutating route is missing there.
+This table is not complete (the auth, workspace and conversation routes are listed in the OpenAPI document; the profile family is in [profile and preferences](profile_and_preferences_endpoints.md)). The audit ingest route is internal: `X-Internal-Api-Key` only, `actor_type` limited to `specialist` or `system`, a `workspace_id` must exist, and sensitive metadata keys are redacted. Every route that changes state is listed in `server/http/route_policy.ts` with the audit events it emits (or a reasoned `none`) and, for create and run paths, its entitlement key; `route_policy_inventory.test.ts` fails when a mutating route is missing there.
 
 `/api/v1/workspaces/{workspace_id}/agents` keeps the word "agent" in the path, the JSON keys and the types. User-facing copy says "companion" and "product" ([ADR-0011](../decisions/0011-user-facing-wording.md), [product model](../product/product_model_and_wording.md)).
 

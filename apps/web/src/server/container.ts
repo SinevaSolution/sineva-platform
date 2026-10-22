@@ -83,6 +83,24 @@ import type { UserProfileRepository } from './domain/repositories/user_profile_r
 import { PrismaUserProfileRepository } from './infrastructure/database/prisma_user_profile_repository';
 import { GetProfileUseCase } from './application/use-cases/profile/get_profile_use_case';
 import { UpdateProfileUseCase } from './application/use-cases/profile/update_profile_use_case';
+import { GetMeUseCase } from './application/use-cases/profile/get_me_use_case';
+import { GetPreferencesUseCase } from './application/use-cases/profile/get_preferences_use_case';
+import { UpdatePreferencesUseCase } from './application/use-cases/profile/update_preferences_use_case';
+import { UpdateMemberProfileUseCase } from './application/use-cases/profile/update_member_profile_use_case';
+import { RequestAvatarUploadUseCase } from './application/use-cases/profile/request_avatar_upload_use_case';
+import { CompleteAvatarUploadUseCase } from './application/use-cases/profile/complete_avatar_upload_use_case';
+import { RemoveAvatarUseCase } from './application/use-cases/profile/remove_avatar_use_case';
+import { ReadAvatarUseCase } from './application/use-cases/profile/read_avatar_use_case';
+import { ImportOAuthAvatarUseCase } from './application/use-cases/profile/import_oauth_avatar_use_case';
+import type { AvatarDeps } from './application/use-cases/profile/avatar_pipeline';
+import type { UserPreferencesRepository } from './domain/repositories/user_preferences_repository';
+import type { ObjectStore } from './domain/repositories/object_store';
+import type { AvatarImageProcessor } from './domain/repositories/avatar_image_processor';
+import type { RemoteImageFetcher } from './domain/repositories/remote_image_fetcher';
+import { PrismaUserPreferencesRepository } from './infrastructure/database/prisma_user_preferences_repository';
+import { SeaweedObjectStore } from './infrastructure/storage/seaweed_object_store';
+import { SharpAvatarImageProcessor } from './infrastructure/media/sharp_avatar_image_processor';
+import { AllowlistedRemoteImageFetcher } from './infrastructure/media/allowlisted_remote_image_fetcher';
 
 // Composition root: the only module that knows which concrete adapter backs
 // each port. Route handlers and pages ask for use cases here instead of
@@ -332,6 +350,21 @@ export async function handleOAuthCallback(params: {
     userAgent: params.userAgent,
   });
 
+  // First sign-up only: a returning user's picture is theirs to manage, and
+  // the provider's current picture must not replace one they chose.
+  if (result.isNewUser && profile.avatar_url) {
+    try {
+      await getImportOAuthAvatarUseCase().execute({
+        user_id: result.userId,
+        remote_url: profile.avatar_url,
+        provider: params.provider,
+      });
+    } catch (error) {
+      // A picture never fails a sign-up; the failure is logged by class name.
+      logger.warn('avatar.remote_fetch_failed', { reason: error instanceof Error ? error.name : 'unknown' });
+    }
+  }
+
   return {
     sessionToken: result.session.token,
     targetPath: statePayload.returnTo ?? '/',
@@ -463,6 +496,49 @@ export const getGetProfileUseCase = memoize(
 
 export const getUpdateProfileUseCase = memoize(
   () => new UpdateProfileUseCase(getUserProfileRepository(), getAuditLogger()),
+);
+
+export const getGetMeUseCase = memoize(() => new GetMeUseCase(getUserProfileRepository()));
+
+const getUserPreferencesRepository = memoize<UserPreferencesRepository>(
+  () => new PrismaUserPreferencesRepository(getPrismaClient()),
+);
+export const getGetPreferencesUseCase = memoize(
+  () => new GetPreferencesUseCase(getUserPreferencesRepository()),
+);
+export const getUpdatePreferencesUseCase = memoize(
+  () => new UpdatePreferencesUseCase(getUserPreferencesRepository(), getAuditLogger()),
+);
+export const getUpdateMemberProfileUseCase = memoize(
+  () => new UpdateMemberProfileUseCase(getWorkspaceMemberRepository(), getAuditLogger()),
+);
+
+const getObjectStore = memoize<ObjectStore>(() => new SeaweedObjectStore());
+const getAvatarImageProcessor = memoize<AvatarImageProcessor>(() => new SharpAvatarImageProcessor());
+const getRemoteImageFetcher = memoize<RemoteImageFetcher>(() => new AllowlistedRemoteImageFetcher());
+// Version and upload ids are random per upload; they are not database ids.
+const newAvatarId = (): string => crypto.randomUUID();
+const getAvatarDeps = memoize<AvatarDeps>(() => ({
+  profiles: getUserProfileRepository(),
+  store: getObjectStore(),
+  processor: getAvatarImageProcessor(),
+  audit: getAuditLogger(),
+  newId: newAvatarId,
+}));
+export const getRequestAvatarUploadUseCase = memoize(
+  () => new RequestAvatarUploadUseCase(getObjectStore(), newAvatarId),
+);
+export const getCompleteAvatarUploadUseCase = memoize(
+  () => new CompleteAvatarUploadUseCase(getAvatarDeps()),
+);
+export const getRemoveAvatarUseCase = memoize(
+  () => new RemoveAvatarUseCase(getUserProfileRepository(), getObjectStore(), getAuditLogger()),
+);
+export const getReadAvatarUseCase = memoize(
+  () => new ReadAvatarUseCase(getUserProfileRepository(), getObjectStore()),
+);
+export const getImportOAuthAvatarUseCase = memoize(
+  () => new ImportOAuthAvatarUseCase({ ...getAvatarDeps(), fetcher: getRemoteImageFetcher() }),
 );
 
 export const getIngestAuditEventUseCase = memoize(

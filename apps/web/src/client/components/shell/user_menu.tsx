@@ -4,8 +4,8 @@ import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
 import { LogOut, Moon, Sun, UserRound } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useTheme } from 'next-themes';
 import { toast } from 'sonner';
+import { usePersistedTheme } from '@/client/components/theme_sync';
 import { cn } from '@/client/components/ui/cn';
 import { Tooltip } from '@/client/components/ui/tooltip';
 import { apiRequest } from '@/client/lib/api';
@@ -38,8 +38,7 @@ export function UserMenu({
   const router = useRouter();
   const t = useTranslations('shell');
   const errorText = useApiErrorText();
-  const { resolvedTheme, setTheme } = useTheme();
-  const isDark = resolvedTheme === 'dark';
+  const { isDark, choose } = usePersistedTheme();
 
   async function signOut() {
     try {
@@ -98,7 +97,7 @@ export function UserMenu({
               {t('user_menu.profile')}
             </Link>
           </DropdownMenu.Item>
-          <DropdownMenu.Item className={itemClass} onSelect={() => setTheme(isDark ? 'light' : 'dark')}>
+          <DropdownMenu.Item className={itemClass} onSelect={() => choose(isDark ? 'light' : 'dark')}>
             {isDark ? <Sun aria-hidden="true" className="size-4" /> : <Moon aria-hidden="true" className="size-4" />}
             {isDark ? t('user_menu.light_mode') : t('user_menu.dark_mode')}
           </DropdownMenu.Item>

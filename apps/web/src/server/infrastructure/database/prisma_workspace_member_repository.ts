@@ -2,9 +2,11 @@ import 'server-only';
 import type { PrismaClient } from '@/server/infrastructure/database/generated/client';
 import type {
   AddMemberInput,
+  UpdateOwnMemberAttributesInput,
   WorkspaceMemberRepository,
 } from '@/server/domain/repositories/workspace_member_repository';
 import type { WorkspaceMemberEntity, UserRole } from '@/server/domain/entities/user';
+import { NotFoundError } from '@/server/domain/errors/domain_error';
 import { validateWorkspaceId } from '@/server/domain/tenancy/tenant_isolation';
 
 function mapMember(row: {
@@ -91,6 +93,27 @@ export class PrismaWorkspaceMemberRepository implements WorkspaceMemberRepositor
       data: { role },
     });
     return mapMember(row);
+  }
+
+  async updateOwnAttributes(
+    workspaceId: string,
+    userId: string,
+    input: UpdateOwnMemberAttributesInput,
+  ): Promise<WorkspaceMemberEntity> {
+    validateWorkspaceId(workspaceId);
+    try {
+      const row = await this.prisma.workspaceMember.update({
+        where: { workspace_id_user_id: { workspace_id: workspaceId, user_id: userId } },
+        data: { job_title: input.job_title, department: input.department },
+      });
+      return mapMember(row);
+    } catch (err) {
+      // P2025: no membership row for this (workspace, user).
+      if (typeof err === 'object' && err !== null && (err as { code?: string }).code === 'P2025') {
+        throw new NotFoundError('Workspace member', userId);
+      }
+      throw err;
+    }
   }
 
   async removeMember(workspaceId: string, memberId: string): Promise<void> {
