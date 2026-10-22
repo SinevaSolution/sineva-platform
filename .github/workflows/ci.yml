@@ -50,6 +50,22 @@ jobs:
           path: apps/web/.next/bundle-report.json
           if-no-files-found: error
 
+      # Rebuilds the way Vercel does (ADR-0047): the Vercel Build Command, run
+      # from apps/web (the Root Directory) without turbo and without the root
+      # build hooks. VERCEL_ENV is unset on purpose, so the script skips
+      # migrations: CI never has a database URL. Production secrets are absent
+      # too: `next build` must never need them, so a route that reads
+      # configuration at import time fails here instead of on the first deploy.
+      # Runs last because it replaces apps/web/.next.
+      - name: Vercel-style build (apps/web root, no secrets, no migrations)
+        working-directory: apps/web
+        env:
+          VERCEL: '1'
+          NEXT_PUBLIC_APP_URL: https://sineva.id
+        run: |
+          rm -rf .next
+          node scripts/vercel_build.mjs
+
   integration:
     name: Integration Tests (Postgres & Redis)
     runs-on: ubuntu-latest
