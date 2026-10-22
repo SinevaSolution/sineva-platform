@@ -20,6 +20,28 @@ function errorExample(
   };
 }
 
+// Response object of the standard envelope, for the profile family below.
+function envelopeResponse(description: string) {
+  return {
+    description,
+    content: { 'application/json': { schema: { $ref: '#/components/schemas/StandardEnvelope' } } },
+  };
+}
+
+const PROFILE_PATCH_PROPERTIES = {
+  full_name: { type: 'string', minLength: 2, maxLength: 100, description: 'Letters, spaces, apostrophe, period and hyphen; trimmed' },
+  preferred_name: { type: ['string', 'null'], minLength: 1, maxLength: 40 },
+  salutation: { type: ['string', 'null'], enum: ['none', 'pak', 'bu', 'kak', 'mas', 'mbak', null] },
+  phone_number: {
+    type: ['string', 'null'],
+    description: 'Normalised to E.164 (0812... becomes +62812...). Changing it clears phone_verified',
+  },
+  about_me: { type: ['string', 'null'], maxLength: 280 },
+  use_profile_in_context: { type: 'boolean' },
+  locale: { type: 'string', description: 'A code enabled in the locale registry (packages/i18n)' },
+  timezone: { type: 'string', description: 'IANA time zone, for example Asia/Jakarta' },
+};
+
 export function getOpenApiSpec(): Record<string, unknown> {
   return {
     openapi: '3.1.0',
@@ -55,6 +77,10 @@ export function getOpenApiSpec(): Record<string, unknown> {
       {
         name: 'Auth',
         description: 'Identity, custom JWT authentication, session, and password lifecycle',
+      },
+      {
+        name: 'Profile',
+        description: 'Own profile, member attributes, avatar and UI preferences (/api/v1/me family)',
       },
       {
         name: 'Workspaces',
@@ -666,7 +692,7 @@ export function getOpenApiSpec(): Record<string, unknown> {
           operationId: 'get_my_profile',
           responses: {
             '200': {
-              description: 'Profile: id, email, email_verified, full_name, avatar_url, locale, timezone, created_at',
+              description: 'Profile (alias of GET /api/v1/me without memberships): identity, name fields, phone, about_me, avatar_url, locale, timezone',
               content: {
                 'application/json': {
                   schema: { $ref: '#/components/schemas/StandardEnvelope' },
@@ -703,11 +729,7 @@ export function getOpenApiSpec(): Record<string, unknown> {
                   type: 'object',
                   additionalProperties: false,
                   minProperties: 1,
-                  properties: {
-                    full_name: { type: 'string', minLength: 1, maxLength: 100, description: 'Trimmed before validation' },
-                    locale: { type: 'string', enum: ['en', 'id'] },
-                    timezone: { type: 'string', description: 'IANA time zone, for example Asia/Jakarta' },
-                  },
+                  properties: PROFILE_PATCH_PROPERTIES,
                 },
               },
             },
@@ -753,6 +775,202 @@ export function getOpenApiSpec(): Record<string, unknown> {
                 },
               },
             },
+          },
+        },
+      },
+      '/api/v1/me': {
+        get: {
+          tags: ['Profile'],
+          summary: 'Get the profile and workspace memberships (with roles) of the authenticated user',
+          operationId: 'get_me',
+          responses: {
+            '200': envelopeResponse('Profile fields plus memberships: workspace_id, workspace_slug, workspace_name, role, job_title, department'),
+            '401': envelopeResponse('Unauthenticated'),
+            '404': envelopeResponse('The session user no longer exists'),
+          },
+        },
+        patch: {
+          tags: ['Profile'],
+          summary: 'Update the editable profile fields of the authenticated user. Read-only fields (email, status, verification timestamps) are rejected',
+          operationId: 'update_me',
+          requestBody: {
+            required: true,
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  additionalProperties: false,
+                  minProperties: 1,
+                  properties: PROFILE_PATCH_PROPERTIES,
+                },
+              },
+            },
+          },
+          responses: {
+            '200': envelopeResponse('Updated profile with memberships'),
+            '401': envelopeResponse('Unauthenticated'),
+            '403': envelopeResponse('Missing CSRF header (x-sineva-action) or a mismatched origin on a cookie-authenticated request'),
+            '404': envelopeResponse('The session user no longer exists'),
+            '422': envelopeResponse('Validation failed: empty body, unknown or read-only key, invalid name, salutation, phone number, about_me, locale or time zone'),
+          },
+        },
+      },
+      '/api/v1/me/preferences': {
+        get: {
+          tags: ['Profile'],
+          summary: 'Get the UI preferences of the authenticated user (defaults when none were saved)',
+          operationId: 'get_my_preferences',
+          responses: {
+            '200': envelopeResponse('theme, density, focus_mode, reduce_motion, sidebar_collapsed, pause_character, room_view'),
+            '401': envelopeResponse('Unauthenticated'),
+          },
+        },
+        patch: {
+          tags: ['Profile'],
+          summary: 'Update UI preferences; only the provided fields change',
+          operationId: 'update_my_preferences',
+          requestBody: {
+            required: true,
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  additionalProperties: false,
+                  minProperties: 1,
+                  properties: {
+                    theme: { type: 'string', enum: ['light', 'dark', 'system'] },
+                    density: { type: 'string', enum: ['comfortable', 'compact'] },
+                    focus_mode: { type: 'boolean' },
+                    reduce_motion: { type: 'boolean' },
+                    sidebar_collapsed: { type: 'boolean' },
+                    pause_character: { type: 'boolean' },
+                    room_view: { type: 'boolean' },
+                  },
+                },
+              },
+            },
+          },
+          responses: {
+            '200': envelopeResponse('Updated preferences'),
+            '401': envelopeResponse('Unauthenticated'),
+            '403': envelopeResponse('Missing CSRF header or a mismatched origin'),
+            '422': envelopeResponse('Validation failed: empty body, unknown key or an invalid value'),
+          },
+        },
+      },
+      '/api/v1/me/avatar': {
+        get: {
+          tags: ['Profile'],
+          summary: 'Read the avatar image of the authenticated user (WebP, private cache)',
+          operationId: 'get_my_avatar',
+          parameters: [{ name: 'size', in: 'query', required: false, schema: { type: 'integer', enum: [256, 64], default: 256 } }],
+          responses: {
+            '200': { description: 'The image bytes', content: { 'image/webp': { schema: { type: 'string', format: 'binary' } } } },
+            '401': envelopeResponse('Unauthenticated'),
+            '404': envelopeResponse('No avatar set'),
+            '422': envelopeResponse('Unsupported size'),
+            '502': envelopeResponse('The storage service did not answer correctly'),
+          },
+        },
+        post: {
+          tags: ['Profile'],
+          summary: 'Step 1 of an avatar upload: returns a presigned PUT URL for a pending object (JPEG, PNG or WebP, up to 2 MB)',
+          operationId: 'request_my_avatar_upload',
+          requestBody: {
+            required: true,
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  additionalProperties: false,
+                  required: ['content_type', 'file_size_bytes'],
+                  properties: {
+                    content_type: { type: 'string', enum: ['image/jpeg', 'image/png', 'image/webp'] },
+                    file_size_bytes: { type: 'integer', minimum: 1, maximum: 2097152 },
+                  },
+                },
+              },
+            },
+          },
+          responses: {
+            '201': envelopeResponse('upload_id, upload_url, method, headers, expires_in_seconds, max_bytes'),
+            '401': envelopeResponse('Unauthenticated'),
+            '403': envelopeResponse('Missing CSRF header or a mismatched origin'),
+            '422': envelopeResponse('Unsupported type or size'),
+            '502': envelopeResponse('The storage service could not sign the request'),
+          },
+        },
+        delete: {
+          tags: ['Profile'],
+          summary: 'Remove the avatar (both stored sizes)',
+          operationId: 'delete_my_avatar',
+          responses: {
+            '200': envelopeResponse('The profile without an avatar'),
+            '401': envelopeResponse('Unauthenticated'),
+            '403': envelopeResponse('Missing CSRF header or a mismatched origin'),
+            '502': envelopeResponse('The storage service did not answer correctly'),
+          },
+        },
+      },
+      '/api/v1/me/avatar/complete': {
+        post: {
+          tags: ['Profile'],
+          summary: 'Step 2 of an avatar upload: the server reads the uploaded object, checks the magic bytes, re-encodes to square WebP at 256 and 64 px without metadata and switches the avatar',
+          operationId: 'complete_my_avatar_upload',
+          requestBody: {
+            required: true,
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  additionalProperties: false,
+                  required: ['upload_id'],
+                  properties: { upload_id: { type: 'string', format: 'uuid' } },
+                },
+              },
+            },
+          },
+          responses: {
+            '200': envelopeResponse('Updated profile'),
+            '401': envelopeResponse('Unauthenticated'),
+            '403': envelopeResponse('Missing CSRF header or a mismatched origin'),
+            '404': envelopeResponse('Nothing was uploaded under that upload_id for this user'),
+            '422': envelopeResponse('Not a JPEG, PNG or WebP (SVG and other types are refused), over 2 MB, or not decodable'),
+            '502': envelopeResponse('The storage service did not answer correctly'),
+          },
+        },
+      },
+      '/api/v1/workspaces/{workspace_id}/members/me': {
+        patch: {
+          tags: ['Profile'],
+          summary: 'Update job_title and department of the caller own membership in this workspace',
+          operationId: 'update_my_member_profile',
+          parameters: [{ name: 'workspace_id', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } }],
+          requestBody: {
+            required: true,
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  additionalProperties: false,
+                  minProperties: 1,
+                  properties: {
+                    job_title: { type: ['string', 'null'], maxLength: 60 },
+                    department: {
+                      type: ['string', 'null'],
+                      enum: ['management', 'finance', 'sales', 'marketing', 'operations', 'hr', 'it', 'customer_support', 'legal', 'other', null],
+                    },
+                  },
+                },
+              },
+            },
+          },
+          responses: {
+            '200': envelopeResponse('job_title and department'),
+            '401': envelopeResponse('Unauthenticated'),
+            '403': envelopeResponse('Missing CSRF header or a mismatched origin'),
+            '404': envelopeResponse('The caller is not a member of this workspace'),
+            '422': envelopeResponse('Validation failed'),
           },
         },
       },

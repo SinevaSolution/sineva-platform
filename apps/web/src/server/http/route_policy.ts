@@ -67,6 +67,34 @@ export const MUTATING_ROUTE_POLICY: Record<string, MutatingRoutePolicy> = {
     effect: 'change',
     audit: ['user.profile_updated'],
   },
+  'PATCH /api/v1/me': {
+    effect: 'change',
+    audit: ['user.profile_updated'],
+  },
+  'PATCH /api/v1/me/preferences': {
+    effect: 'change',
+    audit: ['user.preferences_updated'],
+  },
+  'PATCH /api/v1/workspaces/{workspace_id}/members/me': {
+    effect: 'change',
+    audit: ['member.profile_updated'],
+  },
+  'POST /api/v1/me/avatar': {
+    effect: 'create',
+    audit: 'none',
+    reason:
+      'Only issues a presigned URL for a pending object and changes nothing the person can see; the avatar switch is audited by the complete step.',
+    entitlement: 'none',
+    // One reason covers both `none` values; avatars are not plan-gated.
+  },
+  'POST /api/v1/me/avatar/complete': {
+    effect: 'change',
+    audit: ['user.avatar_updated'],
+  },
+  'DELETE /api/v1/me/avatar': {
+    effect: 'delete',
+    audit: ['user.avatar_updated'],
+  },
   'POST /api/v1/workspaces': {
     effect: 'create',
     audit: ['workspace.created'],

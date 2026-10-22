@@ -153,8 +153,28 @@ model User {
   sessions         Session[]
   staff_profile    PlatformStaff?
   conversations    Conversation[]
+  preferences      UserPreferences?
 
   @@map("users")
+  @@schema("platform")
+}
+
+model UserPreferences {
+  id                String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id           String   @unique @map("user_id") @db.Uuid
+  theme             String   @default("system") @map("theme") // light | dark | system
+  density           String   @default("comfortable") @map("density") // comfortable | compact
+  focus_mode        Boolean  @default(false) @map("focus_mode")
+  reduce_motion     Boolean  @default(false) @map("reduce_motion")
+  sidebar_collapsed Boolean  @default(false) @map("sidebar_collapsed")
+  pause_character   Boolean  @default(false) @map("pause_character")
+  room_view         Boolean  @default(false) @map("room_view")
+  created_at        DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updated_at        DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  user User @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@map("user_preferences")
   @@schema("platform")
 }
 

@@ -23,6 +23,8 @@ export const LOG_EVENTS = [
   'email.send_failed',
   'breach_check.failed',
   'storage.presign_failed',
+  'storage.object_failed',
+  'avatar.remote_fetch_failed',
   'http.unhandled_error',
   'run.relay_failed',
   'run.metrics',
