@@ -26,6 +26,15 @@ function setup(props: Partial<SNConfirmDialogProps> = {}) {
 }
 
 describe('SNConfirmDialog', () => {
+  it('announces a failed request inside the open dialog while keeping retry available', () => {
+    setup({ error: 'Could not delete. Try again.' });
+    const dialog = screen.getByRole('dialog');
+    expect(dialog.contains(screen.getByRole('alert'))).toBe(true);
+    expect(screen.getByRole('alert').textContent).toBe('Could not delete. Try again.');
+    expect((screen.getByRole('button', { name: 'Delete' }) as HTMLButtonElement).disabled).toBe(
+      false,
+    );
+  });
   it('is a dialog with title, description and two named buttons', () => {
     setup();
     const dialog = screen.getByRole('dialog', { name: 'Delete chat?' });
@@ -37,7 +46,15 @@ describe('SNConfirmDialog', () => {
 
   it('confirm is primary by default and danger when destructive', () => {
     const { unmount } = render(
-      <SNConfirmDialog open onOpenChange={() => {}} title="t" description="d" confirmLabel="Go" cancelLabel="No" onConfirm={() => {}} />,
+      <SNConfirmDialog
+        open
+        onOpenChange={() => {}}
+        title="t"
+        description="d"
+        confirmLabel="Go"
+        cancelLabel="No"
+        onConfirm={() => {}}
+      />,
     );
     expect(screen.getByRole('button', { name: 'Go' }).className).toContain('bg-action-primary');
     unmount();
@@ -75,7 +92,9 @@ describe('SNConfirmDialog', () => {
   describe('pending', () => {
     it('disables cancel, puts confirm in loading and swaps the label', () => {
       setup({ pending: true, pendingLabel: 'Deleting...' });
-      expect((screen.getByRole('button', { name: 'Cancel' }) as HTMLButtonElement).disabled).toBe(true);
+      expect((screen.getByRole('button', { name: 'Cancel' }) as HTMLButtonElement).disabled).toBe(
+        true,
+      );
       const confirm = screen.getByRole('button', { name: 'Deleting...' });
       expect(confirm.getAttribute('aria-busy')).toBe('true');
       expect(screen.queryByRole('button', { name: 'Delete' })).toBeNull();

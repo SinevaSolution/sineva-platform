@@ -11,7 +11,7 @@ const TERMS_VERSION = '2026-10-draft';
 const PRIVACY_VERSION = '2026-10-draft';
 const MIN_PASSWORD = 12;
 
-export function SignUpForm() {
+export function SignUpForm({ returnTo }: { returnTo?: string }) {
   const t = useTranslations('auth');
   const errorText = useApiErrorText();
   const [pending, setPending] = React.useState(false);
@@ -39,6 +39,7 @@ export function SignUpForm() {
       await apiRequest('/api/v1/auth/sign-up', {
         method: 'POST',
         body: {
+          ...(returnTo ? { next: returnTo } : {}),
           full_name: form.get('full_name'),
           email,
           password,
@@ -83,11 +84,20 @@ export function SignUpForm() {
       </SNField>
       <div className="space-y-2.5 pt-1 text-[13px] text-text-secondary">
         <label className="flex items-start gap-2.5">
-          <input type="checkbox" name="consent" required className="mt-0.5 size-4 accent-[var(--color-action-primary)]" />
+          <input
+            type="checkbox"
+            name="consent"
+            required
+            className="mt-0.5 size-4 accent-[var(--color-action-primary)]"
+          />
           <span>{t('sign_up.consent')}</span>
         </label>
         <label className="flex items-start gap-2.5">
-          <input type="checkbox" name="marketing" className="mt-0.5 size-4 accent-[var(--color-action-primary)]" />
+          <input
+            type="checkbox"
+            name="marketing"
+            className="mt-0.5 size-4 accent-[var(--color-action-primary)]"
+          />
           <span>{t('sign_up.marketing')}</span>
         </label>
       </div>

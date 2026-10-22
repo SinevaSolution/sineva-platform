@@ -10,7 +10,11 @@ export function ThemeScript({ nonce }: { nonce?: string }) {
   useServerInsertedHTML(() => {
     if (inserted.current) return null;
     inserted.current = true;
-    return <script id="sineva-theme" nonce={nonce}>{THEME_SCRIPT}</script>;
+    return (
+      <script id="sineva-theme" nonce={nonce}>
+        {THEME_SCRIPT}
+      </script>
+    );
   });
   return null;
 }

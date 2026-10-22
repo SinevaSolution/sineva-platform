@@ -1,5 +1,6 @@
 'use client';
 
+import { SNBanner } from '../sn_banner/sn_banner';
 import { SNButton } from '../sn_button/sn_button';
 import { SNDialog } from '../sn_dialog/sn_dialog';
 
@@ -22,6 +23,8 @@ export interface SNConfirmDialogProps {
   /** Replaces the confirm label while pending ("Deleting..."). */
   pendingLabel?: string;
   onConfirm: () => void;
+  /** Visible inside the modal so a failed request can be retried. */
+  error?: string | null;
   /** Same as SNDialog: `event.preventDefault()` to place focus yourself. */
   onCloseAutoFocus?: (event: Event) => void;
 }
@@ -37,6 +40,7 @@ export function SNConfirmDialog({
   pending = false,
   pendingLabel,
   onConfirm,
+  error,
   onCloseAutoFocus,
 }: SNConfirmDialogProps) {
   return (
@@ -56,11 +60,18 @@ export function SNConfirmDialog({
           <SNButton size="sm" disabled={pending} onClick={() => onOpenChange(false)}>
             {cancelLabel}
           </SNButton>
-          <SNButton size="sm" variant={destructive ? 'danger' : 'primary'} loading={pending} onClick={onConfirm}>
+          <SNButton
+            size="sm"
+            variant={destructive ? 'danger' : 'primary'}
+            loading={pending}
+            onClick={onConfirm}
+          >
             {pending && pendingLabel ? pendingLabel : confirmLabel}
           </SNButton>
         </>
       }
-    />
+    >
+      {error ? <SNBanner tone="danger">{error}</SNBanner> : null}
+    </SNDialog>
   );
 }
