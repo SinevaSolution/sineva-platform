@@ -4,6 +4,7 @@ import type {
   ApprovalEntity,
   ApprovalRevisionEntity,
   InboxItemEntity,
+  InboxListTab,
   InboxTab,
   InputField,
   InputRequestEntity,
@@ -133,10 +134,14 @@ function mapRevision(row: RevisionRow): ApprovalRevisionEntity {
   };
 }
 
-const TAB_WHERE: Record<InboxTab, Prisma.InboxItemWhereInput> = {
+const TAB_WHERE: Record<InboxListTab, Prisma.InboxItemWhereInput> = {
   needs_review: { kind: 'approval', state: 'open' },
   needs_input: { kind: 'input_request', state: 'open' },
-  done: { OR: [{ state: { not: 'open' } }, { kind: 'result' }] },
+  needs_you: { kind: { in: ['approval', 'input_request'] }, state: 'open' },
+  // Results are resolved on creation; they belong to Updates, not Done (ADR-0034).
+  updates: { kind: 'result' },
+  done: { kind: { not: 'result' }, state: { not: 'open' } },
+  finished: { OR: [{ state: { not: 'open' } }, { kind: 'result' }] },
 };
 
 function encodeCursor(row: { created_at: Date; id: string }): string {
@@ -374,6 +379,10 @@ export class PrismaInboxRepository implements InboxRepository {
         // Always applied: there is no unscoped list.
         workspace_id: query.workspace_id,
         ...(query.agent_slug ? { agent_slug: query.agent_slug } : {}),
+        ...(query.kind ? { kind: query.kind } : {}),
+        ...(query.source_type ? { source_type: query.source_type } : {}),
+        // Prisma escapes % and _ in `contains`, so the text is matched literally.
+        ...(query.q ? { title: { contains: query.q, mode: 'insensitive' as const } } : {}),
         ...(query.recipient_user_id ? { recipient_user_id: query.recipient_user_id } : {}),
         ...(and.length ? { AND: and } : {}),
       },
@@ -403,14 +412,17 @@ export class PrismaInboxRepository implements InboxRepository {
       this.db.inboxItem.count({
         where: { ...scope, AND: [TAB_WHERE[tab], ...(unread ? [{ reads: { none: { user_id: userId } } }] : [])] },
       });
-    const [needs_review, needs_input, done, unread_needs_review, unread_needs_input] = await Promise.all([
-      count('needs_review'),
-      count('needs_input'),
-      count('done'),
-      count('needs_review', true),
-      count('needs_input', true),
-    ]);
-    return { needs_review, needs_input, done, unread_needs_review, unread_needs_input };
+    const [needs_review, needs_input, updates, done, unread_needs_review, unread_needs_input, unread_updates] =
+      await Promise.all([
+        count('needs_review'),
+        count('needs_input'),
+        count('updates'),
+        count('done'),
+        count('needs_review', true),
+        count('needs_input', true),
+        count('updates', true),
+      ]);
+    return { needs_review, needs_input, updates, done, unread_needs_review, unread_needs_input, unread_updates };
   }
 
   async markRead(workspaceId: string, itemId: string, userId: string, now: Date): Promise<void> {

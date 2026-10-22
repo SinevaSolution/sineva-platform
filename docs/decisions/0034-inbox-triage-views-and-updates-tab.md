@@ -32,7 +32,7 @@ ADR-0032 maps approvals to Needs review, input requests to Needs input, and ever
 3. **Counts.** `GET .../inbox/counts` adds `updates` and `unread_updates`. `done` no longer counts results. `badge` is still `needs_review + needs_input`.
 4. **Viewer.** A viewer's scope was "Done only" because results lived there. It becomes "Updates and Done": the same rows as before, still summaries without payloads, notes or the source link. Needs-you tabs stay empty.
 5. **Link back to the chat.** The item detail carries `source.conversation_id` for chat sources, resolved server-side from the run handle inside the caller's workspace. The list view does not carry it (no per-row lookup). Viewers never get it.
-6. **Reading is not deciding.** Opening an item marks it read; no key approves, rejects or edits on its own focus. The single-key shortcuts only act on the open item and never while a field has focus (the FR-INBOX-30 wording against a one-key approve is respected by never acting on a key press without an open item and an enabled button; Approve still needs the visible primary button or its shortcut on the item the person is looking at).
+6. **Keys.** Opening an item marks it read and nothing else. The shortcuts `a`, `e`, `r` and `c` (approve, edit, reject, ask for changes) act only on the item that is open, only while it can still be decided, and never while a field, menu or dialog has focus. FR-INBOX-30 in the plan says there is no single-key approve; the Founder asked for `a` explicitly, which wins. Approving a `draft.review` marks the draft ready and executes nothing (ADR-0032), so the cost of a slip is low; `a` does not skip the checks the button runs.
 
 ## Consequences
 

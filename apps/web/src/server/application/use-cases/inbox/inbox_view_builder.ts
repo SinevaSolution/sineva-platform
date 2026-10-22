@@ -15,7 +15,10 @@ import { isViewer } from './inbox_access';
 export function buildItemView(
   bundle: InboxBundle,
   context: RequestContext,
-  options: { unread: boolean; detail?: { revisions: ApprovalRevisionEntity[] } },
+  options: {
+    unread: boolean;
+    detail?: { revisions: ApprovalRevisionEntity[]; conversation_id?: string | null };
+  },
 ): InboxItemView {
   const { item, approval, input_request: input } = bundle;
   const summaryOnly = isViewer(context);
@@ -28,7 +31,12 @@ export function buildItemView(
     agent_slug: item.agent_slug,
     title: item.title,
     summary: { key: item.summary_key, params: item.summary_params },
-    source: { type: item.source_type, id: summaryOnly ? null : item.source_id },
+    source: {
+      type: item.source_type,
+      id: summaryOnly ? null : item.source_id,
+      // Detail only: the list would need one lookup per row. A viewer gets no link back.
+      ...(options.detail ? { conversation_id: summaryOnly ? null : (options.detail.conversation_id ?? null) } : {}),
+    },
     unread: options.unread,
     expires_at: item.expires_at,
     resolved_at: item.resolved_at,

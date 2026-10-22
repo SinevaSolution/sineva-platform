@@ -244,7 +244,12 @@ describe('inbox tables (WP-M1-40)', () => {
 
     expect((await inbox.list({ workspace_id: WS, tab: 'needs_review', limit: 10 })).items).toHaveLength(2);
     expect((await inbox.list({ workspace_id: WS, tab: 'needs_input', limit: 10 })).items).toHaveLength(1);
-    expect((await inbox.list({ workspace_id: WS, tab: 'done', limit: 10 })).items).toHaveLength(1);
+    expect((await inbox.list({ workspace_id: WS, tab: 'done', limit: 10 })).items).toHaveLength(0);
+    expect((await inbox.list({ workspace_id: WS, tab: 'updates', limit: 10 })).items).toHaveLength(1);
+    expect((await inbox.list({ workspace_id: WS, tab: 'needs_you', limit: 10 })).items).toHaveLength(3);
+    expect((await inbox.list({ workspace_id: WS, kind: 'input_request', limit: 10 })).items).toHaveLength(1);
+    expect((await inbox.list({ workspace_id: WS, q: 'LAPOR', limit: 10 })).items).toHaveLength(1);
+    expect((await inbox.list({ workspace_id: WS, source_type: 'room', limit: 10 })).items).toHaveLength(0);
     expect((await inbox.list({ workspace_id: WS, agent_slug: 'sinofinance', limit: 10 })).items).toHaveLength(1);
     expect((await inbox.list({ workspace_id: WS, recipient_user_id: ALICE, limit: 10 })).items).toHaveLength(3);
 
@@ -255,7 +260,7 @@ describe('inbox tables (WP-M1-40)', () => {
     expect(page2.next_cursor).toBeNull();
     expect(new Set([...page1.items, ...page2.items].map((i) => i.id)).size).toBe(4);
 
-    expect(await inbox.counts(WS, ALICE, ALICE)).toMatchObject({ needs_review: 1, needs_input: 1, done: 1, unread_needs_review: 1 });
+    expect(await inbox.counts(WS, ALICE, ALICE)).toMatchObject({ needs_review: 1, needs_input: 1, done: 0, updates: 1, unread_updates: 1, unread_needs_review: 1 });
     await inbox.markRead(WS, a.bundle.item.id, ALICE, NOW);
     await inbox.markRead(WS, a.bundle.item.id, ALICE, new Date('2026-10-23T00:00:00.000Z'));
     expect((await inbox.counts(WS, ALICE, ALICE)).unread_needs_review).toBe(0);

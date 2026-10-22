@@ -36,6 +36,7 @@ const HANDLE = 'run_0a1b2c3d-0000-4000-8000-000000000001';
 const UP_RUN = '7b8c9d0e-1f2a-3b4c-5d6e-7f8a9b0c1d2e';
 const UP_APPROVAL = '5d0c6a4e-7b1f-4c2a-9e83-0f6a2b1d4c77';
 const UP_INPUT = '9a3e5f21-4b6c-4d8e-8f10-2c7b9d0e1a34';
+const CONVERSATION = 'cccccccc-0000-4000-8000-000000000001';
 const NOW = new Date('2026-10-22T10:00:00.000Z');
 
 const ctx = (user: string, role: RequestContext['role'], workspace = WS): RequestContext => ({
@@ -114,6 +115,11 @@ function harness(auditOverride?: AuditLogger) {
   const logged: string[] = [];
   const log = { failed: (step: string) => void logged.push(step) };
   const now = () => NOW;
+  // Only the lookup the detail needs: a run handle of this workspace maps to a conversation.
+  const chats = {
+    findByHandle: async (handle: string) =>
+      handle === HANDLE ? ({ workspace_id: WS, conversation_id: CONVERSATION } as never) : null,
+  };
   const deps = {
     inbox,
     audit: auditOverride ?? audit,
@@ -137,7 +143,7 @@ function harness(auditOverride?: AuditLogger) {
     dismiss: new DismissInboxItemUseCase(deps),
     expire: new ExpireInboxItemsUseCase(deps),
     list: new ListInboxUseCase(deps),
-    get: new GetInboxItemUseCase(deps),
+    get: new GetInboxItemUseCase({ ...deps, chats }),
     counts: new GetInboxCountsUseCase(deps),
     read: new MarkInboxItemReadUseCase(deps),
     deps,
@@ -246,7 +252,7 @@ describe('creating items through the port (FR-INBOX-02, FR-INBOX-06)', () => {
     await expectCode(h.create.execute(inputInput({ upstream_request_id: 'other', fields: many }), systemCtx()), 'invalid_payload', 422);
   });
 
-  it('stores a result item straight in Done', async () => {
+  it('stores a result item as resolved news for the Updates tab', async () => {
     const h = harness();
     const result = await h.create.execute(
       {
@@ -643,7 +649,7 @@ describe('visibility, listing, counts and reads (FR-INBOX-01, 04, 05)', () => {
     expect((await h.counts.execute(admin)).unread_needs_review).toBe(2);
 
     const viewerCounts = await h.counts.execute(viewer);
-    expect(viewerCounts).toMatchObject({ needs_review: 0, needs_input: 0, badge: 0, done: 1 });
+    expect(viewerCounts).toMatchObject({ needs_review: 0, needs_input: 0, badge: 0, done: 1, updates: 0 });
   });
 
   it('reading an item you cannot see is a 404', async () => {
@@ -655,5 +661,82 @@ describe('service wiring', () => {
   it('exposes the decision service the use cases share', () => {
     const h = harness();
     expect(new ApprovalDecisionService(h.deps)).toBeInstanceOf(ApprovalDecisionService);
+  });
+});
+
+describe('triage views, filters and the link back (ADR-0034)', () => {
+  let h: ReturnType<typeof harness>;
+  let aliceApproval: Awaited<ReturnType<typeof seedApproval>>;
+  const result = (over: object = {}) => ({
+    kind: 'result' as const,
+    workspace_id: WS,
+    recipient_user_id: ALICE,
+    agent_slug: 'sinoinsights',
+    title: 'Laporan mingguan siap',
+    source: { type: 'chat' as const, id: HANDLE },
+    dedupe_key: 'result:1',
+    summary_key: 'inbox.sentence.result',
+    summary_params: {},
+    ...over,
+  });
+  beforeEach(async () => {
+    h = harness();
+    aliceApproval = await seedApproval(h);
+    await h.create.execute(inputInput(), systemCtx());
+    await h.create.execute(result(), systemCtx());
+    await h.create.execute(
+      { ...approvalInput({ upstream_approval_id: 'room-1' }), source: { type: 'room', id: null }, title: 'Room draft' },
+      systemCtx(),
+    );
+    const done = await seedApproval(h, { upstream_approval_id: 'done-1' });
+    await h.decide.execute(done.id, { decision: 'reject', version: 1 }, alice);
+  });
+
+  it('needs_you holds open approvals and questions, updates holds results, done holds neither', async () => {
+    const needs = await h.list.execute({ limit: 50, tab: 'needs_you' }, alice);
+    expect(needs.items.map((i) => i.kind).sort()).toEqual(['approval', 'approval', 'input_request']);
+    expect(needs.items.every((i) => i.state === 'open')).toBe(true);
+    const updates = await h.list.execute({ limit: 50, tab: 'updates' }, alice);
+    expect(updates.items.map((i) => i.kind)).toEqual(['result']);
+    expect(updates.items[0].tab).toBe('updates');
+    const done = await h.list.execute({ limit: 50, tab: 'done' }, alice);
+    expect(done.items.map((i) => i.kind)).toEqual(['approval']);
+    expect(done.items[0].state).toBe('resolved');
+  });
+
+  it('filters by kind, source and a case-insensitive part of the title before paging', async () => {
+    expect((await h.list.execute({ limit: 50, kind: 'input_request' }, alice)).items).toHaveLength(1);
+    expect((await h.list.execute({ limit: 50, source_type: 'room' }, alice)).items.map((i) => i.title)).toEqual([
+      'Room draft',
+    ]);
+    expect((await h.list.execute({ limit: 50, q: 'MINGGUAN' }, alice)).items.map((i) => i.kind)).toEqual(['result']);
+    expect((await h.list.execute({ limit: 50, q: 'nothing like this' }, alice)).items).toEqual([]);
+    const paged = await h.list.execute({ limit: 1, tab: 'needs_you', q: 'draft' }, alice);
+    expect(paged.items).toHaveLength(1);
+  });
+
+  it('shows a viewer Updates and Done summaries and nothing that needs a person', async () => {
+    expect((await h.list.execute({ limit: 50, tab: 'updates' }, viewer)).items.map((i) => i.kind)).toEqual(['result']);
+    expect((await h.list.execute({ limit: 50, tab: 'needs_you' }, viewer)).items).toEqual([]);
+    const seen = await h.list.execute({ limit: 50 }, viewer);
+    expect(seen.items.map((i) => i.tab).sort()).toEqual(['done', 'updates']);
+    const viewerCounts = await h.counts.execute(viewer);
+    expect(viewerCounts).toMatchObject({ badge: 0, done: 1, updates: 1 });
+  });
+
+  it('counts Updates and unread Updates, and keeps results out of Done', async () => {
+    expect(await h.counts.execute(alice)).toMatchObject({ updates: 1, unread_updates: 1, done: 1, badge: 3 });
+    const update = (await h.list.execute({ limit: 50, tab: 'updates' }, alice)).items[0];
+    await h.read.execute(update.id, alice);
+    expect((await h.counts.execute(alice)).unread_updates).toBe(0);
+  });
+
+  it('gives the detail of a chat item the conversation to link back to, never a viewer', async () => {
+    const own = await h.get.execute(aliceApproval.inbox_item_id, alice);
+    expect(own.source).toEqual({ type: 'chat', id: HANDLE, conversation_id: CONVERSATION });
+    const room = (await h.list.execute({ limit: 50, source_type: 'room' }, alice)).items[0];
+    expect((await h.get.execute(room.id, alice)).source.conversation_id).toBeNull();
+    const update = (await h.list.execute({ limit: 50, tab: 'updates' }, viewer)).items[0];
+    expect((await h.get.execute(update.id, viewer)).source).toEqual({ type: 'chat', id: null, conversation_id: null });
   });
 });

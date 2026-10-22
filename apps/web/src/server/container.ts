@@ -878,7 +878,7 @@ export const getIngestRunInboxEventUseCase = memoize(
     }),
 );
 export const getListInboxUseCase = memoize(() => new ListInboxUseCase({ inbox: getInboxRepository() }));
-export const getGetInboxItemUseCase = memoize(() => new GetInboxItemUseCase({ inbox: getInboxRepository() }));
+export const getGetInboxItemUseCase = memoize(() => new GetInboxItemUseCase({ inbox: getInboxRepository(), chats: getChatRunRepository() }));
 export const getGetInboxCountsUseCase = memoize(() => new GetInboxCountsUseCase({ inbox: getInboxRepository() }));
 export const getMarkInboxItemReadUseCase = memoize(
   () => new MarkInboxItemReadUseCase({ inbox: getInboxRepository() }),

@@ -158,7 +158,22 @@ describe('Inbox routes (WP-M1-40, R-25, FR-INBOX-05, FR-INBOX-11)', () => {
     expect(ok.status).toBe(200);
     expect(m.list.mock.calls[0][0]).toEqual({ tab: 'needs_review', agent_slug: 'sinosocial', limit: 5 });
 
-    for (const bad of ['tab=ideas', 'limit=0', 'limit=500', 'agent_slug=Bad Slug']) {
+    m.list.mockClear();
+    const filtered = await getList(
+      req('/inbox?tab=needs_you&kind=approval&source_type=room&q=promo&limit=5', 'GET', { role: 'member' }),
+      p,
+    );
+    expect(filtered.status).toBe(200);
+    expect(m.list.mock.calls[0][0]).toEqual({
+      tab: 'needs_you',
+      kind: 'approval',
+      source_type: 'room',
+      q: 'promo',
+      limit: 5,
+    });
+    const updatesTab = await getList(req('/inbox?tab=updates', 'GET', { role: 'member' }), p);
+    expect(updatesTab.status).toBe(200);
+    for (const bad of ['kind=idea', 'source_type=email', `q=${'x'.repeat(81)}`, 'tab=ideas', 'limit=0', 'limit=500', 'agent_slug=Bad Slug']) {
       const res = await getList(req(`/inbox?${bad}`, 'GET'), p);
       expect(res.status, bad).toBe(422);
     }
