@@ -65,7 +65,7 @@ Treat these as review items. Gaps are listed so nobody assumes coverage that is 
 
 ## 4. The container
 
-`server/container.ts` is the only place that knows which concrete class backs each port. It exposes one getter per use case: `getGetAgentsUseCase`, `getSendAgentMessageUseCase`, `getPresignStorageUploadUseCase`, `getSystemHealthUseCase`. Adapter getters (`getAgentRepository`, `getCacheRepository`, `getAiEngineGateway`, `getStorageRepository`) are private to the module.
+`server/container.ts` is the only place that knows which concrete class backs each port. It exposes one getter per use case: `getListWorkspaceSpecialistsUseCase`, `getSendAgentMessageUseCase`, `getPresignStorageUploadUseCase`, `getSystemHealthUseCase`. Adapter getters (`getCacheRepository`, `getAiEngineGateway`, `getStorageRepository`) are private to the module.
 
 Every getter is wrapped in a local `memoize` helper, so nothing is built at import time. Reason: `next build` imports every route module to collect page data. Adapter constructors read env and may open connections, so building them on import would touch real infrastructure during a build and make env-dependent tests order-sensitive. Adapters are memoized because they own resources shared across requests (the Prisma connection pool, cache and storage clients).
 
@@ -83,16 +83,16 @@ Gotchas:
 
 ## 6. Shared view types and compile-time guards
 
-The browser must not import `@/server/**`, so the shapes it reads live in `src/shared`: `agent_view.ts` (`AgentView`) and `chat_view.ts` (`ChatReplyView`, `ChatToolCallView`, `ChatCitationView`). Route handlers serialize domain objects directly, so the two declarations could drift. Two files in `src/server/http` prevent that at type-check time:
+The browser must not import `@/server/**`, so the shapes it reads live in `src/shared`: `specialist_view.ts` (`WorkspaceSpecialistRosterView`) and `chat_view.ts` (`ChatReplyView`, `ChatToolCallView`, `ChatCitationView`). Route handlers serialize domain objects directly, so the two declarations could drift. Two files in `src/server/http` prevent that at type-check time:
 
-- `agent_view_contract.ts`: `AssertAssignable<AgentEntity, AgentView>`.
+- `specialist_view_contract.ts`: `AssertAssignable<WorkspaceSpecialistRoster, WorkspaceSpecialistRosterView>`.
 - `chat_view_contract.ts`: `AssertAssignable<AiEngineChatResponse, ChatReplyView>`.
 
 `AssertAssignable<Sub extends Super, Super>` is a type-level check, so it costs nothing at runtime and fails `npm run typecheck` when the server type stops fitting the view. Gotchas:
 
 - It checks one direction. Extra fields on the entity are fine. A field the view declares that the entity lacks, or an entity field whose type became wider than the view's, fails.
 - The guard types are exported but imported nowhere. They work because `tsconfig.json` includes `**/*.ts`.
-- `AgentCategory` and `AgentStatus` are declared twice (domain entity and `shared/agent_view.ts`), and again as the Zod enum in `agent_dto.ts` and as lookup records in `prisma_agent_repository.ts`. The guard covers the first pair only. The Prisma adapter's `Record<AgentCategory, true>` makes a new domain union member fail to compile until the adapter is updated.
+- The specialist category list is declared in `domain/specialists/agent_catalog.ts` (`AGENT_CATEGORIES`) and spelled out again as a union in `shared/specialist_view.ts`; the guard catches drift between them. The Zod enums in `agent_dto.ts` and the gateway schema are built from the domain list.
 - Presign and health responses have no view type or guard yet.
 - Add a view and a guard together when you add a browser-facing shape (R-14).
 
@@ -136,6 +136,3 @@ sequenceDiagram
 ## 8. Known debt in this area
 
 - `DomainError` carries an HTTP `status` and imports `@sineva/shared` (`domain_error.ts`). The domain should not know about HTTP.
-- New-agent default values (`status: 'online'`, `avg_latency_ms: 350`, `accent_token`) live in `PrismaAgentRepository.create` instead of a domain factory.
-- `GetAgentsUseCase.registerAgent` clears only the page-1 cache key.
-- `GetAgentsUseCase` also holds the write method `registerAgent`, so the class is not read-only despite its name.

@@ -131,9 +131,9 @@ Endpoint-by-endpoint payloads are in [api-spec](../api-spec/agents_and_chat_endp
 | Status | `errors[].code` | Source |
 | :--- | :--- | :--- |
 | 200 | none | `sendSuccessJson` default, `sendPaginatedJson`, chat, health |
-| 201 | none | `POST /api/v1/agents`, `POST /api/v1/storage/presign` |
+| 201 | none | `POST /api/v1/storage/presign` |
 | 404 | `RESOURCE_NOT_FOUND` | `NotFoundError` (unknown `agent_slug` on chat) |
-| 409 | `RESOURCE_CONFLICT` | `ConflictError` (duplicate `agent_slug` on register) |
+| 409 | `RESOURCE_CONFLICT` | `ConflictError` (for example a taken workspace slug) |
 | 422 | `VALIDATION_ERROR` | `ZodError`, or `ValidationError` |
 | 502 | `UPSTREAM_ERROR` | `UpstreamServiceError` |
 | 503 | `UPSTREAM_UNAVAILABLE` | `UpstreamUnavailableError` |

@@ -47,8 +47,7 @@ related_docs:
 | Method | Path | Handler | Use case | Success | Error statuses |
 | :--- | :--- | :--- | :--- | :--- | :--- |
 | `GET` | `/api/v1/health` | `app/api/v1/health/route.ts` | `GetSystemHealthUseCase` | 200 | 503, 500 |
-| `GET` | `/api/v1/agents` | `app/api/v1/agents/route.ts` | `GetAgentsUseCase.execute` | 200 | 422, 500 |
-| `POST` | `/api/v1/agents` | `app/api/v1/agents/route.ts` | `GetAgentsUseCase.registerAgent` | 201 | 409, 422, 500 |
+| `GET` | `/api/v1/workspaces/{workspace_id}/agents` | `app/api/v1/workspaces/[workspace_id]/agents/route.ts` | `ListWorkspaceSpecialistsUseCase` | 200 | 401, 404, 422, 502, 503, 500 |
 | `POST` | `/api/v1/agents/{agent_slug}/chat` | `app/api/v1/agents/[agent_slug]/chat/route.ts` | `SendAgentMessageUseCase` | 200 | 404, 422, 500, 502, 503 |
 | `POST` | `/api/v1/storage/presign` | `app/api/v1/storage/presign/route.ts` | `PresignStorageUploadUseCase` | 201 | 422, 502, 500 |
 | `GET` | `/api/openapi.json` | `app/api/openapi.json/route.ts` | none (static) | 200 | none |
@@ -56,7 +55,7 @@ related_docs:
 
 This table is not complete (the auth, workspace, conversation and profile routes are listed in the OpenAPI document). The audit ingest route is internal: `X-Internal-Api-Key` only, `actor_type` limited to `specialist` or `system`, a `workspace_id` must exist, and sensitive metadata keys are redacted. Every route that changes state is listed in `server/http/route_policy.ts` with the audit events it emits (or a reasoned `none`) and, for create and run paths, its entitlement key; `route_policy_inventory.test.ts` fails when a mutating route is missing there.
 
-`/api/v1/agents` keeps the word "agent" in the path, the JSON keys and the types. User-facing copy says "companion" and "product" ([ADR-0011](../decisions/0011-user-facing-wording.md), [product model](../product/product_model_and_wording.md)).
+`/api/v1/workspaces/{workspace_id}/agents` keeps the word "agent" in the path, the JSON keys and the types. User-facing copy says "companion" and "product" ([ADR-0011](../decisions/0011-user-facing-wording.md), [product model](../product/product_model_and_wording.md)).
 
 ## The envelope
 
@@ -90,7 +89,7 @@ Success:
 }
 ```
 
-Paginated (`GET /api/v1/agents`) adds to `meta`: `page`, `per_page`, `total_items`, `total_pages`, `has_next`, `has_prev`. `total_pages` is at least 1, even for an empty list, so an empty result has `total_pages: 1` and `has_next: false`.
+Paginated routes add to `meta`: `page`, `per_page`, `total_items`, `total_pages`, `has_next`, `has_prev`. `total_pages` is at least 1, even for an empty list, so an empty result has `total_pages: 1` and `has_next: false`.
 
 Error:
 

@@ -24,11 +24,11 @@ related_docs:
 
 ## Chat returns an error: triage
 
-Chat goes browser, then `POST /api/v1/agents/{agent_slug}/chat` on the platform, then `sineva-ai`. Start with the status the platform returned.
+Chat goes browser, then the workspace conversation routes on the platform, then `sineva-ai`. Start with the status the platform returned.
 
 | Platform response | Where it came from | Go to |
 | :--- | :--- | :--- |
-| 404 `RESOURCE_NOT_FOUND`, "Agent 'x' was not found" | The platform's own database has no `agent_configs` row with that slug. The engine was never called | Wrong or old slug, or the seed has not run: [stale slugs](#stale-sino--rows) |
+| 404 `RESOURCE_NOT_FOUND`, "Agent 'x' was not found" | Legacy: the platform no longer keeps a specialist table, so this comes from an unknown slug. The engine was never called | Wrong or old slug: [stale slugs](#stale-sino--rows) |
 | 422 `VALIDATION_ERROR` | The platform's Zod schema rejected the body. The engine was never called | `errors[].field` names the field ([common issues](common_issues.md)) |
 | 502 `UPSTREAM_ERROR` | The engine answered, but not with a usable reply | The log table below |
 | 503 `UPSTREAM_UNAVAILABLE` | The engine could not be reached, or did not answer in time | The log table below |
@@ -96,8 +96,8 @@ An answer means DNS, the network and the key all work. "bad address" means the c
 
 ## Stale `sino-*` rows
 
-Symptom: the dashboard lists each product twice, or chat to an old slug returns 502 with a logged `agent_not_found`.
+Symptom: chat to an old slug returns 502 with a logged `agent_not_found`.
 
-Cause: the database was seeded before the slugs were made canonical. The seed upserts by slug, so it added `sinopeople` and the rest next to the old `sino-people` rows instead of renaming them. `sineva-ai` only knows the canonical slugs.
+Cause: `sineva-ai` only knows the canonical slugs. The platform's old registry table (`agent_configs`), which could hold `sino-people` and the like next to the canonical rows, is dropped (migration `20261022120000_drop_agent_configs`, [ADR-0024](../decisions/0024-specialist-manifest-and-catalog-split.md)), so the platform side no longer keeps old slugs. A stale slug now comes from a client or a saved link, or from `sineva-ai` data.
 
-Fix: run the slug data fix in the [migrations workflow](../engineering/database_migrations_workflow.md#old-sino--slugs), on a copy first.
+Fix: compare the slug on both sides. The history is in the [migrations workflow](../engineering/database_migrations_workflow.md#old-sino--slugs).

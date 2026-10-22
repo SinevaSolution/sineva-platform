@@ -34,7 +34,7 @@ Rules: R-26 (no hidden failures) and R-41 (upstream failures are typed 502 or 50
 | Thrown | `errors[].code` | Status | Thrown by today |
 | :--- | :--- | :--- | :--- |
 | `NotFoundError(resource, id)` | `RESOURCE_NOT_FOUND` | 404 | `SendAgentMessageUseCase` (unknown `agent_slug`) |
-| `ConflictError(resource, id)` | `RESOURCE_CONFLICT` | 409 | `PrismaAgentRepository.create` on a unique violation (`P2002`) |
+| `ConflictError(resource, id)` | `RESOURCE_CONFLICT` | 409 | `CreateWorkspaceUseCase` and `UpdateWorkspaceUseCase` (slug taken), the account-linking use cases |
 | `ValidationError(message, details)` | `VALIDATION_ERROR` | 422 | Defined, not thrown anywhere yet |
 | `ZodError` (not a `DomainError`) | `VALIDATION_ERROR` per issue | 422 | DTO `parse` in route handlers |
 | `UpstreamServiceError` | `UPSTREAM_ERROR` | 502 | `InternalAiEngineGateway`: sineva-ai answered non-2xx, sent a non-JSON body, or sent a body that fails the Zod envelope check |

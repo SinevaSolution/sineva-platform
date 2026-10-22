@@ -35,7 +35,6 @@ A shape the browser reads goes in `src/shared/<name>_view.ts` with a guard in `h
 ## Known debt: do not copy
 
 - `DomainError` carries an HTTP `status` and imports `@sineva/shared`.
-- New-agent defaults live in `PrismaAgentRepository.create`.
 - `user_id` and `workspace_id` come from request bodies (R-27); do not extend that.
 
 ## Where to read

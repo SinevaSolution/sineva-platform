@@ -51,7 +51,7 @@ Two things follow from this table.
 - `sineva-platform` waits for healthy `postgres` and `redis` and for `seaweedfs-s3` to have started. It does not wait for `sineva-ai`; the gateway handles an unreachable engine with a 503.
 - `sineva-platform` and `sineva-ai` have no healthcheck of their own.
 
-Gotcha: compose starts the services but runs no migrations. On a new database the `platform` schema does not exist yet, so the dashboard (`force-dynamic`, queries the database per request) and `GET /api/v1/agents` fail until the release step in [CI/CD pipeline](ci_cd_pipeline.md) has run `db:migrate:deploy`, and the companion list stays empty until `db:seed`. `sineva-ai` has its own `alembic upgrade head` step.
+Gotcha: compose starts the services but runs no migrations. On a new database the `platform` schema does not exist yet, so the dashboard (`force-dynamic`, queries the database per request) fail until the release step in [CI/CD pipeline](ci_cd_pipeline.md) has run `db:migrate:deploy`, and there are no test tenants until `db:seed`. `sineva-ai` has its own `alembic upgrade head` step.
 
 Prerequisite: `sineva-ai` builds from `../sineva-ai`, so that repository must be checked out next to this one. Known cross-repo debt: its Docker build is currently broken because a README is not copied into the image, so `docker compose up --build` can fail on that service.
 
