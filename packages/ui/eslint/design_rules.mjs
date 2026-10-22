@@ -162,6 +162,26 @@ export const designPlugin = {
       message:
         'The motion and framer-motion packages are not used. State feedback is CSS; GSAP is loaded lazily where CSS cannot do the job.',
     }),
+    'no-native-select': {
+      meta: {
+        type: 'problem',
+        docs: { description: 'Dropdown fields use SNSelect or SNCombobox, never a native select.' },
+        schema: [],
+        messages: {
+          banned:
+            'A native <select> cannot follow the design or search. Use SNSelect (short lists) or SNCombobox (long lists, searchable) from @sineva/ui.',
+        },
+      },
+      create(context) {
+        return {
+          JSXOpeningElement(node) {
+            if (node.name.type === 'JSXIdentifier' && node.name.name === 'select') {
+              context.report({ node, messageId: 'banned' });
+            }
+          },
+        };
+      },
+    },
     'no-dangerous-html': {
       meta: {
         type: 'problem',
@@ -201,6 +221,7 @@ export function designRulesConfig({ files, ignores = [] }) {
       'sineva-design/no-physical-direction': 'error',
       'sineva-design/no-motion-import': 'error',
       'sineva-design/no-dangerous-html': 'error',
+      'sineva-design/no-native-select': 'error',
     },
   };
 }

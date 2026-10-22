@@ -5,7 +5,7 @@ import type * as React from 'react';
  * URLs to load. The platform validated `data` against the card schema before
  * it got here (ADR-0025); the fallback renderer ignores `data` on purpose.
  */
-export interface CardRenderInput {
+export interface SNCardRenderInput {
   id: string;
   card_type: string;
   schema_version: number;
@@ -20,7 +20,7 @@ export interface CardRenderInput {
  * catalog. The ui package has no i18n of its own, so a card never hardcodes
  * a string a customer reads (ADR-0023).
  */
-export interface CardLabels {
+export interface SNCardLabels {
   /** Accessible name of the card, rendered as its heading. */
   title: string;
   /** Shown above the text when the card could not be shown as a card. */
@@ -32,9 +32,9 @@ export interface CardLabels {
   copy_failed: string;
 }
 
-export interface CardComponentProps {
-  card: CardRenderInput;
-  labels: CardLabels;
+export interface SNCardComponentProps {
+  card: SNCardRenderInput;
+  labels: SNCardLabels;
 }
 
-export type CardComponent = (props: CardComponentProps) => React.ReactNode;
+export type SNCardComponent = (props: SNCardComponentProps) => React.ReactNode;

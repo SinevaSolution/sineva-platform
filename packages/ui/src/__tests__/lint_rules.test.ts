@@ -27,6 +27,7 @@ const EXPECTED: Array<[fixture: string, ruleId: string]> = [
   ['motion_import.tsx', 'sineva-design/no-motion-import'],
   ['framer_motion_import.tsx', 'sineva-design/no-motion-import'],
   ['dangerous_html.tsx', 'sineva-design/no-dangerous-html'],
+  ['native_select.tsx', 'sineva-design/no-native-select'],
   ['server_import.tsx', 'no-restricted-imports'],
   ['web_app_import.tsx', 'no-restricted-imports'],
 ];
