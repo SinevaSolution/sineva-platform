@@ -1,5 +1,7 @@
 'use client';
 
+import { InboxEmailAction } from './inbox_email_action';
+
 import { ArrowLeft, Clock, ShieldCheck } from 'lucide-react';
 import Link from 'next/link';
 import * as React from 'react';
@@ -66,6 +68,8 @@ export function InboxDetail({
   const tRoot = useTranslations('');
   const approval = item.approval;
   const input = item.input_request;
+  const emailAction = approval?.action_type.startsWith('email.') ?? false;
+  const approveLabel = approval?.action_type === 'email.send' ? t('email_action.send') : t('approve');
   const name = text.nameOf(item.agent_slug);
 
   const open = item.state === 'open';
@@ -121,7 +125,7 @@ export function InboxDetail({
     });
   };
   const sendChanges = async () => {
-    if (!canDecide || busy || !instruction.trim()) return;
+    if (!canDecide || emailAction || busy || !instruction.trim()) return;
     if (await onDecide({ type: 'changes', instruction: instruction.trim() })) {
       setPanel(null);
       setInstruction('');
@@ -152,7 +156,7 @@ export function InboxDetail({
         setAnnouncement(t('press_enter_reject'));
       },
       changes: () => {
-        if (canDecide && !busy) setPanel('changes');
+        if (canDecide && !emailAction && !busy) setPanel('changes');
       },
       closePanel: () => {
         if (!panel) return false;
@@ -225,7 +229,9 @@ export function InboxDetail({
             onNext={onNext}
           />
 
-          {approval && !readOnly && item.payload ? (
+          {approval && !readOnly && item.payload && approval.action_type.startsWith('email.') ? <InboxEmailAction payload={item.payload} /> : null}
+
+          {approval && !readOnly && item.payload && !approval.action_type.startsWith('email.') ? (
             <InboxDraftCard
               kindLabel={t('draft_label', { kind: text.draftKind(str(item.payload.draft_kind)) })}
               original={original}
@@ -370,7 +376,7 @@ export function InboxDetail({
                 </SNField>
                 <div className="flex gap-2">
                   <SNButton type="submit" variant="danger" loading={busy}>
-                    {t('reject_confirm')}
+                    {emailAction ? t('email_action.reject') : t('reject_confirm')}
                   </SNButton>
                   <SNButton variant="ghost" onClick={() => setPanel(null)}>
                     {t('cancel')}
@@ -379,7 +385,7 @@ export function InboxDetail({
               </form>
             ) : null}
             <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
-              <SNTooltip label={t('approve')} shortcut={t('shortcut_then_enter', { key: 'a' })}>
+              <SNTooltip label={approveLabel} shortcut={t('shortcut_then_enter', { key: 'a' })}>
                 <SNButton
                   ref={approveButton}
                   variant="primary"
@@ -389,7 +395,7 @@ export function InboxDetail({
                   onClick={approve}
                   className="col-span-2 sm:col-auto"
                 >
-                  {t('approve')}
+                  {approveLabel}
                 </SNButton>
               </SNTooltip>
               {canEdit ? (
@@ -403,11 +409,11 @@ export function InboxDetail({
                   </SNButton>
                 </SNTooltip>
               ) : null}
-              <SNTooltip label={t('changes')} shortcut="c">
+              {!emailAction ? <SNTooltip label={t('changes')} shortcut="c">
                 <SNButton size="lg" disabled={busy} onClick={() => setPanel('changes')}>
                   {t('changes')}
                 </SNButton>
-              </SNTooltip>
+              </SNTooltip> : null}
               <SNTooltip label={t('reject')} shortcut={t('shortcut_then_enter', { key: 'r' })}>
                 <SNButton ref={rejectButton} variant="ghost" size="lg" disabled={busy} onClick={() => setPanel('reject')}>
                   {t('reject')}
@@ -486,7 +492,10 @@ function Outcome({
     const you = approval.decided_by !== null && approval.decided_by === currentUserId;
     const who = approval.decided_by_name ?? t('someone');
     const approved = approval.status === 'approved';
-    const line = approved
+    const emailAction = approval.action_type.startsWith("email.");
+    const line = emailAction
+      ? approved ? approval.action_type === "email.send" ? t("email_action.sent") : t("email_action.completed") : t("email_action.rejected")
+      : approved
       ? you
         ? t('result_approved_you')
         : t('result_approved_other', { name: who })
@@ -494,7 +503,7 @@ function Outcome({
         ? t('result_rejected_you')
         : t('result_rejected_other', { name: who });
     const when = approval.decided_at ? text.ago(approval.decided_at) : null;
-    const after = approved ? t('after_approved') : t('after_rejected', { name });
+    const after = emailAction ? approved ? t('email_action.after_completed') : t('email_action.after_rejected') : approved ? t('after_approved') : t('after_rejected', { name });
     if (conflict && !you) {
       return (
         <SNBanner tone="warning" title={t('conflict_title', { name: who })} action={next}>

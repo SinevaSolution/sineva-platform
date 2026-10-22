@@ -1,7 +1,10 @@
 import type { AuditLogger } from '@/server/domain/audit/audit_logger';
-import { applyEditablePayload, hashPayload } from '@/server/domain/approvals/action_types';
+import { applyEditablePayload, getActionType, hashPayload } from '@/server/domain/approvals/action_types';
 import type { RequestContext } from '@/server/domain/context/request_context';
 import type { ContextSigner } from '@/server/domain/context/signed_context';
+import type { ChatRunRepository } from '@/server/domain/repositories/chat_run_repository';
+import { ToolGatewayError } from '@/server/domain/toolgateway/tool_executor';
+import { RunResumeUnavailableError } from '@/server/domain/inbox/inbox_errors';
 import { NotFoundError } from '@/server/domain/errors/domain_error';
 import {
   AlreadyDecidedError,
@@ -34,6 +37,8 @@ export interface ApprovalDecisionDeps {
   contextSigner: ContextSigner;
   log: InboxLog;
   now?: () => Date;
+  actionExecutor?: { execute(approvalId: string, context: RequestContext): Promise<void> };
+  chatRuns?: ChatRunRepository;
 }
 
 export interface DecisionRequest {
@@ -87,6 +92,7 @@ export class ApprovalDecisionService {
     if (!approval || !bundle) throw new NotFoundError('Approval', request.approval_id);
 
     this.assertDecidable(approval, request.version);
+    if (request.decision === 'changes' && getActionType(approval.action_type)?.executes) throw new InvalidInboxPayloadError('field_not_editable', 'instruction');
 
     let editedPayload: Record<string, unknown> | undefined;
     if (request.edited_payload) {
@@ -120,8 +126,16 @@ export class ApprovalDecisionService {
     };
 
     try {
+      let upstreamRunId = approval.run_id;
+      if (request.decision === 'approve' && getActionType(approval.action_type)?.executes) {
+        if (!upstreamRunId && approval.source_id && this.deps.chatRuns) upstreamRunId = (await this.deps.chatRuns.findByHandle(approval.source_id))?.upstream_run_id ?? null;
+        if (!upstreamRunId) throw new RunResumeUnavailableError();
+        if (!this.deps.actionExecutor) throw new ToolGatewayError('provider_unavailable', 503);
+        await this.deps.actionExecutor.execute(approval.id, context);
+        body.result.executed = true;
+      }
       await resumeUpstream(this.deps, {
-        upstream_run_id: approval.run_id,
+        upstream_run_id: upstreamRunId,
         recipient_user_id: bundle.item.recipient_user_id,
         context,
         agent_slug: approval.agent_slug,
@@ -132,6 +146,7 @@ export class ApprovalDecisionService {
     } catch (error) {
       // Nothing was committed: free the claim so the person can retry.
       await this.release(approval.id, context);
+      if (body.result.executed && error instanceof RunResumeUnavailableError) throw new ToolGatewayError('tool_resume_pending', 503, true);
       throw error;
     }
 

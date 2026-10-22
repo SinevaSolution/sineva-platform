@@ -181,7 +181,16 @@
       "allowlist_required": "Choose at least one specialist.",
       "scope_not_applicable": "Specialist access only applies to members.",
       "unknown_specialist": "One of those specialists does not exist.",
-      "oauth_account_mismatch": "That is not the account linked to you. Use the one connected to your Sineva account."
+      "oauth_account_mismatch": "That is not the account linked to you. Use the one connected to your Sineva account.",
+      "connection_needs_reconnect": "Reconnect this app before approving the action.",
+      "connection_not_found": "This app connection is no longer available to this specialist. Ask an admin to check access.",
+      "connection_ambiguous": "More than one account is available. Ask an admin to give this specialist access to the intended account.",
+      "provider_unavailable": "The connected app could not complete this action. Check the connection and request a new review.",
+      "kill_switch_active": "This action is paused. Ask an admin.",
+      "approval_payload_mismatch": "The action or connected account changed. Request a new review.",
+      "tool_call_in_progress": "This action is still being processed. Wait before trying again.",
+      "tool_outcome_unknown": "We could not confirm whether Gmail completed this action. Check Gmail before requesting it again.",
+      "tool_resume_pending": "Gmail completed this action. We could not continue the conversation yet. Retry to continue without repeating the action."
     },
     "not_found": {
       "title": "Sino can't find this page"
@@ -453,10 +462,16 @@
       "input_request": "{name} has a question for you.",
       "result": "{name} finished something for you.",
       "connection_needs_reconnect": "{provider} needs to be reconnected before your specialists can use it again.",
-      "connection_rotation_due": "{provider} has used the same key for 90 days. Replace it to keep your connection safe."
+      "connection_rotation_due": "{provider} has used the same key for 90 days. Replace it to keep your connection safe.",
+      "gmail_search_messages": "{name} wants to search your Gmail.",
+      "gmail_get_message": "{name} wants to read an email in your Gmail.",
+      "gmail_create_draft": "{name} wants to save a draft in your Gmail.",
+      "gmail_send_message": "{name} wants to send this email from your Gmail."
     },
     "approve_note": {
-      "draft_review": "Approving marks this draft ready. Sineva does not send it yet."
+      "draft_review": "Approving marks this draft ready. Sineva does not send it yet.",
+      "email_action": "Approving runs this Gmail action once.",
+      "email_send": "Approving runs this Gmail action once. Sending an email cannot be undone."
     }
   },
   "shell": {
@@ -867,7 +882,24 @@
     "toast_changed": "This changed while you were looking. Here is the latest.",
     "press_enter_approve": "Press Enter to approve",
     "press_enter_reject": "Press Enter to reject",
-    "shortcut_then_enter": "{key} then Enter"
+    "shortcut_then_enter": "{key} then Enter",
+    "email_action": {
+      "title": "Gmail action",
+      "account": "From account",
+      "to": "To",
+      "cc": "Cc",
+      "subject": "Subject",
+      "query": "Search",
+      "body": "Message",
+      "read_note": "Approving gives permission to read the requested email information.",
+      "send": "Send email",
+      "reject": "Reject action",
+      "sent": "Email sent",
+      "completed": "Gmail action completed",
+      "rejected": "Action declined",
+      "after_completed": "Gmail confirmed this action.",
+      "after_rejected": "This Gmail action was not run."
+    }
   },
   "library_ui": {
     "reason_codes": {},

@@ -1,3 +1,4 @@
+import { GMAIL_APPROVAL_TYPES, gatewayApprovalPayloadSchema } from '@/server/domain/toolgateway/gmail_approval';
 import { createHash } from 'node:crypto';
 
 // Minimal action-type registry (FR-INBOX-06). The M2 Tool Gateway extends it
@@ -73,8 +74,22 @@ const DRAFT_REVIEW: ActionTypeDefinition = {
   }),
 };
 
+const EMAIL_SENTENCES: Readonly<Record<string, string>> = {
+  gmail_search_messages: 'inbox.sentence.gmail_search_messages', gmail_get_message: 'inbox.sentence.gmail_get_message',
+  gmail_create_draft: 'inbox.sentence.gmail_create_draft', gmail_send_message: 'inbox.sentence.gmail_send_message',
+};
+const EMAIL_TYPES: Readonly<Record<string, ActionTypeDefinition>> = Object.fromEntries(
+  Object.entries(GMAIL_APPROVAL_TYPES).map(([tool, type]) => [type, {
+    action_type: type, risk_level: tool === 'gmail_send_message' ? 'high' : 'medium', reversible: tool !== 'gmail_send_message',
+    autonomy_eligible: false, guardrail_locked: true, executes: true, editable_fields: [],
+    approve_note_key: tool === 'gmail_send_message' ? 'inbox.approve_note.email_send' : 'inbox.approve_note.email_action',
+    sentence: ({ agent_slug }: SentenceSource) => ({ key: EMAIL_SENTENCES[tool]!, params: { specialist_slug: agent_slug } }),
+  } satisfies ActionTypeDefinition]),
+);
+
 export const ACTION_TYPES: Readonly<Record<string, ActionTypeDefinition>> = {
   'draft.review': DRAFT_REVIEW,
+  ...EMAIL_TYPES,
 };
 
 export function getActionType(actionType: string): ActionTypeDefinition | null {
@@ -83,6 +98,11 @@ export function getActionType(actionType: string): ActionTypeDefinition | null {
 
 export function validatePayload(actionType: string, payload: Record<string, unknown>): PayloadCheck {
   if (actionType === 'draft.review') return validateDraftReview(payload);
+  if (Object.hasOwn(EMAIL_TYPES, actionType)) {
+    const parsed = gatewayApprovalPayloadSchema.safeParse(payload);
+    if (!parsed.success || GMAIL_APPROVAL_TYPES[parsed.data.request.tool_name] !== actionType) return { ok: false, code: 'invalid_payload', detail: 'gateway_binding' };
+    return { ok: true };
+  }
   return { ok: false, code: 'unsupported_action_type', detail: actionType };
 }
 

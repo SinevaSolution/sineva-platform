@@ -1,5 +1,14 @@
 import 'server-only';
-import { randomBytes } from 'node:crypto';
+import { createPublicKey, randomBytes } from 'node:crypto';
+import { ExecuteToolUseCase } from './application/toolgateway/execute_tool_use_case';
+import { CreateGatewayApproval } from './application/toolgateway/create_gateway_approval';
+import { ResolveToolConnectionsUseCase } from './application/toolgateway/resolve_tool_connections_use_case';
+import { GatewayContextVerifier } from './infrastructure/gateway/gateway_context_verifier';
+import { GmailActionExecutor } from './infrastructure/gateway/gmail_action_executor';
+import { PrismaGatewayState } from './infrastructure/gateway/prisma_gateway_state';
+import { redactToolResult } from './infrastructure/gateway/redact_tool_result';
+import { RedisToolCallLimiter } from './infrastructure/ratelimit/redis_tool_call_limiter';
+import { getRedisClient } from './infrastructure/cache/redis_client';
 import type { JobQueue } from './domain/jobs/job_queue';
 import { PrismaJobQueue } from './infrastructure/database/prisma_job_queue';
 import { LoggerJobLog } from './infrastructure/logging/log_job_log';
@@ -158,7 +167,6 @@ import { JwtAuthService } from './infrastructure/auth/jwt_auth_service';
 import type { SigningKeyRepository } from './domain/repositories/signing_key_repository';
 import { PrismaSigningKeyRepository } from './infrastructure/database/prisma_signing_key_repository';
 import { SPECIALIST_MANIFEST } from '@/shared/specialists/manifest';
-import type { ContextSigner } from './domain/context/signed_context';
 import { createDefaultContextSigner } from './infrastructure/security/context_signer';
 import type { OAuthProvider } from './domain/auth/oauth_provider';
 import { GoogleOAuthProvider, GitHubOAuthProvider } from './infrastructure/auth/oauth_providers';
@@ -418,7 +426,7 @@ export const getSigningKeyRepository = memoize<SigningKeyRepository>(
   () => new PrismaSigningKeyRepository(getPrismaClient()),
 );
 
-export const getContextSigner = memoize<ContextSigner>(() => {
+export const getContextSigner = memoize(() => {
   const env = getEnvConfig();
   return createDefaultContextSigner(
     env.internal_context_signing_key,
@@ -1006,6 +1014,8 @@ const getInboxDecisionDeps = memoize(() => ({
   gateway: getAiEngineGateway(),
   contextSigner: getContextSigner(),
   log: getInboxLog(),
+  chatRuns: getChatRunRepository(),
+  actionExecutor: { execute: (id: string, context: import('./domain/context/request_context').RequestContext) => getExecuteToolUseCase().executeApproval(id, context) },
 }));
 export const getCreateInboxItemUseCase = memoize(
   () =>
@@ -1525,3 +1535,24 @@ export const getTickJobsUseCase = memoize(
       log: getJobLog(),
     }),
 );
+
+
+const getGatewayVerifier = memoize(() => new GatewayContextVerifier(async () => {
+  const signer = getContextSigner();
+  const keys = new Map([[signer.getKid(), signer.getPublicKey()]]);
+  for (const key of await getSigningKeyRepository().listValidPublicKeys('context')) {
+    if (keys.has(key.kid) || key.alg !== 'EdDSA' || Date.parse(key.valid_from) > Date.now()) continue;
+    keys.set(key.kid, key.public_key.includes('BEGIN PUBLIC KEY') ? createPublicKey(key.public_key) : createPublicKey({ key: Buffer.from(key.public_key, 'base64'), type: 'spki', format: 'der' }));
+  }
+  return keys;
+}));
+const getGatewayState = memoize(() => new PrismaGatewayState(getPrismaClient(), new RedisToolCallLimiter(getRedisClient(), getEnvConfig().redis_key_prefix)));
+const getGatewayDeps = memoize(() => ({
+  verifier: getGatewayVerifier(), state: getGatewayState(), registry: getConnectorRegistry(),
+  connections: getConnectionRepository(), grants: getConnectionGrantRepository(), credentials: getCredentialResolver(),
+  executor: new GmailActionExecutor(getConnectorHttpClient()),
+  approvals: new CreateGatewayApproval(getCreateInboxItemUseCase(), getChatRunRepository()),
+  audit: getAuditLogger(), transactions: getTransactionRunner(), redact: redactToolResult,
+}));
+export const getExecuteToolUseCase = memoize(() => new ExecuteToolUseCase(getGatewayDeps()));
+export const getResolveToolConnectionsUseCase = memoize(() => new ResolveToolConnectionsUseCase(getGatewayDeps()));

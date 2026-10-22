@@ -1,0 +1,14 @@
+{
+  "tool_name": "gmail_send_message",
+  "arguments": {
+    "to": [
+      "person@example.test"
+    ],
+    "subject": "Meeting follow-up",
+    "body_text": "Thank you for the meeting."
+  },
+  "run_id": "run_33333333-3333-4333-8333-333333333333",
+  "call_id": "call-1",
+  "idempotency_key": "send-1",
+  "mode": "live"
+}

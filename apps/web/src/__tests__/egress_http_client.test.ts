@@ -71,3 +71,20 @@ describe('EgressHttpClient (ADR-0037 egress allowlist)', () => {
     ).rejects.toBeInstanceOf(ConnectorUnreachableError);
   });
 });
+
+it('cancels a chunked oversized body before buffering the entire response', async () => {
+  let pulls = 0;
+  let cancelled = false;
+  const body = new ReadableStream<Uint8Array>({
+    pull(controller) {
+      pulls += 1;
+      controller.enqueue(new TextEncoder().encode('123456'));
+      if (pulls === 100) controller.close();
+    },
+    cancel() { cancelled = true; },
+  });
+  const client = new EgressHttpClient({ isAllowed: () => true, maxResponseBytes: 8, fetchImpl: async () => new Response(body) });
+  await expect(client.request({ provider_id: 'gmail', method: 'GET', url: 'https://gmail.googleapis.com/gmail/v1/users/me/messages' })).rejects.toBeInstanceOf(ConnectorUnreachableError);
+  expect(cancelled).toBe(true);
+  expect(pulls).toBeLessThan(100);
+});

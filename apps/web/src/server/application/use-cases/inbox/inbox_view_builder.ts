@@ -29,7 +29,7 @@ export function buildItemView(
     tab: tabOf(item),
     state: item.state,
     agent_slug: item.agent_slug,
-    title: item.title,
+    title: summaryOnly && approval?.action_type.startsWith('email.') ? 'Gmail' : item.title,
     summary: { key: item.summary_key, params: item.summary_params },
     source: {
       type: item.source_type,

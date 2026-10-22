@@ -41,12 +41,22 @@ export interface SignedContextClaims {
   department?: string | null;
   about_me?: string | null;
 
+  allowed_tools?: string[];
+  skill_tools?: string[];
+  trifecta?: { private_data: boolean; untrusted_content: boolean; send: boolean };
+
   // Additional optional claims reserved for subsequent milestones
   agent_slug?: string | null;
   run_id?: string | null;
 }
 
 export interface MintContextOptions {
+  /** Only a platform admission path may provide this, never a browser or model payload. */
+  gateway?: {
+    allowed_tools: string[];
+    skill_tools: string[];
+    trifecta: { private_data: boolean; untrusted_content: boolean; send: boolean };
+  };
   agent_slug?: string | null;
   run_id?: string | null;
   channel?: 'app' | 'mcp';

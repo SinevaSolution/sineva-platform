@@ -1,0 +1,9 @@
+{
+  "status": "ok",
+  "result": {
+    "message_id": "message-1",
+    "thread_id": "thread-1",
+    "untrusted": true
+  },
+  "error_code": null
+}

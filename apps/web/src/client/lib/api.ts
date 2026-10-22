@@ -21,7 +21,7 @@ export class ApiError extends Error {
 
   /** 502 and 503 mean "try again"; everything else needs a change first. */
   get retryable(): boolean {
-    return this.status === 502 || this.status === 503;
+    return this.code !== 'tool_outcome_unknown' && !this.detailCodes.includes('tool_outcome_unknown') && (this.status === 502 || this.status === 503);
   }
 }
 
@@ -118,6 +118,18 @@ const DETAIL_KEYS: Record<string, string> = {
 
 const CODE_KEYS: Record<string, string> = {
   network: 'api.network',
+  connection_needs_reconnect: 'api.connection_needs_reconnect',
+  connection_not_found: 'api.connection_not_found',
+  connection_ambiguous: 'api.connection_ambiguous',
+  provider_unavailable: 'api.provider_unavailable',
+  kill_switch_active: 'api.kill_switch_active',
+  approval_payload_mismatch: 'api.approval_payload_mismatch',
+  tool_call_in_progress: 'api.tool_call_in_progress',
+  tool_outcome_unknown: 'api.tool_outcome_unknown',
+  tool_resume_pending: 'api.tool_resume_pending',
+  action_not_allowed: 'api.forbidden',
+  idempotency_conflict: 'api.conflict',
+  invalid_tool_arguments: 'api.validation_failed',
   unauthenticated: 'api.unauthenticated',
   forbidden: 'api.forbidden',
   not_found: 'api.not_found',

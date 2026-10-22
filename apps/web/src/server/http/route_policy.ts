@@ -23,6 +23,8 @@ export type MutatingRoutePolicy = { effect: RouteEffect } & AuditMapping &
 // Key: `METHOD /path` with `{param}` segments, as in the OpenAPI document.
 // A GET appears here only when it changes state (the OAuth callback signs in).
 export const MUTATING_ROUTE_POLICY: Record<string, MutatingRoutePolicy> = {
+  'POST /internal/v1/tool-gateway/execute': { effect: 'run', audit: ['connection.tool_called', 'connection.tool_completed', 'connection.tool_denied'], entitlement: 'none', reason: 'Connection grants and signed tool scopes admit the action; tool-call usage metering follows in WP-M2-34.' },
+  'POST /api/internal/v1/tool-gateway/execute': { effect: 'run', audit: ['connection.tool_called', 'connection.tool_completed', 'connection.tool_denied'], entitlement: 'none', reason: 'Alias of the internal gateway; connection grants and signed tool scopes apply. Usage metering follows in WP-M2-34.' },
   'POST /api/v1/me/first-workspace': {
     effect: 'create',
     audit: ['workspace.created', 'onboarding.started'],

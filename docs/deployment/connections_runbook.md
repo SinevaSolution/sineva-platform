@@ -88,6 +88,35 @@ Repeat while `more` is true. Each connection is revoked at the provider (best ef
 ## 6. Known gaps
 
 - Rate limits on the connection routes and the OAuth callback (WP-M2-07) are not built; rely on the edge limits until then.
-- The Tool Gateway (WP-M2-10) does not exist yet: grants are stored and shown but nothing consumes them.
+- The platform Tool Gateway now enforces grants and executes Gmail actions after review. The runtime consumer and selected-skill scope admission are not wired (WP-M2-11), so current chat calls cannot use it. See [the gateway contract](../api-spec/tool_gateway_endpoints.md).
 - Provider parameters marked "recalled" in the manifests (Google offline access and consent, Notion token behavior, Xendit and Midtrans test calls, key prefixes in the redaction list) must be checked against provider documentation before each provider goes live in an environment (OQ-CONN-8).
 - The production KMS is not chosen (D-M2-2): the local adapter keeps the key in process memory.
+
+
+## 7. Tool Gateway kill switches
+
+The gateway reads these switches on every call. The M2 default (D-M2-4) provides an operator script; Owner/Admin UI is M3 work. Use an administrative database role and print only its host and database before the command. Never pass the database password in a log.
+
+```bash
+psql "$ADMIN_DATABASE_URL" -v scope=provider -v target=gmail -v enabled=true -v actor=operator-id \
+  -f apps/web/prisma/ops/tool_gateway_kill_switch.sql
+```
+
+Use `enabled=false` to lift it. Replace `operator-id` with the operator's audit identifier. The script changes the switch and appends `security.kill_switch_changed` in one transaction.
+
+| Scope | Target | Stops |
+| :--- | :--- | :--- |
+| `provider` | `gmail` (or another provider ID), `*` for all | Tool calls to that provider across workspaces |
+| `freeze` | workspace UUID, `*` for all | Reads and writes |
+| `read_only` | workspace UUID, `*` for all | Writes only |
+| `specialist` | specialist slug globally, `workspace-uuid:slug` in one workspace, or `*` | That specialist's tool calls |
+
+For a provider incident also use the mass-revoke procedure in section 5. The switch blocks gateway actions; OAuth refresh/revocation jobs remain separate operations.
+
+### Uncertain sends and resume failures
+
+An external write whose transport timed out or whose result could not be confirmed is never retried automatically. A call left executing for more than 120 seconds also reports `tool_outcome_unknown`. Check the sender's Gmail Sent folder and the platform call ledger before requesting another review. Do not delete the reservation or reset it to executing to force a resend.
+
+The call ledger records correlation IDs, hashes, authorization scope and redacted results. The Inbox holds the sealed email payload. Give neither to application logs. If provider execution succeeded but runtime resume failed, retrying the same decision reuses the stored result and only retries resume. A prolonged resume outage has no durable outbox yet; reconcile a pending or expired Inbox item against the ledger before starting a new action.
+
+Two additive migrations introduce this layer: `20261023133000_tool_gateway_calls_and_kill_switches`, then `20261023134000_tool_gateway_approval_binding`. Apply through the normal reviewed release path. They were tested on a disposable database, not deployed to the persistent local database by this change.
