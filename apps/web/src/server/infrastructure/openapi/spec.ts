@@ -1142,6 +1142,150 @@ export function getOpenApiSpec(): Record<string, unknown> {
           },
         },
       },
+      '/api/v1/workspaces/{workspace_id}/runs/{run_id}/events': {
+        get: {
+          tags: ['Conversations'],
+          summary: 'Stream a run as Server-Sent Events (step 2 of run flow)',
+          description:
+            'Relays the sineva-ai v2 event stream (token, run_started, status, usage, done, error, heartbeat comments). ' +
+            'The first attach starts the run; the relay keeps draining and stores the reply when the browser leaves. ' +
+            'Reconnect with the Last-Event-ID header to resume. Failures after the stream opened arrive as a typed `error` event (for example code upstream_unavailable, status 503), never as silence. ' +
+            'Node runtime, no buffering, no compression.',
+          parameters: [
+            {
+              name: 'workspace_id',
+              in: 'path',
+              required: true,
+              schema: { type: 'string', format: 'uuid' },
+            },
+            {
+              name: 'run_id',
+              in: 'path',
+              required: true,
+              description: 'Run handle returned by POST .../messages (run_<uuid>), not the sineva-ai run id (ADR-0022)',
+              schema: { type: 'string' },
+            },
+            {
+              name: 'Last-Event-ID',
+              in: 'header',
+              required: false,
+              schema: { type: 'string' },
+            },
+          ],
+          responses: {
+            '200': {
+              description: 'text/event-stream',
+              content: { 'text/event-stream': { schema: { type: 'string' } } },
+            },
+            '401': {
+              description: 'Authentication required',
+              content: {
+                'application/json': {
+                  schema: { $ref: '#/components/schemas/StandardEnvelope' },
+                },
+              },
+            },
+            '403': {
+              description: 'Forbidden (viewer role lacks chat.send)',
+              content: {
+                'application/json': {
+                  schema: { $ref: '#/components/schemas/StandardEnvelope' },
+                },
+              },
+            },
+            '404': {
+              description: 'Run not found or not owned by caller (FR-HUB-32); same answer for another workspace',
+              content: {
+                'application/json': {
+                  schema: { $ref: '#/components/schemas/StandardEnvelope' },
+                },
+              },
+            },
+          },
+        },
+      },
+      '/api/v1/workspaces/{workspace_id}/runs/{run_id}/cancel': {
+        post: {
+          tags: ['Conversations'],
+          summary: 'Stop a streaming run (FR-HUB-21)',
+          description:
+            'Asks sineva-ai to cancel. The text streamed so far is kept and the reply is stored with status cancelled. ' +
+            'A run that already finished answers 200 with its final status.',
+          parameters: [
+            {
+              name: 'workspace_id',
+              in: 'path',
+              required: true,
+              schema: { type: 'string', format: 'uuid' },
+            },
+            {
+              name: 'run_id',
+              in: 'path',
+              required: true,
+              description: 'Run handle returned by POST .../messages (run_<uuid>), not the sineva-ai run id (ADR-0022)',
+              schema: { type: 'string' },
+            },
+          ],
+          responses: {
+            '200': {
+              description: 'Stop requested (status cancelling) or the final status of a finished run',
+              content: {
+                'application/json': {
+                  schema: { $ref: '#/components/schemas/StandardEnvelope' },
+                },
+              },
+            },
+            '401': {
+              description: 'Authentication required',
+              content: {
+                'application/json': {
+                  schema: { $ref: '#/components/schemas/StandardEnvelope' },
+                },
+              },
+            },
+            '403': {
+              description: 'Forbidden (viewer role lacks chat.send)',
+              content: {
+                'application/json': {
+                  schema: { $ref: '#/components/schemas/StandardEnvelope' },
+                },
+              },
+            },
+            '404': {
+              description: 'Run not found or not owned by caller (FR-HUB-32)',
+              content: {
+                'application/json': {
+                  schema: { $ref: '#/components/schemas/StandardEnvelope' },
+                },
+              },
+            },
+            '409': {
+              description: 'The run cannot be stopped right now (no upstream run id yet and no live stream on this instance)',
+              content: {
+                'application/json': {
+                  schema: { $ref: '#/components/schemas/StandardEnvelope' },
+                },
+              },
+            },
+            '502': {
+              description: 'sineva-ai answered the cancel with something unexpected',
+              content: {
+                'application/json': {
+                  schema: { $ref: '#/components/schemas/StandardEnvelope' },
+                },
+              },
+            },
+            '503': {
+              description: 'sineva-ai could not be reached for the cancel',
+              content: {
+                'application/json': {
+                  schema: { $ref: '#/components/schemas/StandardEnvelope' },
+                },
+              },
+            },
+          },
+        },
+      },
     },
     components: {
       schemas: {
