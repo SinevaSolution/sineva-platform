@@ -72,6 +72,31 @@ body {
   animation-delay: var(--d, 0ms);
 }
 
+/* A pane that takes over from another (the Inbox detail): a short slide on a
+   phone, where it covers the list, and a plain fade beside the list. */
+@keyframes pane-in {
+  from {
+    opacity: 0;
+    transform: translateX(14px);
+  }
+}
+
+@keyframes pane-fade {
+  from {
+    opacity: 0;
+  }
+}
+
+.anim-pane {
+  animation: pane-fade 160ms var(--ease-out) both;
+}
+
+@media (max-width: 1023.98px) {
+  .anim-pane {
+    animation: pane-in 220ms var(--ease-out) both;
+  }
+}
+
 /* Auth showcase: specialists orbit Sino. The ring spins, each figure
    counter-spins by the same amount so it stays upright. */
 @keyframes spin {
