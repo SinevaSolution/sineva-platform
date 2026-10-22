@@ -10,6 +10,7 @@ import { chatsChanged } from '@/client/store/slices/ui_slice';
 import type { ConversationView } from '@/shared/chat_view';
 import type { ShellSpecialistView } from '@/shared/shell_view';
 import { Composer, type ComposerHandle } from './composer';
+import { SNGlow } from '@/client/components/ui/sn_glow';
 
 /**
  * Composer that starts a new chat: creates the conversation, sends the first
@@ -67,12 +68,17 @@ export function StartChat({
     }
   }
 
-  return <Composer
-      ref={ref}
-      onSubmit={start}
-      placeholder={placeholder}
-      size="lg"
-      specialists={specialists}
-      autoFocus
-    />;
+  return (
+    // The light around the input marks it as the place to start (SNGlow).
+    <SNGlow radius="var(--radius-lg)">
+      <Composer
+        ref={ref}
+        onSubmit={start}
+        placeholder={placeholder}
+        size="lg"
+        specialists={specialists}
+        autoFocus
+      />
+    </SNGlow>
+  );
 }

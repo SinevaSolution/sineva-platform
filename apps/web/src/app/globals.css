@@ -154,3 +154,84 @@ body {
     scroll-behavior: auto !important;
   }
 }
+
+/*
+ * SNGlow: the light around the main "Ask Sino" inputs. A conic gradient turns
+ * through the brand teal, aqua and mint tokens; ::before draws it as a 1px
+ * ring (masked to the border), ::after as a blurred aurora behind the input.
+ * The wrapper is the stacking context, so the aurora stays under the input's
+ * own background. @property lets the angle animate; browsers without it show
+ * a still gradient.
+ */
+@property --sn-glow-angle {
+  syntax: '<angle>';
+  inherits: false;
+  initial-value: 0deg;
+}
+
+@keyframes sn-glow-turn {
+  to {
+    --sn-glow-angle: 360deg;
+  }
+}
+
+.sn-glow {
+  position: relative;
+  isolation: isolate;
+  border-radius: var(--sn-glow-radius);
+}
+
+.sn-glow::before,
+.sn-glow::after {
+  content: '';
+  position: absolute;
+  border-radius: inherit;
+  pointer-events: none;
+  background: conic-gradient(
+    from var(--sn-glow-angle),
+    var(--teal-400),
+    var(--aqua-400),
+    var(--mint-200),
+    var(--teal-600),
+    var(--teal-400)
+  );
+  animation: sn-glow-turn 6s linear infinite;
+  transition: opacity 300ms var(--ease-out);
+}
+
+.sn-glow::before {
+  inset: -1px;
+  z-index: 1;
+  padding: 1px;
+  opacity: 0.55;
+  mask:
+    linear-gradient(black 0 0) content-box,
+    linear-gradient(black 0 0);
+  mask-composite: exclude;
+}
+
+.sn-glow::after {
+  inset: -10px;
+  z-index: -1;
+  filter: blur(22px);
+  opacity: 0.32;
+}
+
+.sn-glow:hover::after {
+  opacity: 0.45;
+}
+
+.sn-glow:focus-within::before {
+  opacity: 0.95;
+}
+
+.sn-glow:focus-within::after {
+  opacity: 0.6;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sn-glow::before,
+  .sn-glow::after {
+    animation: none;
+  }
+}

@@ -7,6 +7,7 @@ import { Tooltip } from '@/client/components/ui/tooltip';
 import { getTranslations } from '@/i18n/server';
 import type { ShellSpecialistView } from '@/shared/shell_view';
 import { HomeRecent } from './home_recent';
+import { SNGlow } from '@/client/components/ui/sn_glow';
 
 // Literal keys so the key-usage check can follow them.
 function greetingKey(hour: number): string {
@@ -81,15 +82,16 @@ export async function HomeView({
           </ul>
         </section>
 
-        <Link
-          href={`${base}/new`}
-          className="anim-rise group mt-6 flex h-14 items-center gap-3 rounded-lg border border-border-strong bg-surface ps-2 pe-4 text-[15px] text-text-tertiary shadow-xs transition-[border-color,box-shadow] duration-200 hover:border-focus hover:shadow-(--shadow-focus-halo)"
-          style={delay(420)}
-        >
-          <SinoFigure pose="wave" size={40} />
-          <span className="flex-1">{t('home.launch')}</span>
-          <ArrowRight aria-hidden="true" className="size-4 transition-transform duration-200 group-hover:translate-x-0.5" />
-        </Link>
+        <SNGlow radius="var(--radius-lg)" className="anim-rise mt-6" style={delay(420)}>
+          <Link
+            href={`${base}/new`}
+            className="group flex h-14 items-center gap-3 rounded-lg border border-border-strong bg-surface ps-2 pe-4 text-[15px] text-text-tertiary shadow-xs transition-[border-color,box-shadow] duration-200 hover:border-focus hover:shadow-(--shadow-focus-halo)"
+          >
+            <SinoFigure pose="wave" size={40} />
+            <span className="flex-1">{t('home.launch')}</span>
+            <ArrowRight aria-hidden="true" className="size-4 transition-transform duration-200 group-hover:translate-x-0.5" />
+          </Link>
+        </SNGlow>
 
         <div className="mt-10 grid gap-8 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]">
           <section aria-labelledby="recent-heading" className="anim-rise" style={delay(480)}>
