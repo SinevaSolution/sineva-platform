@@ -8,7 +8,7 @@
     "packages/*"
   ],
   "engines": {
-    "node": ">=24.0.0"
+    "node": "^24.22.1"
   },
   "packageManager": "npm@11.19.0",
   "scripts": {
@@ -22,7 +22,11 @@
     "format:check": "prettier --check \"**/*.{ts,tsx,md,json}\"",
     "docker:up": "docker compose up -d --build",
     "docker:down": "docker compose down",
-    "docker:reset": "node -e 'if (process.env.CONFIRM_RESET !== \"yes\") { console.error(\"Refusing to reset without CONFIRM_RESET=yes. This destroys all local volumes.\"); process.exit(1); }' && docker compose down -v"
+    "docker:reset": "node -e 'if (process.env.CONFIRM_RESET !== \"yes\") { console.error(\"Refusing to reset without CONFIRM_RESET=yes. This destroys all local volumes.\"); process.exit(1); }' && docker compose down -v",
+    "runtime:check": "node scripts/check_node_runtime.mjs",
+    "preinstall": "node scripts/check_node_runtime.mjs",
+    "predev": "node scripts/check_node_runtime.mjs",
+    "prebuild": "node scripts/check_node_runtime.mjs"
   },
   "devDependencies": {
     "prettier": "^3.5.3",

@@ -11,3 +11,7 @@ docs
 npm-debug.log*
 .DS_Store
 apps/web/src/server/infrastructure/database/generated
+
+# Browser evidence is kept as CI artifacts, not shipped in the application.
+apps/web/test-results
+apps/web/playwright-report

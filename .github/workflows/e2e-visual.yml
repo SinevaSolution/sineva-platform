@@ -1,0 +1,61 @@
+name: Component browser checks
+
+on:
+  pull_request:
+    branches: [main, develop]
+    types: [opened, synchronize, reopened, labeled, unlabeled]
+
+permissions:
+  contents: read
+
+jobs:
+  e2e-visual:
+    runs-on: ubuntu-latest
+    container:
+      image: mcr.microsoft.com/playwright:v1.64.1-noble
+    env:
+      ENABLE_DEV_UI: '1'
+      VISUAL_UPDATE: ${{ contains(github.event.pull_request.labels.*.name, 'visual-update') && '1' || '0' }}
+      PLAYWRIGHT_BASE_URL: http://127.0.0.1:3001
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: '.nvmrc'
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - name: Select baseline mode
+        shell: bash
+        run: |
+          if find apps/web/e2e/__screenshots__ -name '*.png' -print -quit 2>/dev/null | grep -q .; then
+            echo 'VISUAL_COMPARE=1' >> "$GITHUB_ENV"
+          else
+            echo 'VISUAL_COMPARE=0' >> "$GITHUB_ENV"
+            echo '::warning::No approved baselines yet. Screenshots are review artifacts; WP-M0-41 visual acceptance remains open.'
+          fi
+          if [ "$VISUAL_UPDATE" = '1' ]; then
+            echo 'Baseline update requested by the visual-update PR label.' >> "$GITHUB_STEP_SUMMARY"
+          fi
+      - name: Start CI production server
+        shell: bash
+        run: |
+          node node_modules/next/dist/bin/next start apps/web --hostname 127.0.0.1 --port 3001 > /tmp/sineva-visual-server.log 2>&1 &
+          for attempt in {1..30}; do
+            if curl --fail --silent http://127.0.0.1:3001/dev/ui > /dev/null; then exit 0; fi
+            sleep 2
+          done
+          cat /tmp/sineva-visual-server.log
+          exit 1
+      - run: npm --workspace=@sineva/web run test:e2e
+      - name: Upload browser evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: component-browser-evidence
+          path: |
+            apps/web/playwright-report/
+            apps/web/test-results/
+            apps/web/e2e/__screenshots__/
+            /tmp/sineva-visual-server.log
+          if-no-files-found: warn
