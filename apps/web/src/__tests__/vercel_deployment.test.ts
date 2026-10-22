@@ -78,6 +78,13 @@ describe('Vercel project configuration (ADR-0047)', () => {
       });
     });
 
+    it('has the Connections job tick every minute', () => {
+      expect(vercel.crons).toContainEqual({
+        path: '/api/internal/v1/jobs/tick',
+        schedule: '* * * * *',
+      });
+    });
+
     it('every cron path is a route that exports GET (Vercel Cron only issues GET)', () => {
       for (const { path } of vercel.crons ?? []) {
         const file = `src/app${path}/route.ts`;
@@ -120,6 +127,51 @@ describe('Vercel project configuration (ADR-0047)', () => {
     it('patterns avoid bracket segments, which Vercel reads as a glob character class', () => {
       for (const [pattern] of entries) expect(pattern).not.toMatch(/[[\]]/);
     });
+  });
+});
+
+describe('deployment docs stay in step with the configuration', () => {
+  const envSource = read('apps/web/src/server/infrastructure/config/env.ts');
+  const names = [
+    ...new Set([...envSource.matchAll(/raw\.([A-Z][A-Z0-9_]+)/g)].map((match) => match[1]!)),
+    ...[...envSource.matchAll(/optional\(raw, '([A-Z][A-Z0-9_]+)'\)/g)].map((match) => match[1]!),
+    'DIRECT_DATABASE_URL',
+    'PREVIEW_DATABASE_URL',
+  ];
+  const vercelDoc = read('docs/deployment/vercel.md');
+  const envDoc = read('docs/deployment/environment_variables.md');
+
+  it('finds the variables the config reads', () => {
+    expect(names.length).toBeGreaterThan(30);
+    expect(names).toContain('CRON_SECRET');
+    expect(names).toContain('VAULT_LOCAL_KEK');
+  });
+
+  it('every variable is in the Vercel guide and in the environment variable reference', () => {
+    // NODE_ENV is set by Next, not by the operator.
+    const operatorNames = names.filter((name) => name !== 'NODE_ENV');
+    expect(operatorNames.filter((name) => !vercelDoc.includes(name))).toEqual([]);
+    expect(operatorNames.filter((name) => !envDoc.includes(name))).toEqual([]);
+  });
+
+  it('the guide, the ADR and the other indexes link to each other', () => {
+    expect(read('docs/README.md')).toContain('deployment/vercel.md');
+    expect(read('docs/deployment/README.md')).toContain('vercel.md');
+    expect(read('AGENTS.md')).toContain('docs/deployment/vercel.md');
+    expect(read('docs/decisions/README.md')).toContain('0047-hosting-on-vercel.md');
+    expect(vercelDoc).toContain('0047-hosting-on-vercel.md');
+  });
+
+  it('the guide names every cron path of vercel.json', () => {
+    for (const { path } of vercel.crons ?? []) expect(vercelDoc).toContain(path);
+  });
+
+  it('the destructive-change marker file name in the docs matches the script', () => {
+    const lib = read('apps/web/scripts/vercel_build_lib.mjs');
+    const marker = /APPROVAL_MARKER = '([^']+)'/.exec(lib)?.[1];
+    expect(marker).toBe('APPROVED_DESTRUCTIVE.md');
+    expect(vercelDoc).toContain(marker);
+    expect(read('docs/engineering/database_migrations_workflow.md')).toContain(marker);
   });
 });
 

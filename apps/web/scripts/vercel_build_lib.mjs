@@ -111,6 +111,33 @@ export function decideMigration(env) {
   return { action: 'skip', reason: 'not_production_or_preview' };
 }
 
+/**
+ * Settings the app reads with a silent fallback. The code falls back to
+ * http://localhost:3000 when NEXT_PUBLIC_APP_URL is missing, which would send
+ * emails and OAuth redirects to localhost, so a production build refuses it.
+ * The other two only degrade a feature and are reported as warnings.
+ */
+export function checkProductionEnv(env) {
+  const errors = [];
+  const warnings = [];
+  if (env.VERCEL !== '1' || env.VERCEL_ENV !== 'production') return { errors, warnings };
+
+  const appUrl = usable(env, 'NEXT_PUBLIC_APP_URL');
+  if (!appUrl) {
+    errors.push('Production build: set NEXT_PUBLIC_APP_URL to the public https URL (for example https://sineva.id). Without it links in emails and OAuth redirects point at localhost.');
+  } else if (!appUrl.startsWith('https://')) {
+    errors.push('Production build: NEXT_PUBLIC_APP_URL must be an https URL.');
+  }
+  const cron = usable(env, 'CRON_SECRET');
+  if (!cron || cron.length < 16) {
+    warnings.push('CRON_SECRET is not set (or shorter than 16 characters): the scheduled jobs (Inbox expiry, job tick) will answer 401 and never run.');
+  }
+  if (!usable(env, 'EMAIL_SERVER_HOST')) {
+    warnings.push('EMAIL_SERVER_HOST is not set: the app uses a sender that sends nothing, so verification and invitation emails are not delivered.');
+  }
+  return { errors, warnings };
+}
+
 /** Reads `prisma migrate status` output. Anything unexpected throws: the gate fails closed. */
 export function parseMigrationStatus(output) {
   if (/(have|has) failed|failed to apply/i.test(output)) {

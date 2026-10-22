@@ -6,6 +6,7 @@
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import {
+  checkProductionEnv,
   decideMigration,
   gatePendingMigrations,
   parseMigrationStatus,
@@ -33,6 +34,10 @@ function prisma(args, url) {
   const output = redact(`${result.stdout ?? ''}\n${result.stderr ?? ''}`, [url]);
   return { status: result.status, output };
 }
+
+const envCheck = checkProductionEnv(process.env);
+for (const warning of envCheck.warnings) console.warn(`[vercel-build] WARNING: ${warning}`);
+if (envCheck.errors.length > 0) fail(envCheck.errors.join('\n'));
 
 const decision = decideMigration(process.env);
 

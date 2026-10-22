@@ -5,6 +5,7 @@ import { join, resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import {
   APPROVAL_MARKER,
+  checkProductionEnv,
   decideMigration,
   findDestructive,
   gatePendingMigrations,
@@ -123,6 +124,32 @@ describe('decideMigration', () => {
   });
 });
 
+describe('checkProductionEnv', () => {
+  it('does nothing outside a Vercel production build', () => {
+    expect(checkProductionEnv({})).toEqual({ errors: [], warnings: [] });
+    expect(checkProductionEnv({ ...preview })).toEqual({ errors: [], warnings: [] });
+  });
+
+  it('fails a production build without an https NEXT_PUBLIC_APP_URL: the code would fall back to localhost', () => {
+    expect(checkProductionEnv({ ...prod }).errors.join(' ')).toMatch(/NEXT_PUBLIC_APP_URL/);
+    expect(checkProductionEnv({ ...prod, NEXT_PUBLIC_APP_URL: 'http://sineva.id' }).errors.join(' ')).toMatch(/https/);
+    expect(checkProductionEnv({ ...prod, NEXT_PUBLIC_APP_URL: 'https://sineva.id' }).errors).toEqual([]);
+  });
+
+  it('warns about a missing CRON_SECRET (jobs would answer 401) and a missing SMTP host (no email is sent)', () => {
+    const warnings = checkProductionEnv({ ...prod, NEXT_PUBLIC_APP_URL: 'https://sineva.id' }).warnings.join(' ');
+    expect(warnings).toMatch(/CRON_SECRET/);
+    expect(warnings).toMatch(/EMAIL_SERVER_HOST/);
+    const quiet = checkProductionEnv({
+      ...prod,
+      NEXT_PUBLIC_APP_URL: 'https://sineva.id',
+      CRON_SECRET: 'c'.repeat(24),
+      EMAIL_SERVER_HOST: 'smtp.example-mail.net',
+    });
+    expect(quiet.warnings).toEqual([]);
+  });
+});
+
 describe('parseMigrationStatus', () => {
   const header = 'Prisma schema loaded from prisma/schema.prisma\n\n3 migrations found in prisma/migrations\n\n';
 
@@ -235,13 +262,14 @@ describe('redact', () => {
 describe('scripts/vercel_build.mjs', () => {
   function run(env: Record<string, string>) {
     return spawnSync('node', [SCRIPT], {
-      env: { PATH: process.env.PATH ?? '', HOME: process.env.HOME ?? '', VERCEL_BUILD_DRY_RUN: '1', ...env },
+      // A minimal environment: nothing from the developer's shell can leak in.
+      env: { PATH: process.env.PATH ?? '', HOME: process.env.HOME ?? '', VERCEL_BUILD_DRY_RUN: '1', ...env } as unknown as NodeJS.ProcessEnv,
       encoding: 'utf8',
     });
   }
 
   it('is a dry run that migrates nothing and prints the plan for production', () => {
-    const result = run({ ...prod, DIRECT_DATABASE_URL: DIRECT });
+    const result = run({ ...prod, DIRECT_DATABASE_URL: DIRECT, NEXT_PUBLIC_APP_URL: 'https://sineva.id' });
     expect(result.status).toBe(0);
     expect(result.stdout).toMatch(/migrate deploy/);
     expect(result.stdout).toMatch(/DIRECT_DATABASE_URL/);
@@ -255,6 +283,13 @@ describe('scripts/vercel_build.mjs', () => {
     expect(result.stdout).not.toMatch(/migrate deploy/);
   });
 
+  it('fails a production build without NEXT_PUBLIC_APP_URL before touching the database', () => {
+    const result = run({ ...prod, DIRECT_DATABASE_URL: DIRECT });
+    expect(result.status).not.toBe(0);
+    expect(`${result.stdout}${result.stderr}`).toMatch(/NEXT_PUBLIC_APP_URL/);
+    expect(`${result.stdout}${result.stderr}`).not.toMatch(/migrate deploy/);
+  });
+
   it('skips locally', () => {
     const result = run({});
     expect(result.status).toBe(0);
@@ -262,7 +297,7 @@ describe('scripts/vercel_build.mjs', () => {
   });
 
   it('fails the build for production without a direct database URL, without printing credentials', () => {
-    const result = run({ ...prod, DATABASE_URL: POOLED });
+    const result = run({ ...prod, DATABASE_URL: POOLED, NEXT_PUBLIC_APP_URL: 'https://sineva.id' });
     expect(result.status).not.toBe(0);
     expect(`${result.stdout}${result.stderr}`).toMatch(/DIRECT_DATABASE_URL/);
     expect(`${result.stdout}${result.stderr}`).not.toMatch(/Sup3rSecretPw|owner/);
