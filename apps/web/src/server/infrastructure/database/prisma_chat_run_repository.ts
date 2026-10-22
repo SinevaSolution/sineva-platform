@@ -1,5 +1,5 @@
 import 'server-only';
-import type { PrismaClient } from '@/server/infrastructure/database/generated/client';
+import { Prisma, type PrismaClient } from '@/server/infrastructure/database/generated/client';
 import type { ChatRunEntity, ChatRunStatus } from '@/server/domain/entities/chat_run';
 import type {
   ChatRunRepository,
@@ -48,19 +48,27 @@ export class PrismaChatRunRepository implements ChatRunRepository {
   }
 
   async findOrCreate(input: FindOrCreateChatRunInput): Promise<ChatRunEntity> {
-    // Upsert on the unique handle: two simultaneous first attaches end up
-    // with the same row instead of one of them failing on the constraint.
-    const row = await this.prisma.chatRun.upsert({
-      where: { run_handle: input.run_handle },
-      create: {
-        workspace_id: input.workspace_id,
-        conversation_id: input.conversation_id,
-        user_message_id: input.user_message_id,
-        run_handle: input.run_handle,
-        agent_slug: input.agent_slug,
-      },
-      update: {},
-    });
+    // Upsert on the unique handle so two simultaneous first attaches share one
+    // row. Prisma's upsert is a read then an insert here, not one atomic
+    // ON CONFLICT, so the slower caller can still hit P2002 on
+    // `run_handle`; it then reads the row the faster caller created.
+    let row;
+    try {
+      row = await this.prisma.chatRun.upsert({
+        where: { run_handle: input.run_handle },
+        create: {
+          workspace_id: input.workspace_id,
+          conversation_id: input.conversation_id,
+          user_message_id: input.user_message_id,
+          run_handle: input.run_handle,
+          agent_slug: input.agent_slug,
+        },
+        update: {},
+      });
+    } catch (error) {
+      if (!(error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002')) throw error;
+      row = await this.prisma.chatRun.findUniqueOrThrow({ where: { run_handle: input.run_handle } });
+    }
     return mapChatRun(row);
   }
 
