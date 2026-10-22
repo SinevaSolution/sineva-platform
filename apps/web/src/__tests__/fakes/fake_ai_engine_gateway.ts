@@ -5,6 +5,8 @@ import type {
   AiEngineHealthResult,
   CancelRunResult,
   ChatTurnCallOptions,
+  ResumeRunOptions,
+  ResumeRunResult,
   RunEventsResult,
   StreamCallOptions,
 } from '@/server/domain/repositories/ai_engine_gateway';
@@ -33,6 +35,9 @@ export class FakeAiEngineGateway implements AiEngineGateway {
     null;
   /** What `getRunEvents` returns, filtered by `afterSeq` on numeric ids. */
   public runEvents: ParsedSseMessage[] = [];
+  public readonly resumeRequests: ResumeRunOptions[] = [];
+  /** Makes `resumeRun` throw without affecting the other calls (an unreachable sineva-ai). */
+  public resumeFailure: Error | null = null;
   /** Makes `cancelRun` throw without affecting the other calls. */
   public cancelFailure: Error | null = null;
   public healthResult: AiEngineHealthResult = {
@@ -163,6 +168,14 @@ export class FakeAiEngineGateway implements AiEngineGateway {
       status: 'cancelled',
       cancelled_at: new Date().toISOString(),
     };
+  }
+
+  async resumeRun(options: ResumeRunOptions): Promise<ResumeRunResult> {
+    this.resumeRequests.push(options);
+    if (this.resumeFailure) {
+      throw this.resumeFailure;
+    }
+    return { run_id: options.runId, status: 'resumed' };
   }
 
   async dispatchAgentChat(
