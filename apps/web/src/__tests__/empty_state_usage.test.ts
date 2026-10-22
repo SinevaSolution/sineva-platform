@@ -39,6 +39,10 @@ describe('empty states come from the registry', () => {
     ['client/components/onboarding/onboarding_screen.tsx', 'onboarding_tasks'],
     ['client/components/settings/sign_in_methods.tsx', 'sign_in_methods_none'],
     ['client/components/shell/coming_soon.tsx', 'coming_soon'],
+    ['client/components/connections/connections_catalog.tsx', 'connections_none'],
+    ['client/components/connections/connections_catalog.tsx', 'connections_filtered'],
+    ['client/components/connections/connection_detail.tsx', 'connections_activity'],
+    ['client/components/connections/specialist_tools.tsx', 'specialist_tools_none'],
     ['app/not-found.tsx', 'not_found'],
     ['app/w/[workspace_slug]/error.tsx', 'workspace_error'],
   ];

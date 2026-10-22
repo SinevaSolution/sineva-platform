@@ -3,6 +3,8 @@
 import { useRouter } from 'next/navigation';
 import * as React from 'react';
 import type { ComposerHandle } from '@/client/components/chat/composer';
+import { RoomReconnectBanner } from '@/client/components/connections/connections_attention';
+import { SpecialistToolsButton } from '@/client/components/connections/specialist_tools';
 import { StartChat } from '@/client/components/chat/start_chat';
 import { cn } from '@/client/components/ui/cn';
 import { PresetEmptyState } from '@/client/components/ui/empty_state';
@@ -106,15 +108,26 @@ export function NewChatView({
         onPendingChange={(p) => setMood(p ? 'working' : 'idle')}
         placeholder={withSlug ? t('placeholder_specialist', { name }) : t('placeholder_team')}
       />
-      <p className="mt-2 text-center text-[11px] text-text-inverse/60">
-        {withSlug ? t('footer_specialist', { name }) : t('footer_team')}
-      </p>
+      <div className="mt-2 flex items-center justify-center gap-3">
+        <p className="text-center text-[11px] text-text-inverse/60">
+          {withSlug ? t('footer_specialist', { name }) : t('footer_team')}
+        </p>
+        {current ? (
+          <SpecialistToolsButton
+            agentSlug={current.agent_slug}
+            specialistName={current.display_name}
+            workspaceId={workspaceId}
+            workspaceSlug={workspaceSlug}
+          />
+        ) : null}
+      </div>
     </div>
   );
 
   return (
     <RoomStage slug={withSlug} mood={mood} topBar={picker} label={withSlug ? name : t('stage_team')} footer={footer}>
       <div key={withSlug ?? 'team'} className="flex min-h-full flex-col justify-end gap-3 px-4 pb-4 pt-8 sm:px-6">
+        <RoomReconnectBanner agentSlug={withSlug} workspaceSlug={workspaceSlug} />
         <div className="anim-rise flex items-end gap-2">
           <SNSinoFigure pose={specialistPose(withSlug ?? 'sino')} size={36} className="md:hidden" />
           <RoomBubble from="companion">

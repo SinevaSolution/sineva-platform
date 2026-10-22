@@ -88,6 +88,23 @@
       "title": "No other sign-in methods",
       "description": "Google and GitHub are not linked to this account yet."
     },
+    "connections_none": {
+      "title": "No tools connected yet",
+      "description": "Connect one and your specialists can use it with your approval."
+    },
+    "connections_filtered": {
+      "title": "No tools match \"{query}\"",
+      "description": "Try another name or clear the search.",
+      "action": "Clear search"
+    },
+    "connections_activity": {
+      "title": "No activity yet",
+      "description": "When a specialist uses this tool, it shows here."
+    },
+    "specialist_tools_none": {
+      "title": "No tools for {name} yet",
+      "description": "Connect a tool in Connected tools, then choose who can use it."
+    },
     "coming_soon": {
       "title": "Sino is still building {title}",
       "description": "It is on the way. Until then, a chat with Sino is a good place to start.",
@@ -918,6 +935,257 @@
       "never": "Never",
       "sometimes": "Sometimes",
       "often": "Often"
+    }
+  },
+  "connections": {
+    "title": "Connected tools",
+    "hero": "Connect the tools you already use so your specialists can work inside them.",
+    "common": {
+      "close": "Close",
+      "cancel": "Cancel",
+      "retry": "Try again",
+      "loading": "Loading",
+      "saving": "Saving...",
+      "load_error_title": "We could not load this",
+      "view_only": "View only. Ask an admin to make changes."
+    },
+    "catalog": {
+      "search_label": "Search tools",
+      "search_placeholder": "Search tools",
+      "filter_label": "Filter by category",
+      "result_count": "{count, plural, one {# tool} other {# tools}}"
+    },
+    "category": {
+      "all": "All",
+      "calendar": "Calendar",
+      "docs": "Docs",
+      "payments": "Payments",
+      "accounting": "Accounting",
+      "messaging": "Messaging",
+      "marketplace": "Marketplaces"
+    },
+    "section": {
+      "connected": "Connected",
+      "available": "Available",
+      "coming_soon": "Coming soon ({count})"
+    },
+    "status": {
+      "connected": "Connected",
+      "partial": "Partly connected",
+      "needs_reconnect": "Needs reconnecting",
+      "error": "Problem",
+      "connecting": "Connecting",
+      "revoked": "Disconnected",
+      "beta": "Beta",
+      "not_available": "Not available yet",
+      "paused": "Paused"
+    },
+    "card": {
+      "connect": "Connect {app}",
+      "reconnect": "Reconnect {app}",
+      "fix_access": "Fix access",
+      "manage": "Manage",
+      "only_you": "Only you",
+      "shared": "Shared",
+      "ask_admin_connect": "Ask an admin to connect",
+      "ask_admin_reconnect": "Ask an admin to reconnect",
+      "open_label": "{app}, {status}"
+    },
+    "providers": {
+      "generic": "Lets your specialists work inside this tool, with your approval.",
+      "google_calendar": "Lets Sino see your schedule and find free time.",
+      "notion": "Lets Sino read your notes and pages, so answers use what you already wrote.",
+      "xendit": "Lets Sino read your payments and balance. It can never move money.",
+      "midtrans": "Lets Sino read your payments and balance. It can never move money.",
+      "mekari_jurnal": "Lets Sino read your invoices and contacts, so SinoFinance can answer from your books.",
+      "whatsapp_business": "Lets SinoHelp draft replies to your customers from your approved answers."
+    },
+    "access": {
+      "can_read": "Can read",
+      "can_change": "Can make changes (asks you first)",
+      "can_change_short": "Can make changes",
+      "sino_can_read": "Sino can read",
+      "sino_can_change": "Sino can make changes (asks you first)"
+    },
+    "consent": {
+      "title": "Connect {app} to {workspace}",
+      "reconnect_title": "Reconnect {app}",
+      "owner_scope": "Connect for",
+      "scope_workspace": "{workspace}, shared with your team",
+      "scope_personal": "Only me",
+      "scope_workspace_fixed": "Shared with your team in {workspace}.",
+      "scope_personal_fixed": "This is your own connection. Only you can see it.",
+      "allow_changes": "Also let specialists make changes (you approve each one)",
+      "nothing": "Nothing",
+      "technical": "Technical details",
+      "who_gets_access": "Who gets access",
+      "personal_note": "Only you can see and use this connection.",
+      "none_use_it": "No specialist uses this tool yet. You choose who gets access after connecting.",
+      "changes_off_yet": "No one can make changes yet.",
+      "trust_password": "Sineva never sees your password.",
+      "trust_disconnect": "Disconnect any time in Connected tools. We also remove access at {app}.",
+      "cta": "Connect {app}",
+      "reconnect_cta": "Reconnect {app}",
+      "starting": "Connecting...",
+      "error_start": "We could not start the connection. Nothing was changed. Try again.",
+      "error_rate_limited": "Too many tries. Wait a moment and try again.",
+      "error_unavailable": "{app} is not available yet. Nothing was changed."
+    },
+    "handoff": {
+      "title": "Taking you to {app}",
+      "body": "Sign in there and choose Allow. You will come back here afterwards.",
+      "slow": "Still here? Continue to {app} manually.",
+      "continue": "Continue to {app}"
+    },
+    "form": {
+      "title": "Connect {app}",
+      "replace_title": "Replace key for {app}",
+      "intro": "Paste your key here. Sineva tests it first, stores it encrypted and never shows it again. If the test fails, nothing is saved.",
+      "show_key": "Show key",
+      "hide_key": "Hide key",
+      "paste": "Paste",
+      "advice": "Create a key that can only read.",
+      "save": "Test and save",
+      "reminder": "We will remind you in {days} days to replace this key.",
+      "read_only_note": "Sineva only reads payments. It cannot move money, even if this key could.",
+      "production": "Production",
+      "sandbox": "Sandbox",
+      "error_blank": "Enter your key to continue.",
+      "error_rejected": "{app} did not accept this key. Check that you copied all of it.",
+      "error_unreachable": "We could not reach {app}. Your key was not saved. Try again.",
+      "error_duplicate": "This account is already connected. Replace its key instead.",
+      "error_rate_limited": "Too many tries. Wait a moment and try again.",
+      "error_generic": "We could not save this. Nothing was changed. Try again.",
+      "discard_title": "Discard what you typed?",
+      "discard_body": "Your key has not been saved.",
+      "discard_confirm": "Discard",
+      "discard_keep": "Keep editing",
+      "saving": "Testing your key..."
+    },
+    "toast": {
+      "connected": "{app} is connected."
+    },
+    "detail": {
+      "connected_as": "Connected as {account}",
+      "allow_missing": "Allow missing access",
+      "reconnect": "Reconnect {app}",
+      "connect_again": "Connect {app} again",
+      "revoked": "Disconnected on {date}. Sineva no longer has access.",
+      "banner_needs_reconnect": "{app} needs to be reconnected. Specialists cannot use it until you do.",
+      "banner_partial": "{app} is partly connected. Some things will not work yet.",
+      "banner_error": "We could not reach {app} the last time we checked. We will try again.",
+      "health": "Health",
+      "health_working": "Working",
+      "last_checked": "Last checked {time}",
+      "never_checked": "Not checked yet",
+      "test": "Test connection",
+      "testing": "Testing...",
+      "test_ok": "Connection works. Checked just now.",
+      "test_failed": "The test failed. Reconnect {app} to fix it.",
+      "what_sino_can_do": "What Sino can do",
+      "changes_not_allowed": "Not allowed yet",
+      "not_allowed_yet": "Not allowed yet",
+      "allow": "Allow",
+      "details": "Details",
+      "shared_with": "Shared with",
+      "only_you": "Only you",
+      "connected_by": "Connected by",
+      "connected_on": "Connected on",
+      "used_by": "Used by",
+      "settings": "Settings",
+      "replace_key": "Replace key",
+      "disconnect": "Disconnect",
+      "key_due": "Replace the key by"
+    },
+    "matrix": {
+      "title": "Who can use {app}",
+      "specialist": "Specialist",
+      "read_label": "{name} can read {app}",
+      "write_label": "{name} can make changes in {app}",
+      "view_only_tip": "Only owners and admins can change access.",
+      "write_admin_only_tip": "Only owners and admins can allow changes.",
+      "read_only_by_design": "Read only by design",
+      "others": "Other specialists ({count})",
+      "save": "Save access",
+      "discard": "Discard changes",
+      "saved": "Access saved."
+    },
+    "allow": {
+      "title": "Let {name} make changes in {app}?",
+      "body": "{name} will be able to: {items}. It will still ask you before each change.",
+      "body_generic": "{name} will still ask you before each change.",
+      "cta": "Allow changes"
+    },
+    "disconnect": {
+      "title": "Disconnect {app}?",
+      "body": "Sineva will stop using {app} and ask it to remove its access. Access ends for {names}. If that request fails, you can remove Sineva in your {app} settings.",
+      "body_nobody": "Sineva will stop using {app} and ask it to remove its access. Nothing depends on it right now. If that request fails, you can remove Sineva in your {app} settings.",
+      "cta": "Disconnect {app}",
+      "pending": "Disconnecting...",
+      "done": "{app} is disconnected.",
+      "done_not_revoked": "Disconnected. We could not ask {app} to remove access. You can remove Sineva in your {app} settings."
+    },
+    "activity": {
+      "title": "Recent activity",
+      "allowed": "Allowed",
+      "denied": "Denied",
+      "error": "Failed",
+      "more": "Show more",
+      "started": "Started connecting",
+      "created": "Connected",
+      "reconnected": "Reconnected",
+      "fewer_permissions": "Fewer permissions were given",
+      "renewed": "Access renewed",
+      "renew_failed": "Could not renew access",
+      "needs_reconnect": "Needs reconnecting",
+      "access_changed": "Access changed",
+      "key_replaced": "Key replaced",
+      "disconnected": "Disconnected",
+      "generic": "Something changed"
+    },
+    "result": {
+      "this_tool": "this tool",
+      "connected_title": "{app} is connected",
+      "connected_body": "Your specialists can use it now. Any change still asks you first.",
+      "partial_title": "{app} is partly connected",
+      "partial_body": "Some permissions were not given, so some things will not work yet.",
+      "cancelled_title": "You cancelled",
+      "cancelled_body": "Nothing was connected.",
+      "expired_title": "That took too long",
+      "expired_body": "The connection took too long, so we stopped it. Start again.",
+      "provider_title": "{app} could not finish",
+      "provider_body": "{app} could not finish the connection. Try again in a few minutes.",
+      "duplicate_title": "Already connected",
+      "duplicate_body": "This account is already connected as {app}. Reconnect instead?",
+      "different_title": "This is a different account",
+      "different_body": "Connect it as a new tool or cancel.",
+      "back": "Back to Connected tools",
+      "review": "Review access",
+      "allow_missing": "Allow missing access",
+      "keep": "Keep as is",
+      "start_again": "Start again",
+      "try_again": "Try again",
+      "reconnect": "Reconnect {app}",
+      "keep_existing": "Keep existing",
+      "connect_new": "Connect as new tool",
+      "connected_as": "Connected as {account}",
+      "shared_with": "Shared with",
+      "specialists_access": "Specialists with access",
+      "changes_off": "Changes are off. You can allow them for each specialist."
+    },
+    "banner": {
+      "needs_reconnect": "{app} needs to be reconnected. Specialists cannot use it until you do.",
+      "partial": "{app} is partly connected. Some things will not work yet.",
+      "cta": "Reconnect {app}",
+      "more": "and {count} more",
+      "hide": "Hide for today",
+      "region_label": "Connection needs attention"
+    },
+    "tools": {
+      "button": "Tools",
+      "title": "What {name} can use",
+      "not_connected": "{name} could also use",
+      "manage": "Manage connected tools"
     }
   }
 }

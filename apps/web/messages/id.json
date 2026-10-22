@@ -88,6 +88,23 @@
       "title": "Belum ada metode masuk lain",
       "description": "Google dan GitHub belum terhubung ke akun ini."
     },
+    "connections_none": {
+      "title": "Belum ada aplikasi terhubung",
+      "description": "Hubungkan satu, lalu Spesialis kamu bisa memakainya dengan persetujuanmu."
+    },
+    "connections_filtered": {
+      "title": "Tidak ada aplikasi yang cocok dengan \"{query}\"",
+      "description": "Coba nama lain atau hapus pencarian.",
+      "action": "Hapus pencarian"
+    },
+    "connections_activity": {
+      "title": "Belum ada aktivitas",
+      "description": "Saat Spesialis memakai aplikasi ini, aktivitasnya muncul di sini."
+    },
+    "specialist_tools_none": {
+      "title": "Belum ada aplikasi untuk {name}",
+      "description": "Hubungkan aplikasi di Aplikasi terhubung, lalu pilih siapa yang bisa memakainya."
+    },
     "coming_soon": {
       "title": "Sino masih membangun {title}",
       "description": "Fiturnya sedang disiapkan. Sementara itu, ngobrol dengan Sino adalah awal yang baik.",
@@ -918,6 +935,257 @@
       "never": "Tidak pernah",
       "sometimes": "Kadang-kadang",
       "often": "Sering"
+    }
+  },
+  "connections": {
+    "title": "Aplikasi terhubung",
+    "hero": "Hubungkan aplikasi yang sudah kamu pakai supaya Spesialis kamu bisa bekerja di dalamnya.",
+    "common": {
+      "close": "Tutup",
+      "cancel": "Batal",
+      "retry": "Coba lagi",
+      "loading": "Memuat",
+      "saving": "Menyimpan...",
+      "load_error_title": "Kami belum bisa memuat ini",
+      "view_only": "Hanya lihat. Minta admin untuk mengubahnya."
+    },
+    "catalog": {
+      "search_label": "Cari aplikasi",
+      "search_placeholder": "Cari aplikasi",
+      "filter_label": "Saring menurut kategori",
+      "result_count": "{count} aplikasi"
+    },
+    "category": {
+      "all": "Semua",
+      "calendar": "Kalender",
+      "docs": "Dokumen",
+      "payments": "Pembayaran",
+      "accounting": "Akuntansi",
+      "messaging": "Pesan",
+      "marketplace": "Marketplace"
+    },
+    "section": {
+      "connected": "Terhubung",
+      "available": "Tersedia",
+      "coming_soon": "Segera hadir ({count})"
+    },
+    "status": {
+      "connected": "Terhubung",
+      "partial": "Terhubung sebagian",
+      "needs_reconnect": "Perlu dihubungkan ulang",
+      "error": "Ada masalah",
+      "connecting": "Menghubungkan",
+      "revoked": "Terputus",
+      "beta": "Beta",
+      "not_available": "Belum tersedia",
+      "paused": "Dijeda"
+    },
+    "card": {
+      "connect": "Hubungkan {app}",
+      "reconnect": "Hubungkan ulang {app}",
+      "fix_access": "Perbaiki akses",
+      "manage": "Kelola",
+      "only_you": "Hanya kamu",
+      "shared": "Dibagikan",
+      "ask_admin_connect": "Minta admin untuk menghubungkan",
+      "ask_admin_reconnect": "Minta admin untuk menghubungkan ulang",
+      "open_label": "{app}, {status}"
+    },
+    "providers": {
+      "generic": "Membuat Spesialis kamu bisa bekerja di aplikasi ini, dengan persetujuanmu.",
+      "google_calendar": "Membuat Sino bisa melihat jadwalmu dan menemukan waktu kosong.",
+      "notion": "Membuat Sino bisa membaca catatan dan halamanmu, jadi jawabannya memakai apa yang sudah kamu tulis.",
+      "xendit": "Membuat Sino bisa membaca pembayaran dan saldomu. Sino tidak bisa memindahkan uang.",
+      "midtrans": "Membuat Sino bisa membaca pembayaran dan saldomu. Sino tidak bisa memindahkan uang.",
+      "mekari_jurnal": "Membuat Sino bisa membaca faktur dan kontakmu, jadi SinoFinance bisa menjawab dari pembukuanmu.",
+      "whatsapp_business": "Membuat SinoHelp bisa menyusun balasan untuk pelangganmu dari jawaban yang sudah kamu setujui."
+    },
+    "access": {
+      "can_read": "Bisa membaca",
+      "can_change": "Bisa mengubah (selalu bertanya dulu)",
+      "can_change_short": "Bisa mengubah",
+      "sino_can_read": "Sino bisa membaca",
+      "sino_can_change": "Sino bisa mengubah (bertanya dulu)"
+    },
+    "consent": {
+      "title": "Hubungkan {app} ke {workspace}",
+      "reconnect_title": "Hubungkan ulang {app}",
+      "owner_scope": "Hubungkan untuk",
+      "scope_workspace": "{workspace}, dibagikan ke timmu",
+      "scope_personal": "Hanya aku",
+      "scope_workspace_fixed": "Dibagikan ke timmu di {workspace}.",
+      "scope_personal_fixed": "Ini koneksimu sendiri. Hanya kamu yang bisa melihatnya.",
+      "allow_changes": "Izinkan juga Spesialis membuat perubahan (kamu menyetujui tiap perubahan)",
+      "nothing": "Tidak ada",
+      "technical": "Detail teknis",
+      "who_gets_access": "Siapa yang mendapat akses",
+      "personal_note": "Hanya kamu yang bisa melihat dan memakai koneksi ini.",
+      "none_use_it": "Belum ada Spesialis yang memakai aplikasi ini. Kamu memilih siapa yang mendapat akses setelah terhubung.",
+      "changes_off_yet": "Belum ada yang bisa membuat perubahan.",
+      "trust_password": "Sineva tidak pernah melihat kata sandimu.",
+      "trust_disconnect": "Putuskan kapan saja di Aplikasi terhubung. Kami juga mencabut akses di {app}.",
+      "cta": "Hubungkan {app}",
+      "reconnect_cta": "Hubungkan ulang {app}",
+      "starting": "Menghubungkan...",
+      "error_start": "Kami belum bisa memulai koneksi. Tidak ada yang berubah. Coba lagi.",
+      "error_rate_limited": "Terlalu banyak percobaan. Tunggu sebentar lalu coba lagi.",
+      "error_unavailable": "{app} belum tersedia. Tidak ada yang berubah."
+    },
+    "handoff": {
+      "title": "Mengarahkan kamu ke {app}",
+      "body": "Masuk di sana dan pilih Izinkan. Setelah itu kamu kembali ke sini.",
+      "slow": "Masih di sini? Lanjut ke {app} secara manual.",
+      "continue": "Lanjut ke {app}"
+    },
+    "form": {
+      "title": "Hubungkan {app}",
+      "replace_title": "Ganti kunci untuk {app}",
+      "intro": "Tempel kuncimu di sini. Sineva mengujinya dulu, menyimpannya terenkripsi dan tidak menampilkannya lagi. Jika tes gagal, tidak ada yang disimpan.",
+      "show_key": "Tampilkan kunci",
+      "hide_key": "Sembunyikan kunci",
+      "paste": "Tempel",
+      "advice": "Buat kunci yang hanya bisa membaca.",
+      "save": "Tes dan simpan",
+      "reminder": "Kami akan mengingatkanmu dalam {days} hari untuk mengganti kunci ini.",
+      "read_only_note": "Sineva hanya membaca pembayaran. Sineva tidak bisa memindahkan uang, meski kunci ini bisa.",
+      "production": "Produksi",
+      "sandbox": "Sandbox",
+      "error_blank": "Masukkan kuncimu untuk melanjutkan.",
+      "error_rejected": "{app} tidak menerima kunci ini. Pastikan kamu menyalin seluruhnya.",
+      "error_unreachable": "Kami belum bisa menghubungi {app}. Kuncimu belum disimpan. Coba lagi.",
+      "error_duplicate": "Akun ini sudah terhubung. Ganti kuncinya saja.",
+      "error_rate_limited": "Terlalu banyak percobaan. Tunggu sebentar lalu coba lagi.",
+      "error_generic": "Kami belum bisa menyimpan ini. Tidak ada yang berubah. Coba lagi.",
+      "discard_title": "Buang yang sudah kamu ketik?",
+      "discard_body": "Kuncimu belum disimpan.",
+      "discard_confirm": "Buang",
+      "discard_keep": "Lanjut mengedit",
+      "saving": "Menguji kuncimu..."
+    },
+    "toast": {
+      "connected": "{app} sudah terhubung."
+    },
+    "detail": {
+      "connected_as": "Terhubung sebagai {account}",
+      "allow_missing": "Izinkan akses yang kurang",
+      "reconnect": "Hubungkan ulang {app}",
+      "connect_again": "Hubungkan {app} lagi",
+      "revoked": "Terputus pada {date}. Sineva tidak lagi punya akses.",
+      "banner_needs_reconnect": "{app} perlu dihubungkan ulang. Spesialis tidak bisa memakainya sampai kamu menghubungkannya ulang.",
+      "banner_partial": "{app} terhubung sebagian. Beberapa hal belum bisa berjalan.",
+      "banner_error": "Kami belum bisa menjangkau {app} saat terakhir memeriksa. Kami akan mencoba lagi.",
+      "health": "Kesehatan",
+      "health_working": "Berfungsi",
+      "last_checked": "Terakhir diperiksa {time}",
+      "never_checked": "Belum diperiksa",
+      "test": "Tes koneksi",
+      "testing": "Menguji...",
+      "test_ok": "Koneksi berfungsi. Baru saja diperiksa.",
+      "test_failed": "Tes gagal. Hubungkan ulang {app} untuk memperbaikinya.",
+      "what_sino_can_do": "Yang bisa dilakukan Sino",
+      "changes_not_allowed": "Belum diizinkan",
+      "not_allowed_yet": "Belum diizinkan",
+      "allow": "Izinkan",
+      "details": "Detail",
+      "shared_with": "Dibagikan ke",
+      "only_you": "Hanya kamu",
+      "connected_by": "Dihubungkan oleh",
+      "connected_on": "Dihubungkan pada",
+      "used_by": "Dipakai oleh",
+      "settings": "Pengaturan",
+      "replace_key": "Ganti kunci",
+      "disconnect": "Putuskan",
+      "key_due": "Ganti kunci sebelum"
+    },
+    "matrix": {
+      "title": "Siapa yang bisa memakai {app}",
+      "specialist": "Spesialis",
+      "read_label": "{name} bisa membaca {app}",
+      "write_label": "{name} bisa mengubah di {app}",
+      "view_only_tip": "Hanya pemilik dan admin yang bisa mengubah akses.",
+      "write_admin_only_tip": "Hanya pemilik dan admin yang bisa mengizinkan perubahan.",
+      "read_only_by_design": "Hanya baca secara desain",
+      "others": "Spesialis lainnya ({count})",
+      "save": "Simpan akses",
+      "discard": "Buang perubahan",
+      "saved": "Akses tersimpan."
+    },
+    "allow": {
+      "title": "Izinkan {name} membuat perubahan di {app}?",
+      "body": "{name} akan bisa: {items}. {name} tetap bertanya sebelum tiap perubahan.",
+      "body_generic": "{name} tetap bertanya sebelum tiap perubahan.",
+      "cta": "Izinkan perubahan"
+    },
+    "disconnect": {
+      "title": "Putuskan {app}?",
+      "body": "Sineva akan berhenti memakai {app} dan meminta {app} mencabut aksesnya. Akses berakhir untuk {names}. Jika permintaan itu gagal, kamu bisa menghapus Sineva di pengaturan {app}.",
+      "body_nobody": "Sineva akan berhenti memakai {app} dan meminta {app} mencabut aksesnya. Saat ini tidak ada yang bergantung padanya. Jika permintaan itu gagal, kamu bisa menghapus Sineva di pengaturan {app}.",
+      "cta": "Putuskan {app}",
+      "pending": "Memutuskan...",
+      "done": "{app} sudah diputus.",
+      "done_not_revoked": "Sudah diputus. Kami belum bisa meminta {app} mencabut akses. Kamu bisa menghapus Sineva di pengaturan {app}."
+    },
+    "activity": {
+      "title": "Aktivitas terbaru",
+      "allowed": "Diizinkan",
+      "denied": "Ditolak",
+      "error": "Gagal",
+      "more": "Tampilkan lagi",
+      "started": "Mulai menghubungkan",
+      "created": "Terhubung",
+      "reconnected": "Dihubungkan ulang",
+      "fewer_permissions": "Izin yang diberikan lebih sedikit",
+      "renewed": "Akses diperbarui",
+      "renew_failed": "Akses belum bisa diperbarui",
+      "needs_reconnect": "Perlu dihubungkan ulang",
+      "access_changed": "Akses diubah",
+      "key_replaced": "Kunci diganti",
+      "disconnected": "Diputus",
+      "generic": "Ada yang berubah"
+    },
+    "result": {
+      "this_tool": "aplikasi ini",
+      "connected_title": "{app} sudah terhubung",
+      "connected_body": "Spesialis kamu sudah bisa memakainya. Perubahan apa pun tetap meminta persetujuanmu dulu.",
+      "partial_title": "{app} terhubung sebagian",
+      "partial_body": "Sebagian izin tidak diberikan, jadi beberapa hal belum bisa berjalan.",
+      "cancelled_title": "Kamu membatalkan",
+      "cancelled_body": "Tidak ada yang terhubung.",
+      "expired_title": "Terlalu lama",
+      "expired_body": "Koneksi terlalu lama, jadi kami menghentikannya. Mulai lagi.",
+      "provider_title": "{app} belum bisa menyelesaikan",
+      "provider_body": "{app} belum bisa menyelesaikan koneksi. Coba lagi beberapa menit lagi.",
+      "duplicate_title": "Sudah terhubung",
+      "duplicate_body": "Akun ini sudah terhubung sebagai {app}. Hubungkan ulang saja?",
+      "different_title": "Ini akun yang berbeda",
+      "different_body": "Hubungkan sebagai aplikasi baru atau batalkan.",
+      "back": "Kembali ke Aplikasi terhubung",
+      "review": "Tinjau akses",
+      "allow_missing": "Izinkan akses yang kurang",
+      "keep": "Biarkan seperti ini",
+      "start_again": "Mulai lagi",
+      "try_again": "Coba lagi",
+      "reconnect": "Hubungkan ulang {app}",
+      "keep_existing": "Pertahankan yang ada",
+      "connect_new": "Hubungkan sebagai aplikasi baru",
+      "connected_as": "Terhubung sebagai {account}",
+      "shared_with": "Dibagikan ke",
+      "specialists_access": "Spesialis dengan akses",
+      "changes_off": "Perubahan dimatikan. Kamu bisa mengizinkannya untuk tiap Spesialis."
+    },
+    "banner": {
+      "needs_reconnect": "{app} perlu dihubungkan ulang. Spesialis tidak bisa memakainya sampai kamu menghubungkannya ulang.",
+      "partial": "{app} terhubung sebagian. Beberapa hal belum bisa berjalan.",
+      "cta": "Hubungkan ulang {app}",
+      "more": "dan {count} lainnya",
+      "hide": "Sembunyikan untuk hari ini",
+      "region_label": "Koneksi perlu perhatian"
+    },
+    "tools": {
+      "button": "Aplikasi",
+      "title": "Yang bisa dipakai {name}",
+      "not_connected": "{name} juga bisa memakai",
+      "manage": "Kelola aplikasi terhubung"
     }
   }
 }

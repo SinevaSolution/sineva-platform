@@ -20,6 +20,7 @@ export default async function SettingsPage({
   const tMembers = await getTranslations('members');
   const tBusiness = await getTranslations('business_ui');
   const tOnboarding = await getTranslations('onboarding_ui');
+  const tConnections = await getTranslations('connections');
   return (
     <section className="mx-auto w-full max-w-3xl space-y-6 p-5 sm:p-8">
       <h1 className="text-2xl font-semibold">{t(FEATURES.settings.labelKey)}</h1>
@@ -34,6 +35,9 @@ export default async function SettingsPage({
         </SNButton>
         <SNButton asChild variant="secondary" size="sm">
           <Link href={`/w/${workspace_slug}/settings/business`}>{tBusiness('title')}</Link>
+        </SNButton>
+        <SNButton asChild variant="secondary" size="sm">
+          <Link href={`/w/${workspace_slug}/tools`}>{tConnections('title')}</Link>
         </SNButton>
         <SNButton asChild variant="secondary" size="sm">
           <Link href={`/w/${workspace_slug}/onboarding`}>{tOnboarding('resume')}</Link>
