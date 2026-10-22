@@ -34,6 +34,53 @@ export interface CancelRunResult {
   cancelled_at: string;
 }
 
+// Resume of a paused run (ADR-0032). Proposed platform contract, pending
+// sineva-ai; the shapes are pinned by the approval_*.json fixtures.
+export type ResumeApprovalDecision = 'approved' | 'rejected' | 'changes_requested' | 'expired';
+export type ResumeInputDecision = 'answered' | 'dismissed' | 'expired';
+
+export interface ResumeApprovalBody {
+  kind: 'approval';
+  approval_id: string;
+  revision: number;
+  decision: ResumeApprovalDecision;
+  decided_at: string;
+  payload_hash: string;
+  edited: boolean;
+  /** Only with `changes_requested`: what the person asked the specialist to change. */
+  instruction?: string;
+  /** Only with `rejected`. */
+  note?: string;
+  /** `executed` is always false for `draft.review`: approving marks it ready, nothing is sent. */
+  result: { executed: boolean };
+}
+
+export interface ResumeInputBody {
+  kind: 'input_request';
+  input_request_id: string;
+  decision: ResumeInputDecision;
+  decided_at: string;
+  /** Only with `answered`. */
+  answers?: Record<string, unknown>;
+}
+
+export type ResumeRunBody = ResumeApprovalBody | ResumeInputBody;
+
+export interface ResumeRunOptions {
+  runId: string;
+  body: ResumeRunBody;
+  /** Same key for the same decision, so a retry cannot resume twice. */
+  idempotencyKey: string;
+  contextToken: string;
+  requestId?: string;
+  traceparent?: string;
+}
+
+export interface ResumeRunResult {
+  run_id: string;
+  status: string;
+}
+
 // Legacy Contract v1 shapes (retained for backward compatibility during transition)
 export interface AiEngineChatRequest {
   agent_slug: string;
@@ -103,6 +150,8 @@ export interface AiEngineGateway {
     requestId?: string;
     traceparent?: string;
   }): Promise<CancelRunResult>;
+
+  resumeRun(options: ResumeRunOptions): Promise<ResumeRunResult>;
 
   // Health probe
   checkHealth(): Promise<AiEngineHealthResult>;

@@ -295,6 +295,15 @@
       "linked_helper": "Tertaut ke akunmu"
     }
   },
+  "inbox": {
+    "sentence": {
+      "draft_review": "{name} menyiapkan {kind} ini. Belum ada yang dikirim.",
+      "input_request": "{name} butuh jawaban kamu untuk lanjut."
+    },
+    "approve_note": {
+      "draft_review": "Menyetujui akan menandai draf ini siap. Sineva belum mengirimnya."
+    }
+  },
   "shell": {
     "features": {
       "inbox": {

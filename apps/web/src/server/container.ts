@@ -102,6 +102,21 @@ import { PrismaChatRunRepository } from './infrastructure/database/prisma_chat_r
 import { LoggerRunRelayLog } from './infrastructure/logging/log_run_relay_log';
 import { LogRunMetricsRecorder } from './infrastructure/metrics/log_run_metrics_recorder';
 import { RunHub } from './application/chat/run_hub';
+import type { InboxRepository } from './domain/repositories/inbox_repository';
+import type { InboxLog } from './domain/inbox/inbox_log';
+import { PrismaInboxRepository } from './infrastructure/database/prisma_inbox_repository';
+import { LoggerInboxLog } from './infrastructure/logging/log_inbox_log';
+import { CreateInboxItemUseCase } from './application/use-cases/inbox/create_inbox_item_use_case';
+import { IngestRunInboxEventUseCase } from './application/use-cases/inbox/ingest_run_inbox_event_use_case';
+import { ListInboxUseCase } from './application/use-cases/inbox/list_inbox_use_case';
+import { GetInboxItemUseCase } from './application/use-cases/inbox/get_inbox_item_use_case';
+import { GetInboxCountsUseCase } from './application/use-cases/inbox/get_inbox_counts_use_case';
+import { MarkInboxItemReadUseCase } from './application/use-cases/inbox/mark_inbox_item_read_use_case';
+import { DecideApprovalUseCase } from './application/use-cases/inbox/decide_approval_use_case';
+import { RequestApprovalChangesUseCase } from './application/use-cases/inbox/request_approval_changes_use_case';
+import { AnswerInputRequestUseCase } from './application/use-cases/inbox/answer_input_request_use_case';
+import { DismissInboxItemUseCase } from './application/use-cases/inbox/dismiss_inbox_item_use_case';
+import { ExpireInboxItemsUseCase } from './application/use-cases/inbox/expire_inbox_items_use_case';
 import { StreamRunUseCase } from './application/use-cases/chat/stream_run_use_case';
 import { CancelRunUseCase } from './application/use-cases/chat/cancel_run_use_case';
 import { RenameConversationUseCase } from './application/use-cases/chat/rename_conversation_use_case';
@@ -473,6 +488,7 @@ export const getStreamRunUseCase = memoize(
       gateway: getAiEngineGateway(),
       contextSigner: getContextSigner(),
       hub: getRunHub(),
+      inbox: getCreateInboxItemUseCase(),
       // The platform is the authority on cards: every card frame is validated
       // here before it is stored or forwarded (FR-AX-09, ADR-0025).
       guard: new CardFrameGuard(getCardValidator(), new LoggerCardRejectionLog()),
@@ -764,3 +780,45 @@ export const getAcceptOwnershipTransferUseCase = memoize(
       clock: systemClock,
     }),
 );
+// Inbox, approvals and input requests (ADR-0032).
+export const getInboxRepository = memoize<InboxRepository>(
+  () => new PrismaInboxRepository(getPrismaClient()),
+);
+const getInboxLog = memoize<InboxLog>(() => new LoggerInboxLog());
+const getInboxDecisionDeps = memoize(() => ({
+  inbox: getInboxRepository(),
+  audit: getAuditLogger(),
+  transactions: getTransactionRunner(),
+  gateway: getAiEngineGateway(),
+  contextSigner: getContextSigner(),
+  log: getInboxLog(),
+}));
+export const getCreateInboxItemUseCase = memoize(
+  () =>
+    new CreateInboxItemUseCase({
+      inbox: getInboxRepository(),
+      audit: getAuditLogger(),
+      transactions: getTransactionRunner(),
+    }),
+);
+export const getIngestRunInboxEventUseCase = memoize(
+  () =>
+    new IngestRunInboxEventUseCase({
+      chatRuns: getChatRunRepository(),
+      conversations: getConversationRepository(),
+      creator: getCreateInboxItemUseCase(),
+    }),
+);
+export const getListInboxUseCase = memoize(() => new ListInboxUseCase({ inbox: getInboxRepository() }));
+export const getGetInboxItemUseCase = memoize(() => new GetInboxItemUseCase({ inbox: getInboxRepository() }));
+export const getGetInboxCountsUseCase = memoize(() => new GetInboxCountsUseCase({ inbox: getInboxRepository() }));
+export const getMarkInboxItemReadUseCase = memoize(
+  () => new MarkInboxItemReadUseCase({ inbox: getInboxRepository() }),
+);
+export const getDecideApprovalUseCase = memoize(() => new DecideApprovalUseCase(getInboxDecisionDeps()));
+export const getRequestApprovalChangesUseCase = memoize(
+  () => new RequestApprovalChangesUseCase(getInboxDecisionDeps()),
+);
+export const getAnswerInputRequestUseCase = memoize(() => new AnswerInputRequestUseCase(getInboxDecisionDeps()));
+export const getDismissInboxItemUseCase = memoize(() => new DismissInboxItemUseCase(getInboxDecisionDeps()));
+export const getExpireInboxItemsUseCase = memoize(() => new ExpireInboxItemsUseCase(getInboxDecisionDeps()));

@@ -1,0 +1,30 @@
+{
+  "input_request_id": "9a3e5f21-4b6c-4d8e-8f10-2c7b9d0e1a34",
+  "agent_slug": "sinofinance",
+  "question": "Periode bulan mana yang mau direkonsiliasi?",
+  "fields": [
+    {
+      "key": "period",
+      "type": "text",
+      "label": "Periode bulan yang direkonsiliasi",
+      "required": true
+    },
+    {
+      "key": "include_draft_invoices",
+      "type": "boolean",
+      "label": "Sertakan faktur draf",
+      "required": false
+    },
+    {
+      "key": "currency",
+      "type": "choice",
+      "label": "Mata uang",
+      "required": true,
+      "choices": [
+        "IDR",
+        "USD"
+      ]
+    }
+  ],
+  "expires_at": null
+}

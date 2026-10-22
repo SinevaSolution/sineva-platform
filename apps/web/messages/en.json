@@ -295,6 +295,15 @@
       "linked_helper": "Linked to your account"
     }
   },
+  "inbox": {
+    "sentence": {
+      "draft_review": "{name} drafted this {kind}. Nothing is sent.",
+      "input_request": "{name} needs your answer to keep going."
+    },
+    "approve_note": {
+      "draft_review": "Approving marks this draft ready. Sineva does not send it yet."
+    }
+  },
   "shell": {
     "features": {
       "inbox": {

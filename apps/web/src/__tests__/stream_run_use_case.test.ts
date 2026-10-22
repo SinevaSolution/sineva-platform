@@ -21,7 +21,10 @@ import {
 import { InternalAiEngineGateway } from '@/server/infrastructure/gateways/internal_ai_engine_gateway';
 import { parseSseTranscript } from '@/server/application/dtos/chat_v2_dto';
 import { SseParser, type SseFrame, type SseItem } from '@/shared/sse';
+import { CreateInboxItemUseCase } from '@/server/application/use-cases/inbox/create_inbox_item_use_case';
+import { noTransaction } from '@/server/domain/transactions/transaction_runner';
 import { FakeAiEngineGateway } from './fakes/fake_ai_engine_gateway';
+import { InMemoryInboxRepository } from './fakes/in_memory_inbox_repository';
 import {
   InMemoryChatRuns,
   InMemoryConversations,
@@ -148,6 +151,8 @@ async function harness(
     mint: vi.fn(async () => ({ token: 'signed.context.token', claims: {} as never })),
   };
   const audit = new CountingAuditLogger();
+  const inboxRepo = new InMemoryInboxRepository();
+  const inbox = new CreateInboxItemUseCase({ inbox: inboxRepo, audit, transactions: noTransaction });
 
   const stream = new StreamRunUseCase({
     conversations,
@@ -157,6 +162,7 @@ async function harness(
     gateway,
     contextSigner: signer,
     hub,
+    inbox,
     guard: over.guard ?? passThroughFrameGuard,
     metrics: { record: (s) => samples.push(s) },
     log: over.log ?? noopLog,
@@ -175,7 +181,7 @@ async function harness(
     audit,
   });
 
-  return { conversations, messages, cards, chatRuns, gateway, hub, samples, signer, audit, stream, cancel, userMessage };
+  return { conversations, messages, cards, chatRuns, gateway, hub, samples, signer, audit, stream, cancel, userMessage, inbox, inboxRepo };
 }
 
 describe('StreamRunUseCase relay (WP-M0-30, FR-AIR-11, FR-AIR-12, FR-HUB-20)', () => {
@@ -334,6 +340,7 @@ describe('StreamRunUseCase relay (WP-M0-30, FR-AIR-11, FR-AIR-12, FR-HUB-20)', (
         gateway: real,
         contextSigner: h.signer,
         hub: h.hub,
+        inbox: h.inbox,
         guard: passThroughFrameGuard,
         metrics: { record: () => undefined },
         log: noopLog,
@@ -526,6 +533,7 @@ describe('StreamRunUseCase relay (WP-M0-30, FR-AIR-11, FR-AIR-12, FR-HUB-20)', (
         gateway: h.gateway,
         contextSigner: h.signer,
         hub: new RunHub(),
+        inbox: h.inbox,
         guard: passThroughFrameGuard,
         metrics: { record: () => undefined },
         log: noopLog,
@@ -553,6 +561,7 @@ describe('StreamRunUseCase relay (WP-M0-30, FR-AIR-11, FR-AIR-12, FR-HUB-20)', (
         gateway: h.gateway,
         contextSigner: h.signer,
         hub: new RunHub(),
+        inbox: h.inbox,
         guard: passThroughFrameGuard,
         metrics: { record: () => undefined },
         log: noopLog,
@@ -841,5 +850,141 @@ describe('StreamRunUseCase relay (WP-M0-30, FR-AIR-11, FR-AIR-12, FR-HUB-20)', (
       await h.hub.settled(HANDLE);
       expect(h.chatRuns.get(HANDLE).status).toBe('completed');
     });
+  });
+});
+
+describe('Inbox bridge (WP-M1-40, ADR-0032, FR-INBOX-04)', () => {
+  const approvalEvent = JSON.parse(fixture('approval_required_event.json'));
+  const inputEvent = JSON.parse(fixture('approval_input_required_event.json'));
+  const doneFixture = JSON.parse(fixture('chat_turn_result_v2_needs_approval.json'));
+
+  const streamOf = (...events: Array<[string, unknown]>) =>
+    [
+      `id: 1\nevent: run_started\ndata: {"run_id":"${UPSTREAM_RUN}"}\n\n`,
+      ...events.map(
+        ([event, data], i) => `id: ${i + 2}\nevent: ${event}\ndata: ${JSON.stringify(data)}\n\n`,
+      ),
+      `id: ${events.length + 2}\nevent: done\ndata: ${JSON.stringify(doneFixture)}\n\n`,
+    ].join('');
+
+  it('creates one Inbox item for the run owner and forwards platform ids without the draft body', async () => {
+    const h = await harness();
+    h.gateway.streamFactory = async () => bodyOf(streamOf(['approval_required', approvalEvent]));
+
+    const frames = framesOf(await collect(await h.stream.execute(HANDLE, {}, context())));
+
+    expect(h.inboxRepo.items.size).toBe(1);
+    const approval = [...h.inboxRepo.approvals.values()][0]!;
+    const item = [...h.inboxRepo.items.values()][0]!;
+    expect(item).toMatchObject({ recipient_user_id: USER, agent_slug: 'sinosocial', source_id: HANDLE, kind: 'approval' });
+    expect(approval).toMatchObject({ run_id: UPSTREAM_RUN, upstream_approval_id: approvalEvent.approval_id });
+
+    const forwarded = frames.find((f) => f.event === 'approval_required')!;
+    const body = JSON.parse(forwarded.data);
+    expect(body.approval_id).toBe(approval.id);
+    expect(body.approval_id).not.toBe(approvalEvent.approval_id);
+    expect(body).toMatchObject({ inbox_item_id: item.id, action_kind: 'draft.review', guardrail_reason: 'sinosocial_posts_stay_drafts' });
+    expect(body.payload).toBeUndefined();
+    expect(forwarded.data).not.toContain('Promo akhir pekan');
+
+    expect(h.chatRuns.get(HANDLE).status).toBe('needs_approval');
+    expect(h.audit.getEvents().map((e) => e.action)).toContain('approval.requested');
+  });
+
+  it('is idempotent when the same run is attached again after a restart', async () => {
+    const h = await harness();
+    h.gateway.streamFactory = async () => bodyOf(streamOf(['approval_required', approvalEvent]));
+    const first = framesOf(await collect(await h.stream.execute(HANDLE, {}, context())));
+    h.gateway.runEvents = [
+      { id: '2', event: 'approval_required', data: approvalEvent },
+      { id: '3', event: 'done', data: doneFixture },
+    ];
+    const restarted = new StreamRunUseCase({
+      conversations: h.conversations,
+      messages: h.messages,
+      cards: h.cards,
+      chatRuns: h.chatRuns,
+      gateway: h.gateway,
+      contextSigner: h.signer,
+      hub: new RunHub(),
+      inbox: h.inbox,
+      guard: passThroughFrameGuard,
+      metrics: { record: () => undefined },
+      log: noopLog,
+      sleep: async () => undefined,
+      poll_interval_ms: 1,
+      replay_deadline_ms: 50,
+    });
+
+    const replayed = framesOf(await collect(await restarted.execute(HANDLE, { last_event_id: '1' }, context())));
+
+    expect(h.inboxRepo.items.size).toBe(1);
+    const again = replayed.find((f) => f.event === 'approval_required')!;
+    expect(JSON.parse(again.data).approval_id).toBe(JSON.parse(first.find((f) => f.event === 'approval_required')!.data).approval_id);
+  });
+
+  it('turns input_required into a Needs input item', async () => {
+    const h = await harness();
+    h.gateway.streamFactory = async () => bodyOf(streamOf(['input_required', inputEvent]));
+
+    const frames = framesOf(await collect(await h.stream.execute(HANDLE, {}, context())));
+
+    const request = [...h.inboxRepo.inputs.values()][0]!;
+    expect(request).toMatchObject({ upstream_request_id: inputEvent.input_request_id, run_id: UPSTREAM_RUN });
+    const body = JSON.parse(frames.find((f) => f.event === 'input_required')!.data);
+    expect(body).toMatchObject({ input_request_id: request.id, inbox_item_id: request.inbox_item_id });
+  });
+
+  it('drops a frame it cannot turn into an item, logs it, and still finishes the run', async () => {
+    const failed: string[] = [];
+    const h = await harness({ log: { failed: (step) => void failed.push(step) } });
+    h.gateway.streamFactory = async () =>
+      bodyOf(streamOf(['approval_required', { ...approvalEvent, action_kind: 'email.send' }]));
+
+    const frames = framesOf(await collect(await h.stream.execute(HANDLE, {}, context())));
+
+    expect(frames.map((f) => f.event)).not.toContain('approval_required');
+    expect(frames.at(-1)!.event).toBe('done');
+    expect(failed).toContain('inbox_item_failed');
+    expect(h.inboxRepo.items.size).toBe(0);
+  });
+
+  it('links the stored card to the platform approval, not the producer id', async () => {
+    const guard: RunFrameGuard = {
+      transform(frame, scope) {
+        if (frame.event === 'card_completed' && scope) {
+          scope.cards.push({
+            card_id: 'crd_98765',
+            call_id: null,
+            position: scope.cards.length,
+            state: 'needs_review',
+            approval_id: null,
+            outcome: {
+              ok: true,
+              card: {
+                card_type: 'draft_review',
+                schema_version: 1,
+                data: {},
+                actions: [],
+                provider: null,
+                fallback_text: 'Draft',
+                payload_hash: 'h',
+                data_expires_at: null,
+              },
+            },
+          });
+        }
+        return frame;
+      },
+    };
+    const h = await harness({ guard });
+    h.gateway.streamFactory = async () =>
+      bodyOf(streamOf(['card_completed', { card_id: 'crd_98765', final_payload: {} }], ['approval_required', approvalEvent]));
+
+    await collect(await h.stream.execute(HANDLE, {}, context()));
+
+    const approval = [...h.inboxRepo.approvals.values()][0]!;
+    expect(h.cards.rows).toHaveLength(1);
+    expect(h.cards.rows[0]!.approval_id).toBe(approval.id);
   });
 });

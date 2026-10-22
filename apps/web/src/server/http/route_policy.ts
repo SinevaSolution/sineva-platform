@@ -200,6 +200,61 @@ export const MUTATING_ROUTE_POLICY: Record<string, MutatingRoutePolicy> = {
     entitlement: 'none',
     reason: 'The swap exchanges two existing roles and adds no member, so no seat limit applies.',
   },
+  'POST /api/v1/workspaces/{workspace_id}/inbox/{item_id}/read': {
+    effect: 'change',
+    audit: 'none',
+    reason:
+      'Opening an item only sets the caller\'s own read marker; no PRD auditable event covers it and it changes nothing another person can see.',
+    entitlement: 'none',
+  },
+  'POST /api/v1/workspaces/{workspace_id}/inbox/{item_id}/dismiss': {
+    effect: 'change',
+    audit: ['input.dismissed'],
+    entitlement: 'none',
+    reason: 'Decisions on the Inbox cost nothing, so no plan limit applies.',
+  },
+  'POST /api/v1/workspaces/{workspace_id}/inbox/{item_id}/answer': {
+    effect: 'change',
+    audit: ['input.answered'],
+    entitlement: 'none',
+    reason: 'Decisions on the Inbox cost nothing, so no plan limit applies.',
+  },
+  'POST /api/v1/workspaces/{workspace_id}/approvals/{approval_id}/decision': {
+    effect: 'change',
+    audit: ['approval.approved', 'approval.rejected', 'approval.edited'],
+    entitlement: 'none',
+    reason: 'Decisions on the Inbox cost nothing, so no plan limit applies.',
+  },
+  'POST /api/v1/workspaces/{workspace_id}/approvals/{approval_id}/changes': {
+    effect: 'change',
+    audit: ['approval.changes_requested'],
+    entitlement: 'none',
+    reason: 'Decisions on the Inbox cost nothing, so no plan limit applies.',
+  },
+  'POST /internal/v1/approvals': {
+    effect: 'ingest',
+    audit: ['approval.requested'],
+  },
+  'POST /api/internal/v1/approvals': {
+    effect: 'ingest',
+    audit: ['approval.requested'],
+  },
+  'POST /internal/v1/input-requests': {
+    effect: 'ingest',
+    audit: ['input.requested'],
+  },
+  'POST /api/internal/v1/input-requests': {
+    effect: 'ingest',
+    audit: ['input.requested'],
+  },
+  'POST /internal/v1/inbox/expire': {
+    effect: 'ingest',
+    audit: ['approval.expired', 'input.expired'],
+  },
+  'POST /api/internal/v1/inbox/expire': {
+    effect: 'ingest',
+    audit: ['approval.expired', 'input.expired'],
+  },
   'POST /api/v1/storage/presign': {
     effect: 'create',
     audit: 'none',

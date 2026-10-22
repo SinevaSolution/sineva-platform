@@ -57,6 +57,9 @@ model Workspace {
   storage_objects     StorageObject[]
   chat_runs           ChatRun[]
   message_cards       MessageCard[]
+  inbox_items        InboxItem[]
+  approvals          Approval[]
+  input_requests     InputRequest[]
 
   @@map("workspaces")
   @@schema("platform")
@@ -441,6 +444,155 @@ model MessageCard {
   @@index([approval_id])
   @@index([workspace_id, conversation_id])
   @@map("message_cards")
+  @@schema("platform")
+}
+
+// ---------------------------------------------------------------------------
+// Inbox, approvals and input requests (ADR-0032)
+// ---------------------------------------------------------------------------
+
+// One thing waiting on a person, or finished work. `approval` and
+// `input_request` hang off it through their own unique `inbox_item_id`, so the
+// link has a single source of truth. `recipient_user_id` has no foreign key on
+// purpose: an item must outlive a removed member for the audit trail.
+model InboxItem {
+  id                String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  workspace_id      String    @map("workspace_id") @db.Uuid
+  recipient_user_id String?   @map("recipient_user_id") @db.Uuid
+  kind              String    @map("kind") // approval | input_request | result (handoff, system, idea come later)
+  state             String    @default("open") @map("state") // open | resolved | dismissed | expired
+  agent_slug        String?   @map("agent_slug")
+  title             String    @map("title")
+  summary_key       String    @map("summary_key")
+  summary_params    Json      @default("{}") @map("summary_params")
+  source_type       String    @map("source_type") // chat | room | system
+  source_id         String?   @map("source_id")
+  dedupe_key        String?   @map("dedupe_key")
+  expires_at        DateTime? @map("expires_at") @db.Timestamptz(6)
+  resolved_at       DateTime? @map("resolved_at") @db.Timestamptz(6)
+  created_at        DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updated_at        DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  workspace     Workspace       @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
+  reads         InboxItemRead[]
+  approval      Approval?
+  input_request InputRequest?
+
+  @@unique([workspace_id, dedupe_key])
+  @@index([workspace_id, kind, state, created_at])
+  @@index([workspace_id, recipient_user_id, state])
+  @@map("inbox_items")
+  @@schema("platform")
+}
+
+model InboxItemRead {
+  id            String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  inbox_item_id String   @map("inbox_item_id") @db.Uuid
+  user_id       String   @map("user_id") @db.Uuid
+  read_at       DateTime @default(now()) @map("read_at") @db.Timestamptz(6)
+
+  item InboxItem @relation(fields: [inbox_item_id], references: [id], onDelete: Cascade)
+
+  @@unique([inbox_item_id, user_id])
+  @@index([user_id])
+  @@map("inbox_item_reads")
+  @@schema("platform")
+}
+
+// A proposed action with a structured payload. `status` is final once it
+// leaves `pending`. `claimed_*` is an in-flight decision (the row is still
+// pending while sineva-ai is told); `version` is the optimistic guard.
+model Approval {
+  id                   String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  workspace_id         String    @map("workspace_id") @db.Uuid
+  inbox_item_id        String    @unique @map("inbox_item_id") @db.Uuid
+  agent_slug           String    @map("agent_slug")
+  source_type          String    @map("source_type")
+  source_id            String?   @map("source_id")
+  run_id               String?   @map("run_id")
+  upstream_approval_id String    @map("upstream_approval_id")
+  action_type          String    @map("action_type")
+  payload              Json      @map("payload")
+  payload_hash         String    @map("payload_hash")
+  risk_level           String    @map("risk_level") // low | medium | high
+  requirement          String    @map("requirement") // guardrail | policy
+  guardrail_reason     String?   @map("guardrail_reason")
+  status               String    @default("pending") @map("status") // pending | approved | rejected | expired | cancelled
+  revision             Int       @default(1) @map("revision")
+  version              Int       @default(1) @map("version")
+  awaiting_revision    Boolean   @default(false) @map("awaiting_revision")
+  change_request       String?   @map("change_request") @db.Text
+  claimed_by           String?   @map("claimed_by") @db.Uuid
+  claimed_decision     String?   @map("claimed_decision") // approve | reject | changes
+  claimed_at           DateTime? @map("claimed_at") @db.Timestamptz(6)
+  decided_by           String?   @map("decided_by") @db.Uuid
+  decided_at           DateTime? @map("decided_at") @db.Timestamptz(6)
+  decision_note        String?   @map("decision_note") @db.Text
+  resume_delivered_at  DateTime? @map("resume_delivered_at") @db.Timestamptz(6)
+  expires_at           DateTime  @map("expires_at") @db.Timestamptz(6)
+  created_at           DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updated_at           DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  workspace Workspace          @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
+  item      InboxItem          @relation(fields: [inbox_item_id], references: [id], onDelete: Cascade)
+  revisions ApprovalRevision[]
+
+  @@unique([workspace_id, upstream_approval_id])
+  @@index([workspace_id, status, expires_at])
+  @@index([status, expires_at])
+  @@map("approvals")
+  @@schema("platform")
+}
+
+// Immutable: a revision row is never updated, a new draft is a new row.
+model ApprovalRevision {
+  id                 String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  approval_id        String   @map("approval_id") @db.Uuid
+  revision           Int      @map("revision")
+  payload            Json     @map("payload")
+  payload_hash       String   @map("payload_hash")
+  created_by         String   @map("created_by") // specialist | user
+  created_by_user_id String?  @map("created_by_user_id") @db.Uuid
+  note               String?  @map("note") @db.Text
+  created_at         DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  approval Approval @relation(fields: [approval_id], references: [id], onDelete: Cascade)
+
+  @@unique([approval_id, revision])
+  @@map("approval_revisions")
+  @@schema("platform")
+}
+
+// A question a run is blocked on. `answer` is user content: it is stored here
+// and sent to the run, and nowhere else.
+model InputRequest {
+  id                  String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  workspace_id        String    @map("workspace_id") @db.Uuid
+  inbox_item_id       String    @unique @map("inbox_item_id") @db.Uuid
+  agent_slug          String    @map("agent_slug")
+  source_id           String?   @map("source_id")
+  run_id              String?   @map("run_id")
+  upstream_request_id String    @map("upstream_request_id")
+  question            String    @map("question") @db.Text
+  form_schema         Json      @map("form_schema")
+  answer              Json?     @map("answer")
+  status              String    @default("pending") @map("status") // pending | answered | dismissed | expired
+  version             Int       @default(1) @map("version")
+  claimed_by          String?   @map("claimed_by") @db.Uuid
+  claimed_at          DateTime? @map("claimed_at") @db.Timestamptz(6)
+  answered_by         String?   @map("answered_by") @db.Uuid
+  answered_at         DateTime? @map("answered_at") @db.Timestamptz(6)
+  resume_delivered_at DateTime? @map("resume_delivered_at") @db.Timestamptz(6)
+  due_at              DateTime? @map("due_at") @db.Timestamptz(6)
+  created_at          DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updated_at          DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  workspace Workspace @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
+  item      InboxItem @relation(fields: [inbox_item_id], references: [id], onDelete: Cascade)
+
+  @@unique([workspace_id, upstream_request_id])
+  @@index([status, due_at])
+  @@map("input_requests")
   @@schema("platform")
 }
 
