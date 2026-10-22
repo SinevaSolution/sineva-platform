@@ -6,6 +6,7 @@ import type {
   WorkspaceRepository,
 } from '@/server/domain/repositories/workspace_repository';
 import type { WorkspaceEntity, WorkspaceStatus, WorkspaceTier } from '@/server/domain/entities/workspace';
+import { activeClient } from './prisma_transaction_runner';
 
 function mapWorkspace(row: {
   id: string;
@@ -75,8 +76,10 @@ export class PrismaWorkspaceRepository implements WorkspaceRepository {
     }));
   }
 
+  // `create` and `update` read the scoped client so a use case can make the
+  // change and its audit row one transaction (see `activeClient`).
   async create(input: CreateWorkspaceInput): Promise<WorkspaceEntity> {
-    const row = await this.prisma.workspace.create({
+    const row = await activeClient(this.prisma).workspace.create({
       data: {
         workspace_name: input.workspace_name.trim(),
         workspace_slug: input.workspace_slug.toLowerCase().trim(),
@@ -122,7 +125,7 @@ export class PrismaWorkspaceRepository implements WorkspaceRepository {
       data.slug_changed_at = input.slug_changed_at;
     }
 
-    const row = await this.prisma.workspace.update({
+    const row = await activeClient(this.prisma).workspace.update({
       where: { id },
       data,
     });

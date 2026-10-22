@@ -19,6 +19,9 @@ export interface RequestContext {
   actor?: ActorContext;
   fresh_until?: Date | null;
   email_verified?: boolean;
+  /** Client address and user agent, carried so audit rows can record them (truncated on write). */
+  ip?: string;
+  user_agent?: string;
 }
 
 export function createAnonymousRequestContext(requestId: string): RequestContext {

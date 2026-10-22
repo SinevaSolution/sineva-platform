@@ -56,6 +56,7 @@ export const POST = withAuth(
         default_locale: validated.default_locale,
         timezone: validated.timezone,
         logo_url: validated.logo_url,
+        context: requestContext,
       });
 
       return sendSuccessJson(

@@ -14,7 +14,10 @@ async function truncatePlatformTables(): Promise<void> {
       '"platform"."workspace_member_specialists", "platform"."workspace_members", ' +
       '"platform"."workspace_invitations", "platform"."sessions", "platform"."accounts", ' +
       '"platform"."verifications", "platform"."platform_staff", "platform"."auth_login_attempts", ' +
-      '"platform"."workspaces", "platform"."users" CASCADE',
+      '"platform"."workspaces", "platform"."users", ' +
+      // No foreign key links these to the tables above (audit rows outlive
+      // their workspace by design), so CASCADE does not reach them.
+      '"platform"."audit_events", "platform"."signing_keys" CASCADE',
   );
 }
 
