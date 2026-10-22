@@ -6,6 +6,9 @@ import { LoggerJobLog } from './infrastructure/logging/log_job_log';
 import { JobRunner } from './application/jobs/job_runner';
 import { TickJobsUseCase, type JobPlanner } from './application/jobs/tick_jobs_use_case';
 import { CredentialResolver } from './application/connections/credential_resolver';
+import { ConnectorRegistry } from './application/connections/connector_registry';
+import { PROVIDER_MANIFESTS } from './application/connections/manifests';
+import { specialistsDeclaring } from '@/shared/specialists/connection_providers';
 import type { ConnectionRepository } from './domain/repositories/connection_repository';
 import { VaultUnavailableError, type KmsPort, type SecretWriter } from './domain/vault/vault';
 import { PrismaConnectionRepository } from './infrastructure/database/prisma_connection_repository';
@@ -1098,6 +1101,21 @@ export const getRecordChecklistEventUseCase = memoize(
 
 export const getConnectionRepository = memoize<ConnectionRepository>(
   () => new PrismaConnectionRepository(getPrismaClient()),
+);
+
+// The provider catalog: manifests are code, availability is the environment. A
+// provider that signs in with OAuth is available only when both of its app
+// credentials are set; an API-key provider needs none (the key is pasted).
+export const getConnectorRegistry = memoize(
+  () =>
+    new ConnectorRegistry(PROVIDER_MANIFESTS, {
+      credentialsAvailable: (manifest) => {
+        if (!manifest.oauth) return true;
+        const env = getEnvConfig() as unknown as Record<string, string | undefined>;
+        return Boolean(env[manifest.oauth.credential_keys.client_id] && env[manifest.oauth.credential_keys.client_secret]);
+      },
+      specialistsFor: specialistsDeclaring,
+    }),
 );
 
 // Resolved on first use, so a missing key fails the first connection call with a
