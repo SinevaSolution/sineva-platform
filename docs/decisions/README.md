@@ -58,6 +58,8 @@ Items marked "cross-service" are mirrored in `sineva-ai` (`docs/decisions/` ther
 
 | [0032](0032-inbox-items-approvals-and-run-resume.md) | Inbox items, approvals, revisions, input requests; claim then resume then commit decisions (cross-service, proposed upstream contract) | You touch the Inbox, approvals, input requests or run resume |
 
+| [0033](0033-library-collections-access-and-plain-language.md) | Library collections carry 'Who can use this', documents inherit or override, Squad and Workflow scopes reserved, retrieval scope equals access, plain-language statuses and banned technical words | You touch Library access, the Library page or the technical-word copy rule |
+
 ## Suggested reading order
 
 1. 0001, 0004: what the system is and how the app is laid out.
