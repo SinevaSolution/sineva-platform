@@ -1,5 +1,5 @@
 import type { RequestContext } from '@/server/domain/context/request_context';
-import { ForbiddenError } from '@/server/domain/errors/domain_error';
+import { FreshSessionRequiredError } from '@/server/domain/errors/domain_error';
 
 /**
  * Fresh-session mechanism (FR-AUTH-06)
@@ -21,6 +21,6 @@ export function requireFreshSession(
   now: Date = new Date(),
 ): void {
   if (!isSessionFresh(requestContext.fresh_until, now)) {
-    throw new ForbiddenError('A fresh session is required for this action. Please re-authenticate.');
+    throw new FreshSessionRequiredError();
   }
 }

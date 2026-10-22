@@ -34,9 +34,29 @@ export class LinkAccountUseCase {
         throw new ConflictError(
           'Account',
           'This provider account is already linked to another Sineva user.',
+          [
+            {
+              code: 'account_in_use',
+              field: 'provider',
+              detail: 'This provider account is already linked to another Sineva user.',
+            },
+          ],
         );
       }
       return; // Already linked to this user
+    }
+
+    // One account per provider and person: a second Google login would leave
+    // the sign-in methods page unable to say which one a "Disconnect" removes.
+    const own = await this.accountRepo.findByUserId(userId);
+    if (own.some((a) => a.provider_id === profile.provider)) {
+      throw new ConflictError('Account', 'A different account of this provider is already linked.', [
+        {
+          code: 'provider_already_linked',
+          field: 'provider',
+          detail: 'Disconnect the linked account of this provider first.',
+        },
+      ]);
     }
 
     await this.accountRepo.create({

@@ -1,9 +1,19 @@
 import { NextResponse, type NextRequest } from 'next/server';
-import { handleOAuthCallback } from '@/server/container';
+import { describeOAuthFailureTarget, handleOAuthCallback } from '@/server/container';
 import { setSessionCookie } from '@/server/http/auth_cookie_helper';
-import { handleRouteError } from '@/server/http/response_helper';
-import { withAuth } from '@/server/http/with_auth';
+import { extractRequestId, handleRouteError } from '@/server/http/response_helper';
+import { resolveSession, withAuth } from '@/server/http/with_auth';
 import { sanitizeNextRedirect } from '@/proxy';
+
+function clearStateCookie(response: NextResponse): void {
+  response.cookies.set('sineva_oauth_state', '', {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'lax',
+    path: '/',
+    maxAge: 0,
+  });
+}
 
 export const GET = withAuth(
   async (request: NextRequest, { params }: { params?: Promise<{ provider: string }> | { provider: string } }) => {
@@ -16,10 +26,21 @@ export const GET = withAuth(
 
       const searchParams = request.nextUrl.searchParams;
       const errorParam = searchParams.get('error');
+      const stateCookie = request.cookies.get('sineva_oauth_state')?.value;
       if (errorParam) {
-        return NextResponse.redirect(
-          new URL(`/sign-in?error=${encodeURIComponent(errorParam)}`, request.url),
+        // A cancelled link or re-confirm returns to the page that started it.
+        const back = describeOAuthFailureTarget({
+          stateCookie,
+          state: searchParams.get('state'),
+          error: errorParam,
+        });
+        const response = NextResponse.redirect(
+          back
+            ? new URL(sanitizeNextRedirect(back, '/'), request.url)
+            : new URL(`/sign-in?error=${encodeURIComponent(errorParam)}`, request.url),
         );
+        if (back) clearStateCookie(response);
+        return response;
       }
 
       const code = searchParams.get('code');
@@ -31,18 +52,23 @@ export const GET = withAuth(
         );
       }
 
-      const stateCookie = request.cookies.get('sineva_oauth_state')?.value;
       const ipAddress =
         request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
         request.headers.get('x-real-ip') ||
         '127.0.0.1';
       const userAgent = request.headers.get('user-agent') || undefined;
+      // Only link and re-confirm read this; a plain sign-in ignores it.
+      const session = await resolveSession(request);
 
       const { sessionToken, targetPath } = await handleOAuthCallback({
         provider,
         code,
         state,
         stateCookie,
+        session: session
+          ? { userId: session.userId, sessionId: session.sessionId, freshUntil: session.freshUntil }
+          : null,
+        requestId: extractRequestId(request),
         ipAddress,
         userAgent,
       });
@@ -50,17 +76,10 @@ export const GET = withAuth(
       const safeRedirect = sanitizeNextRedirect(targetPath, '/');
       const response = NextResponse.redirect(new URL(safeRedirect, request.url));
 
-      // Set session cookie
-      setSessionCookie(response, sessionToken);
+      // Link keeps the current session; sign-in and re-confirm hand back a token.
+      if (sessionToken) setSessionCookie(response, sessionToken);
 
-      // Clear OAuth state cookie
-      response.cookies.set('sineva_oauth_state', '', {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'lax',
-        path: '/',
-        maxAge: 0,
-      });
+      clearStateCookie(response);
 
       return response;
     } catch (err) {

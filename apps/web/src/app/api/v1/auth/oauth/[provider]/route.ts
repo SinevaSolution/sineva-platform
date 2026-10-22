@@ -1,7 +1,10 @@
 import { NextResponse, type NextRequest } from 'next/server';
-import { initiateOAuthFlow } from '@/server/container';
+import { initiateOAuthFlow, isOAuthProviderConfigured } from '@/server/container';
+import { withOAuthNotice } from '@/server/application/use-cases/auth/oauth_intent_callback_use_case';
+import { sanitizeNextRedirect } from '@/server/domain/auth/safe_redirect';
 import { handleRouteError } from '@/server/http/response_helper';
-import { withAuth } from '@/server/http/with_auth';
+import { resolveSession, withAuth } from '@/server/http/with_auth';
+import { OAUTH_INTENTS, type OAuthIntent } from '@/server/domain/auth/oauth_intent';
 
 export const GET = withAuth(
   async (request: NextRequest, { params }: { params?: Promise<{ provider: string }> | { provider: string } }) => {
@@ -14,13 +17,34 @@ export const GET = withAuth(
 
       const searchParams = request.nextUrl.searchParams;
       const returnTo = searchParams.get('return_to') ?? searchParams.get('next') ?? undefined;
+      const intent = (searchParams.get('intent') ?? 'sign_in') as OAuthIntent;
+      if (!OAUTH_INTENTS.includes(intent)) {
+        return NextResponse.redirect(new URL('/sign-in?error=invalid_intent', request.url));
+      }
 
-      const { authUrl, signedCookieValue } = initiateOAuthFlow(provider, returnTo);
+      let flow: { authUrl: string; signedCookieValue: string };
+      if (intent === 'sign_in') {
+        flow = initiateOAuthFlow(provider, { returnTo });
+      } else {
+        // Link and re-confirm act on a signed-in person: the state is bound to
+        // them, so the callback can refuse a browser that changed hands.
+        const session = await resolveSession(request);
+        const back = sanitizeNextRedirect(returnTo, '/');
+        if (!session) {
+          const signIn = new URL('/sign-in', request.url);
+          signIn.searchParams.set('next', back);
+          return NextResponse.redirect(signIn);
+        }
+        if (!isOAuthProviderConfigured(provider)) {
+          return NextResponse.redirect(new URL(withOAuthNotice(back, 'not_configured'), request.url));
+        }
+        flow = initiateOAuthFlow(provider, { returnTo: back, intent, userId: session.userId });
+      }
 
-      const response = NextResponse.redirect(authUrl);
+      const response = NextResponse.redirect(flow.authUrl);
       const isProduction = process.env.NODE_ENV === 'production';
 
-      response.cookies.set('sineva_oauth_state', signedCookieValue, {
+      response.cookies.set('sineva_oauth_state', flow.signedCookieValue, {
         httpOnly: true,
         secure: isProduction,
         sameSite: 'lax',

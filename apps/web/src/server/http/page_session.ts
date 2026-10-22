@@ -8,6 +8,8 @@ export interface PageSession {
   user_id: string;
   email: string;
   name: string;
+  /** End of the fresh window (FR-AUTH-06); null when there is none. */
+  fresh_until: Date | null;
   memberships: Array<{ workspace_id: string; role: string }>;
 }
 
@@ -29,6 +31,7 @@ export const getPageSession = cache(async (): Promise<PageSession | null> => {
     user_id: resolved.userId,
     email: resolved.email,
     name: resolved.name,
+    fresh_until: resolved.freshUntil ?? null,
     memberships: resolved.memberships.map((m) => ({
       workspace_id: m.workspaceId,
       role: m.role,

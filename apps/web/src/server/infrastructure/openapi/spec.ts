@@ -586,6 +586,8 @@ export function getOpenApiSpec(): Record<string, unknown> {
         get: {
           tags: ['Auth'],
           summary: 'Initiate OAuth 2.0 / OIDC authorization flow with PKCE S256',
+          description:
+            'intent=sign_in (default) signs in or up. intent=link adds the provider to the signed-in person; intent=reauth re-confirms them (marks the session fresh) when they have no password. Both need a session: without one the answer redirects to /sign-in. The state is bound to the signed-in user, so a browser that changed hands cannot finish it. return_to must be a same-origin path; the callback appends oauth=<linked|reauthenticated|mismatch|account_in_use|provider_already_linked|fresh_required|not_configured|cancelled|failed> to it.',
           operationId: 'auth_oauth_initiate',
           parameters: [
             {
@@ -599,6 +601,12 @@ export function getOpenApiSpec(): Record<string, unknown> {
               in: 'query',
               required: false,
               schema: { type: 'string' },
+            },
+            {
+              name: 'intent',
+              in: 'query',
+              required: false,
+              schema: { type: 'string', enum: ['sign_in', 'link', 'reauth'], default: 'sign_in' },
             },
           ],
           responses: {

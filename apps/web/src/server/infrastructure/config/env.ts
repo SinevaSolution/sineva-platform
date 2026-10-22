@@ -33,6 +33,11 @@ export interface AppEnvConfig {
   google_client_secret?: string;
   github_client_id?: string;
   github_client_secret?: string;
+  /**
+   * Browser-test stack only: base URL of a fake identity provider that stands
+   * in for Google and GitHub (authorize, token and profile endpoints).
+   */
+  oauth_test_idp_url?: string;
   entitlements_mode: EntitlementMode;
 }
 
@@ -181,6 +186,15 @@ export function validateEnvConfig(
     );
   }
 
+  // A real provider can never be swapped for another host by one stray
+  // variable: like `enforced` above, production needs a second explicit flag.
+  const oauthTestIdpUrl = raw.OAUTH_TEST_IDP_URL?.trim() || undefined;
+  if (isProduction && oauthTestIdpUrl && raw.OAUTH_TEST_IDP_ALLOW !== 'true') {
+    throw new Error(
+      'Configuration error: OAUTH_TEST_IDP_URL in production requires OAUTH_TEST_IDP_ALLOW=true',
+    );
+  }
+
   return {
     node_env: nodeEnv,
     next_public_app_url:
@@ -217,6 +231,7 @@ export function validateEnvConfig(
     google_client_secret: raw.GOOGLE_CLIENT_SECRET,
     github_client_id: raw.GITHUB_CLIENT_ID,
     github_client_secret: raw.GITHUB_CLIENT_SECRET,
+    oauth_test_idp_url: oauthTestIdpUrl,
     entitlements_mode: entitlementsMode,
   };
 }
