@@ -1,78 +1,49 @@
-/* eslint-disable sineva-design/no-raw-color, sineva/no-hardcoded-strings -- brand artwork: a provider's mark uses that provider's own colors (drawn for a light ground, not following the theme) and letterforms that are not copy */
+/* eslint-disable sineva-design/no-raw-color -- brand artwork: each provider mark uses that provider's official colors on a light ground, not the theme */
 import * as React from 'react';
+import { siFacebook, siGmail, siGooglecalendar, siInstagram, siNotion, siShopee, siTiktok, siWhatsapp, siXendit } from 'simple-icons';
 import { cn } from '@/client/components/ui/cn';
 
-// Simple marks drawn from basic shapes and text, not the providers' official
-// artwork: no third-party logo files live in the repo. The colors approximate
-// each brand (recalling, not verified against brand guidelines), the names are
-// spelled as the providers spell them. Swap a mark for the licensed asset by
-// replacing its entry here; nothing else knows how a mark is drawn.
+// Official brand marks. Most come from Simple Icons (simple-icons, CC0 icon
+// data with each brand's official color); Midtrans publishes its own logos at
+// github.com/veritrans/logo (the logogram is used, inlined below). Shown only
+// to name the tool a person connects, as brand guidelines allow. A provider
+// without an official mark here (Mekari Jurnal, no public brand asset found)
+// falls back to its first letter in the tile.
 
 type MarkProps = { title: string };
+type SimpleIcon = { path: string; hex: string };
 
-function Svg({ children, title }: { children: React.ReactNode; title: string }) {
+function brand(icon: SimpleIcon) {
+  return function BrandMark({ title }: MarkProps) {
+    return (
+      <svg viewBox="0 0 24 24" role="img" aria-label={title || undefined} aria-hidden={title ? undefined : true} className="size-[62%]" focusable="false">
+        <path d={icon.path} fill={`#${icon.hex}`} />
+      </svg>
+    );
+  };
+}
+
+function MidtransMark({ title }: MarkProps) {
   return (
-    <svg viewBox="0 0 24 24" role="img" aria-label={title} className="size-[62%]" focusable="false">
-      {children}
+    <svg viewBox="0 0 55.42 59.793" role="img" aria-label={title || undefined} aria-hidden={title ? undefined : true} className="size-[58%]" focusable="false">
+      <path fill="#9ddcf9" fillRule="evenodd" d="M3.959,48.243A3.958,3.958,0,0,1,0,44.285v-28.8a3.959,3.959,0,1,1,7.917,0v28.8A3.958,3.958,0,0,1,3.959,48.243Z" />
+      <path fill="#00acdb" fillRule="evenodd" d="M51.461,48.243A3.958,3.958,0,0,1,47.5,44.285V15.508a3.959,3.959,0,1,1,7.917,0V44.285A3.959,3.959,0,0,1,51.461,48.243Z" />
+      <path fill="#0256a7" fillRule="evenodd" d="M27.71,59.793a3.96,3.96,0,0,1-3.959-3.959V3.959a3.959,3.959,0,1,1,7.917,0V55.834A3.959,3.959,0,0,1,27.71,59.793Z" />
     </svg>
   );
 }
 
 const MARKS: Partial<Record<string, (props: MarkProps) => React.ReactElement>> = {
-  google_calendar: ({ title }) => (
-    <Svg title={title}>
-      <rect x="3" y="4" width="18" height="17" rx="3" fill="#FFFFFF" stroke="#4285F4" strokeWidth="1.8" />
-      <rect x="3" y="4" width="18" height="5" rx="2" fill="#4285F4" />
-      <text x="12" y="18" textAnchor="middle" fontSize="9" fontWeight="700" fill="#4285F4" fontFamily="sans-serif">
-        31
-      </text>
-    </Svg>
-  ),
-  notion: ({ title }) => (
-    <Svg title={title}>
-      <rect x="3.5" y="3.5" width="17" height="17" rx="3" fill="#FFFFFF" stroke="#111111" strokeWidth="1.8" />
-      <text x="12" y="17" textAnchor="middle" fontSize="12" fontWeight="700" fill="#111111" fontFamily="serif">
-        N
-      </text>
-    </Svg>
-  ),
-  xendit: ({ title }) => (
-    <Svg title={title}>
-      <path d="M5 5l14 14M19 5L5 19" stroke="#1B6CF2" strokeWidth="3.4" strokeLinecap="round" />
-    </Svg>
-  ),
-  midtrans: ({ title }) => (
-    <Svg title={title}>
-      <path
-        d="M4.5 19V6l7.5 8 7.5-8v13"
-        fill="none"
-        stroke="#0A2E5C"
-        strokeWidth="3"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </Svg>
-  ),
-  mekari_jurnal: ({ title }) => (
-    <Svg title={title}>
-      <rect x="3" y="3" width="18" height="18" rx="4.5" fill="#E8590C" />
-      <text x="12" y="17.5" textAnchor="middle" fontSize="13" fontWeight="700" fill="#FFFFFF" fontFamily="sans-serif">
-        J
-      </text>
-    </Svg>
-  ),
-  whatsapp_business: ({ title }) => (
-    <Svg title={title}>
-      <path
-        d="M12 3.2a8.8 8.8 0 0 0-7.6 13.2L3.2 20.8l4.5-1.2A8.8 8.8 0 1 0 12 3.2z"
-        fill="#25D366"
-      />
-      <path
-        d="M9 8.2c.3 2.6 2.6 5.1 5.9 6.4l1.3-1.3-1.9-1-.9.8c-.9-.4-1.9-1.3-2.4-2.3l.8-.9-1-1.9z"
-        fill="#FFFFFF"
-      />
-    </Svg>
-  ),
+  google_calendar: brand(siGooglecalendar),
+  gmail: brand(siGmail),
+  notion: brand(siNotion),
+  xendit: brand(siXendit),
+  midtrans: MidtransMark,
+  whatsapp_business: brand(siWhatsapp),
+  instagram: brand(siInstagram),
+  facebook: brand(siFacebook),
+  shopee: brand(siShopee),
+  tiktok_shop: brand(siTiktok),
 };
 
 const SIZES = {

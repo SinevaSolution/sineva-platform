@@ -20,6 +20,7 @@ import { ProviderLogoTile } from './provider_mark';
 // Literal keys on purpose (see connections_model.ts).
 export const PROVIDER_PURPOSE_KEYS: Record<string, string> = {
   google_calendar: 'providers.google_calendar',
+  gmail: 'providers.gmail',
   notion: 'providers.notion',
   xendit: 'providers.xendit',
   midtrans: 'providers.midtrans',
