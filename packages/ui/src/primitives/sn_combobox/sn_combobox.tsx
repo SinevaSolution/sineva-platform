@@ -134,7 +134,7 @@ export function SNCombobox({
           align="start"
           sideOffset={6}
           collisionPadding={8}
-          className="anim-swap z-(--z-dropdown) w-(--radix-popover-trigger-width) min-w-56 overflow-hidden rounded-md border border-border bg-surface shadow-md [--d:0ms]"
+          className="anim-swap z-(--z-popover) w-(--radix-popover-trigger-width) min-w-56 overflow-hidden rounded-md border border-border bg-surface shadow-md [--d:0ms]"
         >
           <Command label={searchLabel} filter={snComboboxFilter} loop>
             <Command.Input

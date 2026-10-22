@@ -44,7 +44,7 @@ export interface SNDropdownMenuContentProps {
 }
 
 // anim-swap is a global keyframe class (see sn_tooltip).
-const SURFACE = 'z-(--z-dropdown) rounded-md border border-border bg-surface p-1 shadow-md';
+const SURFACE = 'z-(--z-popover) rounded-md border border-border bg-surface p-1 shadow-md';
 
 export const SNDropdownMenuContent = React.forwardRef<HTMLDivElement, SNDropdownMenuContentProps>(
   function SNDropdownMenuContent(
