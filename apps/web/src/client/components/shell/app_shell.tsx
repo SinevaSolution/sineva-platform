@@ -4,6 +4,11 @@ import { Menu } from 'lucide-react';
 import { usePathname } from 'next/navigation';
 import * as React from 'react';
 import { SNDrawer, SNIconButton, snToast } from '@sineva/ui';
+import {
+  ConnectionsAttentionProvider,
+  ShellReconnectBanner,
+} from '@/client/components/connections/connections_attention';
+import { toConnectionsRole } from '@/client/components/connections/connections_model';
 import { ThemeSync } from '@/client/components/theme_sync';
 import { collapsedCookieNeedsSeed } from '@/client/lib/preference_sync_model';
 import { savePreferences } from '@/client/lib/preferences';
@@ -123,9 +128,18 @@ export function AppShell({
           </SNIconButton>
           <span className="truncate text-sm font-semibold">{sidebarProps.workspace.name}</span>
         </div>
-        <main className="flex min-h-0 flex-1 flex-col overflow-hidden bg-surface lg:rounded-md lg:shadow-sm">
-          {children}
-        </main>
+        <ConnectionsAttentionProvider
+          workspaceId={sidebarProps.workspace.id}
+          role={toConnectionsRole(sidebarProps.workspace.role)}
+        >
+          <main className="flex min-h-0 flex-1 flex-col overflow-hidden bg-surface lg:rounded-md lg:shadow-sm">
+            <ShellReconnectBanner
+              role={toConnectionsRole(sidebarProps.workspace.role)}
+              workspaceSlug={sidebarProps.workspace.slug}
+            />
+            {children}
+          </main>
+        </ConnectionsAttentionProvider>
       </div>
     </div>
   );

@@ -1,4 +1,6 @@
 import {
+  Blocks,
+  History,
   Lightbulb,
   ListChecks,
   KeyRound,
@@ -7,6 +9,7 @@ import {
   Package,
   ScrollText,
   Search,
+  SearchX,
   Sparkles,
   Users,
   type LucideIcon,
@@ -130,6 +133,33 @@ export const EMPTY_STATES = {
     size: 'sm',
     title: 'sign_in_methods_none.title',
     description: 'sign_in_methods_none.description',
+  },
+  connections_none: {
+    icon: Blocks,
+    size: 'sm',
+    title: 'connections_none.title',
+    description: 'connections_none.description',
+  },
+  connections_filtered: {
+    icon: SearchX,
+    size: 'md',
+    title: 'connections_filtered.title',
+    description: 'connections_filtered.description',
+    action: 'connections_filtered.action',
+    sample: { query: 'xyz' },
+  },
+  connections_activity: {
+    icon: History,
+    size: 'sm',
+    title: 'connections_activity.title',
+    description: 'connections_activity.description',
+  },
+  specialist_tools_none: {
+    icon: Blocks,
+    size: 'sm',
+    title: 'specialist_tools_none.title',
+    description: 'specialist_tools_none.description',
+    sample: { name: 'SinoFinance' },
   },
   coming_soon: {
     pose: 'thumbs-up',

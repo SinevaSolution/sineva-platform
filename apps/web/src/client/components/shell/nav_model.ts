@@ -131,7 +131,7 @@ export function buildNavSections(workspaceSlug: string): NavSection[] {
     href: `${base}/${FEATURES[id].segment}`,
     icon: FEATURES[id].icon,
     exact: false,
-    soon: id !== 'inbox' && id !== 'library',
+    soon: id !== 'inbox' && id !== 'library' && id !== 'tools',
   });
   return [
     {

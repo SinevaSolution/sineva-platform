@@ -30,8 +30,8 @@ describe('buildSettingsNav', () => {
       expect(ids(role, 'workspace')).toEqual([
         'business',
         'members',
-        'usage',
         'tools',
+        'usage',
         'models',
         'billing',
         'security',
@@ -39,7 +39,9 @@ describe('buildSettingsNav', () => {
     }
     const items = buildSettingsNav('acme', 'owner')[1].items;
     const soon = items.filter((i) => i.soon).map((i) => i.id);
-    expect(soon).toEqual(['usage', 'tools', 'models', 'billing', 'security']);
+    expect(soon).toEqual(['usage', 'models', 'billing', 'security']);
+    // Connected tools is live and lives outside /settings.
+    expect(items.find((i) => i.id === 'tools')?.href).toBe('/w/acme/tools');
     for (const item of items.filter((i) => i.soon)) expect(item.href).toBeNull();
     expect(items.find((i) => i.id === 'business')?.href).toBe('/w/acme/settings/business');
     expect(items.find((i) => i.id === 'members')?.href).toBe('/w/acme/settings/members');
@@ -52,7 +54,7 @@ describe('buildSettingsNav', () => {
 
   it('hides the manager-only planned items from members and viewers, keeping the read-only pages', () => {
     for (const role of ['member', 'viewer']) {
-      expect(ids(role, 'workspace')).toEqual(['business', 'members']);
+      expect(ids(role, 'workspace')).toEqual(['business', 'members', 'tools']);
     }
   });
 });
