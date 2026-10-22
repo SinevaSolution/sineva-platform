@@ -9,22 +9,93 @@ import { ENTITLEMENT_KEYS, type EntitlementKey } from '@/server/domain/entitleme
 // call) means a new route cannot be added without a reviewer seeing this file
 // change, and the test needs no parsing of handler bodies.
 
-export type AuditMapping =
-  | { audit: readonly string[] }
-  | { audit: 'none'; reason: string };
+export type AuditMapping = { audit: readonly string[] } | { audit: 'none'; reason: string };
 
 export type EntitlementMapping =
-  | { entitlement: EntitlementKey }
-  | { entitlement: 'none'; reason: string };
+  { entitlement: EntitlementKey } | { entitlement: 'none'; reason: string };
 
 // `create` and `run` paths must declare an entitlement (FR-BILL-34).
 export type RouteEffect = 'create' | 'run' | 'change' | 'delete' | 'auth' | 'ingest';
 
-export type MutatingRoutePolicy = { effect: RouteEffect } & AuditMapping & Partial<EntitlementMapping>;
+export type MutatingRoutePolicy = { effect: RouteEffect } & AuditMapping &
+  Partial<EntitlementMapping>;
 
 // Key: `METHOD /path` with `{param}` segments, as in the OpenAPI document.
 // A GET appears here only when it changes state (the OAuth callback signs in).
 export const MUTATING_ROUTE_POLICY: Record<string, MutatingRoutePolicy> = {
+  'POST /api/v1/me/first-workspace': {
+    effect: 'create',
+    audit: ['workspace.created', 'onboarding.started'],
+    entitlement: ENTITLEMENT_KEYS.WORKSPACES,
+  },
+  'PATCH /api/v1/workspaces/{workspace_id}/onboarding': {
+    effect: 'change',
+    audit: [
+      'onboarding.started',
+      'onboarding.step_completed',
+      'onboarding.skipped',
+      'onboarding.completed',
+    ],
+  },
+  'POST /api/v1/workspaces/{workspace_id}/onboarding/complete': {
+    effect: 'change',
+    audit: ['profile.updated', 'onboarding.completed'],
+  },
+  'POST /api/v1/workspaces/{workspace_id}/onboarding/first-tasks/{task_id}/dismiss': {
+    effect: 'change',
+    audit: 'none',
+    reason:
+      'Dismissing a personal suggestion changes no shared business data and stores no task content in the audit log.',
+  },
+  'PUT /api/v1/workspaces/{workspace_id}/profile': { effect: 'change', audit: ['profile.updated'] },
+  'POST /api/v1/workspaces/{workspace_id}/profile/versions/{version}/restore': {
+    effect: 'change',
+    audit: ['profile.version_restored'],
+  },
+  'POST /api/v1/workspaces/{workspace_id}/profile/scans': {
+    effect: 'run',
+    audit: ['profile.scan_requested', 'profile.scan_completed', 'profile.scan_failed'],
+    entitlement: 'none',
+    reason:
+      'The rolling workspace scan quota is enforced transactionally by the scan repository; no plan entitlement is defined.',
+  },
+  'DELETE /api/v1/workspaces/{workspace_id}/profile/scans/{scan_id}': {
+    effect: 'delete',
+    audit: 'none',
+    reason:
+      'Discarding an ephemeral scan removes its suggestions and keeps the quota record; no shared profile data changes.',
+  },
+  'POST /api/v1/workspaces/{workspace_id}/profile/offerings': {
+    effect: 'create',
+    audit: ['profile.updated'],
+    entitlement: 'none',
+    reason:
+      'Business profile entries have fixed validation caps and do not consume a plan resource.',
+  },
+  'PATCH /api/v1/workspaces/{workspace_id}/profile/offerings/{offering_id}': {
+    effect: 'change',
+    audit: ['profile.updated'],
+  },
+  'DELETE /api/v1/workspaces/{workspace_id}/profile/offerings/{offering_id}': {
+    effect: 'delete',
+    audit: ['profile.updated'],
+  },
+  'POST /api/v1/workspaces/{workspace_id}/profile/policies': {
+    effect: 'create',
+    audit: ['policy.created'],
+    entitlement: 'none',
+    reason:
+      'Business profile entries have fixed validation caps and do not consume a plan resource.',
+  },
+  'PATCH /api/v1/workspaces/{workspace_id}/profile/policies/{policy_id}': {
+    effect: 'change',
+    audit: ['policy.updated'],
+  },
+  'DELETE /api/v1/workspaces/{workspace_id}/profile/policies/{policy_id}': {
+    effect: 'delete',
+    audit: ['profile.updated'],
+  },
+
   'POST /api/v1/auth/sign-up': {
     effect: 'auth',
     audit: ['user.signed_up'],
@@ -108,7 +179,8 @@ export const MUTATING_ROUTE_POLICY: Record<string, MutatingRoutePolicy> = {
     effect: 'create',
     audit: ['conversation.created'],
     entitlement: 'none',
-    reason: 'Conversations are not plan-gated; the entitlement list has no conversation key and usage is metered per reply from M1.',
+    reason:
+      'Conversations are not plan-gated; the entitlement list has no conversation key and usage is metered per reply from M1.',
   },
   'PATCH /api/v1/workspaces/{workspace_id}/conversations/{conversation_id}': {
     effect: 'change',
@@ -145,13 +217,15 @@ export const MUTATING_ROUTE_POLICY: Record<string, MutatingRoutePolicy> = {
     effect: 'change',
     audit: ['member.invited'],
     entitlement: 'none',
-    reason: 'A resend replaces the token of an invitation that already exists and adds no seat; the seat is checked when the invitation is created and when it is accepted.',
+    reason:
+      'A resend replaces the token of an invitation that already exists and adds no seat; the seat is checked when the invitation is created and when it is accepted.',
   },
   'DELETE /api/v1/workspaces/{workspace_id}/invitations/{invitation_id}': {
     effect: 'delete',
     audit: ['invitation.revoked'],
     entitlement: 'none',
-    reason: 'Revoking a pending invitation frees a seat and spends nothing, so no plan limit applies.',
+    reason:
+      'Revoking a pending invitation frees a seat and spends nothing, so no plan limit applies.',
   },
   'POST /api/v1/invitations/{token}/accept': {
     effect: 'create',
@@ -162,13 +236,15 @@ export const MUTATING_ROUTE_POLICY: Record<string, MutatingRoutePolicy> = {
     effect: 'change',
     audit: ['member.role_changed', 'member.specialist_access_changed'],
     entitlement: 'none',
-    reason: 'Changing a role or specialist scope does not add a member, so no seat limit applies; per-specialist plan gating belongs to specialist enablement.',
+    reason:
+      'Changing a role or specialist scope does not add a member, so no seat limit applies; per-specialist plan gating belongs to specialist enablement.',
   },
   'PUT /api/v1/workspaces/{workspace_id}/members/{member_id}/specialists': {
     effect: 'change',
     audit: ['member.specialist_access_changed'],
     entitlement: 'none',
-    reason: 'The allowlist only narrows what a member may use among specialists the workspace already has, so no plan limit applies.',
+    reason:
+      'The allowlist only narrows what a member may use among specialists the workspace already has, so no plan limit applies.',
   },
   'DELETE /api/v1/workspaces/{workspace_id}/members/{member_id}': {
     effect: 'delete',
@@ -186,7 +262,8 @@ export const MUTATING_ROUTE_POLICY: Record<string, MutatingRoutePolicy> = {
     effect: 'change',
     audit: ['workspace.ownership_transfer_requested'],
     entitlement: 'none',
-    reason: 'Requesting a transfer changes nothing until the admin confirms and moves no seat, so no plan limit applies.',
+    reason:
+      'Requesting a transfer changes nothing until the admin confirms and moves no seat, so no plan limit applies.',
   },
   'DELETE /api/v1/workspaces/{workspace_id}/transfer-ownership': {
     effect: 'delete',
@@ -204,7 +281,7 @@ export const MUTATING_ROUTE_POLICY: Record<string, MutatingRoutePolicy> = {
     effect: 'change',
     audit: 'none',
     reason:
-      'Opening an item only sets the caller\'s own read marker; no PRD auditable event covers it and it changes nothing another person can see.',
+      "Opening an item only sets the caller's own read marker; no PRD auditable event covers it and it changes nothing another person can see.",
     entitlement: 'none',
   },
   'POST /api/v1/workspaces/{workspace_id}/inbox/{item_id}/dismiss': {
@@ -337,7 +414,8 @@ export const MUTATING_ROUTE_POLICY: Record<string, MutatingRoutePolicy> = {
   'POST /internal/v1/audit-events': {
     effect: 'ingest',
     audit: 'none',
-    reason: 'This route is the audit writer for sineva-ai: each row carries the event the caller reports.',
+    reason:
+      'This route is the audit writer for sineva-ai: each row carries the event the caller reports.',
   },
   'POST /api/internal/v1/audit-events': {
     effect: 'ingest',
@@ -357,8 +435,13 @@ export function findPolicyViolations(table: Record<string, MutatingRoutePolicy>)
     } else if (policy.audit.length === 0) {
       problems.push(`${key}: lists no audit events`);
     }
-    if ((policy.effect === 'create' || policy.effect === 'run') && policy.entitlement === undefined) {
-      problems.push(`${key}: ${policy.effect} path must declare an entitlement key or a reasoned none`);
+    if (
+      (policy.effect === 'create' || policy.effect === 'run') &&
+      policy.entitlement === undefined
+    ) {
+      problems.push(
+        `${key}: ${policy.effect} path must declare an entitlement key or a reasoned none`,
+      );
     }
   }
   return problems;

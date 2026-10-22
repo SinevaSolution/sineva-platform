@@ -754,6 +754,7 @@ model LibraryIngestEvent {
   @@unique([document_id, event_id])
   @@index([document_id, created_at])
   @@map("library_ingest_events")
+  @@schema("platform")
 }
 
 // Business Profile, onboarding and website scan (ADR-0031)

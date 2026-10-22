@@ -49,7 +49,9 @@ export class UpdateOnboardingUseCase {
     },
   ) {}
 
-  async execute(input: UpdateOnboardingInput): Promise<{ state: OnboardingStateEntity; workspace: WorkspaceEntity }> {
+  async execute(
+    input: UpdateOnboardingInput,
+  ): Promise<{ state: OnboardingStateEntity; workspace: WorkspaceEntity }> {
     const flow = flowForRole(input.role);
     const total = stepCount(flow);
     if (input.step > total) {
@@ -61,7 +63,11 @@ export class UpdateOnboardingUseCase {
       const unskippable = flow === 'owner' ? UNSKIPPABLE_OWNER_STEPS : UNSKIPPABLE_MEMBER_STEPS;
       if (unskippable.includes(input.step)) {
         throw new ValidationError('This step cannot be skipped.', [
-          { code: 'step_not_skippable', field: 'step', detail: 'Language and business name are required.' },
+          {
+            code: 'step_not_skippable',
+            field: 'step',
+            detail: 'Language and business name are required.',
+          },
         ]);
       }
     }
@@ -116,10 +122,15 @@ export class UpdateOnboardingUseCase {
       // Re-saving an earlier step never moves the person backwards.
       const currentStep = Math.max(state.current_step, Math.min(total, input.step + 1));
 
+      const completesWelcome =
+        flow === 'member' && input.step === total && state.status !== 'completed';
       const updated = await states.update(input.workspace_id, input.user_id, {
         answers,
         skipped_steps: [...skipped].sort((a, b) => a - b),
         current_step: currentStep,
+        ...(completesWelcome
+          ? { status: 'completed' as const, completed_at: this.deps.now().toISOString() }
+          : {}),
       });
 
       await audit.log({
@@ -132,6 +143,16 @@ export class UpdateOnboardingUseCase {
         metadata: { step: input.step, flow },
       });
 
+      if (completesWelcome) {
+        await audit.log({
+          action: 'onboarding.completed',
+          context: input.context,
+          workspace_id: input.workspace_id,
+          target_resource_id: input.workspace_id,
+          target_resource_type: 'workspace',
+          metadata: { flow },
+        });
+      }
       return { state: updated, workspace };
     });
   }
@@ -163,7 +184,10 @@ export class UpdateOnboardingUseCase {
       provisional_slug: true,
       context,
     });
-    return { workspace: updated, answers: regenerate ? { ...answers, slug_regenerated: true } : answers };
+    return {
+      workspace: updated,
+      answers: regenerate ? { ...answers, slug_regenerated: true } : answers,
+    };
   }
 
   private async uniqueSlug(name: string, workspace: WorkspaceEntity): Promise<string> {
