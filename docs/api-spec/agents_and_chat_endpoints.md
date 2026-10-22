@@ -245,9 +245,25 @@ Behaviour to know before you touch it:
 - If sineva-ai cannot be started, nothing is stored and the run stays `pending`, so retry attaches to the same handle. A failure after the stream started stores the reply with status `error` and the code in `finish_reason`.
 - Resume: from memory while this process still holds the run (about a minute after it ends), otherwise from `GET /api/v2/runs/{id}/events?after={seq}`.
 - Ownership (conversation owner inside the workspace) is checked before any upstream call. A foreign handle is a 404.
-- `RunFrameGuard` is the hook where the card validator plugs in (WP-M0-32). M0 forwards everything.
+- `RunFrameGuard` is the hook every upstream frame passes before it is stored or forwarded. The container wires `CardFrameGuard` (typed cards, below); `passThroughFrameGuard` remains for tests.
 - Latency (first token, total) is logged per specialist and reply language as `[run-metrics]`, without text.
 - Gotchas: the in-memory buffer is per process (a restart or another instance falls back to the replay endpoint); the replay endpoint of sineva-ai (WP-M0-18) did not exist when this was written, so until it ships an attach ends with `upstream_unavailable`.
+
+### Typed result cards (WP-M0-32, ADR-0025)
+
+The platform is the authority on cards. `CardFrameGuard` (`server/application/chat/card_frame_guard.ts`) validates every card frame against the registry in `packages/card-schemas` before it is stored or forwarded.
+
+| Frame | What the relay does |
+| :--- | :--- |
+| `card_started` | Forwarded only when the type and version are known. Dropped otherwise. |
+| `card_patch` | Dropped. Patches would have to be checked against `x-streamable` paths and nothing consumes them yet. |
+| `card_completed` | Needs `display = {card_type, schema_version, data, actions, provider, fallback_text}`. Valid: forwarded as `{card_id, state, approval_id?, display}` with normalised content. Rejected: rewritten to `{card_id, state: "failed", rejected_code, fallback_text}`; the producer's data never travels on. |
+
+Rules (FR-AX-09): at most 64 KB per card and 40 per message; `https:` only in typed link fields, `mailto:` and `tel:` only in typed contact fields; media only as a `media_ref` UUID; bidi and zero-width characters are stripped from `x-sanitize` fields; action kinds come from a fixed list (never `pay`, `transfer`, `hire`, `refund`, `sign`). A rejection logs `card.rejected` with the code and schema paths only and never blocks the reply.
+
+Cards are saved in `message_cards` with the assistant message (rejected cards keep the code, `data` is `{}`), also when a resume adopts the run. `GET .../conversations/{id}/messages` returns `cards[]` on every message, validated again and upcast on read; a stored card that no longer validates comes back as rejected with its fallback text.
+
+Gotchas: the contract fixture `sse_transcript_with_card.txt` still carries `final_payload` instead of `display` and an unregistered type, so the platform rejects it (`display_missing`); sineva-ai has to emit `display`. The drift test for `packages/card-schemas/schemas/` is skipped until sineva-ai has a byte-identical copy at `tests/contract/fixtures/card_schemas/` (override the path with `SINEVA_AI_CARD_SCHEMAS`).
 
 Browser side: `src/client/lib/event_stream.ts` (`openRunStream`) reads this stream with `fetch`, reconnects with backoff and `Last-Event-ID`, and maps error codes to message keys in `src/client/lib/stream_errors.ts`.
 

@@ -76,7 +76,8 @@ apps/web/
     shared/                wire/view types (agent_view, chat_view)
     __tests__/             unit tests, fakes/, contract/ (+ fixtures/), integration/, stubs/, architecture.test.ts
 packages/shared/           @sineva/shared: response envelope, snake_case helpers, pii/ (identifier detectors and mask)
-packages/ui/               @sineva/ui
+packages/ui/               @sineva/ui (cards/: static card registry and the fallback renderer, path alias @sineva/ui/cards)
+packages/card-schemas/     @sineva/card-schemas: card JSON Schemas, validator, generated types (server only; path alias, ADR-0025)
 packages/i18n/             locale registry, message formatter, copy lint (path alias @sineva/i18n, not a workspace link)
 docs/                      see docs/README.md
 ```

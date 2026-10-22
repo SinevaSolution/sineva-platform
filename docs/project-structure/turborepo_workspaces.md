@@ -25,6 +25,7 @@ The repo is an npm workspaces monorepo (`"workspaces": ["apps/*", "packages/*"]`
 | :--- | :--- | :--- |
 | `@sineva/web` | `apps/web` | The Next.js 16.4 app and BFF: routes, backend layers, client UI, Prisma. See [overview](overview.md). |
 | `@sineva/shared` | `packages/shared` | `ApiResponse<T>` and helpers (`createSuccessResponse`, `createPaginatedResponse`, `createErrorResponse`, `generateRequestId`), the `ErrorDetail`, `ResponseMeta` and `PaginationMeta` types, and the `snake_case` helpers (`toSnakeCase`, `isSnakeCaseKey`, `assertSnakeCaseKeys`). One test file: `response.test.ts`. |
+| `@sineva/card-schemas` | `packages/card-schemas` | Typed result card registry (ADR-0025): JSON Schema 2020-12 files in `schemas/{card_type}/v{n}.json`, an Ajv validator with the FR-AX-09 rules, pure upcasters, generated TypeScript types (`npm run generate`), and the drift test against the sineva-ai copy. Server only: the browser never imports it. Apps consume it through the `@sineva/card-schemas` path alias, like `@sineva/i18n`. |
 | `@sineva/ui` | `packages/ui` | `cn`, `Button`, `Card`, `Badge`, `Container`, `StatusPill`, built with Radix Slot, class-variance-authority and tailwind-merge. No tests of its own. |
 
 Both packages are consumed as TypeScript source: `main`, `types` and `exports` point at `src/index.ts` (`src/index.tsx` for ui). `apps/web/next.config.ts` lists them in `transpilePackages`, so Next compiles them. Their `build` script is `tsc --noEmit`, which only type-checks and produces no `dist`.
