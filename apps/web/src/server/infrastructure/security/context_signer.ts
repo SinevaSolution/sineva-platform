@@ -77,6 +77,10 @@ export class Ed25519ContextSigner implements ContextSigner {
     }
   }
 
+  getPublicKey(): crypto.KeyObject {
+    return crypto.createPublicKey(this.privateKey);
+  }
+
   getKid(): string {
     return this.kid;
   }
@@ -129,6 +133,12 @@ export class Ed25519ContextSigner implements ContextSigner {
       if (profile.job_title !== undefined) claims.job_title = profile.job_title;
       if (profile.department !== undefined) claims.department = profile.department;
       if (profile.about_me !== undefined) claims.about_me = profile.about_me;
+    }
+
+    if (options?.gateway) {
+      claims.allowed_tools = [...options.gateway.allowed_tools];
+      claims.skill_tools = [...options.gateway.skill_tools];
+      claims.trifecta = { ...options.gateway.trifecta };
     }
 
     // Strict sanitization: NEVER include email, phone, or avatar (FR-AUTH-07b)

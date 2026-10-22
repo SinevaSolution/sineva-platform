@@ -68,6 +68,13 @@ export class CreateInboxItemUseCase implements InboxItemCreator {
 
   private async createApproval(input: NewApprovalItem, context: RequestContext): Promise<CreatedInboxItem> {
     const { approval } = input;
+    const gatewayReference = await this.deps.inbox.findApprovalByUpstreamId(input.workspace_id, approval.upstream_approval_id);
+    if (gatewayReference && getActionType(gatewayReference.action_type)?.executes) {
+      const bundle = await this.deps.inbox.findBundle(input.workspace_id, gatewayReference.inbox_item_id);
+      if (!bundle || gatewayReference.agent_slug !== input.agent_slug || gatewayReference.source_id !== input.source.id || gatewayReference.source_type !== input.source.type || bundle.item.recipient_user_id !== input.recipient_user_id) throw new ConflictError('Approval', approval.upstream_approval_id);
+      // A runtime event references a platform-created action; its text cannot replace the sealed payload.
+      return created(bundle, false);
+    }
     const definition = getActionType(approval.action_type);
     if (!definition) throw new InvalidInboxPayloadError('unsupported_action_type', 'action_kind');
     const check = validatePayload(approval.action_type, approval.payload);

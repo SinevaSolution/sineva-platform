@@ -182,6 +182,10 @@ export class ConnectorUnreachableError extends Error {
   }
 }
 
+export class ConnectorResponseTooLargeError extends ConnectorUnreachableError {
+  constructor(readonly limit_bytes: number) { super(null); this.name = 'ConnectorResponseTooLargeError'; }
+}
+
 export class ConnectorUnsupportedError extends Error {
   constructor(operation: string) {
     super(`unsupported_${operation}`);

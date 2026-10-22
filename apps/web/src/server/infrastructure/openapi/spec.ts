@@ -1,4 +1,5 @@
 import 'server-only';
+import { getToolGatewayPaths } from './tool_gateway_paths';
 import { businessProfilePaths } from './business_profile_paths';
 import { membersPaths } from './members_paths';
 import { getInboxPaths } from './inbox_paths';
@@ -113,6 +114,7 @@ export function getOpenApiSpec(): Record<string, unknown> {
       ...membersPaths(),
       ...getInboxPaths(),
       ...getConnectionsPaths(),
+      ...getToolGatewayPaths(),
       ...libraryOpenApiPaths(),
       ...businessProfilePaths(),
       '/api/internal/v1/keys': {
@@ -1843,6 +1845,7 @@ export function getOpenApiSpec(): Record<string, unknown> {
       },
     },
     components: {
+      securitySchemes: { InternalApiKey: { type: 'apiKey', in: 'header', name: 'X-Internal-Api-Key' } },
       schemas: {
         ...LIBRARY_COMPONENT_SCHEMAS,
         StandardEnvelope: {

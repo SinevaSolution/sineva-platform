@@ -76,6 +76,7 @@ model Workspace {
   connection_grants     ConnectionGrant[]
   vault_secrets         VaultSecret[]
   oauth_flows           OAuthFlow[]
+  tool_gateway_calls    ToolGatewayCall[]
 
   @@map("workspaces")
   @@schema("platform")
@@ -209,6 +210,7 @@ model User {
   onboarding_states        OnboardingState[]
   connections_owned        Connection[]          @relation("ConnectionOwner")
   oauth_flows              OAuthFlow[]
+  tool_gateway_calls       ToolGatewayCall[]
 
   @@map("users")
   @@schema("platform")
@@ -552,9 +554,10 @@ model Approval {
   created_at           DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
   updated_at           DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  workspace Workspace          @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
-  item      InboxItem          @relation(fields: [inbox_item_id], references: [id], onDelete: Cascade)
-  revisions ApprovalRevision[]
+  workspace          Workspace          @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
+  item               InboxItem          @relation(fields: [inbox_item_id], references: [id], onDelete: Cascade)
+  revisions          ApprovalRevision[]
+  tool_gateway_calls ToolGatewayCall[]
 
   @@unique([workspace_id, upstream_approval_id])
   @@index([workspace_id, status, expires_at])
@@ -1069,6 +1072,8 @@ model Connection {
   owner     User?             @relation("ConnectionOwner", fields: [owner_user_id], references: [id], onDelete: Cascade)
   grants    ConnectionGrant[]
 
+  tool_gateway_calls ToolGatewayCall[]
+
   @@index([workspace_id, provider_id, status])
   @@index([status, access_expires_at])
   @@index([owner_user_id])
@@ -1156,5 +1161,50 @@ model OAuthFlow {
   @@index([workspace_id, user_id])
   @@index([expires_at])
   @@map("oauth_flows")
+  @@schema("platform")
+}
+
+// Durable reservations never expire: an uncertain external write must not be sent again.
+model ToolGatewayCall {
+  id               String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  workspace_id     String   @db.Uuid
+  user_id          String   @db.Uuid
+  run_id           String   @db.VarChar(64)
+  call_id          String   @db.VarChar(128)
+  idempotency_hash String   @db.VarChar(71)
+  tool_name        String   @default("") @db.VarChar(128)
+  authorization    Json?
+  connection_id    String?  @db.Uuid
+  approval_id      String?  @unique @db.Uuid
+  payload_hash     String   @db.VarChar(71)
+  status           String   @default("executing") @db.VarChar(32)
+  response         Json?
+  created_at       DateTime @default(now()) @db.Timestamptz(6)
+  updated_at       DateTime @default(now()) @updatedAt @db.Timestamptz(6)
+
+  workspace  Workspace   @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
+  user       User        @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  connection Connection? @relation(fields: [connection_id], references: [id], onDelete: SetNull)
+  approval   Approval?   @relation(fields: [approval_id], references: [id], onDelete: SetNull)
+
+  @@unique([workspace_id, user_id, run_id, idempotency_hash])
+  @@unique([workspace_id, user_id, run_id, call_id])
+  @@map("tool_gateway_calls")
+  @@schema("platform")
+}
+
+// Operator toggles are read on every call, without an instance-local cache.
+model KillSwitch {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  scope      String   @db.VarChar(32)
+  target     String   @db.VarChar(128)
+  enabled    Boolean  @default(true)
+  enabled_by String   @db.VarChar(128)
+  enabled_at DateTime @default(now()) @db.Timestamptz(6)
+  created_at DateTime @default(now()) @db.Timestamptz(6)
+  updated_at DateTime @default(now()) @updatedAt @db.Timestamptz(6)
+
+  @@unique([scope, target])
+  @@map("kill_switches")
   @@schema("platform")
 }

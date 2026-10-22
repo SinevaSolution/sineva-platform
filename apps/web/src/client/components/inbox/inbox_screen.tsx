@@ -317,7 +317,8 @@ export function InboxScreen({
     }
 
     // What this screen shows the instant the button is pressed.
-    const guess = applyDecision(item, decision, new Date().toISOString(), currentUserId);
+    const optimistic = !(decision === 'approve' && item.approval?.action_type.startsWith('email.'));
+    const guess = optimistic ? applyDecision(item, decision, new Date().toISOString(), currentUserId) : item;
     const index = listed.findIndex((i) => i.id === id);
     const leaves = view === 'needs_you' && guess.state !== 'open';
     setBusyId(id);
@@ -326,8 +327,8 @@ export function InboxScreen({
     if (leaves) {
       setSettled({ from: id, next: listed[index + 1]?.id ?? listed[index - 1]?.id ?? null });
     }
-    setCounts(countsAfterDecision(before, item, decision));
-    if (decision !== 'changes') emitInboxChanged({ badge_delta: -1 });
+    if (optimistic) setCounts(countsAfterDecision(before, item, decision));
+    if (optimistic && decision !== 'changes') emitInboxChanged({ badge_delta: -1 });
 
     try {
       await apiRequest(path, { method: 'POST', ...(body !== undefined ? { body } : {}) });
@@ -358,7 +359,7 @@ export function InboxScreen({
       });
       setSettled(null);
       setCounts(before);
-      if (decision !== 'changes') emitInboxChanged({ badge_delta: 1 });
+      if (optimistic && decision !== 'changes') emitInboxChanged({ badge_delta: 1 });
       snToast.error(
         errorText(error),
         error instanceof ApiError && error.retryable
@@ -370,7 +371,8 @@ export function InboxScreen({
     }
 
     // The server took it. Its record (with the real name and time) replaces the guess.
-    await fetchDetail(id);
+    const confirmed = await fetchDetail(id);
+    if (!optimistic && view === 'needs_you' && confirmed?.state !== 'open') setSettled({ from: id, next: listed[index + 1]?.id ?? listed[index - 1]?.id ?? null });
     await refreshCounts();
     emitInboxChanged({ refetch: true });
     setBusyId(null);

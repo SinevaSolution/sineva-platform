@@ -61,11 +61,11 @@ describe('draft.review action type (FR-INBOX-06, FR-INBOX-14)', () => {
       executes: false,
       editable_fields: ['title', 'body'],
     });
-    expect(Object.keys(ACTION_TYPES)).toEqual(['draft.review']);
+    expect(Object.keys(ACTION_TYPES)).toEqual(['draft.review', 'email.search', 'email.read', 'email.draft.create', 'email.send']);
   });
 
   it('refuses an unregistered action type', () => {
-    expect(getActionType('email.send')).toBeNull();
+    expect(getActionType('payment.transfer')).toBeNull();
   });
 
   it('builds the what-will-happen sentence from structured fields, never model text', () => {

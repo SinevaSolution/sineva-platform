@@ -1,6 +1,7 @@
 import 'server-only';
 import {
   ConnectorUnreachableError,
+  ConnectorResponseTooLargeError,
   type ConnectorHttpClient,
   type ConnectorHttpRequest,
   type ConnectorHttpResponse,
@@ -65,12 +66,34 @@ export class EgressHttpClient implements ConnectorHttpClient {
   }
 
   private async readCapped(response: Response): Promise<string> {
+    const tooLarge = () => new ConnectorResponseTooLargeError(this.maxBytes);
     const declared = Number(response.headers.get('content-length') ?? '0');
-    if (declared > this.maxBytes) throw new ConnectorUnreachableError(null);
-    const buffer = await response.arrayBuffer().catch(() => {
+    if (declared > this.maxBytes) {
+      if (response.body) await response.body.cancel().catch(() => { throw tooLarge(); });
+      throw tooLarge();
+    }
+    if (!response.body) return '';
+    const reader = response.body.getReader();
+    const chunks: Uint8Array[] = [];
+    let bytes = 0;
+    try {
+      for (;;) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        bytes += value.byteLength;
+        if (bytes > this.maxBytes) {
+          await reader.cancel().catch(() => { throw tooLarge(); });
+          throw tooLarge();
+        }
+        chunks.push(value);
+      }
+    } catch (error) {
+      if (error instanceof ConnectorResponseTooLargeError) throw error;
       throw new ConnectorUnreachableError(null);
-    });
-    if (buffer.byteLength > this.maxBytes) throw new ConnectorUnreachableError(null);
+    } finally { reader.releaseLock(); }
+    const buffer = new Uint8Array(bytes);
+    let offset = 0;
+    for (const chunk of chunks) { buffer.set(chunk, offset); offset += chunk.byteLength; }
     return new TextDecoder().decode(buffer);
   }
 }

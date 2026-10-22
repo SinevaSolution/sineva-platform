@@ -729,3 +729,25 @@ describe('on a phone', () => {
     expect(container.querySelector('[data-pane="list"]')?.getAttribute('data-hidden-mobile')).toBe('false');
   });
 });
+
+describe('executing Gmail approvals', () => {
+  it('waits for server confirmation before showing an email as sent', async () => {
+    const email: InboxItemView = { ...draft, title: 'Send email', approval: approvalOf({ action_type: 'email.send' }), editable_fields: [], payload: { account_label: 'sender@example.com', request: { arguments: { to: ['person@example.com'], subject: 'Hello', body_text: 'Reviewed email' } } } };
+    let finish!: () => void;
+    const gate = new Promise<void>((resolve) => { finish = resolve; });
+    let completed = false;
+    route({
+      '/decision': async () => { await gate; completed = true; return {}; },
+      '/inbox/item-1': () => completed ? { ...email, state: 'resolved', tab: 'done', approval: approvalOf({ action_type: 'email.send', status: 'approved', decided_by: 'me', decided_at: NOW }) } : email,
+      '/inbox/counts': () => counts(),
+    });
+    setup({ list: { items: [email], next_cursor: null }, selectedItem: email });
+    const send = await screen.findByRole('button', { name: 'Send email' });
+    expect(screen.queryByRole('button', { name: 'Ask for changes' })).toBeNull();
+    fireEvent.click(send);
+    expect(screen.queryByText('Email sent')).toBeNull();
+    await act(async () => { finish(); await gate; });
+    expect(await screen.findByText('Email sent')).toBeTruthy();
+    expect(screen.queryByText('The draft is marked ready. Nothing was sent.')).toBeNull();
+  });
+});

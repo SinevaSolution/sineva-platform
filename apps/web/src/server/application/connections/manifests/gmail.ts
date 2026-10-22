@@ -2,11 +2,11 @@ import { z } from 'zod';
 import type { ProviderManifest } from '@/server/domain/connections/connector';
 import { defineAction, loc } from './define';
 
-// Gmail signs in with the same Google Connect client as Google Calendar.
-// gmail.readonly is a Google "restricted" scope: in testing mode it works for
-// the test users listed in the Google Cloud project; public use needs Google
-// app verification and a CASA security assessment (plan WP-M4-19). Recalling,
-// not verified (OQ-CONN-8): confirm scope classes before going public.
+// Gmail shares the Google Connect client with Calendar. Both Gmail scopes below
+// are restricted (checked 2026-10-22 against Google's scope reference):
+// https://developers.google.com/workspace/gmail/api/auth/scopes
+// External testing uses registered test accounts; public use needs verification
+// and a security assessment when restricted data is stored or transmitted by servers.
 const P = 'gmail';
 const READ = 'https://www.googleapis.com/auth/gmail.readonly';
 // gmail.compose covers drafts and sending them; narrower than full mail access.
@@ -117,7 +117,7 @@ export const GMAIL: ProviderManifest = {
       side_effect: 'read',
       scopes: [READ],
       input_schema: z.object({ message_id: z.string().min(1) }).strict(),
-      output_schema: messageSummary.extend({ to: z.array(z.string()), body_text: z.string() }),
+      output_schema: messageSummary.extend({ to: z.array(z.string()), body_text: z.string(), body_source: z.enum(['plain_text', 'snippet']).optional() }),
       sentence: loc('Read one email', 'Baca satu email'),
     }),
     defineAction({

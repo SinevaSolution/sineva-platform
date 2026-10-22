@@ -213,7 +213,7 @@ describe('creating items through the port (FR-INBOX-02, FR-INBOX-06)', () => {
 
   it('refuses an unregistered action type and an invalid payload with 422', async () => {
     const h = harness();
-    await expectCode(h.create.execute(approvalInput({ action_type: 'email.send' }), systemCtx()), 'unsupported_action_type', 422);
+    await expectCode(h.create.execute(approvalInput({ action_type: 'payment.transfer' }), systemCtx()), 'unsupported_action_type', 422);
     await expectCode(h.create.execute(approvalInput({ payload: { draft_kind: 'post' } }), systemCtx()), 'invalid_payload', 422);
     expect(h.inbox.items.size).toBe(0);
   });
@@ -747,5 +747,35 @@ describe('triage views, filters and the link back (ADR-0034)', () => {
     expect((await h.get.execute(room.id, alice)).source.conversation_id).toBeNull();
     const update = (await h.list.execute({ limit: 50, tab: 'updates' }, viewer)).items[0];
     expect((await h.get.execute(update.id, viewer)).source).toEqual({ type: 'chat', id: null, conversation_id: null });
+  });
+});
+
+describe('gateway-backed approval decisions', () => {
+  const payload = { gateway_call_id: UP_APPROVAL, connection_id: 'eeeeeeee-0000-4000-8000-000000000001', request: { tool_name: 'gmail_send_message', arguments: { to: ['person@example.com'], subject: 'Hello', body_text: 'An approved email' }, run_id: HANDLE, call_id: 'send-1', mode: 'live' } };
+  it('executes a gateway action before resuming with executed=true', async () => {
+    const h = harness();
+    const created = await h.create.execute({ ...approvalInput({ action_type: 'email.send', payload }), agent_slug: 'sinosales' }, systemCtx());
+    const executions: string[] = [];
+    const decide = new DecideApprovalUseCase({ ...h.deps, actionExecutor: { execute: async (id) => { executions.push(id); } } });
+    const result = await decide.execute(created.approval!.id, { decision: 'approve', version: 1 }, alice);
+    expect(executions).toEqual([created.approval!.id]);
+    expect(h.gateway.resumeRequests[0].body).toMatchObject({ result: { executed: true } });
+    expect(result.approval?.status).toBe('approved');
+  });
+  it('leaves the item pending and retryable when execution fails', async () => {
+    const h = harness();
+    const created = await h.create.execute({ ...approvalInput({ action_type: 'email.send', payload }), agent_slug: 'sinosales' }, systemCtx());
+    const decide = new DecideApprovalUseCase({ ...h.deps, actionExecutor: { execute: async () => { throw new UpstreamUnavailableError('Gmail'); } } });
+    await expect(decide.execute(created.approval!.id, { decision: 'approve', version: 1 }, alice)).rejects.toBeInstanceOf(UpstreamUnavailableError);
+    expect(h.gateway.resumeRequests).toHaveLength(0);
+    expect((await h.inbox.findApproval(WS, created.approval!.id))?.status).toBe('pending');
+  });
+  it('never executes a rejected action', async () => {
+    const h = harness();
+    const created = await h.create.execute({ ...approvalInput({ action_type: 'email.send', payload }), agent_slug: 'sinosales' }, systemCtx());
+    let count = 0;
+    const decide = new DecideApprovalUseCase({ ...h.deps, actionExecutor: { execute: async () => { count += 1; } } });
+    await decide.execute(created.approval!.id, { decision: 'reject', version: 1 }, alice);
+    expect(count).toBe(0);
   });
 });

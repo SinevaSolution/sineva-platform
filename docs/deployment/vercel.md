@@ -192,7 +192,7 @@ Gmail uses the same `GOOGLE_CONNECT_CLIENT_ID` and `GOOGLE_CONNECT_CLIENT_SECRET
 
 For an external app in Testing, add the accounts that will connect as test users. Google classifies both `gmail.readonly` and `gmail.compose` as restricted scopes. Public use requires restricted-scope verification; storing or transmitting restricted data on servers also requires a security assessment ([Google scope requirements](https://developers.google.com/workspace/gmail/api/auth/scopes)). Publishing the consent screen alone does not complete these requirements.
 
-**Implementation boundary:** the provider registry, OAuth connection lifecycle, access bundles, grants and Connected tools UI are implemented. The four Gmail action definitions cover searching, reading, drafting and sending; sending is marked as an irreversible external write. The Tool Gateway (WP-M2-10) and Gmail action execution are not implemented on this branch, so linking an account does not yet let a specialist read or send email. Do not use account linking as evidence that email execution or its approval flow works.
+**Implementation boundary:** the provider registry, OAuth lifecycle, Connected tools UI, platform Tool Gateway, Gmail executor and session-only approval execution are implemented. The gateway requires explicit signed specialist and skill scopes, and never sends without a human approval. The `sineva-ai` consumer and chat scope admission are still separate work (WP-M2-11): existing chats receive no new tool permissions and cannot use Gmail yet. Account linking alone does not verify the chat integration. See [Tool Gateway contract](../api-spec/tool_gateway_endpoints.md) for the API, runtime correlation IDs, tests and remaining work.
 
 ## 7. Migrations during the build
 
@@ -266,7 +266,7 @@ psql "$ADMIN_DATABASE_URL" -v app_role=sineva_app -v vault_role=sineva_vault -v 
 - [ ] Send a chat message: the reply streams. Reload the tab mid-reply: the stream resumes (served from `sineva-ai` events).
 - [ ] Settings, Cron Jobs in the Vercel project lists both jobs. Use "Run" on each and check the log answers 200 (a 401 means `CRON_SECRET` is missing or differs).
 - [ ] `/dev/ui` answers 404.
-- [ ] Connections: the provider list shows Google Calendar, Gmail and Notion as available when their credentials are configured; connect one. For Gmail, check the connected account, selected access bundle and specialist grants. This checks account linking; email actions still need the Tool Gateway (see section 6.1).
+- [ ] Connections: the provider list shows Google Calendar, Gmail and Notion as available when their credentials are configured; connect one. For Gmail, check the connected account, selected access bundle and specialist grants. This checks account linking; email actions from chat still need the runtime integration (see section 6.1).
 - [ ] Vercel logs show no `Configuration error` lines.
 - [ ] No seeded account exists (section 10).
 

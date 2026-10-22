@@ -14,6 +14,7 @@ related_docs:
   - 'profile_and_preferences_endpoints.md'
   - 'members_and_invitations_endpoints.md'
   - 'library_endpoints.md'
+  - 'tool_gateway_endpoints.md'
   - 'swagger_and_openapi.md'
   - '../README.md'
 ---
@@ -37,6 +38,8 @@ This folder documents the HTTP routes under `apps/web/src/app/api` exactly as th
 | [onboarding_and_business_profile_endpoints.md](onboarding_and_business_profile_endpoints.md) | First workspace, onboarding, Business Profile, versions and scans                                                                  | You build onboarding or edit business data                              |
 
 | [swagger_and_openapi.md](swagger_and_openapi.md) | Where the OpenAPI document lives, what `/api-docs` is (and is not), how to register a route | You add a route or change a schema |
+
+[Tool Gateway and Gmail execution](tool_gateway_endpoints.md): internal execution, signed scopes, approval correlation, idempotency, limits and the remaining runtime integration.
 
 ## Reading order
 

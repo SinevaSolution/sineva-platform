@@ -181,7 +181,16 @@
       "allowlist_required": "Pilih minimal satu spesialis.",
       "scope_not_applicable": "Akses spesialis hanya berlaku untuk anggota.",
       "unknown_specialist": "Salah satu spesialis itu tidak ada.",
-      "oauth_account_mismatch": "Itu bukan akun yang tertaut ke kamu. Pakai akun yang terhubung ke akun Sineva kamu."
+      "oauth_account_mismatch": "Itu bukan akun yang tertaut ke kamu. Pakai akun yang terhubung ke akun Sineva kamu.",
+      "connection_needs_reconnect": "Hubungkan ulang aplikasi ini sebelum menyetujui tindakan.",
+      "connection_not_found": "Koneksi aplikasi ini sudah tidak tersedia untuk Spesialis ini. Minta admin memeriksa aksesnya.",
+      "connection_ambiguous": "Ada lebih dari satu akun yang tersedia. Minta admin mengatur akses Spesialis ini ke akun yang ingin digunakan.",
+      "provider_unavailable": "Aplikasi terhubung belum bisa menyelesaikan tindakan ini. Periksa koneksinya dan minta tinjauan baru.",
+      "kill_switch_active": "Tindakan ini sedang dijeda. Hubungi admin.",
+      "approval_payload_mismatch": "Tindakan atau akun terhubung sudah berubah. Minta tinjauan baru.",
+      "tool_call_in_progress": "Tindakan ini masih diproses. Tunggu sebelum mencoba lagi.",
+      "tool_outcome_unknown": "Kami belum bisa memastikan apakah Gmail sudah menyelesaikan tindakan ini. Periksa Gmail sebelum memintanya lagi.",
+      "tool_resume_pending": "Gmail sudah menyelesaikan tindakan ini. Percakapan belum bisa dilanjutkan. Coba lagi untuk melanjutkan tanpa mengulangi tindakan."
     },
     "not_found": {
       "title": "Sino tidak menemukan halaman ini"
@@ -453,10 +462,16 @@
       "input_request": "{name} punya pertanyaan untuk kamu.",
       "result": "{name} sudah menyelesaikan sesuatu untuk kamu.",
       "connection_needs_reconnect": "{provider} perlu dihubungkan ulang supaya kamu dan para Spesialis bisa memakainya lagi.",
-      "connection_rotation_due": "{provider} memakai kunci yang sama selama 90 hari. Ganti supaya sambunganmu tetap aman."
+      "connection_rotation_due": "{provider} memakai kunci yang sama selama 90 hari. Ganti supaya sambunganmu tetap aman.",
+      "gmail_search_messages": "{name} ingin mencari email di Gmail kamu.",
+      "gmail_get_message": "{name} ingin membaca sebuah email di Gmail kamu.",
+      "gmail_create_draft": "{name} ingin menyimpan draf di Gmail kamu.",
+      "gmail_send_message": "{name} ingin mengirim email ini dari Gmail kamu."
     },
     "approve_note": {
-      "draft_review": "Menyetujui akan menandai draf ini siap. Sineva belum mengirimnya."
+      "draft_review": "Menyetujui akan menandai draf ini siap. Sineva belum mengirimnya.",
+      "email_action": "Menyetujui akan menjalankan tindakan Gmail ini satu kali.",
+      "email_send": "Menyetujui akan menjalankan tindakan Gmail ini satu kali. Email yang sudah terkirim tidak bisa ditarik kembali."
     }
   },
   "shell": {
@@ -867,7 +882,24 @@
     "toast_changed": "Ini berubah saat kamu melihatnya. Ini versi terbarunya.",
     "press_enter_approve": "Tekan Enter untuk menyetujui",
     "press_enter_reject": "Tekan Enter untuk menolak",
-    "shortcut_then_enter": "{key} lalu Enter"
+    "shortcut_then_enter": "{key} lalu Enter",
+    "email_action": {
+      "title": "Tindakan Gmail",
+      "account": "Dari akun",
+      "to": "Kepada",
+      "cc": "Cc",
+      "subject": "Subjek",
+      "query": "Pencarian",
+      "body": "Pesan",
+      "read_note": "Menyetujui memberikan izin untuk membaca informasi email yang diminta.",
+      "send": "Kirim email",
+      "reject": "Tolak tindakan",
+      "sent": "Email terkirim",
+      "completed": "Tindakan Gmail selesai",
+      "rejected": "Tindakan ditolak",
+      "after_completed": "Gmail sudah mengonfirmasi tindakan ini.",
+      "after_rejected": "Tindakan Gmail ini tidak dijalankan."
+    }
   },
   "library_ui": {
     "reason_codes": {},
