@@ -1,4 +1,44 @@
 import 'server-only';
+import { randomBytes } from 'node:crypto';
+import type { BusinessProfileRepository } from './domain/repositories/business_profile_repository';
+import type {
+  ChecklistRepository,
+  InvitationReader,
+  OnboardingStateRepository,
+  ProfileScanRepository,
+} from './domain/repositories/onboarding_repositories';
+import type { WebsiteScanGateway } from './domain/repositories/website_scan_gateway';
+import { PrismaBusinessProfileRepository } from './infrastructure/database/prisma_business_profile_repository';
+import {
+  PrismaChecklistRepository,
+  PrismaInvitationReader,
+  PrismaOnboardingStateRepository,
+  PrismaProfileScanRepository,
+} from './infrastructure/database/prisma_onboarding_repositories';
+import { InternalWebsiteScanGateway } from './infrastructure/gateways/internal_website_scan_gateway';
+import { BusinessProfileWriter } from './application/use-cases/business-profile/profile_writer';
+import { GetBusinessProfileUseCase } from './application/use-cases/business-profile/get_business_profile_use_case';
+import { SaveBusinessProfileUseCase } from './application/use-cases/business-profile/save_business_profile_use_case';
+import { ListProfileVersionsUseCase } from './application/use-cases/business-profile/list_profile_versions_use_case';
+import { GetProfileVersionUseCase } from './application/use-cases/business-profile/get_profile_version_use_case';
+import { RestoreProfileVersionUseCase } from './application/use-cases/business-profile/restore_profile_version_use_case';
+import { CreateOfferingUseCase } from './application/use-cases/business-profile/create_offering_use_case';
+import { UpdateOfferingUseCase } from './application/use-cases/business-profile/update_offering_use_case';
+import { DeleteOfferingUseCase } from './application/use-cases/business-profile/delete_offering_use_case';
+import { CreatePolicyUseCase } from './application/use-cases/business-profile/create_policy_use_case';
+import { UpdatePolicyUseCase } from './application/use-cases/business-profile/update_policy_use_case';
+import { DeletePolicyUseCase } from './application/use-cases/business-profile/delete_policy_use_case';
+import { GetProfilePackUseCase } from './application/use-cases/business-profile/get_profile_pack_use_case';
+import { CreateFirstWorkspaceUseCase } from './application/use-cases/onboarding/create_first_workspace_use_case';
+import { GetOnboardingUseCase } from './application/use-cases/onboarding/get_onboarding_use_case';
+import { UpdateOnboardingUseCase } from './application/use-cases/onboarding/update_onboarding_use_case';
+import { CompleteOnboardingUseCase } from './application/use-cases/onboarding/complete_onboarding_use_case';
+import { RequestProfileScanUseCase } from './application/use-cases/onboarding/request_profile_scan_use_case';
+import { GetProfileScanUseCase } from './application/use-cases/onboarding/get_profile_scan_use_case';
+import { DeleteProfileScanUseCase } from './application/use-cases/onboarding/delete_profile_scan_use_case';
+import { GetFirstTasksUseCase } from './application/use-cases/onboarding/get_first_tasks_use_case';
+import { DismissFirstTaskUseCase } from './application/use-cases/onboarding/dismiss_first_task_use_case';
+import { RecordChecklistEventUseCase } from './application/use-cases/onboarding/record_checklist_event_use_case';
 import { ListWorkspaceSpecialistsUseCase } from './application/use-cases/list_workspace_specialists_use_case';
 import { GetSystemHealthUseCase } from './application/use-cases/get_system_health_use_case';
 import { PresignStorageUploadUseCase } from './application/use-cases/presign_storage_upload_use_case';
@@ -899,3 +939,142 @@ export const getCreateLibraryFolderUseCase = memoize(() => new CreateLibraryFold
 export const getListLibraryFoldersUseCase = memoize(() => new ListLibraryFoldersUseCase(getLibraryDeps()));
 export const getUpdateLibraryFolderUseCase = memoize(() => new UpdateLibraryFolderUseCase(getLibraryDeps()));
 export const getDeleteLibraryFolderUseCase = memoize(() => new DeleteLibraryFolderUseCase(getLibraryDeps()));
+
+// Business Profile, onboarding and the website scan (ADR-0031).
+const now = (): Date => new Date();
+
+export const getBusinessProfileRepository = memoize<BusinessProfileRepository>(
+  () => new PrismaBusinessProfileRepository(getPrismaClient()),
+);
+const getOnboardingStateRepository = memoize<OnboardingStateRepository>(
+  () => new PrismaOnboardingStateRepository(getPrismaClient()),
+);
+const getProfileScanRepository = memoize<ProfileScanRepository>(
+  () => new PrismaProfileScanRepository(getPrismaClient()),
+);
+const getChecklistRepository = memoize<ChecklistRepository>(
+  () => new PrismaChecklistRepository(getPrismaClient()),
+);
+const getInvitationReader = memoize<InvitationReader>(() => new PrismaInvitationReader(getPrismaClient()));
+const getWebsiteScanGateway = memoize<WebsiteScanGateway>(() => new InternalWebsiteScanGateway());
+
+const getBusinessProfileWriter = memoize(
+  () => new BusinessProfileWriter(getBusinessProfileRepository(), getAuditLogger(), getTransactionRunner()),
+);
+
+export const getGetBusinessProfileUseCase = memoize(
+  () => new GetBusinessProfileUseCase(getBusinessProfileRepository()),
+);
+export const getSaveBusinessProfileUseCase = memoize(
+  () => new SaveBusinessProfileUseCase({ writer: getBusinessProfileWriter(), scans: getProfileScanRepository(), now }),
+);
+export const getListProfileVersionsUseCase = memoize(
+  () => new ListProfileVersionsUseCase(getBusinessProfileRepository()),
+);
+export const getGetProfileVersionUseCase = memoize(
+  () => new GetProfileVersionUseCase(getBusinessProfileRepository()),
+);
+export const getRestoreProfileVersionUseCase = memoize(
+  () => new RestoreProfileVersionUseCase({ writer: getBusinessProfileWriter(), repo: getBusinessProfileRepository() }),
+);
+export const getCreateOfferingUseCase = memoize(
+  () => new CreateOfferingUseCase({ writer: getBusinessProfileWriter(), repo: getBusinessProfileRepository(), now }),
+);
+export const getUpdateOfferingUseCase = memoize(
+  () => new UpdateOfferingUseCase({ writer: getBusinessProfileWriter(), repo: getBusinessProfileRepository(), now }),
+);
+export const getDeleteOfferingUseCase = memoize(
+  () => new DeleteOfferingUseCase({ writer: getBusinessProfileWriter() }),
+);
+export const getCreatePolicyUseCase = memoize(
+  () => new CreatePolicyUseCase({ writer: getBusinessProfileWriter(), now }),
+);
+export const getUpdatePolicyUseCase = memoize(
+  () => new UpdatePolicyUseCase({ writer: getBusinessProfileWriter(), repo: getBusinessProfileRepository(), now }),
+);
+export const getDeletePolicyUseCase = memoize(
+  () => new DeletePolicyUseCase({ writer: getBusinessProfileWriter() }),
+);
+export const getGetProfilePackUseCase = memoize(
+  () => new GetProfilePackUseCase(getBusinessProfileRepository()),
+);
+
+export const getCreateFirstWorkspaceUseCase = memoize(
+  () =>
+    new CreateFirstWorkspaceUseCase({
+      workspaces: getWorkspaceRepository(),
+      createWorkspace: getCreateWorkspaceUseCase(),
+      profiles: getUserProfileRepository(),
+      invitations: getInvitationReader(),
+      states: getOnboardingStateRepository(),
+      audit: getAuditLogger(),
+      transactions: getTransactionRunner(),
+      now,
+      // Lowercase hex, 6 characters: a slug suffix, not an identifier.
+      newSlugSuffix: () => randomBytes(3).toString('hex'),
+    }),
+);
+export const getGetOnboardingUseCase = memoize(
+  () =>
+    new GetOnboardingUseCase({
+      states: getOnboardingStateRepository(),
+      checklist: getChecklistRepository(),
+      invitations: getInvitationReader(),
+    }),
+);
+export const getUpdateOnboardingUseCase = memoize(
+  () =>
+    new UpdateOnboardingUseCase({
+      states: getOnboardingStateRepository(),
+      workspaces: getWorkspaceRepository(),
+      updateWorkspace: getUpdateWorkspaceUseCase(),
+      audit: getAuditLogger(),
+      transactions: getTransactionRunner(),
+      now,
+      newSlugSuffix: () => randomBytes(2).toString('hex'),
+    }),
+);
+export const getCompleteOnboardingUseCase = memoize(
+  () =>
+    new CompleteOnboardingUseCase({
+      states: getOnboardingStateRepository(),
+      writer: getBusinessProfileWriter(),
+      scans: getProfileScanRepository(),
+      checklist: getChecklistRepository(),
+      audit: getAuditLogger(),
+      transactions: getTransactionRunner(),
+      now,
+    }),
+);
+export const getRequestProfileScanUseCase = memoize(
+  () =>
+    new RequestProfileScanUseCase({
+      scans: getProfileScanRepository(),
+      gateway: getWebsiteScanGateway(),
+      contextSigner: getContextSigner(),
+      audit: getAuditLogger(),
+      now,
+    }),
+);
+export const getGetProfileScanUseCase = memoize(
+  () => new GetProfileScanUseCase({ scans: getProfileScanRepository(), now }),
+);
+export const getDeleteProfileScanUseCase = memoize(
+  () => new DeleteProfileScanUseCase({ scans: getProfileScanRepository() }),
+);
+export const getGetFirstTasksUseCase = memoize(
+  () =>
+    new GetFirstTasksUseCase({
+      states: getOnboardingStateRepository(),
+      repo: getBusinessProfileRepository(),
+      now,
+    }),
+);
+export const getDismissFirstTaskUseCase = memoize(
+  () => new DismissFirstTaskUseCase({ states: getOnboardingStateRepository(), now }),
+);
+// Called by the code that owns a real event (a Library document reaching Ready,
+// an accepted invitation); no route exposes it.
+export const getRecordChecklistEventUseCase = memoize(
+  () => new RecordChecklistEventUseCase({ checklist: getChecklistRepository() }),
+);

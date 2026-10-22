@@ -10,7 +10,7 @@ import {
   type CreatePaginatedResponseOptions,
   type CreateSuccessResponseOptions,
 } from '@sineva/shared';
-import { DomainError, MalformedJsonError } from '@/server/domain/errors/domain_error';
+import { DomainError, MalformedJsonError, RateLimitedError } from '@/server/domain/errors/domain_error';
 import { logger } from '@/server/infrastructure/logging/logger';
 
 // A client-supplied id ends up in logs, headers and the envelope, so only a
@@ -49,6 +49,15 @@ export async function parseJsonBody(request: Request | NextRequest): Promise<unk
   }
 }
 
+/** Query string as a plain object for a Zod schema (a repeated key keeps its last value). */
+export function searchParamsToObject(request: Request | NextRequest): Record<string, string> {
+  const query: Record<string, string> = {};
+  new URL(request.url).searchParams.forEach((value, key) => {
+    query[key] = value;
+  });
+  return query;
+}
+
 function mapStatusToErrorCode(status: number): ApiErrorCode {
   switch (status) {
     case 400:
@@ -62,6 +71,8 @@ function mapStatusToErrorCode(status: number): ApiErrorCode {
       return 'not_found';
     case 409:
       return 'conflict';
+    case 429:
+      return 'rate_limited';
     case 502:
       return 'model_unavailable';
     case 503:
@@ -162,6 +173,9 @@ export function handleRouteError(
     });
     const res = NextResponse.json(payload, { status: error.status });
     res.headers.set('X-Request-Id', requestId);
+    if (error instanceof RateLimitedError) {
+      res.headers.set('Retry-After', String(error.retry_after_seconds));
+    }
     return res;
   }
 

@@ -196,3 +196,39 @@ export class ContextTooLargeError extends DomainError {
   }
 }
 
+// Too many requests of one kind. `retry_after_seconds` becomes the
+// `Retry-After` header so a client knows when to try again (FR-SEC-36).
+export class RateLimitedError extends DomainError {
+  constructor(
+    message = 'Too many requests, try again later',
+    public readonly retry_after_seconds = 60,
+    code = 'rate_limited',
+  ) {
+    super({
+      message,
+      code,
+      status: 429,
+      field: null,
+    });
+    this.name = 'RateLimitedError';
+  }
+}
+
+// A person may not create their first workspace: they already have one, or an
+// invitation is waiting for them. `reason` is the machine detail code the
+// client maps to copy.
+export class FirstWorkspaceNotAllowedError extends DomainError {
+  constructor(public readonly reason: 'already_has_workspace' | 'invited_user') {
+    super({
+      message:
+        reason === 'invited_user'
+          ? 'You have a pending invitation. Accept it to join the workspace.'
+          : 'You already belong to a workspace.',
+      code: reason,
+      status: 409,
+      field: null,
+    });
+    this.name = 'FirstWorkspaceNotAllowedError';
+  }
+}
+

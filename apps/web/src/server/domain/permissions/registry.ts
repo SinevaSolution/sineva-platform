@@ -39,6 +39,10 @@ export type PermissionKey =
   | 'billing.manage'
   | 'profile.view'
   | 'profile.update'
+  | 'business_profile.view'
+  | 'business_profile.update'
+  | 'business_profile.scan'
+  | 'onboarding.run'
   | 'preferences.manage_own'
   | 'model.view'
   | 'model.manage'
@@ -62,6 +66,8 @@ export interface PermissionDefinition {
     | 'audit'
     | 'billing'
     | 'profile'
+    | 'business_profile'
+    | 'onboarding'
     | 'model'
     | 'inbox';
   description: string;
@@ -105,6 +111,12 @@ export const C2_PERMISSION_MATRIX_FIXTURE: Record<
   'billing.manage': { owner: 'yes', admin: 'no', member: 'no', viewer: 'no' },
   'profile.view': { owner: 'yes', admin: 'yes', member: 'yes', viewer: 'yes' },
   'profile.update': { owner: 'yes', admin: 'yes', member: 'yes', viewer: 'yes' },
+  // Business Profile and onboarding (ADR-0031): the PRD's profile.* names are
+  // taken by the account profile above, so these carry a prefix.
+  'business_profile.view': { owner: 'yes', admin: 'yes', member: 'yes', viewer: 'yes' },
+  'business_profile.update': { owner: 'yes', admin: 'yes', member: 'no', viewer: 'no' },
+  'business_profile.scan': { owner: 'yes', admin: 'yes', member: 'no', viewer: 'no' },
+  'onboarding.run': { owner: 'yes', admin: 'no', member: 'no', viewer: 'no' },
   'preferences.manage_own': { owner: 'yes', admin: 'yes', member: 'yes', viewer: 'yes' },
   'model.view': { owner: 'yes', admin: 'yes', member: 'no', viewer: 'no' },
   'model.manage': { owner: 'yes', admin: 'yes', member: 'no', viewer: 'no' },
