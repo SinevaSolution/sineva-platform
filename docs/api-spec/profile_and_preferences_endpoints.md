@@ -37,7 +37,7 @@ Editable fields (`PATCH /api/v1/me`, at least one):
 | `full_name` | 2 to 100 characters, letters (any script), combining marks, space, apostrophe, period, hyphen; trimmed |
 | `preferred_name` | 1 to 40 characters, no control characters; `null` clears |
 | `salutation` | `none`, `pak`, `bu`, `kak`, `mas`, `mbak`; `null` clears |
-| `phone_number` | normalised to E.164 (`0812...` and `62812...` become `+62812...`, other numbers need `+country`); 8 to 15 digits; `null` clears. Changing it clears `phone_verified` |
+| `phone_number` | normalised to E.164 (`0812...` and `62812...` become `+62812...`, other numbers need `+country`); 8 to 15 digits; `null` clears. Changing it clears `phone_verified`. The profile page sends E.164 from its country picker (`SNPhoneInput`) and refuses a number the picked country's rules reject before it calls the API; the server keeps only the shape check above |
 | `about_me` | at most 280 characters (code points); `null` clears |
 | `use_profile_in_context` | boolean |
 | `locale` | a code enabled in `packages/i18n/locales.ts`, not a hardcoded list |

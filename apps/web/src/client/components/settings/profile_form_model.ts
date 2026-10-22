@@ -1,4 +1,5 @@
 import { LOCALES } from '@sineva/i18n';
+import { snIsValidPhoneNumber } from '@sineva/ui';
 import {
   ABOUT_ME_MAX,
   charCount,
@@ -125,7 +126,13 @@ export function hasChanges(patch: DraftPatch): boolean {
   return Object.keys(patch.profile).length > 0 || Object.keys(patch.member).length > 0;
 }
 
-export function validateDraft(draft: ProfileDraft): DraftErrors {
+/**
+ * `saved` is the draft the form started from. A phone number that is still
+ * exactly what is saved is not re-checked: the country rules behind the picker
+ * are stricter than the shape check the server saved it under, and an old
+ * number it rejects must not block saving an unrelated field.
+ */
+export function validateDraft(draft: ProfileDraft, saved?: ProfileDraft): DraftErrors {
   const errors: DraftErrors = {};
 
   const name = draft.full_name.trim();
@@ -139,8 +146,12 @@ export function validateDraft(draft: ProfileDraft): DraftErrors {
     errors.preferred_name = 'preferred_name_length';
   }
   const phone = draft.phone_number.trim();
-  if (phone !== '' && normalizePhoneNumber(phone) === null) {
-    errors.phone_number = 'phone_invalid';
+  if (phone !== '' && phone !== saved?.phone_number.trim()) {
+    // The server shape check first (also reads 0812... as +62812...), then the
+    // country's own rules: the picker emits an unfinished "+62812" for a
+    // half-typed number, and only the second check refuses that.
+    const e164 = normalizePhoneNumber(phone);
+    if (e164 === null || !snIsValidPhoneNumber(e164)) errors.phone_number = 'phone_invalid';
   }
   if (charCount(draft.about_me.trim()) > ABOUT_ME_MAX) {
     errors.about_me = 'about_me_length';
@@ -152,7 +163,7 @@ export function validateDraft(draft: ProfileDraft): DraftErrors {
 }
 
 export function isDraftSavable(saved: ProfileDraft, draft: ProfileDraft): boolean {
-  return Object.keys(validateDraft(draft)).length === 0 && hasChanges(buildProfilePatch(saved, draft));
+  return Object.keys(validateDraft(draft, saved)).length === 0 && hasChanges(buildProfilePatch(saved, draft));
 }
 
 export const SALUTATION_WORDS: Record<Exclude<SalutationView, 'none'>, string> = {

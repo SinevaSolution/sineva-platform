@@ -18,6 +18,7 @@ export { SNFormSectionGallery } from './primitives/sn_form_section/sn_form_secti
 export { SNIconButtonGallery } from './primitives/sn_icon_button/sn_icon_button.gallery';
 export { SNInputGallery } from './primitives/sn_input/sn_input.gallery';
 export { SNListCardGallery } from './primitives/sn_list_card/sn_list_card.gallery';
+export { SNPhoneInputGallery } from './primitives/sn_phone_input/sn_phone_input.gallery';
 export { SNPillGallery } from './primitives/sn_pill/sn_pill.gallery';
 export { SNPopoverGallery } from './primitives/sn_popover/sn_popover.gallery';
 export { SNProgressBarGallery } from './primitives/sn_progress_bar/sn_progress_bar.gallery';
