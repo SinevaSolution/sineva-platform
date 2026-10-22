@@ -1,9 +1,8 @@
 import type { Metadata } from 'next';
 import { notFound, redirect } from 'next/navigation';
-import { PageHeader } from '@/client/components/shell/page_header';
 import { PreferencesForm } from '@/client/components/settings/preferences_form';
 import { ProfileForm } from '@/client/components/settings/profile_form';
-import { SettingsShell } from '@/client/components/settings/settings_shell';
+import { SettingsPageHeader } from '@/client/components/settings/settings_page_header';
 import { parseSettingsTab } from '@/client/components/settings/settings_tabs';
 import { SignInMethods } from '@/client/components/settings/sign_in_methods';
 import {
@@ -17,8 +16,8 @@ import { getPageSession } from '@/server/http/page_session';
 import { loadWorkspaceContext } from '../../workspace_context';
 
 export async function generateMetadata(): Promise<Metadata> {
-  const t = await getTranslations('account');
-  return { title: t('settings.title') };
+  const t = await getTranslations('settings_ui');
+  return { title: t('title') };
 }
 
 export default async function ProfilePage({
@@ -30,7 +29,7 @@ export default async function ProfilePage({
 }) {
   const { workspace_slug } = await params;
   const tab = parseSettingsTab((await searchParams).tab);
-  const t = await getTranslations('account');
+  const t = await getTranslations('settings_ui');
   // Redirects to sign-in or 404s for a foreign workspace before anything else loads.
   const ctx = await loadWorkspaceContext(workspace_slug);
   const session = await getPageSession();
@@ -38,6 +37,13 @@ export default async function ProfilePage({
     redirect('/sign-in');
   }
 
+  // Literal keys on purpose: the unused-key check reads them as written.
+  const header =
+    tab === 'preferences'
+      ? { title: t('items.preferences.label'), description: t('items.preferences.description') }
+      : tab === 'sign_in'
+        ? { title: t('items.sign_in.label'), description: t('items.sign_in.description') }
+        : { title: t('items.profile.label'), description: t('items.profile.description') };
   let content: React.ReactNode;
   if (tab === 'preferences') {
     content = <PreferencesForm initial={await getGetPreferencesUseCase().execute(session.user_id)} />;
@@ -68,12 +74,8 @@ export default async function ProfilePage({
 
   return (
     <>
-      <PageHeader title={t('settings.title')} />
-      <div className="min-h-0 flex-1 overflow-y-auto">
-        <SettingsShell workspaceSlug={workspace_slug} active={tab}>
-          {content}
-        </SettingsShell>
-      </div>
+      <SettingsPageHeader title={header.title} description={header.description} />
+      {content}
     </>
   );
 }

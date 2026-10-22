@@ -3,7 +3,6 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it, vi } from 'vitest';
 import { PreferencesForm } from '@/client/components/settings/preferences_form';
 import { ProfileForm } from '@/client/components/settings/profile_form';
-import { SettingsShell } from '@/client/components/settings/settings_shell';
 import { SignInMethods } from '@/client/components/settings/sign_in_methods';
 import { SNTooltipProvider } from '@sineva/ui';
 import { CATALOGS } from '@/i18n/catalogs';
@@ -143,17 +142,5 @@ describe('SignInMethods rendering', () => {
     expect(html).toContain('Linked');
     expect(html).toContain('Not linked');
     expect(html).toContain('Set');
-  });
-});
-
-describe('SettingsShell rendering', () => {
-  it('links the tabs with the tab in the URL and marks the active one', () => {
-    const html = inLocale('en', <SettingsShell workspaceSlug="acme" active="preferences">content</SettingsShell>);
-    expect(html).toContain('href="/w/acme/settings/profile"');
-    expect(html).toContain('href="/w/acme/settings/profile?tab=preferences"');
-    expect(html).toContain('href="/w/acme/settings/profile?tab=sign_in"');
-    expect((html.match(/aria-current="page"/g) ?? []).length).toBe(1);
-    expect(html).toMatch(/aria-current="page"[^>]*>.*Preferences/s);
-    expect(html).toContain('<nav');
   });
 });

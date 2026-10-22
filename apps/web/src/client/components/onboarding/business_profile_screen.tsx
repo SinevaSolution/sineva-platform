@@ -1,5 +1,6 @@
 'use client';
 import * as React from 'react';
+import { Package, ScrollText } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
@@ -7,6 +8,7 @@ import {
   SNButton,
   SNConfirmDialog,
   SNDialog,
+  SNEmptyState,
   SNField,
   SNInput,
   SNSelect,
@@ -16,6 +18,7 @@ import {
 import { formatDate, formatIdr } from '@sineva/ui/format';
 import { apiRequest } from '@/client/lib/api';
 import { useApiErrorText } from '@/client/lib/use_api_error';
+import { SettingsPageHeader } from '@/client/components/settings/settings_page_header';
 import { useLocale, useTranslations } from '@/i18n/provider';
 import type {
   BusinessProfileResultView,
@@ -158,14 +161,16 @@ export function BusinessProfileScreen({
     setWebsiteSources((current) => [...new Set([...current, key])]);
   };
   return (
-    <section className="mx-auto w-full max-w-3xl space-y-8 p-5 sm:p-8">
-      <header className="space-y-2">
-        <h1 className="text-2xl font-semibold">{t('title')}</h1>
-        <p className="text-sm text-text-secondary">{t('description')}</p>
-        <SNButton asChild size="sm">
-          <Link href={`/w/${workspaceSlug}/onboarding`}>{t('setup')}</Link>
-        </SNButton>
-      </header>
+    <section className="space-y-8">
+      <SettingsPageHeader
+        title={t('title')}
+        description={t('description')}
+        actions={
+          <SNButton asChild size="sm" variant="secondary">
+            <Link href={`/w/${workspaceSlug}/onboarding`}>{t('setup')}</Link>
+          </SNButton>
+        }
+      />
       {error && !entry && !confirm && !history ? <SNBanner tone="danger">{error}</SNBanner> : null}
       {warning ? <SNBanner tone="warning">{t('content_warning')}</SNBanner> : null}
       <form onSubmit={save} className="space-y-5">
@@ -321,7 +326,14 @@ export function BusinessProfileScreen({
           ) : null}
         </div>
         {result.offerings.length === 0 ? (
-          <p className="text-sm text-text-secondary">{t('empty_offerings')}</p>
+          <SNEmptyState
+            size="sm"
+            icon={Package}
+            headingLevel={3}
+            title={t('empty_offerings')}
+            description={t('empty_offerings_hint')}
+            className="rounded-md border border-dashed border-border px-4 py-8"
+          />
         ) : (
           <ul className="space-y-3">
             {result.offerings.map((offer) => (
@@ -380,7 +392,14 @@ export function BusinessProfileScreen({
           ) : null}
         </div>
         {result.policies.length === 0 ? (
-          <p className="text-sm text-text-secondary">{t('empty_policies')}</p>
+          <SNEmptyState
+            size="sm"
+            icon={ScrollText}
+            headingLevel={3}
+            title={t('empty_policies')}
+            description={t('empty_policies_hint')}
+            className="rounded-md border border-dashed border-border px-4 py-8"
+          />
         ) : (
           <ul className="space-y-3">
             {result.policies.map((policy) => (
