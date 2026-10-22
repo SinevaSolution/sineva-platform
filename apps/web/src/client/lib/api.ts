@@ -88,6 +88,11 @@ const DETAIL_KEYS: Record<string, string> = {
   image_too_large: 'api.image_too_large',
   invalid_image: 'api.invalid_image',
   upload_failed: 'api.upload_failed',
+  already_in_library: 'api.already_in_library',
+  folder_not_empty: 'api.folder_not_empty',
+  folder_depth_exceeded: 'api.folder_depth_exceeded',
+  unsupported_file_type: 'api.unsupported_file_type',
+  file_too_large: 'api.file_too_large',
 };
 
 const CODE_KEYS: Record<string, string> = {
@@ -101,6 +106,7 @@ const CODE_KEYS: Record<string, string> = {
   internal_error: 'api.internal_error',
   model_unavailable: 'api.model_unavailable',
   dependency_unavailable: 'api.dependency_unavailable',
+  entitlement_required: 'api.entitlement_required',
 };
 
 // Used when the envelope had no code (a proxy page, a dropped body).

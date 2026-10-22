@@ -1,25 +1,26 @@
 'use client';
+
 import * as React from 'react';
-import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { FolderOpen, Link2, ListFilter, Plus, SearchX, StickyNote, Upload } from 'lucide-react';
 import {
-  SNBanner,
+  SNBadge,
   SNButton,
   SNConfirmDialog,
   SNDialog,
   SNDrawer,
+  SNDropdownMenu,
+  SNDropdownMenuContent,
+  SNDropdownMenuItem,
+  SNDropdownMenuTrigger,
   SNDropzone,
-  SNField,
-  SNInput,
-  SNProgressBar,
-  SNSelect,
+  SNEmptyState,
   SNStatusChip,
-  SNTextarea,
+  snToast,
 } from '@sineva/ui';
-import { formatNumber, formatDate } from '@sineva/ui/format';
+import { formatFileSize, formatNumber } from '@sineva/ui/format';
 import { apiRequest } from '@/client/lib/api';
-import { uploadLibraryFile, type LibraryUploadSession } from '@/client/lib/library_upload';
-import { LibraryUploadQueue, type LibraryUploadState } from './library_upload_queue';
+import { uploadLibraryFile } from '@/client/lib/library_upload';
 import { useApiErrorText } from '@/client/lib/use_api_error';
 import { useLocale, useTranslations } from '@/i18n/provider';
 import type {
@@ -27,927 +28,762 @@ import type {
   LibraryDocumentView,
   LibraryFolderView,
   LibraryPreviewView,
-  LibraryTryResultView,
+  LibrarySummaryView,
   LibraryUsageView,
 } from '@/shared/library_view';
 import type { ShellSpecialistView } from '@/shared/shell_view';
+import { LibraryCollectionDialog, type CollectionDialogMode, type CollectionValues } from './library_collection_dialog';
+import { LibraryCollections } from './library_collections';
+import { LibraryDocumentDrawer } from './library_document_drawer';
+import {
+  LibraryDocumentList,
+  LibraryToolbar,
+  type LibraryView,
+  type StatusFilter,
+} from './library_documents';
+import { LibraryHero } from './library_hero';
+import {
+  accessSummary,
+  ancestorIds,
+  buildCollectionTree,
+  scopeInputs,
+  type CollectionNode,
+} from './library_model';
+import { LibraryUploadZone, MAX_FILES_PER_DROP } from './library_upload_zone';
+import { useLibraryUploads } from './use_library_uploads';
 
-const statuses = {
-  queued: 'statuses.queued',
-  processing: 'statuses.processing',
-  ready: 'statuses.ready',
-  needs_attention: 'statuses.needs_attention',
-  failed: 'statuses.failed',
-  deleting: 'statuses.deleting',
-} as const;
+/** Filters as the page read them from the URL. Everything here is a plain string so it round-trips. */
+export interface LibraryFilters {
+  folderId?: string;
+  q: string;
+  status: StatusFilter;
+  /** `used_by` (a specialist slug), or '' */
+  usedBy: string;
+  /** `scope_type=workspace`: only files marked Everyone. */
+  everyoneOnly: boolean;
+  sort: string;
+}
 
-const reasonCodes = {
-  password_protected: 'reason_codes.password_protected',
-  unreadable_pages: 'reason_codes.unreadable_pages',
-  no_text_found: 'reason_codes.no_text_found',
-  hidden_text_detected: 'reason_codes.hidden_text_detected',
-  unsupported_content: 'reason_codes.unsupported_content',
-  parse_failed: 'reason_codes.parse_failed',
-  ocr_failed: 'reason_codes.ocr_failed',
-  embedding_failed: 'reason_codes.embedding_failed',
-  too_many_pages: 'reason_codes.too_many_pages',
-  storage_object_missing: 'reason_codes.storage_object_missing',
-  ingest_service_unavailable: 'reason_codes.ingest_service_unavailable',
-  ingest_service_error: 'reason_codes.ingest_service_error',
-} as const;
+const VIEW_KEY = 'sineva.library.view';
+const VIEW_EVENT = 'sineva:library-view';
+const POLL_MS = 5000;
+const PAGE_SIZE = 30;
+const ACCEPTED = ['pdf', 'docx', 'xlsx', 'csv', 'pptx', 'txt', 'md', 'jpg', 'jpeg', 'png', 'webp'];
+const MAX_BYTES = 25 * 1024 * 1024;
+
+function subscribeView(onChange: () => void): () => void {
+  window.addEventListener('storage', onChange);
+  window.addEventListener(VIEW_EVENT, onChange);
+  return () => {
+    window.removeEventListener('storage', onChange);
+    window.removeEventListener(VIEW_EVENT, onChange);
+  };
+}
+function readView(): LibraryView {
+  try {
+    const stored = window.localStorage.getItem(VIEW_KEY);
+    return stored === 'cards' ? 'cards' : 'list';
+  } catch {
+    // Storage can be blocked; the default view is fine.
+    return 'list';
+  }
+}
+
+/**
+ * List or cards is a personal preference, not something to link, so it lives
+ * in this browser only. An external store, not state plus an effect: the server
+ * and the first paint show the list, and the saved choice takes over after.
+ */
+function useStoredView(): [LibraryView, (next: LibraryView) => void] {
+  const view = React.useSyncExternalStore(subscribeView, readView, () => 'list' as const);
+  const change = React.useCallback((next: LibraryView) => {
+    try {
+      window.localStorage.setItem(VIEW_KEY, next);
+    } catch {
+      // Not remembered, still switched below.
+    }
+    window.dispatchEvent(new Event(VIEW_EVENT));
+  }, []);
+  return [view, change];
+}
+
+type Deleting = { kind: 'document'; document: LibraryDocumentView } | { kind: 'collection'; node: CollectionNode };
 
 export function LibraryScreen({
   workspaceId,
   workspaceSlug,
   list,
   folders,
+  summary,
   usage,
+  uploaderNames,
+  selectedDocument,
   canUpload,
   canManage,
   specialists,
-  folderId,
-  search,
-  status,
-  scopeType = '',
-  scopeRef = '',
-  sourceType = '',
-  language = '',
+  filters,
 }: {
   workspaceId: string;
   workspaceSlug: string;
   list: LibraryDocumentListView;
   folders: LibraryFolderView[];
+  summary: LibrarySummaryView;
+  /** Only for people who may see usage (owner and admin). */
   usage: LibraryUsageView | null;
+  uploaderNames: Record<string, string>;
+  /** The file named by `?doc=` when it is not on the loaded page. */
+  selectedDocument: LibraryDocumentView | null;
   canUpload: boolean;
   canManage: boolean;
   specialists: ShellSpecialistView[];
-  folderId?: string;
-  search: string;
-  status: string;
-  scopeType?: string;
-  scopeRef?: string;
-  sourceType?: string;
-  language?: string;
+  filters: LibraryFilters;
 }) {
   const t = useTranslations('library_ui');
   const locale = useLocale();
   const router = useRouter();
   const errorText = useApiErrorText();
   const base = `/api/v1/workspaces/${workspaceId}/library`;
+  const uploads = useLibraryUploads(workspaceId);
+  const picker = React.useRef<HTMLInputElement>(null);
+
+  // What is loaded: the server's page, plus whatever "Show more" appended. A
+  // new page from the server (filter, search, refresh) replaces it, detected
+  // by identity while rendering instead of an effect that would render twice.
+  const [loaded, setLoaded] = React.useState({ source: list, items: list.items, cursor: list.next_cursor });
+  if (loaded.source !== list) setLoaded({ source: list, items: list.items, cursor: list.next_cursor });
+  const { items, cursor } = loaded;
+  const [view, changeView] = useStoredView();
   const [pending, setPending] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
-  const [dialog, setDialog] = React.useState<'upload' | 'note' | 'folder' | null>(null);
-  const [files, setFiles] = React.useState<File[]>([]);
-  const [uploadStates, setUploadStates] = React.useState<Map<File, LibraryUploadState>>(new Map());
-  const busy = React.useRef(false);
-  const uploadSessions = React.useRef(new Map<File, LibraryUploadSession>());
-  const [scope, setScope] = React.useState('workspace');
-  const [editing, setEditing] = React.useState<LibraryDocumentView | null>(null);
-  const [deleting, setDeleting] = React.useState<{ path: string; title: string } | null>(null);
-  const [renamingFolder, setRenamingFolder] = React.useState<{ id: string; name: string } | null>(
-    null,
-  );
-  const [movingFolder, setMovingFolder] = React.useState<{
-    id: string;
-    parent_id: string | null;
-  } | null>(null);
-  const [moveParentId, setMoveParentId] = React.useState('');
+  const [openId, setOpenId] = React.useState<string | null>(selectedDocument?.id ?? null);
+  const [collectionsOpen, setCollectionsOpen] = React.useState(false);
   const [quotaOpen, setQuotaOpen] = React.useState(false);
+  const [collectionDialog, setCollectionDialog] = React.useState<CollectionDialogMode | null>(null);
+  const [deleting, setDeleting] = React.useState<Deleting | null>(null);
+  const [replacing, setReplacing] = React.useState<LibraryDocumentView | null>(null);
   const [preview, setPreview] = React.useState<LibraryPreviewView | null>(null);
-  const [retrieval, setRetrieval] = React.useState<LibraryTryResultView | null>(null);
+  const busy = React.useRef(false);
 
-  const url = (values: Record<string, string>) =>
-    `/w/${workspaceSlug}/library?${new URLSearchParams({
-      ...(folderId ? { folder_id: folderId } : {}),
-      ...(search ? { q: search } : {}),
-      ...(status ? { status } : {}),
-      ...(scopeType ? { scope_type: scopeType } : {}),
-      ...(scopeRef ? { scope_ref: scopeRef } : {}),
-      ...(sourceType ? { source_type: sourceType } : {}),
-      ...(language ? { language } : {}),
-      ...values,
-    })}`;
+  // The file named in the URL opens the drawer (and a click opens it at once,
+  // before the URL round trip); closing removes it from the URL.
+  const urlDocId = selectedDocument?.id ?? null;
+  const [seenDocId, setSeenDocId] = React.useState(urlDocId);
+  if (seenDocId !== urlDocId) {
+    setSeenDocId(urlDocId);
+    setOpenId(urlDocId);
+  }
+  const openDocument =
+    (openId ? (items.find((item) => item.id === openId) ?? (selectedDocument?.id === openId ? selectedDocument : null)) : null) ?? null;
 
-  async function run(action: () => Promise<void>) {
-    if (busy.current) return;
+  const tree = React.useMemo(() => buildCollectionTree(folders, summary.by_folder), [folders, summary.by_folder]);
+  const collectionNames = React.useMemo(() => new Map(folders.map((folder) => [folder.id, folder.name])), [folders]);
+  const selectedFolder = filters.folderId && filters.folderId !== 'root' ? folders.find((f) => f.id === filters.folderId) : undefined;
+
+  // Reading goes on in the background; ask again while anything is unfinished
+  // and the tab is visible. Stops by itself when nothing is left to read.
+  const waiting = summary.by_status.reading > 0 || uploads.active;
+  React.useEffect(() => {
+    if (!waiting) return;
+    const timer = window.setInterval(() => {
+      if (document.visibilityState === 'visible') router.refresh();
+    }, POLL_MS);
+    return () => window.clearInterval(timer);
+  }, [waiting, router]);
+
+  function query(overrides: Partial<Record<string, string | undefined>> = {}): URLSearchParams {
+    const merged: Record<string, string | undefined> = {
+      folder_id: filters.folderId,
+      q: filters.q,
+      status: filters.status,
+      used_by: filters.usedBy,
+      scope_type: filters.everyoneOnly ? 'workspace' : undefined,
+      sort: filters.sort === 'newest' ? undefined : filters.sort,
+      doc: openId ?? undefined,
+      ...overrides,
+    };
+    const params = new URLSearchParams();
+    for (const [key, value] of Object.entries(merged)) if (value) params.set(key, value);
+    return params;
+  }
+  const href = (overrides?: Partial<Record<string, string | undefined>>) => {
+    const qs = query(overrides).toString();
+    return `/w/${workspaceSlug}/library${qs ? `?${qs}` : ''}`;
+  };
+  const hrefForFolder = (folderId: string | undefined) => href({ folder_id: folderId, doc: undefined });
+
+  function applyFilters(change: { q?: string; status?: StatusFilter; usedBy?: string; sort?: string }) {
+    const overrides: Record<string, string | undefined> = { doc: undefined };
+    if (change.q !== undefined) overrides.q = change.q;
+    if (change.status !== undefined) overrides.status = change.status;
+    if (change.sort !== undefined) overrides.sort = change.sort === 'newest' ? undefined : change.sort;
+    if (change.usedBy !== undefined) {
+      overrides.used_by = change.usedBy && change.usedBy !== 'everyone' ? change.usedBy : undefined;
+      overrides.scope_type = change.usedBy === 'everyone' ? 'workspace' : undefined;
+    }
+    router.replace(href(overrides), { scroll: false });
+  }
+  const clearFilters = () => router.replace(href({ q: undefined, status: undefined, used_by: undefined, scope_type: undefined, doc: undefined }), { scroll: false });
+
+  function openFile(document: LibraryDocumentView) {
+    setError(null);
+    setOpenId(document.id);
+    router.replace(href({ doc: document.id }), { scroll: false });
+  }
+  function closeFile() {
+    setError(null);
+    setOpenId(null);
+    router.replace(href({ doc: undefined }), { scroll: false });
+  }
+
+  async function run(action: () => Promise<void>): Promise<boolean> {
+    if (busy.current) return false;
     busy.current = true;
     setPending(true);
     setError(null);
     try {
       await action();
       router.refresh();
+      return true;
     } catch (err) {
       setError(errorText(err));
+      return false;
     } finally {
       busy.current = false;
       setPending(false);
     }
   }
 
-  const scopeOptions = [
-    { value: 'workspace', label: t('workspace_scope') },
-    ...specialists.map((s) => ({ value: s.agent_slug, label: s.display_name })),
-  ];
-
-  const scopes = () =>
-    scope === 'workspace'
-      ? [{ scope_type: 'workspace' as const }]
-      : [{ scope_type: 'specialist' as const, scope_ref: scope }];
-
-  async function create(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    const form = new FormData(event.currentTarget);
+  async function showMore() {
+    if (!cursor) return;
     await run(async () => {
-      const targetFolder = folderId && folderId !== 'root' ? folderId : null;
-      if (dialog === 'upload') {
-        if (!files.length) return;
-        let failed = false;
-        for (const file of files) {
-          if (uploadStates.get(file)?.status === 'queued') continue;
-          setUploadStates((states) => new Map(states).set(file, { status: 'uploading' }));
-          try {
-            const session = uploadSessions.current.get(file) ?? {};
-            uploadSessions.current.set(file, session);
-            await uploadLibraryFile(
-              workspaceId,
-              file,
-              {
-                folder_id: targetFolder,
-                scopes: scopes(),
-              },
-              session,
-            );
-            setUploadStates((states) => new Map(states).set(file, { status: 'queued' }));
-          } catch (err) {
-            failed = true;
-            setUploadStates((states) =>
-              new Map(states).set(file, { status: 'failed', error: errorText(err) }),
-            );
-          }
-        }
-        if (failed) return;
-      } else if (dialog === 'note') {
-        await apiRequest(`${base}/documents`, {
-          method: 'POST',
-          body: {
-            source_type: 'note',
-            title: form.get('title'),
-            content: form.get('content'),
-            folder_id: targetFolder,
-            scopes: scopes(),
-          },
-        });
-      } else {
-        await apiRequest(`${base}/folders`, {
-          method: 'POST',
-          body: { name: form.get('title'), parent_id: targetFolder },
-        });
-      }
-      setDialog(null);
+      const params = query({ doc: undefined });
+      params.set('cursor', cursor);
+      params.set('limit', String(PAGE_SIZE));
+      const more = await apiRequest<LibraryDocumentListView>(`${base}/documents?${params.toString()}`);
+      setLoaded((current) => ({
+        ...current,
+        items: [...current.items, ...more.items.filter((item) => !current.items.some((existing) => existing.id === item.id))],
+        cursor: more.next_cursor,
+      }));
     });
   }
 
+  // --- adding files ------------------------------------------------------
+
+  const intoFolder = selectedFolder?.id ?? null;
+  function addFiles(files: File[]) {
+    if (files.length > 0) uploads.add(files, intoFolder);
+  }
+  /** The Add menu and the empty state use a plain file input; the drop zone validates its own drops. */
+  function onPicked(files: FileList | null) {
+    const chosen = Array.from(files ?? []);
+    if (chosen.length === 0) return;
+    if (chosen.length > MAX_FILES_PER_DROP) {
+      snToast.error(t('zone.count_error'));
+      return;
+    }
+    const valid = chosen.filter((file) => {
+      const ext = file.name.slice(file.name.lastIndexOf('.') + 1).toLowerCase();
+      return ACCEPTED.includes(ext) && file.size > 0 && file.size <= MAX_BYTES;
+    });
+    if (valid.length < chosen.length) {
+      const typeProblem = chosen.some((file) => !ACCEPTED.includes(file.name.slice(file.name.lastIndexOf('.') + 1).toLowerCase()));
+      snToast.error(typeProblem ? t('zone.type_error') : t('zone.size_error'));
+    }
+    addFiles(valid);
+  }
+  const choose = () => picker.current?.click();
+
+  // --- file actions ------------------------------------------------------
+
+  const patchDocument = (document: LibraryDocumentView, body: Record<string, unknown>, done?: string) =>
+    run(async () => {
+      await apiRequest(`${base}/documents/${document.id}`, { method: 'PATCH', body });
+      if (done) snToast.success(done);
+    });
+
+  async function seeText(document: LibraryDocumentView) {
+    await run(async () => {
+      setPreview(await apiRequest<LibraryPreviewView>(`${base}/documents/${document.id}/preview`));
+    });
+  }
+
+  async function confirmDelete() {
+    if (!deleting) return;
+    const target = deleting;
+    const ok = await run(async () => {
+      if (target.kind === 'document') {
+        await apiRequest(`${base}/documents/${target.document.id}`, { method: 'DELETE' });
+        snToast.success(t('toast.file_deleted'));
+      } else {
+        await apiRequest(`${base}/folders/${target.node.id}`, { method: 'DELETE' });
+        snToast.success(t('toast.collection_deleted'));
+      }
+    });
+    if (!ok) return;
+    setDeleting(null);
+    if (target.kind === 'document') closeFile();
+    else if (filters.folderId === target.node.id) router.replace(hrefForFolder(undefined), { scroll: false });
+  }
+
+  async function submitCollection(values: CollectionValues) {
+    const mode = collectionDialog;
+    if (!mode) return;
+    const ok = await run(async () => {
+      if (mode.kind === 'create') {
+        await apiRequest(`${base}/folders`, { method: 'POST', body: values });
+        snToast.success(t('toast.collection_created'));
+        return;
+      }
+      const body: Record<string, unknown> = {};
+      if (values.name !== mode.node.name) body.name = values.name;
+      if (values.parent_id !== mode.node.parent_id) body.parent_id = values.parent_id;
+      const before = accessSummary(mode.node.scopes);
+      const after = accessSummary(
+        values.scopes.map((scope) => ({ scope_type: scope.scope_type, scope_ref: scope.scope_type === 'specialist' ? scope.scope_ref : null })),
+      );
+      if (before.everyone !== after.everyone || before.specialists.slice().sort().join() !== after.specialists.slice().sort().join()) {
+        body.scopes = values.scopes;
+      }
+      if (Object.keys(body).length > 0) await apiRequest(`${base}/folders/${mode.node.id}`, { method: 'PATCH', body });
+      snToast.success(t('toast.saved'));
+    });
+    if (ok) setCollectionDialog(null);
+  }
+
+  // --- states ------------------------------------------------------------
+
+  const filtering = Boolean(filters.q || filters.status || filters.usedBy || filters.everyoneOnly);
+  const usedByValue = filters.usedBy || (filters.everyoneOnly ? 'everyone' : '');
+  const collectionsPanel = (onNavigate?: () => void) => (
+    <LibraryCollections
+      tree={tree}
+      total={summary.total}
+      inTop={summary.in_root}
+      selected={filters.folderId}
+      openIds={filters.folderId && filters.folderId !== 'root' ? ancestorIds(folders, filters.folderId) : []}
+      hrefFor={hrefForFolder}
+      canManage={canManage}
+      onCreate={(parentId) => {
+        setError(null);
+        setCollectionDialog({ kind: 'create', parentId });
+      }}
+      onSettings={(node) => {
+        setError(null);
+        setCollectionDialog({ kind: 'edit', node });
+      }}
+      onDelete={(node) => {
+        setError(null);
+        setDeleting({ kind: 'collection', node });
+      }}
+      onNavigate={onNavigate}
+    />
+  );
+
+  const addMenu = canUpload ? (
+    <SNDropdownMenu>
+      <SNDropdownMenuTrigger asChild>
+        <SNButton variant="primary" size="lg">
+          <Plus aria-hidden="true" />
+          {t('add.menu')}
+        </SNButton>
+      </SNDropdownMenuTrigger>
+      <SNDropdownMenuContent align="end" className="w-60">
+        <SNDropdownMenuItem onSelect={choose}>
+          <Upload aria-hidden="true" />
+          {t('add.file')}
+        </SNDropdownMenuItem>
+        <SNDropdownMenuItem disabled>
+          <Link2 aria-hidden="true" />
+          <span className="flex-1">{t('add.link')}</span>
+          <SNBadge tone="neutral">{t('soon')}</SNBadge>
+        </SNDropdownMenuItem>
+        <SNDropdownMenuItem disabled>
+          <StickyNote aria-hidden="true" />
+          <span className="flex-1">{t('add.note')}</span>
+          <SNBadge tone="neutral">{t('soon')}</SNBadge>
+        </SNDropdownMenuItem>
+      </SNDropdownMenuContent>
+    </SNDropdownMenu>
+  ) : null;
+
+  const emptyState = (() => {
+    if (items.length > 0) return null;
+    if (filters.q) {
+      return (
+        <SNEmptyState
+          icon={SearchX}
+          size="md"
+          headingLevel={2}
+          title={t('empty.search_title', { query: filters.q })}
+          description={t('empty.search_body')}
+          action={<SNButton onClick={() => applyFilters({ q: '' })}>{t('empty.search_action')}</SNButton>}
+        />
+      );
+    }
+    if (filtering) {
+      return (
+        <SNEmptyState
+          icon={ListFilter}
+          size="md"
+          headingLevel={2}
+          title={t('empty.filter_title')}
+          description={t('empty.filter_body')}
+          action={<SNButton onClick={clearFilters}>{t('empty.filter_action')}</SNButton>}
+        />
+      );
+    }
+    if (filters.folderId) {
+      return (
+        <SNEmptyState
+          icon={FolderOpen}
+          size="md"
+          headingLevel={2}
+          title={t('empty.collection_title')}
+          description={canUpload ? t('empty.collection_body') : t('empty.collection_viewer_body')}
+          action={canUpload ? <SNButton variant="primary" onClick={choose}>{t('empty.upload')}</SNButton> : undefined}
+        />
+      );
+    }
+    return (
+      <SNEmptyState
+        pose="wave"
+        size="lg"
+        headingLevel={2}
+        title={t('empty.library_title')}
+        description={canUpload ? t('empty.library_body') : t('empty.library_viewer_body')}
+        action={canUpload ? <SNButton variant="primary" onClick={choose}>{t('empty.upload')}</SNButton> : undefined}
+      />
+    );
+  })();
+
   return (
-    <section className="mx-auto w-full max-w-5xl space-y-6 p-5 sm:p-8">
-      <header className="flex flex-wrap justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-semibold">{t('title')}</h1>
-          <p className="mt-2 text-sm text-text-secondary">{t('description')}</p>
-        </div>
-        {canUpload ? (
-          <div className="flex flex-wrap gap-2">
-            <SNButton
-              variant="primary"
-              onClick={() => {
-                setError(null);
-                setFiles([]);
-                setUploadStates(new Map());
-                uploadSessions.current.clear();
-                setDialog('upload');
-              }}
-            >
-              {t('upload')}
-            </SNButton>
-            <SNButton
-              onClick={() => {
-                setError(null);
-                setDialog('note');
-              }}
-            >
-              {t('add_note')}
-            </SNButton>
-            {canManage ? (
-              <SNButton onClick={() => setDialog('folder')}>{t('new_folder')}</SNButton>
-            ) : null}
-          </div>
-        ) : null}
-      </header>
-      {error && !dialog && !editing ? <SNBanner tone="danger">{error}</SNBanner> : null}
-      {usage ? (
-        <div className="flex flex-wrap items-center justify-between gap-3 text-sm text-text-secondary">
-          <p>
-            {t('usage', {
-              documents: formatNumber(usage.documents, locale),
-              bytes: formatNumber(usage.storage_bytes, locale),
-              pages: formatNumber(usage.ocr_pages_month, locale),
-            })}
-          </p>
-          <SNButton size="sm" variant="ghost" onClick={() => setQuotaOpen(true)}>
-            {t('usage_action')}
-          </SNButton>
-        </div>
-      ) : null}
-      <form action={`/w/${workspaceSlug}/library`} className="flex flex-wrap items-end gap-3">
-        <SNField label={t('search')}>
-          <SNInput name="q" defaultValue={search} maxLength={100} />
-        </SNField>
-        {folderId ? <input type="hidden" name="folder_id" value={folderId} /> : null}
-        <SNField label={t('status')}>
-          <SNSelect
-            name="status"
-            value={status}
-            onValueChange={(value) => router.push(url({ status: value }))}
-            options={[
-              { value: '', label: t('all_statuses') },
-              ...Object.entries(statuses).map(([value, key]) => ({ value, label: t(key) })),
-            ]}
-          />
-        </SNField>
-        <SNField label={t('scope_filter')}>
-          <SNSelect
-            name="scope_filter"
-            value={scopeType === 'specialist' ? scopeRef : scopeType}
-            onValueChange={(value) => {
-              if (!value) router.push(url({ scope_type: '', scope_ref: '' }));
-              else if (value === 'workspace')
-                router.push(url({ scope_type: 'workspace', scope_ref: '' }));
-              else router.push(url({ scope_type: 'specialist', scope_ref: value }));
-            }}
-            options={[
-              { value: '', label: t('all_scopes') },
-              { value: 'workspace', label: t('workspace_scope') },
-              ...specialists.map((s) => ({ value: s.agent_slug, label: s.display_name })),
-            ]}
-          />
-        </SNField>
-        <SNField label={t('source_type')}>
-          <SNSelect
-            name="source_type"
-            value={sourceType}
-            onValueChange={(value) => router.push(url({ source_type: value }))}
-            options={[
-              { value: '', label: t('all_sources') },
-              { value: 'upload', label: t('source_upload') },
-              { value: 'note', label: t('source_note') },
-              { value: 'chat_save', label: t('source_chat_save') },
-            ]}
-          />
-        </SNField>
-        <SNField label={t('language')}>
-          <SNSelect
-            name="language"
-            value={language}
-            onValueChange={(value) => router.push(url({ language: value }))}
-            options={[
-              { value: '', label: t('all_languages') },
-              { value: 'id', label: t('lang_id') },
-              { value: 'en', label: t('lang_en') },
-              { value: 'mixed', label: t('lang_mixed') },
-            ]}
-          />
-        </SNField>
-        <SNButton type="submit">{t('search')}</SNButton>
-        <SNButton disabled={pending} onClick={() => router.refresh()}>
-          {t('refresh')}
-        </SNButton>
-      </form>
-      <nav aria-label={t('folders')} className="flex flex-wrap gap-2">
-        <SNButton asChild size="sm">
-          <Link href={`/w/${workspaceSlug}/library`}>{t('all_documents')}</Link>
-        </SNButton>
-        <SNButton asChild size="sm">
-          <Link href={url({ folder_id: 'root' })}>{t('root')}</Link>
-        </SNButton>
-        {folders.map((folder) => (
-          <span key={folder.id} className="flex items-center gap-1">
-            <SNButton asChild size="sm" variant={folder.id === folderId ? 'primary' : 'secondary'}>
-              <Link href={url({ folder_id: folder.id })}>{folder.name}</Link>
-            </SNButton>
-            {canManage && folder.id === folderId ? (
-              <>
-                <SNButton
-                  size="sm"
-                  variant="ghost"
-                  onClick={() => setRenamingFolder({ id: folder.id, name: folder.name })}
-                >
-                  {t('rename')}
-                </SNButton>
-                <SNButton
-                  size="sm"
-                  variant="ghost"
-                  onClick={() => {
-                    setMovingFolder({ id: folder.id, parent_id: folder.parent_id });
-                    setMoveParentId(folder.parent_id ?? '');
-                  }}
-                >
-                  {t('move')}
-                </SNButton>
-                <SNButton
-                  size="sm"
-                  variant="ghost"
-                  onClick={() => setDeleting({ path: `folders/${folder.id}`, title: folder.name })}
-                >
-                  {t('delete')}
-                </SNButton>
-              </>
-            ) : null}
-          </span>
-        ))}
-      </nav>
-      {list.items.length === 0 ? (
-        <div className="rounded-md border border-border p-8 text-sm text-text-secondary">
-          {t('empty')}
-        </div>
-      ) : (
-        <ul className="divide-y divide-border rounded-md border border-border">
-          {list.items.map((document) => (
-            <li key={document.id} className="space-y-3 p-4">
-              <div className="flex flex-wrap justify-between gap-3">
-                <div>
-                  <h2 className="break-words font-medium">{document.title}</h2>
-                  <p className="mt-1 text-sm text-text-secondary">
-                    {t(statuses[document.status])} · {formatDate(document.created_at, locale)}
-                  </p>
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  {document.status === 'ready' ? (
-                    <SNButton
-                      size="sm"
-                      disabled={pending}
-                      onClick={() =>
-                        run(async () => {
-                          setPreview(
-                            await apiRequest<LibraryPreviewView>(
-                              `${base}/documents/${document.id}/preview`,
-                            ),
-                          );
-                        })
-                      }
-                    >
-                      {t('preview')}
-                    </SNButton>
-                  ) : null}
-                  {canManage ? (
-                    <>
-                      <SNButton size="sm" disabled={pending} onClick={() => setEditing(document)}>
-                        {t('edit')}
-                      </SNButton>
-                      <SNButton
-                        size="sm"
-                        disabled={pending}
-                        onClick={() =>
-                          run(async () => {
-                            await apiRequest(`${base}/documents/${document.id}/reindex`, {
-                              method: 'POST',
-                            });
-                          })
-                        }
-                      >
-                        {t('retry')}
-                      </SNButton>
-                      <SNButton
-                        size="sm"
-                        variant="ghost"
-                        disabled={pending}
-                        onClick={() =>
-                          setDeleting({ path: `documents/${document.id}`, title: document.title })
-                        }
-                      >
-                        {t('delete')}
-                      </SNButton>
-                    </>
-                  ) : null}
-                </div>
-              </div>
-              {document.status === 'queued' ? (
-                <p className="text-sm text-text-secondary">{t('queued_hint')}</p>
-              ) : null}
-              {document.status === 'processing' && document.status_detail?.progress ? (
-                <div className="space-y-1.5">
-                  <p className="text-xs text-text-secondary">
-                    {t('reading_progress', {
-                      current: document.status_detail.progress.current,
-                      total: document.status_detail.progress.total,
-                    })}
-                  </p>
-                  <SNProgressBar
-                    label={t('reading_progress', {
-                      current: document.status_detail.progress.current,
-                      total: document.status_detail.progress.total,
-                    })}
-                    value={document.status_detail.progress.current}
-                    max={document.status_detail.progress.total}
-                  />
-                </div>
-              ) : null}
-              {document.status === 'needs_attention' || document.status === 'failed' ? (
-                <div className="space-y-1.5">
-                  <SNBanner tone="warning">
-                    {document.status_detail?.reason_code &&
-                    document.status_detail.reason_code in reasonCodes
-                      ? t(
-                          reasonCodes[
-                            document.status_detail.reason_code as keyof typeof reasonCodes
-                          ],
-                        )
-                      : t('attention_hint')}
-                  </SNBanner>
-                  {document.status_detail?.pages && document.status_detail.pages.length > 0 ? (
-                    <p className="text-xs text-text-secondary">
-                      {t('flagged_pages', { pages: document.status_detail.pages.join(', ') })}
-                    </p>
-                  ) : null}
-                </div>
-              ) : null}
-              {document.acl_sync_pending ? (
-                <SNBanner tone="warning">{t('scope_pending')}</SNBanner>
-              ) : null}
-              {document.status_detail?.personal_data_hint ? (
-                <SNBanner tone="warning">{t('personal_data')}</SNBanner>
-              ) : null}
-            </li>
-          ))}
-        </ul>
-      )}
-      {list.next_cursor ? (
-        <SNButton asChild>
-          <Link href={url({ cursor: list.next_cursor })}>{t('next')}</Link>
-        </SNButton>
-      ) : null}
-      {canManage ? (
-        <section className="space-y-4 border-t border-border pt-5">
-          <h2 className="text-lg font-semibold">{t('try_title')}</h2>
-          <form
-            className="space-y-3"
-            onSubmit={(event) => {
-              event.preventDefault();
-              const form = new FormData(event.currentTarget);
-              void run(async () => {
-                setRetrieval(
-                  await apiRequest<LibraryTryResultView>(`${base}/try`, {
-                    method: 'POST',
-                    body: {
-                      query: form.get('query'),
-                      ...(scope !== 'workspace' ? { agent_slug: scope } : {}),
-                    },
-                  }),
-                );
-              });
-            }}
-          >
-            <SNField label={t('question')} required>
-              <SNInput name="query" maxLength={500} required />
-            </SNField>
-            <SNField label={t('scope')}>
-              <SNSelect value={scope} onValueChange={setScope} options={scopeOptions} />
-            </SNField>
-            <SNButton type="submit" loading={pending}>
-              {t('try_search')}
-            </SNButton>
-          </form>
-          {retrieval ? (
-            retrieval.abstained ? (
-              <SNBanner>{t('abstained')}</SNBanner>
-            ) : (
-              <ul className="space-y-3">
-                {retrieval.results.map((result) => (
-                  <li key={result.chunk_id} className="rounded-md border border-border p-3">
-                    <p className="font-medium">{result.title}</p>
-                    <p className="mt-2 whitespace-pre-wrap text-sm">{result.snippet}</p>
-                  </li>
-                ))}
-              </ul>
-            )
-          ) : null}
-        </section>
-      ) : null}
-      <SNDialog
-        open={dialog !== null}
-        onOpenChange={(open) => {
-          if (!open && !pending) setDialog(null);
+    <section className="mx-auto w-full max-w-6xl space-y-6 p-4 sm:p-6 lg:p-8">
+      <input
+        ref={picker}
+        type="file"
+        multiple
+        hidden
+        tabIndex={-1}
+        aria-label={t('add.file')}
+        accept={ACCEPTED.map((ext) => `.${ext}`).join(',')}
+        onChange={(event) => {
+          onPicked(event.currentTarget.files);
+          event.currentTarget.value = '';
         }}
-        title={
-          dialog === 'folder' ? t('new_folder') : dialog === 'note' ? t('add_note') : t('upload')
-        }
-      >
-        <form onSubmit={create} className="space-y-4">
-          {dialog === 'upload' ? (
-            <SNField label={t('file')} required>
-              <SNDropzone
-                label={t('dropzone_label')}
-                hint={t('file_hint')}
-                multiple
-                maxFiles={10}
-                onFilesChange={(incoming) => {
-                  const next = [...files];
-                  for (const file of incoming) {
-                    if (
-                      !next.some(
-                        (existing) =>
-                          existing.name === file.name &&
-                          existing.size === file.size &&
-                          existing.lastModified === file.lastModified,
-                      )
-                    )
-                      next.push(file);
-                  }
-                  if (next.length > 10) {
-                    setError(t('file_count_error'));
-                    return;
-                  }
-                  setError(null);
-                  setFiles(next);
-                }}
-                disabled={pending}
-                accept=".pdf,.docx,.xlsx,.csv,.pptx,.txt,.md,.jpg,.jpeg,.png,.webp"
-                maxBytes={25 * 1024 * 1024}
-                messages={{
-                  type: t('file_type_error'),
-                  size: t('file_size_error'),
-                  count: t('file_count_error'),
-                }}
-              />
-              <LibraryUploadQueue
-                files={files}
-                states={uploadStates}
-                pending={pending}
-                onRemove={(file) => {
-                  uploadSessions.current.delete(file);
-                  setFiles((selected) => selected.filter((entry) => entry !== file));
-                  setUploadStates((states) => {
-                    const next = new Map(states);
-                    next.delete(file);
-                    return next;
-                  });
-                }}
-              />
-            </SNField>
-          ) : (
-            <SNField label={t('name')} required>
-              <SNInput name="title" maxLength={dialog === 'folder' ? 80 : 200} required />
-            </SNField>
-          )}
-          {dialog === 'note' ? (
-            <SNField label={t('note')} required>
-              <SNTextarea name="content" rows={8} maxLength={100000} required />
-            </SNField>
-          ) : null}
-          {dialog !== 'folder' ? (
-            <SNField label={t('scope')}>
-              <SNSelect
-                value={scope}
-                onValueChange={setScope}
-                options={scopeOptions}
-                disabled={pending || (dialog === 'upload' && uploadStates.size > 0)}
-              />
-            </SNField>
-          ) : null}
-          {error ? <SNBanner tone="danger">{error}</SNBanner> : null}
-          <div className="flex gap-2">
-            <SNButton
-              type="submit"
-              variant="primary"
-              loading={pending}
-              disabled={dialog === 'upload' && files.length === 0}
-            >
-              {dialog === 'upload' &&
-              [...uploadStates.values()].some((state) => state.status === 'failed')
-                ? t('retry_uploads')
-                : t('save')}
-            </SNButton>
-            <SNButton disabled={pending} onClick={() => setDialog(null)}>
-              {t('cancel')}
-            </SNButton>
-          </div>
-        </form>
-      </SNDialog>
-      {editing ? (
-        <DocumentEditor
-          key={editing.id}
-          document={editing}
-          folders={folders}
-          scopeOptions={scopeOptions}
-          pending={pending}
-          error={error}
-          onClose={() => {
-            if (!pending) setEditing(null);
-          }}
-          onSave={(body) =>
-            run(async () => {
-              await apiRequest(`${base}/documents/${editing.id}`, { method: 'PATCH', body });
-              setEditing(null);
-            })
-          }
+      />
+      <LibraryHero summary={summary} usage={usage} onStorageDetails={() => setQuotaOpen(true)} action={addMenu} />
+      {canUpload ? (
+        <LibraryUploadZone
+          items={uploads.items}
+          intoName={selectedFolder?.name ?? null}
+          onFiles={addFiles}
+          onRetry={uploads.retry}
+          onRemove={uploads.remove}
         />
       ) : null}
+
+      <div className="grid gap-6 lg:grid-cols-[17rem_minmax(0,1fr)]">
+        <aside className="hidden lg:block">
+          <div className="sticky top-4">{collectionsPanel()}</div>
+        </aside>
+        <div className="min-w-0 space-y-4">
+          <LibraryToolbar
+            q={filters.q}
+            status={filters.status}
+            usedBy={usedByValue}
+            sort={filters.sort}
+            view={view}
+            specialists={specialists}
+            onChange={applyFilters}
+            onView={changeView}
+            onOpenCollections={() => setCollectionsOpen(true)}
+          />
+          {emptyState ?? (
+            <>
+              <LibraryDocumentList
+                items={items}
+                view={view}
+                collectionNames={collectionNames}
+                specialists={specialists}
+                selectedId={openId}
+                onOpen={openFile}
+              />
+              {cursor ? (
+                <div className="flex justify-center">
+                  <SNButton loading={pending} onClick={() => void showMore()}>
+                    {t('list.more')}
+                  </SNButton>
+                </div>
+              ) : null}
+            </>
+          )}
+        </div>
+      </div>
+
+      {openDocument ? (
+        <LibraryDocumentDrawer
+          key={openDocument.id}
+          document={openDocument}
+          workspaceSlug={workspaceSlug}
+          specialists={specialists}
+          tree={tree}
+          uploadedBy={uploaderNames[openDocument.created_by] ?? null}
+          canManage={canManage}
+          pending={pending}
+          error={error}
+          onClose={closeFile}
+          onRename={(title) => void patchDocument(openDocument, { title }, t('toast.saved'))}
+          onMove={(folderId) => void patchDocument(openDocument, { folder_id: folderId }, t('toast.moved'))}
+          onAccess={(change) =>
+            void patchDocument(
+              openDocument,
+              change === 'inherit' ? { inherit_access: true } : { scopes: change.scopes },
+              t('toast.access_saved'),
+            )
+          }
+          onTryAgain={() =>
+            void run(async () => {
+              await apiRequest(`${base}/documents/${openDocument.id}/reindex`, { method: 'POST' });
+              snToast.success(t('toast.reading_again'));
+            })
+          }
+          onReplace={() => {
+            setError(null);
+            setReplacing(openDocument);
+          }}
+          onSeeText={() => void seeText(openDocument)}
+          onDelete={() => {
+            setError(null);
+            setDeleting({ kind: 'document', document: openDocument });
+          }}
+        />
+      ) : null}
+
+      <SNDrawer
+        open={collectionsOpen}
+        onOpenChange={setCollectionsOpen}
+        side="start"
+        width="panel"
+        title={t('collections.title')}
+        closeLabel={t('close')}
+      >
+        <div className="h-full overflow-y-auto p-5 pt-14 md:pt-5">{collectionsPanel(() => setCollectionsOpen(false))}</div>
+      </SNDrawer>
+
+      {collectionDialog ? (
+        <LibraryCollectionDialog
+          mode={collectionDialog}
+          tree={tree}
+          specialists={specialists}
+          pending={pending}
+          error={error}
+          onSubmit={(values) => void submitCollection(values)}
+          onClose={() => setCollectionDialog(null)}
+        />
+      ) : null}
+
       <SNConfirmDialog
-        error={error}
         open={deleting !== null}
         onOpenChange={(open) => {
           if (!open && !pending) setDeleting(null);
         }}
-        title={t('delete_title')}
-        description={t('delete_body', { title: deleting?.title ?? '' })}
-        confirmLabel={t('delete')}
+        title={deleting?.kind === 'collection' ? t('delete.collection_title') : t('delete.file_title')}
+        description={
+          deleting?.kind === 'collection'
+            ? t('delete.collection_body', { name: deleting.node.name })
+            : t('delete.file_body', { title: deleting?.document.title ?? '' })
+        }
+        confirmLabel={t('delete.confirm')}
+        pendingLabel={t('delete.pending')}
         cancelLabel={t('cancel')}
         destructive
         pending={pending}
-        onConfirm={() => {
-          if (deleting)
-            void run(async () => {
-              await apiRequest(`${base}/${deleting.path}`, { method: 'DELETE' });
-              setDeleting(null);
-            });
-        }}
+        error={error}
+        onConfirm={() => void confirmDelete()}
       />
-      <SNDialog
-        open={renamingFolder !== null}
-        onOpenChange={(open) => {
-          if (!open && !pending) setRenamingFolder(null);
-        }}
-        title={t('rename_folder')}
-      >
-        <form
-          className="space-y-4"
-          onSubmit={(e) => {
-            e.preventDefault();
-            const form = new FormData(e.currentTarget);
-            const name = String(form.get('name') ?? '').trim();
-            if (!name || !renamingFolder) return;
-            void run(async () => {
-              await apiRequest(`${base}/folders/${renamingFolder.id}`, {
-                method: 'PATCH',
-                body: { name },
-              });
-              setRenamingFolder(null);
-            });
-          }}
-        >
-          <SNField label={t('folder_name')} required>
-            <SNInput
-              name="name"
-              defaultValue={renamingFolder?.name ?? ''}
-              maxLength={80}
-              required
-            />
-          </SNField>
-          {error ? <SNBanner tone="danger">{error}</SNBanner> : null}
-          <div className="flex gap-2">
-            <SNButton type="submit" variant="primary" loading={pending}>
-              {t('save')}
-            </SNButton>
-            <SNButton disabled={pending} onClick={() => setRenamingFolder(null)}>
-              {t('cancel')}
-            </SNButton>
-          </div>
-        </form>
-      </SNDialog>
-      <SNDialog
-        open={movingFolder !== null}
-        onOpenChange={(open) => {
-          if (!open && !pending) setMovingFolder(null);
-        }}
-        title={t('move_folder')}
-      >
-        <form
-          className="space-y-4"
-          onSubmit={(e) => {
-            e.preventDefault();
-            if (!movingFolder) return;
-            void run(async () => {
-              await apiRequest(`${base}/folders/${movingFolder.id}`, {
-                method: 'PATCH',
-                body: {
-                  parent_id: moveParentId && moveParentId !== 'root' ? moveParentId : null,
-                },
-              });
-              setMovingFolder(null);
-            });
-          }}
-        >
-          <SNField label={t('destination_folder')}>
-            <SNSelect
-              name="parent_id"
-              value={moveParentId}
-              onValueChange={setMoveParentId}
-              options={[
-                { value: '', label: t('root') },
-                ...folders
-                  .filter((f) => f.id !== movingFolder?.id)
-                  .map((f) => ({ value: f.id, label: f.name })),
-              ]}
-            />
-          </SNField>
-          {error ? <SNBanner tone="danger">{error}</SNBanner> : null}
-          <div className="flex gap-2">
-            <SNButton type="submit" variant="primary" loading={pending}>
-              {t('save')}
-            </SNButton>
-            <SNButton disabled={pending} onClick={() => setMovingFolder(null)}>
-              {t('cancel')}
-            </SNButton>
-          </div>
-        </form>
-      </SNDialog>
-      <SNDrawer
-        open={quotaOpen}
-        onOpenChange={setQuotaOpen}
-        title={t('quota_title')}
-        closeLabel={t('close')}
-      >
-        <div className="space-y-6 p-6">
-          <h2 className="text-xl font-semibold text-text">{t('quota_title')}</h2>
-          {usage ? (
-            <div className="space-y-4">
-              <div className="space-y-2 rounded-md border border-border p-4">
-                <div className="flex items-center justify-between">
-                  <span className="font-medium text-text">{t('quota_documents')}</span>
-                  <SNStatusChip
-                    tone={usage.within_limits.documents ? 'success' : 'danger'}
-                    label={usage.within_limits.documents ? t('limit_ok') : t('limit_reached')}
-                  />
-                </div>
-                <p className="text-2xl font-semibold text-text">
-                  {formatNumber(usage.documents, locale)}
-                </p>
-                {!usage.within_limits.documents ? (
-                  <SNBanner tone="warning">{t('documents_limit_reached')}</SNBanner>
-                ) : null}
-              </div>
 
-              <div className="space-y-2 rounded-md border border-border p-4">
-                <div className="flex items-center justify-between">
-                  <span className="font-medium text-text">{t('quota_storage')}</span>
-                  <SNStatusChip
-                    tone={usage.within_limits.storage ? 'success' : 'danger'}
-                    label={usage.within_limits.storage ? t('limit_ok') : t('limit_reached')}
-                  />
-                </div>
-                <p className="text-2xl font-semibold text-text">
-                  {t('storage_bytes_count', {
-                    bytes: formatNumber(usage.storage_bytes, locale),
-                  })}
-                </p>
-                {!usage.within_limits.storage ? (
-                  <SNBanner tone="warning">{t('storage_limit_reached')}</SNBanner>
-                ) : null}
-              </div>
+      {replacing ? (
+        <ReplaceDialog
+          document={replacing}
+          workspaceId={workspaceId}
+          onClose={() => setReplacing(null)}
+          onReplaced={() => {
+            setReplacing(null);
+            closeFile();
+            snToast.success(t('toast.replaced'));
+            router.refresh();
+          }}
+        />
+      ) : null}
 
-              <div className="space-y-2 rounded-md border border-border p-4">
-                <div className="flex items-center justify-between">
-                  <span className="font-medium text-text">{t('quota_ocr')}</span>
-                  <SNStatusChip
-                    tone={usage.within_limits.ocr_pages ? 'success' : 'danger'}
-                    label={usage.within_limits.ocr_pages ? t('limit_ok') : t('limit_reached')}
-                  />
-                </div>
-                <p className="text-2xl font-semibold text-text">
-                  {t('pages_count', {
-                    pages: formatNumber(usage.ocr_pages_month, locale),
-                  })}
-                </p>
-                {!usage.within_limits.ocr_pages ? (
-                  <SNBanner tone="warning">{t('ocr_limit_reached')}</SNBanner>
-                ) : null}
-              </div>
-            </div>
-          ) : null}
-        </div>
-      </SNDrawer>
       <SNDialog
         open={preview !== null}
         onOpenChange={(open) => {
           if (!open) setPreview(null);
         }}
-        title={t('preview')}
+        title={t('preview.title')}
         closeLabel={t('close')}
+        footer={
+          preview?.next_page ? (
+            <SNButton
+              disabled={pending}
+              onClick={() =>
+                void run(async () => {
+                  const next = await apiRequest<LibraryPreviewView>(
+                    `${base}/documents/${preview.document_id}/preview?page_from=${preview.next_page}`,
+                  );
+                  setPreview({ ...next, pages: [...preview.pages, ...next.pages] });
+                })
+              }
+            >
+              {t('preview.more')}
+            </SNButton>
+          ) : undefined
+        }
       >
         <div className="max-h-[60vh] space-y-4 overflow-y-auto">
           {preview?.pages.map((page) => (
             <section key={page.page}>
-              <h3 className="text-sm font-semibold">{t('page', { number: page.page })}</h3>
-              <p className="mt-2 whitespace-pre-wrap text-sm">{page.text}</p>
+              <h3 className="text-sm font-semibold text-text">{t('preview.page', { number: page.page })}</h3>
+              {page.readable ? (
+                <p className="mt-1 whitespace-pre-wrap text-sm text-text">{page.text}</p>
+              ) : (
+                <p className="mt-1 text-sm text-warning">{t('preview.unreadable')}</p>
+              )}
             </section>
           ))}
-          {preview?.next_page ? (
-            <SNButton
-              disabled={pending}
-              onClick={() =>
-                run(async () => {
-                  setPreview(
-                    await apiRequest<LibraryPreviewView>(
-                      `${base}/documents/${preview.document_id}/preview?page_from=${preview.next_page}`,
-                    ),
-                  );
-                })
-              }
-            >
-              {t('next')}
-            </SNButton>
-          ) : null}
         </div>
       </SNDialog>
+
+      <SNDrawer open={quotaOpen} onOpenChange={setQuotaOpen} side="end" width="panel" title={t('usage.title')} closeLabel={t('close')}>
+        <div className="h-full space-y-5 overflow-y-auto p-5 pt-14 md:pt-5">
+          <h2 className="text-lg font-semibold text-text">{t('usage.title')}</h2>
+          {usage ? (
+            <ul className="space-y-3">
+              <UsageRow
+                label={t('usage.files')}
+                value={formatNumber(usage.documents, locale)}
+                ok={usage.within_limits.documents}
+                warning={t('usage.files_reached')}
+              />
+              <UsageRow
+                label={t('usage.storage')}
+                value={formatFileSize(usage.storage_bytes, locale)}
+                ok={usage.within_limits.storage}
+                warning={t('usage.storage_reached')}
+              />
+              <UsageRow
+                label={t('usage.pages')}
+                value={formatNumber(usage.ocr_pages_month, locale)}
+                ok={usage.within_limits.ocr_pages}
+                warning={t('usage.pages_reached')}
+              />
+            </ul>
+          ) : null}
+        </div>
+      </SNDrawer>
     </section>
   );
 }
 
-function DocumentEditor({
+function UsageRow({ label, value, ok, warning }: { label: string; value: string; ok: boolean; warning: string }) {
+  const t = useTranslations('library_ui');
+  return (
+    <li className="space-y-2 rounded-lg border border-border p-4">
+      <div className="flex items-center justify-between gap-3">
+        <span className="text-sm font-medium text-text">{label}</span>
+        <SNStatusChip tone={ok ? 'success' : 'danger'} label={ok ? t('usage.ok') : t('usage.reached')} />
+      </div>
+      <p className="text-2xl font-semibold text-text">{value}</p>
+      {ok ? null : <p className="text-sm text-warning">{warning}</p>}
+    </li>
+  );
+}
+
+/**
+ * Replace a file: the new one takes the old one's collection and access, and
+ * the old one is deleted once the new one is received. Not atomic by design
+ * (ADR-0033): if the delete fails the new file is already in, and the message
+ * says so; nothing is lost.
+ */
+function ReplaceDialog({
   document,
-  folders,
-  scopeOptions,
-  pending,
-  error,
-  onSave,
+  workspaceId,
   onClose,
+  onReplaced,
 }: {
   document: LibraryDocumentView;
-  folders: LibraryFolderView[];
-  scopeOptions: Array<{ value: string; label: string }>;
-  pending: boolean;
-  error: string | null;
-  onSave: (body: Record<string, unknown>) => void;
+  workspaceId: string;
   onClose: () => void;
+  onReplaced: () => void;
 }) {
   const t = useTranslations('library_ui');
-  const [folder, setFolder] = React.useState(document.folder_id ?? '');
-  const [scope, setScope] = React.useState(
-    document.scopes.find((s) => s.scope_type === 'specialist')?.scope_ref ?? 'workspace',
-  );
+  const errorText = useApiErrorText();
+  const [working, setWorking] = React.useState(false);
+  const [error, setError] = React.useState<string | null>(null);
+
+  async function replaceWith(file: File) {
+    setWorking(true);
+    setError(null);
+    try {
+      // Sending no scopes keeps a file that follows its collection following it.
+      const scopes = document.access_inherited ? null : scopeInputs(accessSummary(document.scopes));
+      await uploadLibraryFile(workspaceId, file, { folder_id: document.folder_id, ...(scopes ? { scopes } : {}) }, {});
+    } catch (err) {
+      setError(errorText(err));
+      setWorking(false);
+      return;
+    }
+    try {
+      await apiRequest(`/api/v1/workspaces/${workspaceId}/library/documents/${document.id}`, { method: 'DELETE' });
+    } catch {
+      setError(t('replace.delete_failed'));
+      setWorking(false);
+      return;
+    }
+    onReplaced();
+  }
+
   return (
     <SNDialog
       open
       onOpenChange={(open) => {
-        if (!open) onClose();
+        if (!open && !working) onClose();
       }}
-      title={t('edit')}
+      title={t('replace.title')}
+      description={t('replace.body')}
+      closeLabel={t('close')}
+      footer={
+        <SNButton disabled={working} onClick={onClose}>
+          {t('cancel')}
+        </SNButton>
+      }
     >
-      <form
-        className="space-y-4"
-        onSubmit={(e) => {
-          e.preventDefault();
-          const form = new FormData(e.currentTarget);
-          const days = String(form.get('review') ?? '');
-          onSave({
-            title: form.get('title'),
-            folder_id: folder || null,
-            ...(scope !==
-            (document.scopes.find((s) => s.scope_type === 'specialist')?.scope_ref ?? 'workspace')
-              ? {
-                  scopes:
-                    scope === 'workspace'
-                      ? [{ scope_type: 'workspace' }]
-                      : [{ scope_type: 'specialist', scope_ref: scope }],
-                }
-              : {}),
-            review_interval_days: days ? Number(days) : null,
-          });
-        }}
-      >
-        <SNField label={t('name')} required>
-          <SNInput name="title" defaultValue={document.title} maxLength={200} required />
-        </SNField>
-        <SNField label={t('folders')}>
-          <SNSelect
-            value={folder}
-            onValueChange={setFolder}
-            options={[
-              { value: '', label: t('root') },
-              ...folders.map((f) => ({ value: f.id, label: f.name })),
-            ]}
-          />
-        </SNField>
-        <SNField label={t('scope')}>
-          <SNSelect value={scope} onValueChange={setScope} options={scopeOptions} />
-        </SNField>
-        <SNField label={t('review_days')}>
-          <SNInput
-            name="review"
-            type="number"
-            min={1}
-            max={730}
-            defaultValue={document.review_interval_days ?? ''}
-          />
-        </SNField>
-        {error ? <SNBanner tone="danger">{error}</SNBanner> : null}
-        <div className="flex gap-2">
-          <SNButton type="submit" variant="primary" loading={pending}>
-            {t('save')}
-          </SNButton>
-          <SNButton disabled={pending} onClick={onClose}>
-            {t('cancel')}
-          </SNButton>
-        </div>
-      </form>
+      <div className="space-y-3">
+        <SNDropzone
+          label={t('replace.label')}
+          hint={t('replace.hint')}
+          accept={ACCEPTED.map((ext) => `.${ext}`).join(',')}
+          maxBytes={MAX_BYTES}
+          disabled={working}
+          onFilesChange={(files) => {
+            const [file] = files;
+            if (file) void replaceWith(file);
+          }}
+          messages={{ type: t('zone.type_error'), size: t('zone.size_error'), count: t('zone.count_error') }}
+        />
+        {working ? (
+          <p role="status" className="text-sm text-text-secondary">
+            {t('replace.working')}
+          </p>
+        ) : null}
+        {error ? (
+          <p role="alert" className="text-sm text-danger">
+            {error}
+          </p>
+        ) : null}
+      </div>
     </SNDialog>
   );
 }

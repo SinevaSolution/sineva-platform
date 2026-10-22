@@ -1,6 +1,8 @@
 import type { Metadata } from 'next';
 import { ChatThread } from '@/client/components/chat/chat_thread';
 import { getTranslations } from '@/i18n/server';
+import { getGetLibraryKnowledgeUseCase } from '@/server/container';
+import { getWorkspacePageContext } from '@/server/http/page_context';
 import { loadWorkspaceContext } from '../../workspace_context';
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -15,6 +17,7 @@ export default async function ChatThreadPage({
 }) {
   const { workspace_slug, conversation_id } = await params;
   const ctx = await loadWorkspaceContext(workspace_slug);
+  const knowledge = await getGetLibraryKnowledgeUseCase().execute(await getWorkspacePageContext(ctx.workspace.id));
 
   // `key` resets the thread state when moving between chats.
   return (
@@ -24,6 +27,7 @@ export default async function ChatThreadPage({
       workspaceSlug={workspace_slug}
       conversationId={conversation_id}
       specialists={ctx.specialists}
+      knowledge={knowledge}
     />
   );
 }

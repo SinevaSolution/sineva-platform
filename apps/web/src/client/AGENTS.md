@@ -43,6 +43,7 @@ Browser-side UI: `components/` and the Redux store in `store/`. Rules R-08, R-14
 - Error text comes from `useApiErrorText()` (machine code to `errors.api.*`), never from `ApiError.message`.
 - `npm run lint` rejects literal UI text; `npm run test` checks key parity, unused keys, banned words, protected names and mention form.
 - Dates, numbers and money go through `@sineva/ui/format` (`formatDate`, `formatRelativeTime`, `formatIdr`), not hand-built strings.
+- No engineering words in a customer string: OCR, embedding, chunk, vector, index and indexing, ingest, token, RAG, payload, webhook, JSON, BFF, and the Indonesian counterparts. The `technical_term` rule in `@sineva/i18n` fails `npm run test` for either catalog; say what it means for the person ("Sino is reading your file"). File sizes go through `formatFileSize` (KB, MB, GB), never raw bytes.
 - Sino is a "companion" (ID: "teman kerja", "teman AI"). Never "chatbot", "assistant", "asisten" or "agent" in text a customer reads. Code identifiers and `/api/v1/agents` keep "agent" (R-33).
 - Write mentions as `@SinoHelp …`, no comma (R-36). Describe integrations as "the tools you already use" (R-35).
 - Existing violations ("Multi-Agent", "6 Specialized Agents") are debt. Do not copy them.
