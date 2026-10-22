@@ -105,6 +105,7 @@ describe('PATCH /api/v1/me/profile', () => {
       full_name: 'Amira Lestari',
       locale: 'en',
       timezone: 'Asia/Makassar',
+      context: expect.objectContaining({ user_id: 'usr-1' }),
     });
   });
 
@@ -114,7 +115,11 @@ describe('PATCH /api/v1/me/profile', () => {
     const res = await patchProfile(patchRequest({ locale: 'en' }));
 
     expect(res.status).toBe(200);
-    expect(mockUpdateProfile).toHaveBeenCalledWith({ user_id: 'usr-1', locale: 'en' });
+    expect(mockUpdateProfile).toHaveBeenCalledWith({
+      user_id: 'usr-1',
+      locale: 'en',
+      context: expect.objectContaining({ user_id: 'usr-1' }),
+    });
   });
 
   it('rejects a body that tries to set identity (user_id) with 422', async () => {

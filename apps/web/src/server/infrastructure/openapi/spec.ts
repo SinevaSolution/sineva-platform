@@ -100,6 +100,68 @@ export function getOpenApiSpec(): Record<string, unknown> {
           },
         },
       },
+      ...Object.fromEntries(
+        ['/internal/v1/audit-events', '/api/internal/v1/audit-events'].map((path) => [
+          path,
+          {
+            post: {
+              tags: ['Internal'],
+              summary: 'Record an audit event reported by sineva-ai',
+              description:
+                'Guarded by X-Internal-Api-Key only (sineva-ai cannot mint a signed context). actor_type is limited to specialist or system. A workspace_id, when present, must belong to an existing workspace. Message text, tokens and personal data are never stored: sensitive metadata keys are redacted.',
+              operationId: path.startsWith('/api') ? 'ingest_audit_event_api_alias' : 'ingest_audit_event',
+              requestBody: {
+                required: true,
+                content: {
+                  'application/json': {
+                    schema: {
+                      type: 'object',
+                      additionalProperties: false,
+                      required: ['actor_type', 'actor_id', 'action'],
+                      properties: {
+                        workspace_id: { type: 'string', format: 'uuid', nullable: true },
+                        actor_type: { type: 'string', enum: ['specialist', 'system'] },
+                        actor_id: { type: 'string' },
+                        on_behalf_of_user_id: { type: 'string', nullable: true },
+                        action: { type: 'string', example: 'session.access_denied' },
+                        target_type: { type: 'string', nullable: true },
+                        target_id: { type: 'string', nullable: true },
+                        outcome: { type: 'string', enum: ['allowed', 'denied', 'error'], default: 'allowed' },
+                        reason_code: { type: 'string', nullable: true },
+                        request_id: { type: 'string', nullable: true },
+                        run_id: { type: 'string', nullable: true },
+                        metadata: { type: 'object', additionalProperties: true, nullable: true },
+                      },
+                    },
+                  },
+                },
+              },
+              responses: {
+                '201': {
+                  description: 'Event recorded',
+                  content: { 'application/json': { schema: { $ref: '#/components/schemas/StandardEnvelope' } } },
+                },
+                '401': {
+                  description: 'Missing or invalid X-Internal-Api-Key header',
+                  content: { 'application/json': { schema: { $ref: '#/components/schemas/StandardEnvelope' } } },
+                },
+                '404': {
+                  description: 'workspace_id does not match an existing workspace',
+                  content: { 'application/json': { schema: { $ref: '#/components/schemas/StandardEnvelope' } } },
+                },
+                '422': {
+                  description: 'Body failed validation',
+                  content: { 'application/json': { schema: { $ref: '#/components/schemas/StandardEnvelope' } } },
+                },
+                '500': {
+                  description: 'The audit write failed; the event was not recorded and the caller must retry or count the failure',
+                  content: { 'application/json': { schema: { $ref: '#/components/schemas/StandardEnvelope' } } },
+                },
+              },
+            },
+          },
+        ]),
+      ),
       '/api/v1/health': {
         get: {
           tags: ['Health'],

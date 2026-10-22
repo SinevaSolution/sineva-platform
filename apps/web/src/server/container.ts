@@ -10,7 +10,17 @@ import type { StorageRepository } from './domain/repositories/storage_repository
 import type { EmailSender } from './domain/email/email_sender';
 import type { BreachedPasswordChecker } from './domain/auth/breached_password_checker';
 import { FakeBreachedPasswordChecker } from './domain/auth/breached_password_checker';
-import { defaultAuditLogger } from './domain/audit/audit_logger';
+import type { AuditLogger } from './domain/audit/audit_logger';
+import type { AuditEventRepository } from './domain/repositories/audit_event_repository';
+import type { TransactionRunner } from './domain/transactions/transaction_runner';
+import type { EntitlementService } from './domain/entitlements/entitlements';
+import { logger } from './infrastructure/logging/logger';
+import { PrismaAuditRepository } from './infrastructure/database/prisma_audit_repository';
+import { PrismaTransactionRunner } from './infrastructure/database/prisma_transaction_runner';
+import { RepositoryAuditLogger } from './application/audit/repository_audit_logger';
+import { ModeEntitlementService } from './application/entitlements/mode_entitlement_service';
+import { IngestAuditEventUseCase } from './application/use-cases/audit/ingest_audit_event_use_case';
+import { RotateSigningKeyUseCase } from './application/use-cases/security/rotate_signing_key_use_case';
 import { FakeEmailSender } from './infrastructure/email/fake_email_sender';
 import { SmtpEmailSender } from './infrastructure/email/smtp_email_sender';
 import { RedisCacheRepository } from './infrastructure/cache/redis_cache_repository';
@@ -90,6 +100,39 @@ function memoize<T>(factory: () => T): () => T {
 // Adapters are memoized because they hold resources that must be shared across
 // requests: the Prisma client owns the Postgres connection pool, and the cache
 // and storage adapters own their clients.
+export const getAuditEventRepository = memoize<AuditEventRepository>(
+  () => new PrismaAuditRepository(getPrismaClient()),
+);
+export const getTransactionRunner = memoize<TransactionRunner>(
+  () => new PrismaTransactionRunner(getPrismaClient()),
+);
+// Persistent, fail-closed audit writer: a rejected write fails the action.
+export const getAuditLogger = memoize<AuditLogger>(
+  () => new RepositoryAuditLogger(getAuditEventRepository()),
+);
+// M0 has no plan catalog, so nothing resolves a limit; `open` mode never
+// consults the provider and `shadow` or `enforced` would deny everything,
+// which is why `enforced` needs an explicit production override. The
+// per-workspace override and plan limits plug in here in M4.
+export const getEntitlementService = memoize<EntitlementService>(
+  () =>
+    new ModeEntitlementService(
+      getEnvConfig().entitlements_mode,
+      { resolve: async () => null },
+      // Ids, key names and counts only, through the allowlisted logger.
+      (event) =>
+        logger.info(event.event === 'entitlement.would_block' ? 'entitlement.would_block' : 'entitlement.checked', {
+          workspace_id: typeof event.workspace_id === 'string' ? event.workspace_id : undefined,
+          entitlement_key: String(event.key),
+          mode: String(event.mode),
+          allowed: Boolean(event.allowed),
+          quantity: typeof event.quantity === 'number' ? event.quantity : undefined,
+          reason: String(event.reason),
+          plan_required: typeof event.plan_required === 'string' ? event.plan_required : undefined,
+        }),
+    ),
+);
+
 const getAgentRepository = memoize<AgentRepository>(
   () => new PrismaAgentRepository(getPrismaClient()),
 );
@@ -133,7 +176,7 @@ export const getJwtAuthService = memoize<JwtAuthService>(() => {
   return new JwtAuthService({
     prisma: getPrismaClient(),
     emailSender: getEmailSender(),
-    auditLogger: defaultAuditLogger,
+    auditLogger: getAuditLogger(),
     breachedChecker: getBreachedPasswordChecker(),
     authSecret: env.auth_secret,
     appUrl: env.next_public_app_url,
@@ -156,7 +199,12 @@ export const getWorkspaceMemberRepository = memoize<WorkspaceMemberRepository>(
 );
 
 export const getCreateWorkspaceUseCase = memoize(
-  () => new CreateWorkspaceUseCase(getWorkspaceRepository(), defaultAuditLogger),
+  () => new CreateWorkspaceUseCase(
+      getWorkspaceRepository(),
+      getAuditLogger(),
+      getEntitlementService(),
+      getTransactionRunner(),
+    ),
 );
 
 export const getGetWorkspaceUseCase = memoize(
@@ -164,7 +212,7 @@ export const getGetWorkspaceUseCase = memoize(
 );
 
 export const getUpdateWorkspaceUseCase = memoize(
-  () => new UpdateWorkspaceUseCase(getWorkspaceRepository(), defaultAuditLogger),
+  () => new UpdateWorkspaceUseCase(getWorkspaceRepository(), getAuditLogger(), getTransactionRunner()),
 );
 
 export const getListUserWorkspacesUseCase = memoize(
@@ -220,15 +268,15 @@ export const getOAuthAuthService = memoize<OAuthAuthService>(
 );
 
 export const getOAuthSignInUseCase = memoize(
-  () => new OAuthSignInUseCase(getAccountRepository(), getOAuthAuthService(), defaultAuditLogger),
+  () => new OAuthSignInUseCase(getAccountRepository(), getOAuthAuthService(), getAuditLogger()),
 );
 
 export const getLinkAccountUseCase = memoize(
-  () => new LinkAccountUseCase(getAccountRepository(), defaultAuditLogger),
+  () => new LinkAccountUseCase(getAccountRepository(), getAuditLogger()),
 );
 
 export const getUnlinkAccountUseCase = memoize(
-  () => new UnlinkAccountUseCase(getAccountRepository(), defaultAuditLogger),
+  () => new UnlinkAccountUseCase(getAccountRepository(), getAuditLogger()),
 );
 
 export const getListUserAccountsUseCase = memoize(
@@ -307,7 +355,7 @@ export const getMessageRepository = memoize<MessageRepository>(
 );
 
 export const getCreateConversationUseCase = memoize(
-  () => new CreateConversationUseCase(getConversationRepository(), defaultAuditLogger),
+  () => new CreateConversationUseCase(getConversationRepository(), getAuditLogger(), getTransactionRunner()),
 );
 
 export const getGetConversationUseCase = memoize(
@@ -362,7 +410,7 @@ export const getCancelRunUseCase = memoize(
       gateway: getAiEngineGateway(),
       contextSigner: getContextSigner(),
       hub: getRunHub(),
-      audit: defaultAuditLogger,
+      audit: getAuditLogger(),
     }),
 );
 
@@ -375,5 +423,13 @@ export const getGetProfileUseCase = memoize(
 );
 
 export const getUpdateProfileUseCase = memoize(
-  () => new UpdateProfileUseCase(getUserProfileRepository()),
+  () => new UpdateProfileUseCase(getUserProfileRepository(), getAuditLogger()),
+);
+
+export const getIngestAuditEventUseCase = memoize(
+  () => new IngestAuditEventUseCase(getWorkspaceRepository(), getAuditLogger()),
+);
+
+export const getRotateSigningKeyUseCase = memoize(
+  () => new RotateSigningKeyUseCase(getSigningKeyRepository(), getAuditLogger(), getTransactionRunner()),
 );

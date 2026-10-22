@@ -13,7 +13,11 @@ import {
   isReservedSlug,
   validateWorkspaceId,
 } from '@/server/domain/tenancy/tenant_isolation';
-import { createAnonymousRequestContext } from '@/server/domain/context/request_context';
+import {
+  createAnonymousRequestContext,
+  type RequestContext,
+} from '@/server/domain/context/request_context';
+import { noTransaction, type TransactionRunner } from '@/server/domain/transactions/transaction_runner';
 
 export interface UpdateWorkspaceUseCaseInput {
   workspace_id: string;
@@ -22,12 +26,15 @@ export interface UpdateWorkspaceUseCaseInput {
   logo_url?: string | null;
   default_locale?: string;
   timezone?: string;
+  /** The request being served, so the audit row names the acting user. */
+  context?: RequestContext;
 }
 
 export class UpdateWorkspaceUseCase {
   constructor(
     private readonly workspaceRepo: WorkspaceRepository,
     private readonly auditLogger: AuditLogger,
+    private readonly transactions: TransactionRunner = noTransaction,
   ) {}
 
   async execute(input: UpdateWorkspaceUseCaseInput): Promise<WorkspaceEntity> {
@@ -105,19 +112,21 @@ export class UpdateWorkspaceUseCase {
       updates.timezone = input.timezone;
     }
 
-    const updated = await this.workspaceRepo.update(input.workspace_id, updates);
+    const updated = await this.transactions.run(async () => {
+      const result = await this.workspaceRepo.update(input.workspace_id, updates);
 
-    await this.auditLogger.log({
-      action: 'workspace.updated',
-      context: {
-        ...createAnonymousRequestContext('workspace-update'),
-        workspace_id: updated.id,
-      },
-      target_resource_id: updated.id,
-      target_resource_type: 'workspace',
-      metadata: {
-        updated_fields: Object.keys(updates),
-      },
+      await this.auditLogger.log({
+        action: 'workspace.updated',
+        context: input.context ?? createAnonymousRequestContext('workspace-update'),
+        workspace_id: result.id,
+        target_resource_id: result.id,
+        target_resource_type: 'workspace',
+        metadata: {
+          updated_fields: Object.keys(updates),
+        },
+      });
+
+      return result;
     });
 
     return updated;

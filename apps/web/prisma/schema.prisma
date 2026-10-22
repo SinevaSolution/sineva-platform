@@ -386,3 +386,45 @@ model StorageObject {
   @@map("storage_objects")
   @@schema("platform")
 }
+
+// ---------------------------------------------------------------------------
+// Audit log (append-only; FR-SEC-31, FR-SEC-32)
+// ---------------------------------------------------------------------------
+
+// No foreign key on `workspace_id` on purpose: audit rows must outlive the
+// workspace they describe (whether workspace deletion removes them is
+// OQ-SEC-9), and a cascade here would let a workspace delete rewrite history.
+// The ingest endpoint and the use cases validate ids before writing.
+// `prev_hash` and `hash` stay null until the per-workspace chain lands; the
+// application only ever inserts and selects (the repository port has no
+// update or delete). `actor_id` and `target_id` are text because they name
+// non-uuid things too (a specialist slug, a signing key `kid`).
+model AuditEvent {
+  id                   String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  workspace_id         String?  @db.Uuid
+  occurred_at          DateTime @default(now()) @db.Timestamptz(6)
+  actor_type           String   @db.VarChar(32) // user | specialist | system | support | mcp_client
+  actor_id             String
+  on_behalf_of_user_id String?
+  action               String   @db.VarChar(128)
+  target_type          String?  @db.VarChar(64)
+  target_id            String?
+  outcome              String   @default("allowed") @db.VarChar(16) // allowed | denied | error
+  reason_code          String?  @db.VarChar(128)
+  request_id           String?
+  run_id               String?
+  ip                   String?  @db.VarChar(64)
+  user_agent           String?  @db.VarChar(512)
+  change               Json?
+  metadata             Json?
+  prev_hash            String?  @db.VarChar(64)
+  hash                 String?  @db.VarChar(64)
+
+  @@index([workspace_id, occurred_at(sort: Desc)])
+  @@index([workspace_id, action, occurred_at(sort: Desc)])
+  @@index([actor_id, occurred_at(sort: Desc)])
+  @@index([request_id])
+  @@index([run_id])
+  @@map("audit_events")
+  @@schema("platform")
+}

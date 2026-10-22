@@ -10,6 +10,7 @@ import type {
   CreateConversationInput,
   ListConversationsFilter,
 } from '@/server/domain/repositories/conversation_repository';
+import { activeClient } from './prisma_transaction_runner';
 
 function mapConversation(row: {
   id: string;
@@ -56,7 +57,7 @@ export class PrismaConversationRepository implements ConversationRepository {
   }
 
   async create(input: CreateConversationInput): Promise<ConversationEntity> {
-    const row = await this.prisma.conversation.create({
+    const row = await activeClient(this.prisma).conversation.create({
       data: {
         workspace_id: input.workspace_id,
         user_id: input.user_id,

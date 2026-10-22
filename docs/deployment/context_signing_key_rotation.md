@@ -77,7 +77,7 @@ Assign a distinct `kid` based on date: e.g. `k20261101_01`.
    UPDATE platform.signing_keys SET status = 'retired' WHERE status = 'active' AND kid != 'k20261101_01';
    UPDATE platform.signing_keys SET status = 'active' WHERE kid = 'k20261101_01';
    ```
-5. Emit `signing_key.rotated` audit event.
+5. The `signing_key.rotated` audit event is written by `RotateSigningKeyUseCase` (`getRotateSigningKeyUseCase()` in the container), which updates `signing_keys` and inserts the audit row in one transaction, so the SQL in step 4 and this step are one call when run through it. No operator command or route calls it yet; until one exists, a rotation done by hand with SQL has no audit row and must be recorded by whoever ran it.
 
 ### Phase D: Verify Minting and Verification
 

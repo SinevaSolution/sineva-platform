@@ -9,7 +9,12 @@ import {
   generateWorkspaceSlug,
   isReservedSlug,
 } from '@/server/domain/tenancy/tenant_isolation';
-import { createAnonymousRequestContext } from '@/server/domain/context/request_context';
+import {
+  createAnonymousRequestContext,
+  type RequestContext,
+} from '@/server/domain/context/request_context';
+import { ENTITLEMENT_KEYS, type EntitlementService } from '@/server/domain/entitlements/entitlements';
+import { noTransaction, type TransactionRunner } from '@/server/domain/transactions/transaction_runner';
 
 export interface CreateWorkspaceInput {
   workspace_name: string;
@@ -18,12 +23,16 @@ export interface CreateWorkspaceInput {
   default_locale?: string;
   timezone?: string;
   logo_url?: string | null;
+  /** The request being served, so the audit row carries its request id and client address. */
+  context?: RequestContext;
 }
 
 export class CreateWorkspaceUseCase {
   constructor(
     private readonly workspaceRepo: WorkspaceRepository,
     private readonly auditLogger: AuditLogger,
+    private readonly entitlements: EntitlementService,
+    private readonly transactions: TransactionRunner = noTransaction,
   ) {}
 
   async execute(input: CreateWorkspaceInput): Promise<WorkspaceEntity> {
@@ -66,28 +75,40 @@ export class CreateWorkspaceUseCase {
       }
     }
 
-    const workspace = await this.workspaceRepo.create({
-      workspace_name: name,
-      workspace_slug: slug,
-      owner_user_id: input.owner_user_id,
-      default_locale: input.default_locale ?? 'id',
-      timezone: input.timezone ?? 'Asia/Jakarta',
-      logo_url: input.logo_url ?? null,
-    });
+    // Account-level check: the workspace does not exist yet, so there is no
+    // workspace id to scope it to. Runs after validation so a bad request does
+    // not log a check, and before any write so a denial leaves nothing behind.
+    await this.entitlements.assert(null, ENTITLEMENT_KEYS.WORKSPACES);
 
-    await this.auditLogger.log({
-      action: 'workspace.created',
-      context: {
-        ...createAnonymousRequestContext('workspace-create'),
-        user_id: input.owner_user_id,
-        workspace_id: workspace.id,
-      },
-      target_resource_id: workspace.id,
-      target_resource_type: 'workspace',
-      metadata: {
-        workspace_slug: workspace.workspace_slug,
-        subscription_tier: workspace.subscription_tier,
-      },
+    // Workspace, owner membership and the audit row commit together: a
+    // workspace that exists without its `workspace.created` record would be a
+    // privileged action with no evidence.
+    const workspace = await this.transactions.run(async () => {
+      const created = await this.workspaceRepo.create({
+        workspace_name: name,
+        workspace_slug: slug,
+        owner_user_id: input.owner_user_id,
+        default_locale: input.default_locale ?? 'id',
+        timezone: input.timezone ?? 'Asia/Jakarta',
+        logo_url: input.logo_url ?? null,
+      });
+
+      await this.auditLogger.log({
+        action: 'workspace.created',
+        context: input.context ?? {
+          ...createAnonymousRequestContext('workspace-create'),
+          user_id: input.owner_user_id,
+        },
+        workspace_id: created.id,
+        target_resource_id: created.id,
+        target_resource_type: 'workspace',
+        metadata: {
+          workspace_slug: created.workspace_slug,
+          subscription_tier: created.subscription_tier,
+        },
+      });
+
+      return created;
     });
 
     return workspace;

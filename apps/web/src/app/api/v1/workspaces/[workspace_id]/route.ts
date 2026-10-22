@@ -57,6 +57,7 @@ export const PATCH = withAuth<{ workspace_id: string }>(
         logo_url: validated.logo_url,
         default_locale: validated.default_locale,
         timezone: validated.timezone,
+        context: requestContext,
       });
 
       return sendSuccessJson({

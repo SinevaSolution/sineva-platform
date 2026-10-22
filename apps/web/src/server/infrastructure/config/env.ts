@@ -1,6 +1,7 @@
 import 'server-only';
 import crypto from 'node:crypto';
 import { z } from 'zod';
+import { ENTITLEMENT_MODES, type EntitlementMode } from '@/server/domain/entitlements/entitlements';
 
 export interface AppEnvConfig {
   node_env: 'development' | 'test' | 'production';
@@ -32,6 +33,7 @@ export interface AppEnvConfig {
   google_client_secret?: string;
   github_client_id?: string;
   github_client_secret?: string;
+  entitlements_mode: EntitlementMode;
 }
 
 // SHA-256 hashes of dev secrets from .env.example.
@@ -164,6 +166,21 @@ export function validateEnvConfig(
     }
   }
 
+  // `open` until M6. `enforced` blocks real customers, so in production it
+  // needs a second, explicit flag: setting one variable by mistake must not
+  // switch on paywalls before the plans and payments exist.
+  const entitlementsMode = (raw.ENTITLEMENTS_MODE?.trim() || 'open') as EntitlementMode;
+  if (!ENTITLEMENT_MODES.includes(entitlementsMode)) {
+    throw new Error(
+      `Configuration error: ENTITLEMENTS_MODE must be one of ${ENTITLEMENT_MODES.join(', ')}`,
+    );
+  }
+  if (isProduction && entitlementsMode === 'enforced' && raw.ENTITLEMENTS_ALLOW_ENFORCED !== 'true') {
+    throw new Error(
+      'Configuration error: ENTITLEMENTS_MODE=enforced in production requires ENTITLEMENTS_ALLOW_ENFORCED=true',
+    );
+  }
+
   return {
     node_env: nodeEnv,
     next_public_app_url:
@@ -200,6 +217,7 @@ export function validateEnvConfig(
     google_client_secret: raw.GOOGLE_CLIENT_SECRET,
     github_client_id: raw.GITHUB_CLIENT_ID,
     github_client_secret: raw.GITHUB_CLIENT_SECRET,
+    entitlements_mode: entitlementsMode,
   };
 }
 

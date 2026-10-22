@@ -31,6 +31,7 @@ export const PATCH = withAuth(
       const profile = await getUpdateProfileUseCase().execute({
         user_id: requestContext.user_id,
         ...body,
+        context: requestContext,
       });
 
       return sendSuccessJson({

@@ -3,6 +3,7 @@ import { CreateWorkspaceUseCase } from '@/server/application/use-cases/workspace
 import { GetWorkspaceUseCase } from '@/server/application/use-cases/workspace/get_workspace_use_case';
 import { UpdateWorkspaceUseCase } from '@/server/application/use-cases/workspace/update_workspace_use_case';
 import { ListUserWorkspacesUseCase } from '@/server/application/use-cases/workspace/list_user_workspaces_use_case';
+import { allowAllEntitlements } from './fakes/allow_all_entitlements';
 import { CountingAuditLogger } from '@/server/domain/audit/audit_logger';
 import { ValidationError, NotFoundError, ConflictError } from '@/server/domain/errors/domain_error';
 import type { WorkspaceRepository, CreateWorkspaceInput, UpdateWorkspaceInput } from '@/server/domain/repositories/workspace_repository';
@@ -87,7 +88,7 @@ describe('Workspace Use Cases (WP-M0-26, FR-AUTH-10, 11, 12, FR-SHELL-13)', () =
 
   describe('CreateWorkspaceUseCase', () => {
     it('creates workspace and automatically derives clean slug', async () => {
-      const useCase = new CreateWorkspaceUseCase(workspaceRepo, auditLogger);
+      const useCase = new CreateWorkspaceUseCase(workspaceRepo, auditLogger, allowAllEntitlements);
       const ws = await useCase.execute({
         workspace_name: 'PT. Maju Bersama',
         owner_user_id: '11111111-1111-4111-8111-111111111111',
@@ -99,7 +100,7 @@ describe('Workspace Use Cases (WP-M0-26, FR-AUTH-10, 11, 12, FR-SHELL-13)', () =
     });
 
     it('rejects reserved slug when specified explicitly (FR-SHELL-13)', async () => {
-      const useCase = new CreateWorkspaceUseCase(workspaceRepo, auditLogger);
+      const useCase = new CreateWorkspaceUseCase(workspaceRepo, auditLogger, allowAllEntitlements);
       await expect(
         useCase.execute({
           workspace_name: 'Settings Corp',
@@ -110,7 +111,7 @@ describe('Workspace Use Cases (WP-M0-26, FR-AUTH-10, 11, 12, FR-SHELL-13)', () =
     });
 
     it('rejects duplicate slug when specified explicitly', async () => {
-      const useCase = new CreateWorkspaceUseCase(workspaceRepo, auditLogger);
+      const useCase = new CreateWorkspaceUseCase(workspaceRepo, auditLogger, allowAllEntitlements);
       await useCase.execute({
         workspace_name: 'Acme',
         workspace_slug: 'acme-corp',
@@ -129,7 +130,7 @@ describe('Workspace Use Cases (WP-M0-26, FR-AUTH-10, 11, 12, FR-SHELL-13)', () =
 
   describe('UpdateWorkspaceUseCase & Slug Rename Once Rule (FR-SHELL-13)', () => {
     it('allows changing slug for the first time and records slug_changed_at', async () => {
-      const createUseCase = new CreateWorkspaceUseCase(workspaceRepo, auditLogger);
+      const createUseCase = new CreateWorkspaceUseCase(workspaceRepo, auditLogger, allowAllEntitlements);
       const ws = await createUseCase.execute({
         workspace_name: 'Initial Name',
         owner_user_id: '11111111-1111-4111-8111-111111111111',
@@ -146,7 +147,7 @@ describe('Workspace Use Cases (WP-M0-26, FR-AUTH-10, 11, 12, FR-SHELL-13)', () =
     });
 
     it('rejects second slug change attempt (FR-SHELL-13 editable once)', async () => {
-      const createUseCase = new CreateWorkspaceUseCase(workspaceRepo, auditLogger);
+      const createUseCase = new CreateWorkspaceUseCase(workspaceRepo, auditLogger, allowAllEntitlements);
       const ws = await createUseCase.execute({
         workspace_name: 'Initial Name',
         owner_user_id: '11111111-1111-4111-8111-111111111111',
@@ -171,7 +172,7 @@ describe('Workspace Use Cases (WP-M0-26, FR-AUTH-10, 11, 12, FR-SHELL-13)', () =
 
   describe('GetWorkspaceUseCase', () => {
     it('returns workspace when valid id exists', async () => {
-      const createUseCase = new CreateWorkspaceUseCase(workspaceRepo, auditLogger);
+      const createUseCase = new CreateWorkspaceUseCase(workspaceRepo, auditLogger, allowAllEntitlements);
       const ws = await createUseCase.execute({
         workspace_name: 'Alpha Inc',
         owner_user_id: '11111111-1111-4111-8111-111111111111',
@@ -193,7 +194,7 @@ describe('Workspace Use Cases (WP-M0-26, FR-AUTH-10, 11, 12, FR-SHELL-13)', () =
 
   describe('ListUserWorkspacesUseCase', () => {
     it('returns all workspaces belonging to user', async () => {
-      const createUseCase = new CreateWorkspaceUseCase(workspaceRepo, auditLogger);
+      const createUseCase = new CreateWorkspaceUseCase(workspaceRepo, auditLogger, allowAllEntitlements);
       await createUseCase.execute({
         workspace_name: 'First Workspace',
         owner_user_id: '11111111-1111-4111-8111-111111111111',

@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { UpdateProfileSchema } from '@/server/application/dtos/profile_dto';
 import { GetProfileUseCase } from '@/server/application/use-cases/profile/get_profile_use_case';
 import { UpdateProfileUseCase } from '@/server/application/use-cases/profile/update_profile_use_case';
+import { CountingAuditLogger } from '@/server/domain/audit/audit_logger';
 import { NotFoundError } from '@/server/domain/errors/domain_error';
 import { buildUserProfile, FakeUserProfileRepository } from './fakes/fake_user_profile_repository';
 
@@ -37,7 +38,7 @@ describe('UpdateProfileUseCase', () => {
   });
 
   it('applies only the fields that were provided', async () => {
-    const updated = await new UpdateProfileUseCase(repo).execute({
+    const updated = await new UpdateProfileUseCase(repo, new CountingAuditLogger()).execute({
       user_id: 'usr-1',
       full_name: 'Amira Lestari',
     });
@@ -49,7 +50,7 @@ describe('UpdateProfileUseCase', () => {
   });
 
   it('updates locale and timezone together', async () => {
-    const updated = await new UpdateProfileUseCase(repo).execute({
+    const updated = await new UpdateProfileUseCase(repo, new CountingAuditLogger()).execute({
       user_id: 'usr-1',
       locale: 'en',
       timezone: 'Asia/Makassar',
@@ -60,7 +61,7 @@ describe('UpdateProfileUseCase', () => {
   });
 
   it('writes only to the user it was given', async () => {
-    await new UpdateProfileUseCase(repo).execute({ user_id: 'usr-1', full_name: 'Changed' });
+    await new UpdateProfileUseCase(repo, new CountingAuditLogger()).execute({ user_id: 'usr-1', full_name: 'Changed' });
 
     expect(repo.profiles.get('usr-2')?.full_name).toBe('Someone Else');
     expect(repo.updateCalls.map((c) => c.user_id)).toEqual(['usr-1']);
@@ -68,7 +69,7 @@ describe('UpdateProfileUseCase', () => {
 
   it('throws NotFoundError when the user does not exist', async () => {
     await expect(
-      new UpdateProfileUseCase(repo).execute({ user_id: 'missing', full_name: 'X' }),
+      new UpdateProfileUseCase(repo, new CountingAuditLogger()).execute({ user_id: 'missing', full_name: 'X' }),
     ).rejects.toThrow(NotFoundError);
   });
 });

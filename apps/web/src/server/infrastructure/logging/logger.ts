@@ -26,6 +26,8 @@ export const LOG_EVENTS = [
   'http.unhandled_error',
   'run.relay_failed',
   'run.metrics',
+  'entitlement.checked',
+  'entitlement.would_block',
 ] as const;
 export type LogEvent = (typeof LOG_EVENTS)[number];
 
@@ -52,6 +54,14 @@ export interface LogFields {
   total_ms?: number;
   /** Reply language code such as `id` or `en`. */
   locale?: string;
+  /** Opaque id of a workspace (a tenant, not a person). */
+  workspace_id?: string;
+  /** Entitlement key such as `members.max`, and the access mode of the check. */
+  entitlement_key?: string;
+  mode?: string;
+  allowed?: boolean;
+  quantity?: number;
+  plan_required?: string;
 }
 
 type FieldKind = 'number' | 'string' | 'boolean' | 'string_list';
@@ -73,6 +83,12 @@ const FIELD_KINDS: Record<keyof LogFields, FieldKind> = {
   first_token_ms: 'number',
   total_ms: 'number',
   locale: 'string',
+  workspace_id: 'string',
+  entitlement_key: 'string',
+  mode: 'string',
+  allowed: 'boolean',
+  quantity: 'number',
+  plan_required: 'string',
 };
 
 // Bounds what an allowed string field can smuggle: a pasted body would be cut

@@ -15,6 +15,14 @@ import { extractRequestId, handleRouteError, sendErrorJson } from '@/server/http
 import { getEnvConfig } from '@/server/infrastructure/config/env';
 import { getPrismaClient, getJwtAuthService } from '@/server/container';
 
+// First hop of X-Forwarded-For when a proxy set it, else X-Real-IP. Only used
+// to label audit rows (truncated on write), never for an access decision, so
+// a spoofed header can mislabel a row but cannot grant anything.
+function clientIp(request?: NextRequest): string | undefined {
+  const forwarded = request?.headers?.get('x-forwarded-for')?.split(',')[0]?.trim();
+  return forwarded || request?.headers?.get('x-real-ip') || undefined;
+}
+
 export interface RouteAuthOptions {
   permission?: PermissionKey;
   scope: 'workspace' | 'user' | 'public';
@@ -382,6 +390,8 @@ export function withAuth<TParams = Record<string, string | string[]>>(
         staff_role: session.staffRole,
         fresh_until: session.freshUntil,
         email_verified: session.emailVerified,
+        ip: clientIp(request),
+        user_agent: request?.headers?.get('user-agent') ?? undefined,
         actor: {
           type: 'user',
           id: session.userId,

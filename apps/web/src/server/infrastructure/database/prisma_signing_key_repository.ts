@@ -6,6 +6,7 @@ import type {
   SigningKeyStatus,
 } from '@/server/domain/entities/signing_key';
 import type { SigningKeyRepository } from '@/server/domain/repositories/signing_key_repository';
+import { activeClient } from './prisma_transaction_runner';
 
 function mapSigningKey(row: {
   id: string;
@@ -92,7 +93,7 @@ export class PrismaSigningKeyRepository implements SigningKeyRepository {
   }
 
   async rotate(newKey: SigningKeyEntity, retireKid?: string): Promise<void> {
-    await this.prisma.$transaction(async (tx) => {
+    const apply = async (tx: ReturnType<typeof activeClient>) => {
       if (retireKid) {
         await tx.signingKey.updateMany({
           where: { kid: retireKid },
@@ -123,6 +124,15 @@ export class PrismaSigningKeyRepository implements SigningKeyRepository {
           valid_until: new Date(newKey.valid_until),
         },
       });
-    });
+    };
+
+    // Inside a caller's transaction scope (rotation plus its audit row) the
+    // changes join that transaction; standalone it opens its own, as before.
+    const scoped = activeClient(this.prisma);
+    if (scoped !== this.prisma) {
+      await apply(scoped);
+      return;
+    }
+    await this.prisma.$transaction(apply);
   }
 }
