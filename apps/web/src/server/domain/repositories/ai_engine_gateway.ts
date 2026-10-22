@@ -1,3 +1,4 @@
+import type { AgentCatalog } from '@/server/domain/specialists/agent_catalog';
 import type {
   ChatTurnRequestV2,
   ChatTurnResultV2,
@@ -19,14 +20,6 @@ export interface StreamCallOptions {
   contextToken: string;
   requestId?: string;
   traceparent?: string;
-}
-
-export interface AgentListItem {
-  agent_slug: string;
-  display_name: string;
-  description?: string;
-  category?: string;
-  status: string;
 }
 
 export interface RunEventsResult {
@@ -96,7 +89,7 @@ export interface AiEngineGateway {
     contextToken?: string;
     requestId?: string;
     traceparent?: string;
-  }): Promise<AgentListItem[]>;
+  }): Promise<AgentCatalog>;
   getRunEvents(options: {
     runId: string;
     afterSeq?: number;

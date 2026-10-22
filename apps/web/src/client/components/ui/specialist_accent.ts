@@ -2,26 +2,20 @@
 // the compro product accents. Accents are decorative only: icon tiles and
 // chips, never buttons, links, body text or focus rings.
 
-export type SpecialistAccent =
-  | 'people'
-  | 'finance'
-  | 'sales'
-  | 'social'
-  | 'help'
-  | 'insights'
-  | 'brand';
+import { findManifestEntry, type AccentKey } from '@/shared/specialists/manifest';
 
-const ACCENT_BY_SLUG: Record<string, SpecialistAccent> = {
-  sinopeople: 'people',
-  sinofinance: 'finance',
-  sinosales: 'sales',
-  sinosocial: 'social',
-  sinohelp: 'help',
-  sinoinsights: 'insights',
-};
+// The accents that have a color ramp in globals.css today. The manifest's
+// `accent_key` enum already reserves the seven wave 2 and 3 keys, but their
+// ramps are not vendored yet, so those would render as the brand accent rather
+// than as an invented color.
+const RENDERED_ACCENTS = ['people', 'finance', 'sales', 'social', 'help', 'insights'] as const satisfies readonly AccentKey[];
+
+// `brand` is Sino herself (the orchestrator has no manifest entry).
+export type SpecialistAccent = (typeof RENDERED_ACCENTS)[number] | 'brand';
 
 export function specialistAccent(agentSlug: string): SpecialistAccent {
-  return ACCENT_BY_SLUG[agentSlug] ?? 'brand';
+  const key = findManifestEntry(agentSlug)?.accent_key;
+  return RENDERED_ACCENTS.find((accent) => accent === key) ?? 'brand';
 }
 
 // Sino wears a different pose per specialist (compro mascot poses, v011).

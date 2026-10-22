@@ -10,7 +10,7 @@ import { specialistPose } from '@/client/components/ui/specialist_accent';
 import { Tooltip } from '@/client/components/ui/tooltip';
 import { useTranslations } from '@/i18n/provider';
 import type { ShellSpecialistView } from '@/shared/shell_view';
-import { startersFor, type RoomMood } from './room_model';
+import { teamStarterKeys, type RoomMood } from './room_model';
 import { RoomBubble, RoomStage } from './room_stage';
 
 /**
@@ -43,6 +43,9 @@ export function NewChatView({
   const composer = React.useRef<ComposerHandle>(null);
   const current = specialists.find((s) => s.agent_slug === withSlug) ?? null;
   const name = current?.display_name ?? 'Sino';
+  // A specialist's prompts come from the manifest, already in the page language;
+  // the team chat's are catalog messages.
+  const starterTexts = current ? [...current.starter_prompts] : teamStarterKeys().map((key) => t(key));
 
   React.useEffect(() => {
     if (initialPrompt) composer.current?.fill(initialPrompt);
@@ -111,10 +114,9 @@ export function NewChatView({
           </RoomBubble>
         </div>
         <ul className="flex flex-wrap gap-2" aria-label={t('starters_label')}>
-          {startersFor(withSlug).map((key, i) => {
-            const text = t(key);
+          {starterTexts.map((text, i) => {
             return (
-              <li key={key} className="anim-rise" style={{ '--d': `${120 + i * 70}ms` } as React.CSSProperties}>
+              <li key={text} className="anim-rise" style={{ '--d': `${120 + i * 70}ms` } as React.CSSProperties}>
                 <button
                   type="button"
                   onClick={() => composer.current?.fill(text)}

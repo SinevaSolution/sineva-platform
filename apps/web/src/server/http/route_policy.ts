@@ -96,13 +96,6 @@ export const MUTATING_ROUTE_POLICY: Record<string, MutatingRoutePolicy> = {
     entitlement: 'none',
     reason: 'Stopping a reply spends nothing, so no plan limit applies.',
   },
-  'POST /api/v1/agents': {
-    effect: 'create',
-    audit: 'none',
-    reason:
-      'Catalog registration is an owner or internal operation replaced by the specialist registry; it is not in any PRD auditable events list.',
-    entitlement: 'none',
-  },
   'POST /api/v1/storage/presign': {
     effect: 'create',
     audit: 'none',

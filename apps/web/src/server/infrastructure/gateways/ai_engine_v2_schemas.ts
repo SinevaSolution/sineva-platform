@@ -1,6 +1,7 @@
 import 'server-only';
 import { z } from 'zod';
 import type { ParsedSseMessage } from '@/server/domain/chat/chat_v2';
+import { AGENT_CATEGORIES } from '@/server/domain/specialists/agent_catalog';
 
 export const terminalStatusSchema = z.enum([
   'completed',
@@ -64,6 +65,28 @@ export const chatTurnResultV2Schema = z.object({
 export const chatTurnResultEnvelopeV2Schema = z.object({
   success: z.literal(true),
   data: chatTurnResultV2Schema,
+});
+
+// `GET /api/v2/agents`. Only what the platform reads is declared: zod strips the
+// rest (tier, skills, tool allowlist, guardrail), which keeps the contract
+// additive. An unknown category or status fails here, so it becomes a 502
+// instead of reaching the roster as an impossible value.
+export const catalogAgentV2Schema = z.object({
+  agent_slug: z.string().min(1),
+  handle: z.string().min(1),
+  category: z.enum(AGENT_CATEGORIES),
+  wave: z.number().int().positive(),
+  status: z.enum(['live', 'coming_soon']),
+});
+
+export const agentCatalogV2Schema = z.object({
+  catalog_version: z.string().min(1),
+  agents: z.array(catalogAgentV2Schema),
+});
+
+export const agentCatalogEnvelopeV2Schema = z.object({
+  success: z.literal(true),
+  data: agentCatalogV2Schema,
 });
 
 /**

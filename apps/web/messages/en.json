@@ -311,36 +311,6 @@
         "a": "@SinoSales draft a follow-up for yesterday’s client meeting",
         "b": "Plan my week around three priorities",
         "c": "@SinoFinance and @SinoInsights review last month’s spending"
-      },
-      "sinopeople": {
-        "a": "Write a job post for a part-time barista",
-        "b": "Draft a friendly onboarding checklist for new hires",
-        "c": "Help me prepare questions for a performance review"
-      },
-      "sinofinance": {
-        "a": "Make a simple cash flow plan for next month",
-        "b": "Explain this invoice and what I should check",
-        "c": "Draft a polite payment reminder to a client"
-      },
-      "sinosales": {
-        "a": "Write a follow-up email after a product demo",
-        "b": "Turn my notes into a short sales proposal",
-        "c": "Suggest three ways to reach new local customers"
-      },
-      "sinosocial": {
-        "a": "Plan five Instagram posts for this week",
-        "b": "Write a caption for our new menu item",
-        "c": "Turn this announcement into a LinkedIn post"
-      },
-      "sinohelp": {
-        "a": "Draft a reply to a customer asking for a refund",
-        "b": "Write answers for our five most common questions",
-        "c": "Make a calm reply to an unhappy review"
-      },
-      "sinoinsights": {
-        "a": "What should I look at in my monthly sales numbers?",
-        "b": "Compare this month and last month and tell me what changed",
-        "c": "Suggest three numbers I should track every week"
       }
     }
   },

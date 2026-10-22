@@ -1,5 +1,4 @@
 import type {
-  AgentListItem,
   AiEngineChatRequest,
   AiEngineChatResponse,
   AiEngineGateway,
@@ -11,6 +10,7 @@ import type {
 } from '@/server/domain/repositories/ai_engine_gateway';
 import type { ChatTurnResultV2 } from '@/server/application/dtos/chat_v2_dto';
 import type { ParsedSseMessage } from '@/server/domain/chat/chat_v2';
+import type { AgentCatalog, CatalogAgent } from '@/server/domain/specialists/agent_catalog';
 
 /**
  * Deterministic gateway: never touches the network and records what it was
@@ -25,6 +25,9 @@ export class FakeAiEngineGateway implements AiEngineGateway {
   public readonly cancelRequests: Array<{ runId: string; contextToken?: string }> = [];
   public readonly replayRequests: Array<{ runId: string; afterSeq?: number }> = [];
   public failure: Error | null = null;
+  /** What `listAgents` returns: sineva-ai's catalog, six live wave 1 entries plus `sino` and a coming soon one. */
+  public catalog: AgentCatalog = buildCatalogFixture();
+  public readonly catalogRequests: Array<{ requestId?: string }> = [];
   /** Replaces the default stream body (the text-only contract transcript). */
   public streamFactory: ((options: StreamCallOptions) => Promise<ReadableStream<Uint8Array>>) | null =
     null;
@@ -115,18 +118,12 @@ export class FakeAiEngineGateway implements AiEngineGateway {
     contextToken?: string;
     requestId?: string;
     traceparent?: string;
-  }): Promise<AgentListItem[]> {
-    void options;
+  }): Promise<AgentCatalog> {
+    this.catalogRequests.push({ requestId: options.requestId });
     if (this.failure) {
       throw this.failure;
     }
-    return [
-      {
-        agent_slug: 'sinofinance',
-        display_name: 'Sino Finance',
-        status: 'online',
-      },
-    ];
+    return this.catalog;
   }
 
   async getRunEvents(options: {
@@ -196,4 +193,23 @@ export class FakeAiEngineGateway implements AiEngineGateway {
   async checkHealth(): Promise<AiEngineHealthResult> {
     return this.healthResult;
   }
+}
+
+const WAVE_1_CATALOG: ReadonlyArray<Pick<CatalogAgent, 'agent_slug' | 'handle' | 'category'>> = [
+  { agent_slug: 'sinopeople', handle: 'SinoPeople', category: 'people_hr' },
+  { agent_slug: 'sinofinance', handle: 'SinoFinance', category: 'finance_ops' },
+  { agent_slug: 'sinosales', handle: 'SinoSales', category: 'sales_growth' },
+  { agent_slug: 'sinosocial', handle: 'SinoSocial', category: 'social_marketing' },
+  { agent_slug: 'sinohelp', handle: 'SinoHelp', category: 'customer_support' },
+  { agent_slug: 'sinoinsights', handle: 'SinoInsights', category: 'data_insights' },
+];
+
+/** A catalog shaped like the documented `GET /api/v2/agents` body, for tests that need no network. */
+export function buildCatalogFixture(version = 'cat-test-1'): AgentCatalog {
+  const agents: CatalogAgent[] = [
+    { agent_slug: 'sino', handle: 'Sino', category: 'personal_ops', wave: 1, status: 'live' },
+    ...WAVE_1_CATALOG.map((a) => ({ ...a, wave: 1, status: 'live' as const })),
+    { agent_slug: 'sinodesk', handle: 'SinoDesk', category: 'personal_ops', wave: 2, status: 'coming_soon' },
+  ];
+  return { catalog_version: version, agents };
 }
