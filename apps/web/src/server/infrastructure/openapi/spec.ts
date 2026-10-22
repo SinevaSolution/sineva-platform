@@ -1065,6 +1065,8 @@ export function getOpenApiSpec(): Record<string, unknown> {
         get: {
           tags: ['Conversations'],
           summary: 'List messages in a conversation in chronological order',
+          description:
+            'Each message carries `cards[]`: the typed result cards of an assistant message, validated again and upcast on read (ADR-0025). A rejected card has empty `data`, its `rejected_code` and its `fallback_text`.',
           operationId: 'list_conversation_messages',
           parameters: [
             {

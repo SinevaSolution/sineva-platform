@@ -137,6 +137,31 @@ describe('Architecture: backend/frontend split', () => {
     expect(violations(client, ['@/server', 'server-only'])).toEqual([]);
   });
 
+  it('the card validator stays on the server: the client never imports @sineva/card-schemas', () => {
+    // Ajv compiles schemas with `new Function`, which a CSP without
+    // unsafe-eval blocks, and the validator is the authority only on the
+    // server anyway (ADR-0025). The browser renders what the relay forwarded.
+    expect(violations(collect('client'), ['@sineva/card-schemas'])).toEqual([]);
+    expect(violations(collect('shared'), ['@sineva/card-schemas'])).toEqual([]);
+  });
+
+  it('packages/ui cards and packages/card-schemas import no app code', () => {
+    const PACKAGES_ROOT = resolve(SRC_ROOT, '..', '..', '..', 'packages');
+    const files = [
+      ...walk(join(PACKAGES_ROOT, 'ui', 'src', 'cards')),
+      ...walk(join(PACKAGES_ROOT, 'card-schemas', 'src')),
+    ].filter((file) => /\.(ts|tsx)$/.test(file));
+    expect(files.length).toBeGreaterThan(0);
+    // parseImports rewrites relative specifiers to `@/../..`; only a real
+    // `@/` alias (app code) counts here.
+    const offenders = files.flatMap((file) =>
+      parseImports(file, readFileSync(file, 'utf8'))
+        .filter((specifier) => /^@\/(?!\.\.\/)|^server-only$/.test(specifier))
+        .map((specifier) => `${relative(PACKAGES_ROOT, file)} -> ${specifier}`),
+    );
+    expect(offenders).toEqual([]);
+  });
+
   it('domain layer is framework- and ORM-free and depends on nothing outward', () => {
     const domain = collect('server/domain');
     expect(domain.length).toBeGreaterThan(0);

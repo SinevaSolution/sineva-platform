@@ -344,6 +344,17 @@
       }
     }
   },
+  "cards": {
+    "title": {
+      "generic": "Result",
+      "guardrail_notice": "What I can't do here"
+    },
+    "rejected_notice": "Could not show this result as a card.",
+    "no_text": "This result could not be shown.",
+    "copy": "Copy",
+    "copied": "Copied",
+    "copy_failed": "Could not copy"
+  },
   "chat": {
     "composer": {
       "message_label": "Message",

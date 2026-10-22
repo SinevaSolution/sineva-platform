@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  liveCardFromFrame,
   moodForLive,
   pendingRunToAttach,
   reduceLiveReply,
@@ -130,5 +131,63 @@ describe('live reply model (WP-M0-30, FR-HUB-20, FR-HUB-21)', () => {
       expect(pendingRunToAttach([message({ run_id: null })], now)).toBeNull();
       expect(pendingRunToAttach([], now)).toBeNull();
     });
+  });
+});
+
+describe('liveCardFromFrame (WP-M0-32, FR-AX-13)', () => {
+  const display = {
+    card_type: 'guardrail_notice',
+    schema_version: 1,
+    data: { specialist: 'sinofinance', limit_key: 'no_money_moves', offer_key: 'prepare_details' },
+    actions: [],
+    provider: null,
+    fallback_text: 'I cannot move money.',
+  };
+
+  it('turns a validated card_completed payload into a card view with a stable live id', () => {
+    expect(liveCardFromFrame({ card_id: 'crd_1', state: 'ready', display }, 'run_1', 0)).toEqual({
+      id: 'live-run_1-0',
+      message_id: 'live-run_1',
+      position: 0,
+      card_type: 'guardrail_notice',
+      schema_version: 1,
+      state: 'ready',
+      validation_status: 'valid',
+      rejected_code: null,
+      provider_slug: null,
+      approval_id: null,
+      data: display.data,
+      actions: [],
+      fallback_text: 'I cannot move money.',
+      version: 1,
+    });
+  });
+
+  it('turns a rejected payload into a rejected view that carries only the fallback text', () => {
+    expect(
+      liveCardFromFrame(
+        { card_id: 'crd_1', state: 'failed', rejected_code: 'unknown_card_type', fallback_text: 'Text' },
+        'run_1',
+        2,
+      ),
+    ).toMatchObject({
+      id: 'live-run_1-2',
+      position: 2,
+      validation_status: 'rejected',
+      rejected_code: 'unknown_card_type',
+      state: 'failed',
+      data: {},
+      fallback_text: 'Text',
+    });
+  });
+
+  it('ignores a payload it cannot read instead of throwing', () => {
+    for (const bad of [null, 'x', 5, {}, { state: 'ready' }, { state: 'ready', display: 'no' }, { display: { card_type: 5 } }]) {
+      expect(liveCardFromFrame(bad, 'run_1', 0)).toBeNull();
+    }
+  });
+
+  it('falls back to ready for a state it does not know', () => {
+    expect(liveCardFromFrame({ state: 'weird', display }, 'run_1', 0)).toMatchObject({ state: 'ready' });
   });
 });

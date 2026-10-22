@@ -3,7 +3,7 @@
 // a run that is still waiting for its reply. No React, so it is unit tested.
 
 import type { RoomMood } from '@/client/components/room/room_model';
-import type { MessageView } from '@/shared/chat_view';
+import type { MessageCardView, MessageView } from '@/shared/chat_view';
 
 export type LiveReply =
   | { phase: 'idle' }
@@ -85,4 +85,78 @@ export function pendingRunToAttach(messages: MessageView[], nowMs: number): stri
   if (answered) return null;
   const age = nowMs - Date.parse(last.created_at);
   return age <= FRESH_RUN_WINDOW_MS ? last.run_id : null;
+}
+
+const CARD_STATES: ReadonlyArray<MessageCardView['state']> = [
+  'drafting',
+  'ready',
+  'needs_review',
+  'done',
+  'failed',
+  'disconnected',
+  'cancelled',
+  'expired',
+];
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+/**
+ * A card that finished during a live reply, from the `card_completed` frame
+ * the relay forwarded. The relay already validated it (ADR-0025), so this only
+ * reads the shape; anything unreadable is ignored, never thrown, because a
+ * card must not break the reply it belongs to. The ids are local: the stored
+ * row replaces them on the next load.
+ */
+export function liveCardFromFrame(
+  data: unknown,
+  runId: string,
+  position: number,
+): MessageCardView | null {
+  if (!isRecord(data)) return null;
+  const state = CARD_STATES.find((s) => s === data.state) ?? 'ready';
+  const base = {
+    id: `live-${runId}-${position}`,
+    message_id: `live-${runId}`,
+    position,
+    provider_slug: null,
+    approval_id: null,
+    version: 1,
+  };
+
+  if (typeof data.rejected_code === 'string') {
+    return {
+      ...base,
+      card_type: 'unknown',
+      schema_version: 0,
+      state: 'failed',
+      validation_status: 'rejected',
+      rejected_code: data.rejected_code,
+      data: {},
+      actions: [],
+      fallback_text: typeof data.fallback_text === 'string' ? data.fallback_text : null,
+    };
+  }
+
+  const display = data.display;
+  if (
+    !isRecord(display) ||
+    typeof display.card_type !== 'string' ||
+    typeof display.schema_version !== 'number' ||
+    !isRecord(display.data)
+  ) {
+    return null;
+  }
+  return {
+    ...base,
+    card_type: display.card_type,
+    schema_version: display.schema_version,
+    state,
+    validation_status: 'valid',
+    rejected_code: null,
+    data: display.data,
+    actions: Array.isArray(display.actions) ? display.actions : [],
+    fallback_text: typeof display.fallback_text === 'string' ? display.fallback_text : null,
+  };
 }
