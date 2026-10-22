@@ -42,7 +42,7 @@ export default async function RootLayout({
       className={`${plusJakartaSans.variable} ${geistMono.variable}`}
     >
       <body>
-        {/* beforeInteractive: Next lifts it into <head> ahead of hydration. */}
+        {/* Registers a server-only HTML insertion before hydration. */}
         <ThemeScript nonce={nonce} />
         <I18nProvider locale={locale} messages={messages}>
           <AppProviders>{children}</AppProviders>

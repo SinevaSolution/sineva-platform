@@ -99,7 +99,7 @@ Specialist accents: put `data-product-accent="<key>"` on a wrapper and read only
 
 ## Theme mechanism
 
-`<html data-theme>` is set before the first paint by an inline script (`THEME_SCRIPT` in `packages/ui/src/lib/theme.ts`, rendered by `ThemeScript` in `app/layout.tsx` with the CSP nonce). The first visit follows the OS. A person's choice is light, dark or system: light and dark are stored under `sineva-theme`, system removes the key so the page follows the OS (also when it flips while the page is open, through `ThemeFollowSystem`). `useTheme` (`client/lib/use_theme.ts`) exposes the resolved `theme` and the `preference`. `next-themes` is not used.
+`<html data-theme>` is set before the first paint by an inline script (`THEME_SCRIPT` in `packages/ui/src/lib/theme.ts`, rendered by `ThemeScript` in `app/layout.tsx` with the CSP nonce through `useServerInsertedHTML`). The component returns null during client rendering; the server insertion runs once and keeps executable script tags out of the hydrated component tree. The first visit follows the OS. A person's choice is light, dark or system: light and dark are stored under `sineva-theme`, system removes the key so the page follows the OS (also when it flips while the page is open, through `ThemeFollowSystem`). `useTheme` (`client/lib/use_theme.ts`) exposes the resolved `theme` and the `preference`. `next-themes` is not used.
 
 Account sync (WP-M0-36): `usePersistedTheme` and `ThemeSync` (`client/components/theme_sync.tsx`) sit on `useTheme`. A change in Preferences or the user menu is applied at once and saved with `PATCH /api/v1/me/preferences`; the account value is applied once per session on a new device (an explicit light or dark only; `system` is the stored default and is ignored).
 
