@@ -565,7 +565,10 @@ export class InternalAiEngineGateway implements AiEngineGateway {
 
     try {
       const json = JSON.parse(rawBody);
-      upstreamCode = json?.errors?.[0]?.code || json?.code || json?.error?.code;
+      // sineva-ai's envelope uses errors[].error_code; `code` is kept for the
+      // v2 contract fixtures and other shapes (sineva-ai contract gap G-12).
+      upstreamCode =
+        json?.errors?.[0]?.error_code || json?.errors?.[0]?.code || json?.code || json?.error?.code;
       upstreamMessage = json?.errors?.[0]?.detail || json?.message || json?.error?.message;
     } catch {
       // Body not JSON

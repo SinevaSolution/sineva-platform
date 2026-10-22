@@ -269,6 +269,29 @@ describe('InternalAiEngineGateway Contract v2 (WP-M0-28)', () => {
       ).rejects.toBeInstanceOf(DependencyUnavailableError);
     });
 
+    // sineva-ai's envelope puts the machine code in errors[].error_code
+    // (sineva-ai docs/api-spec/platform_integration_contract.md, gap G-12).
+    it('reads the typed code from errors[].error_code (sineva-ai envelope)', async () => {
+      stubFetch(() =>
+        jsonResponse(
+          {
+            success: false,
+            message: 'Request failed',
+            errors: [{ error_code: 'model_unavailable', detail: 'Provider is overloaded' }],
+          },
+          500,
+        ),
+      );
+
+      await expect(
+        new InternalAiEngineGateway().chatTurn({
+          agentSlug: 'sinofinance',
+          request: validV2Request,
+          contextToken: TEST_CONTEXT_TOKEN,
+        }),
+      ).rejects.toBeInstanceOf(ModelUnavailableError);
+    });
+
     it('maps upstream 401/403 context_invalid to ContextInvalidError (500)', async () => {
       stubFetch(() =>
         jsonResponse(
