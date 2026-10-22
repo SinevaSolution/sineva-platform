@@ -21,6 +21,7 @@ export default async function ChatThreadPage({
     <ChatThread
       key={conversation_id}
       workspaceId={ctx.workspace.id}
+      workspaceSlug={workspace_slug}
       conversationId={conversation_id}
       specialists={ctx.specialists}
     />

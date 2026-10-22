@@ -6,6 +6,9 @@ import * as React from 'react';
 import { apiRequest } from '@/client/lib/api';
 import { useAppSelector } from '@/client/store/hooks';
 import { useTranslations } from '@/i18n/provider';
+import { ConversationActions } from '@/client/components/conversation/conversation_actions';
+import { InlineTitleEdit } from '@/client/components/conversation/inline_title_edit';
+import { useConversationActions } from '@/client/components/conversation/use_conversation_actions';
 import { cn } from '@/client/components/ui/cn';
 import { SinoFigure } from '@/client/components/ui/sino_figure';
 import type { ConversationView } from '@/shared/chat_view';
@@ -42,8 +45,19 @@ export function RecentChats({
   const pathname = usePathname();
   const t = useTranslations('shell');
   const tSpecialists = useTranslations('specialists');
+  const tConversation = useTranslations('conversation');
   const version = useAppSelector((s) => s.ui.chats_version);
   const [state, setState] = React.useState<LoadState>({ status: 'loading' });
+  const [editingId, setEditingId] = React.useState<string | null>(null);
+  const actions = useConversationActions({ workspaceId, workspaceSlug });
+
+  const setTitle = React.useCallback((id: string, title: string | null) => {
+    setState((prev) =>
+      prev.status !== 'ready'
+        ? prev
+        : { ...prev, items: prev.items.map((c) => (c.id === id ? { ...c, title } : c)) },
+    );
+  }, []);
 
   React.useEffect(() => {
     let cancelled = false;
@@ -87,31 +101,78 @@ export function RecentChats({
         const marker = chatMarker(c, specialistNames);
         const markerLabel =
           marker.kind === 'team' ? tSpecialists('marker.team') : (marker.name ?? tSpecialists('marker.specialist'));
+        const title = c.title?.trim() || t('recent.untitled');
+        if (editingId === c.id) {
+          return (
+            <li key={c.id}>
+              <div className="flex h-8 items-center gap-1.5 rounded-lg bg-hover pl-1 pr-1.5 text-[13px]">
+                <SinoFigure pose={marker.pose} size={22} className="-my-1" />
+                <InlineTitleEdit
+                  value={c.title}
+                  label={tConversation('rename_label')}
+                  className="h-6 flex-1 text-[13px]"
+                  onCancel={() => setEditingId(null)}
+                  onSave={(next) => {
+                    setEditingId(null);
+                    void actions.rename(c.id, next, {
+                      previous: c.title,
+                      apply: (value) => setTitle(c.id, value),
+                    });
+                  }}
+                />
+              </div>
+            </li>
+          );
+        }
         return (
-          <li key={c.id}>
+          // The menu button is a sibling of the link, never inside it (a
+          // button in an anchor is invalid and breaks keyboard use).
+          <li key={c.id} className="group relative">
             <Link
               href={href}
               onClick={onNavigate}
               aria-current={active ? 'page' : undefined}
               className={cn(
-                'group flex h-8 items-center gap-1.5 rounded-lg pl-1 pr-2 text-[13px] text-fg-secondary hover:bg-hover hover:text-fg',
+                'flex h-8 items-center gap-1.5 rounded-lg pl-1 pr-2 text-[13px] text-fg-secondary hover:bg-hover hover:text-fg',
                 active && 'bg-selected font-medium text-fg',
               )}
             >
               <SinoFigure pose={marker.pose} size={22} className="-my-1" />
-              <span className="min-w-0 flex-1 truncate">{c.title?.trim() || t('recent.untitled')}</span>
+              <span className="min-w-0 flex-1 truncate">{title}</span>
+              {/* The badge gives its slot to the menu button while it shows. */}
               <span
                 className={cn(
-                  'shrink-0 rounded-full px-1.5 text-[10px] font-medium leading-4',
+                  'shrink-0 rounded-full px-1.5 text-[10px] font-medium leading-4 group-focus-within:hidden group-hover:hidden group-has-[[data-state=open]]:hidden [@media(hover:none)]:hidden',
                   marker.kind === 'team'
                     ? 'bg-[color-mix(in_oklab,var(--color-focus)_16%,transparent)] text-fg-brand'
-                    : 'bg-hover text-fg-tertiary group-hover:bg-surface',
+                    : 'bg-hover text-fg-tertiary',
                 )}
               >
                 <span className="sr-only">{t('recent.with')} </span>
                 {markerLabel}
               </span>
+              <span aria-hidden="true" className="hidden size-6 shrink-0 group-focus-within:block group-hover:block group-has-[[data-state=open]]:block [@media(hover:none)]:block" />
             </Link>
+            <div className="absolute inset-y-0 right-1 flex items-center">
+              <ConversationActions
+                title={title}
+                side="right"
+                align="start"
+                triggerClassName="opacity-0 focus-visible:opacity-100 group-hover:opacity-100 data-[state=open]:opacity-100 [@media(hover:none)]:opacity-100"
+                onRename={() => setEditingId(c.id)}
+                onDelete={async () => {
+                  const ok = await actions.remove(c.id);
+                  if (ok) {
+                    setState((prev) =>
+                      prev.status !== 'ready'
+                        ? prev
+                        : { ...prev, items: prev.items.filter((x) => x.id !== c.id) },
+                    );
+                  }
+                  return ok;
+                }}
+              />
+            </div>
           </li>
         );
       })}
