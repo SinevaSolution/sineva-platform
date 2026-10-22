@@ -24,6 +24,11 @@ export type PermissionKey =
   | 'storage.upload'
   | 'storage.read'
   | 'storage.delete'
+  | 'library.read'
+  | 'library.upload'
+  | 'library.manage'
+  | 'library.delete'
+  | 'library.usage.view'
   | 'audit.view'
   | 'billing.view'
   | 'billing.manage'
@@ -44,6 +49,7 @@ export interface PermissionDefinition {
     | 'specialist'
     | 'chat'
     | 'storage'
+    | 'library'
     | 'audit'
     | 'billing'
     | 'profile'
@@ -79,6 +85,11 @@ export const C2_PERMISSION_MATRIX_FIXTURE: Record<
   'storage.upload': { owner: 'yes', admin: 'yes', member: 'yes', viewer: 'no' },
   'storage.read': { owner: 'yes', admin: 'yes', member: 'yes', viewer: 'yes' },
   'storage.delete': { owner: 'yes', admin: 'yes', member: 'no', viewer: 'no' },
+  'library.read': { owner: 'yes', admin: 'yes', member: 'yes', viewer: 'yes' },
+  'library.upload': { owner: 'yes', admin: 'yes', member: 'yes', viewer: 'no' },
+  'library.manage': { owner: 'yes', admin: 'yes', member: 'no', viewer: 'no' },
+  'library.delete': { owner: 'yes', admin: 'yes', member: 'no', viewer: 'no' },
+  'library.usage.view': { owner: 'yes', admin: 'yes', member: 'no', viewer: 'no' },
   'audit.view': { owner: 'yes', admin: 'yes', member: 'no', viewer: 'no' },
   'billing.view': { owner: 'yes', admin: 'yes', member: 'no', viewer: 'no' },
   'billing.manage': { owner: 'yes', admin: 'no', member: 'no', viewer: 'no' },
