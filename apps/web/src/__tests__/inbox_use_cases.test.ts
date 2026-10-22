@@ -731,6 +731,15 @@ describe('triage views, filters and the link back (ADR-0034)', () => {
     expect((await h.counts.execute(alice)).unread_updates).toBe(0);
   });
 
+  it('says who answered a question, so the screen can say "You"', async () => {
+    const question = (await h.list.execute({ limit: 50, kind: 'input_request' }, alice)).items[0];
+    const before = await h.get.execute(question.id, alice);
+    expect(before.input_request?.answered_by).toBeNull();
+    await h.answer.execute(question.id, { version: before.input_request!.version, answers: { period: 'Sep', currency: 'IDR' } }, alice);
+    const after = await h.get.execute(question.id, alice);
+    expect(after.input_request).toMatchObject({ status: 'answered', answered_by: ALICE });
+  });
+
   it('gives the detail of a chat item the conversation to link back to, never a viewer', async () => {
     const own = await h.get.execute(aliceApproval.inbox_item_id, alice);
     expect(own.source).toEqual({ type: 'chat', id: HANDLE, conversation_id: CONVERSATION });

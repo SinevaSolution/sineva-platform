@@ -69,6 +69,7 @@ export function buildItemView(
           fields: input.fields,
           version: input.version,
           due_at: input.due_at,
+          answered_by: input.answered_by,
           answered_at: input.answered_at,
           ...(summaryOnly ? {} : { answer: input.answer }),
         }

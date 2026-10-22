@@ -50,6 +50,8 @@ export interface InboxInputRequestView {
   fields: InboxInputFieldView[];
   version: number;
   due_at: string | null;
+  /** Who answered or skipped it; the screen says "You" when it is the viewer of the screen. */
+  answered_by: string | null;
   answered_at: string | null;
   /** Hidden from viewers. */
   answer?: Record<string, unknown> | null;
