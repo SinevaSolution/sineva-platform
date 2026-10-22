@@ -9,6 +9,11 @@ import type {
   EmailChangeConfirmParams,
   EmailChangeNoticeParams,
 } from '@/server/domain/email/email_sender';
+import {
+  ownershipTransferRequestTemplates,
+  ownershipTransferredNoticeTemplates,
+  workspaceInvitationTemplates,
+} from './members';
 
 export type { EmailLocale, EmailTemplateName, RenderedEmail };
 
@@ -425,6 +430,9 @@ export const EMAIL_TEMPLATES: {
     en: emailChangeNoticeEn,
     id: emailChangeNoticeId,
   },
+  workspace_invitation: workspaceInvitationTemplates,
+  ownership_transfer_request: ownershipTransferRequestTemplates,
+  ownership_transferred_notice: ownershipTransferredNoticeTemplates,
 };
 
 export function renderEmailTemplate<K extends EmailTemplateName>(

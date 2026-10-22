@@ -14,6 +14,9 @@ describe('Email Templates (WP-M0-24, FR-AUTH-03, FR-AUTH-04, FR-AUTH-05, FR-UX-3
     'lockout_notice',
     'email_change_confirm',
     'email_change_notice',
+    'workspace_invitation',
+    'ownership_transfer_request',
+    'ownership_transferred_notice',
   ];
 
   const SAMPLE_PARAMS: Record<EmailTemplateName, Record<string, unknown>> = {
@@ -43,9 +46,29 @@ describe('Email Templates (WP-M0-24, FR-AUTH-03, FR-AUTH-04, FR-AUTH-05, FR-UX-3
       new_email: 'budi.new@example.com',
       revert_url: 'https://app.sineva.id/support',
     },
+    workspace_invitation: {
+      url: 'https://app.sineva.id/invite/tok-abc',
+      workspace_name: 'Warung Sari',
+      inviter_name: 'Sari',
+      role: 'member',
+      expires_in_days: 7,
+    },
+    ownership_transfer_request: {
+      recipient_name: 'Budi',
+      url: 'https://app.sineva.id/ownership/tok-def',
+      workspace_name: 'Warung Sari',
+      from_name: 'Sari',
+      expires_in_days: 7,
+    },
+    ownership_transferred_notice: {
+      recipient_name: 'Budi',
+      workspace_name: 'Warung Sari',
+      other_name: 'Sari',
+      new_role: 'owner',
+    },
   };
 
-  it('provides all 5 required templates across both EN and ID locales (completeness FR-UX-37a)', () => {
+  it('provides every required template across both EN and ID locales (completeness FR-UX-37a)', () => {
     for (const template of TEMPLATES) {
       for (const locale of LOCALES) {
         expect(EMAIL_TEMPLATES[template]).toBeDefined();
@@ -128,5 +151,37 @@ describe('Email Templates (WP-M0-24, FR-AUTH-03, FR-AUTH-04, FR-AUTH-05, FR-UX-3
         expect(rendered.text.toLowerCase()).not.toContain('ruang kerja');
       }
     }
+  });
+});
+
+describe('Member invitation and ownership emails (WP-M1-28, FR-AUTH-14, FR-AUTH-16)', () => {
+  it('invitation names the workspace, inviter and role in both languages and carries the link', () => {
+    const params = {
+      url: 'https://app.sineva.id/invite/tok-abc',
+      workspace_name: 'Warung Sari',
+      inviter_name: 'Sari',
+      role: 'viewer',
+      expires_in_days: 7,
+    };
+    const en = renderEmailTemplate('workspace_invitation', 'en', params);
+    expect(en.subject).toContain('Warung Sari');
+    expect(en.text).toContain('Viewer');
+    expect(en.text).toContain('7 days');
+    const id = renderEmailTemplate('workspace_invitation', 'id', params);
+    expect(id.text).toContain('Peninjau');
+    expect(id.text).toContain('7 hari');
+    expect(id.html).toContain(params.url);
+  });
+
+  it('escapes user-controlled names in the html body', () => {
+    const rendered = renderEmailTemplate('workspace_invitation', 'en', {
+      url: 'https://app.sineva.id/invite/t',
+      workspace_name: '<script>alert(1)</script>',
+      inviter_name: 'A&B',
+      role: 'member',
+      expires_in_days: 7,
+    });
+    expect(rendered.html).not.toContain('<script>');
+    expect(rendered.html).toContain('A&amp;B');
   });
 });
