@@ -51,6 +51,7 @@ Items marked "cross-service" are mirrored in `sineva-ai` (`docs/decisions/` ther
 | [0025](0025-card-schema-registry.md) | Card schema registry, validation, `message_cards`, fallback renderer (cross-service) | You add a card type or touch card validation |
 | [0026](0026-profile-preferences-and-avatar-pipeline.md) | `/me` profile resource, `user_preferences` table, presigned avatar upload re-encoded with sharp | You touch profile fields, preferences or avatars |
 | [0027](0027-design-token-source-and-vendoring.md) | Compro tokens vendored into `packages/ui/src/styles`, snapshot plus drift test, compro wins | You touch colors, type, radius, shadows, z-index or theme |
+| [0030](0030-library-ownership-split-and-ingest-contract.md) | Library: platform owns metadata, scopes, quotas and retrieval scope; sineva-ai owns parsing and vectors; proposed ingest contract (cross-service) | You touch the Library, uploads of documents or the knowledge calls to sineva-ai |
 
 ## Suggested reading order
 
