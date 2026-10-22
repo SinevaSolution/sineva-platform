@@ -13,6 +13,7 @@ import {
   createAnonymousRequestContext,
   type RequestContext,
 } from '@/server/domain/context/request_context';
+import { ENTITLEMENT_KEYS, type EntitlementService } from '@/server/domain/entitlements/entitlements';
 import { noTransaction, type TransactionRunner } from '@/server/domain/transactions/transaction_runner';
 
 export interface CreateWorkspaceInput {
@@ -30,6 +31,7 @@ export class CreateWorkspaceUseCase {
   constructor(
     private readonly workspaceRepo: WorkspaceRepository,
     private readonly auditLogger: AuditLogger,
+    private readonly entitlements: EntitlementService,
     private readonly transactions: TransactionRunner = noTransaction,
   ) {}
 
@@ -72,6 +74,11 @@ export class CreateWorkspaceUseCase {
         slug = `${baseSlug}-${counter++}`;
       }
     }
+
+    // Account-level check: the workspace does not exist yet, so there is no
+    // workspace id to scope it to. Runs after validation so a bad request does
+    // not log a check, and before any write so a denial leaves nothing behind.
+    await this.entitlements.assert(null, ENTITLEMENT_KEYS.WORKSPACES);
 
     // Workspace, owner membership and the audit row commit together: a
     // workspace that exists without its `workspace.created` record would be a

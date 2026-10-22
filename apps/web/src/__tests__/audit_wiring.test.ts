@@ -12,6 +12,7 @@ import type {
   WorkspaceRepository,
 } from '@/server/domain/repositories/workspace_repository';
 import type { SigningKeyRepository } from '@/server/domain/repositories/signing_key_repository';
+import { allowAllEntitlements } from './fakes/allow_all_entitlements';
 import { FakeAuditEventRepository } from './fakes/fake_audit_event_repository';
 import { FakeTransactionRunner } from './fakes/fake_transaction_runner';
 import { buildUserProfile, FakeUserProfileRepository } from './fakes/fake_user_profile_repository';
@@ -123,7 +124,7 @@ describe('CreateWorkspaceUseCase audit write is atomic with the action (FR-SEC d
   });
 
   it('rolls the workspace back when the audit write fails', async () => {
-    const useCase = new CreateWorkspaceUseCase(repo, failingLogger, tx);
+    const useCase = new CreateWorkspaceUseCase(repo, failingLogger, allowAllEntitlements, tx);
 
     await expect(
       useCase.execute({ workspace_name: 'Acme', workspace_slug: 'acme', owner_user_id: 'usr-1' }),
@@ -135,7 +136,7 @@ describe('CreateWorkspaceUseCase audit write is atomic with the action (FR-SEC d
 
   it('keeps the workspace and the audit event when both succeed', async () => {
     const logger = new CountingAuditLogger();
-    const useCase = new CreateWorkspaceUseCase(repo, logger, tx);
+    const useCase = new CreateWorkspaceUseCase(repo, logger, allowAllEntitlements, tx);
 
     await useCase.execute({ workspace_name: 'Acme', workspace_slug: 'acme', owner_user_id: 'usr-1' });
 

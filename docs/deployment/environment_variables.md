@@ -48,6 +48,8 @@ Rule: no new hardcoded secret defaults and no secret in a `NEXT_PUBLIC_*` variab
 | `INTERNAL_CONTEXT_KID` | production | `k1` | `${INTERNAL_CONTEXT_KID:-k1}` | Key id of the signing key |
 | `EMAIL_FROM`, `EMAIL_SERVER_HOST`, `EMAIL_SERVER_PORT`, `EMAIL_SERVER_USER`, `EMAIL_SERVER_PASSWORD` | no | none | not set | SMTP transport. With no host the sender is a fake that sends nothing |
 | `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET` | no | none | not set | Provider sign-in |
+| `ENTITLEMENTS_MODE` | no | `open` | not set | `open` (M0 to M5: nothing blocks, checks logged as `entitlement.checked`), `shadow` (would-be blocks logged as `entitlement.would_block`, still allowed) or `enforced` (blocks with 403 `entitlement_required`). Any other value fails startup |
+| `ENTITLEMENTS_ALLOW_ENFORCED` | no | unset | not set | Must be `true` for `ENTITLEMENTS_MODE=enforced` to start in production. A second flag on purpose: one mistyped variable must not switch on paywalls before plans and payments exist (M6) |
 
 All of these are server-only. `NEXT_PUBLIC_APP_URL` and `NEXT_PUBLIC_API_BASE_URL` are not secrets. Next.js inlines `NEXT_PUBLIC_*` values into the client bundle at build time (recalling Next.js behavior, not tested here), so setting them only in the container's runtime environment would not change a bundle that is already built.
 

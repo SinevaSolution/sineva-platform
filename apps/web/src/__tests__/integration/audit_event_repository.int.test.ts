@@ -4,6 +4,7 @@ import { CreateWorkspaceUseCase } from '@/server/application/use-cases/workspace
 import { RotateSigningKeyUseCase } from '@/server/application/use-cases/security/rotate_signing_key_use_case';
 import { buildAuditRecord } from '@/server/domain/audit/audit_event';
 import type { AuditLogger } from '@/server/domain/audit/audit_logger';
+import { allowAllEntitlements } from '../fakes/allow_all_entitlements';
 import { createPrismaClient } from '@/server/infrastructure/database/prisma_client';
 import { PrismaAuditRepository } from '@/server/infrastructure/database/prisma_audit_repository';
 import { PrismaSigningKeyRepository } from '@/server/infrastructure/database/prisma_signing_key_repository';
@@ -109,6 +110,7 @@ describe('audit write is in the same transaction as the action (FR-SEC data inte
     const useCase = new CreateWorkspaceUseCase(
       new PrismaWorkspaceRepository(prisma),
       new RepositoryAuditLogger(auditRepo),
+      allowAllEntitlements,
       transactions,
     );
 
@@ -128,6 +130,7 @@ describe('audit write is in the same transaction as the action (FR-SEC data inte
     const useCase = new CreateWorkspaceUseCase(
       new PrismaWorkspaceRepository(prisma),
       failingAudit,
+      allowAllEntitlements,
       transactions,
     );
 

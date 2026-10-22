@@ -13,9 +13,12 @@ import { FakeBreachedPasswordChecker } from './domain/auth/breached_password_che
 import type { AuditLogger } from './domain/audit/audit_logger';
 import type { AuditEventRepository } from './domain/repositories/audit_event_repository';
 import type { TransactionRunner } from './domain/transactions/transaction_runner';
+import type { EntitlementService } from './domain/entitlements/entitlements';
+import { logger } from './infrastructure/logging/logger';
 import { PrismaAuditRepository } from './infrastructure/database/prisma_audit_repository';
 import { PrismaTransactionRunner } from './infrastructure/database/prisma_transaction_runner';
 import { RepositoryAuditLogger } from './application/audit/repository_audit_logger';
+import { ModeEntitlementService } from './application/entitlements/mode_entitlement_service';
 import { IngestAuditEventUseCase } from './application/use-cases/audit/ingest_audit_event_use_case';
 import { RotateSigningKeyUseCase } from './application/use-cases/security/rotate_signing_key_use_case';
 import { FakeEmailSender } from './infrastructure/email/fake_email_sender';
@@ -99,6 +102,29 @@ export const getTransactionRunner = memoize<TransactionRunner>(
 export const getAuditLogger = memoize<AuditLogger>(
   () => new RepositoryAuditLogger(getAuditEventRepository()),
 );
+// M0 has no plan catalog, so nothing resolves a limit; `open` mode never
+// consults the provider and `shadow` or `enforced` would deny everything,
+// which is why `enforced` needs an explicit production override. The
+// per-workspace override and plan limits plug in here in M4.
+export const getEntitlementService = memoize<EntitlementService>(
+  () =>
+    new ModeEntitlementService(
+      getEnvConfig().entitlements_mode,
+      { resolve: async () => null },
+      // Ids, key names and counts only, through the allowlisted logger.
+      (event) =>
+        logger.info(event.event === 'entitlement.would_block' ? 'entitlement.would_block' : 'entitlement.checked', {
+          workspace_id: typeof event.workspace_id === 'string' ? event.workspace_id : undefined,
+          entitlement_key: String(event.key),
+          mode: String(event.mode),
+          allowed: Boolean(event.allowed),
+          quantity: typeof event.quantity === 'number' ? event.quantity : undefined,
+          reason: String(event.reason),
+          plan_required: typeof event.plan_required === 'string' ? event.plan_required : undefined,
+        }),
+    ),
+);
+
 const getAgentRepository = memoize<AgentRepository>(
   () => new PrismaAgentRepository(getPrismaClient()),
 );
@@ -168,6 +194,7 @@ export const getCreateWorkspaceUseCase = memoize(
   () => new CreateWorkspaceUseCase(
       getWorkspaceRepository(),
       getAuditLogger(),
+      getEntitlementService(),
       getTransactionRunner(),
     ),
 );

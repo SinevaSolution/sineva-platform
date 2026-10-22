@@ -6,6 +6,7 @@ import {
   findPolicyViolations,
   type MutatingRoutePolicy,
 } from '@/server/http/route_policy';
+import { isEntitlementKey } from '@/server/domain/entitlements/entitlements';
 
 const SRC_ROOT = resolve(import.meta.dirname, '..');
 const APP_DIR = join(SRC_ROOT, 'app');
@@ -101,17 +102,39 @@ describe('route inventory: every mutating route has an audit mapping (FR-SEC-33)
   });
 });
 
-describe('route inventory: checker mutation checks', () => {
-  it('reports an audit none without a reason', () => {
-    const broken = {
-      'POST /api/v1/widgets': { effect: 'change', audit: 'none', reason: 'short' },
-    } as Record<string, MutatingRoutePolicy>;
-    expect(findPolicyViolations(broken).length).toBeGreaterThan(0);
+describe('route inventory: create and run paths declare an entitlement (FR-BILL-34)', () => {
+  it('every create or run route declares an entitlement key or a reasoned none', () => {
+    const offenders = Object.entries(MUTATING_ROUTE_POLICY)
+      .filter(([, policy]) => policy.effect === 'create' || policy.effect === 'run')
+      .filter(([, policy]) => policy.entitlement === undefined)
+      .map(([key]) => key);
+    expect(offenders).toEqual([]);
   });
 
-  it('reports an entry that lists no events', () => {
+  it('entitlement keys are registered constants and none has a reason', () => {
+    for (const [key, policy] of Object.entries(MUTATING_ROUTE_POLICY)) {
+      if (policy.entitlement === undefined) continue;
+      if (policy.entitlement === 'none') {
+        const reason = 'reason' in policy ? (policy.reason ?? '') : '';
+        expect(reason.trim().length >= 20, `${key} needs a reason`).toBe(true);
+      } else {
+        expect(isEntitlementKey(policy.entitlement), `${key}: unknown key`).toBe(true);
+      }
+    }
+  });
+
+  it('the checker reports a create route without an entitlement (mutation check)', () => {
+    const broken: Record<string, MutatingRoutePolicy> = {
+      'POST /api/v1/widgets': { effect: 'create', audit: ['widget.created'] },
+    };
+    expect(findPolicyViolations(broken)).toEqual([
+      expect.stringContaining('POST /api/v1/widgets'),
+    ]);
+  });
+
+  it('the checker reports an audit none without a reason (mutation check)', () => {
     const broken = {
-      'POST /api/v1/widgets': { effect: 'change', audit: [] },
+      'POST /api/v1/widgets': { effect: 'change', audit: 'none', reason: 'short' },
     } as Record<string, MutatingRoutePolicy>;
     expect(findPolicyViolations(broken).length).toBeGreaterThan(0);
   });

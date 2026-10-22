@@ -24,6 +24,8 @@ export const LOG_EVENTS = [
   'breach_check.failed',
   'storage.presign_failed',
   'http.unhandled_error',
+  'entitlement.checked',
+  'entitlement.would_block',
 ] as const;
 export type LogEvent = (typeof LOG_EVENTS)[number];
 
@@ -44,6 +46,14 @@ export interface LogFields {
   agent_slug?: string;
   /** Dotted schema paths of a validation failure. Never the failing values. */
   issue_paths?: string[];
+  /** Opaque id of a workspace (a tenant, not a person). */
+  workspace_id?: string;
+  /** Entitlement key such as `members.max`, and the access mode of the check. */
+  entitlement_key?: string;
+  mode?: string;
+  allowed?: boolean;
+  quantity?: number;
+  plan_required?: string;
 }
 
 type FieldKind = 'number' | 'string' | 'boolean' | 'string_list';
@@ -61,6 +71,12 @@ const FIELD_KINDS: Record<keyof LogFields, FieldKind> = {
   reason: 'string',
   agent_slug: 'string',
   issue_paths: 'string_list',
+  workspace_id: 'string',
+  entitlement_key: 'string',
+  mode: 'string',
+  allowed: 'boolean',
+  quantity: 'number',
+  plan_required: 'string',
 };
 
 // Bounds what an allowed string field can smuggle: a pasted body would be cut
