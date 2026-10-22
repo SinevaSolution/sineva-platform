@@ -6,7 +6,7 @@ version: "2.1.0"
 last_updated: "2026-10-21"
 owner: "Sineva Engineering"
 tags: ["sineva", "api-spec", "agents", "chat", "contract-v2", "sineva-ai", "signed-context", "snake-case"]
-summary: "GET and POST /api/v1/agents as implemented, Contract v2 internal gateway with sineva-ai, and retirement of legacy /api/v1/agents/{agent_slug}/chat."
+summary: "The workspace specialist roster route (sineva-ai catalog merged with the static manifest), Contract v2 internal gateway with sineva-ai, and retirement of legacy /api/v1/agents routes."
 related_docs:
   - "overview.md"
   - "storage_and_health_endpoints.md"
@@ -16,13 +16,14 @@ related_docs:
   - "../decisions/0016-upstream-failures-return-502-503.md"
   - "../decisions/0018-workspace-tenancy-and-public-contract.md"
   - "../decisions/0021-signed-internal-context.md"
+  - "../decisions/0024-specialist-manifest-and-catalog-split.md"
   - "../engineering/error_handling_and_failure_modes.md"
   - "../product/product_model_and_wording.md"
 ---
 
 # Agents and Chat Endpoints
 
-Source: `apps/web/src/app/api/v1/agents/route.ts`, `src/server/application/dtos/agent_dto.ts`, `src/server/application/dtos/chat_v2_dto.ts`, and `src/server/infrastructure/gateways/internal_ai_engine_gateway.ts`.
+Source: `apps/web/src/app/api/v1/workspaces/[workspace_id]/agents/route.ts`, `src/server/application/use-cases/list_workspace_specialists_use_case.ts`, `src/shared/specialists/manifest.ts`, `src/server/application/dtos/agent_dto.ts`, `src/server/application/dtos/chat_v2_dto.ts`, and `src/server/infrastructure/gateways/internal_ai_engine_gateway.ts`.
 
 ## Public Contract Evolution (WP-M0-28, ADR-0018)
 
@@ -32,89 +33,80 @@ Source: `apps/web/src/app/api/v1/agents/route.ts`, `src/server/application/dtos/
 
 ---
 
-## `GET /api/v1/agents`
+## `GET /api/v1/workspaces/{workspace_id}/agents`
 
-Lists registered products ("agents" in code). Ordered by `created_at` ascending, then `id`.
+The specialist roster ([ADR-0024](../decisions/0024-specialist-manifest-and-catalog-split.md), FR-SPEC-05 to FR-SPEC-08, FR-SPEC-13). `GET /api/v1/agents` and `POST /api/v1/agents` no longer exist: the platform does not store or create specialists, and nothing under `/api/v1/agents` answers (the framework returns 404).
+
+Availability comes from sineva-ai (`GET /api/v2/agents`, called on every request with `X-Internal-Api-Key`); display copy, `accent_key`, `room_theme_id` and `order` come from the static manifest (`src/shared/specialists/manifest.ts`). The roster is returned whole, without pagination. Guard: session, workspace membership (404 for another tenant), permission `specialist.view`.
 
 ### Query Parameters (`listAgentsQuerySchema`)
 
 | Parameter | Type | Default | Constraint |
 | :--- | :--- | :--- | :--- |
-| `page` | integer | `1` | at least 1 |
-| `per_page` | integer | `10` | 1 to 100 |
-| `category_filter` | enum | none | `people_hr`, `finance_ops`, `sales_growth`, `social_marketing`, `customer_support`, `data_insights` |
+| `category_filter` | enum | none | the 13 categories of the sineva-ai enum (`people_hr`, `finance_ops`, `sales_growth`, `social_marketing`, `customer_support`, `data_insights`, `personal_ops`, `content_studio`, `marketplace_ops`, `it_security`, `tax_compliance`, `legal_drafting`, `inventory_procurement`) |
 
-- `page` and `per_page` use `z.coerce.number()`. An empty or invalid value fails with 422 (`validation_failed`).
-- A page past the end returns `data: []` with the real `total_items`.
-
-### Example Response (200 OK)
+### Example Response (200 OK, abridged to one specialist)
 
 ```json
 {
   "success": true,
   "status": 200,
-  "message": "Specialized Sineva AI companions retrieved successfully",
-  "data": [
-    {
-      "id": "6f1d2c8e-3b7a-4e55-9a0c-1d4f7b2e8c91",
-      "agent_slug": "sinofinance",
-      "display_name": "SinoFinance",
-      "role_title": "FP&A, Cashflow & Ledger Reconciliation Architect",
-      "category": "finance_ops",
-      "status": "online",
-      "short_description": "Monitors real-time runway, reconciles multi-currency invoices, flags anomalous vendor spend, and drafts board-ready variance narratives.",
-      "capabilities": ["multi_currency_reconciliation", "burn_rate_forecasting", "anomaly_invoice_detection", "gaap_ifrs_variance_briefs"],
-      "model_name": "sineva-finance-quant-v2",
-      "avg_latency_ms": 410,
-      "active_sessions_count": 24,
-      "daily_tokens_used": 218450,
-      "accent_token": "--teal-700",
-      "created_at": "2026-10-01T08:05:00.000Z",
-      "updated_at": "2026-10-20T16:35:00.000Z"
-    }
-  ],
-  "meta": {
-    "page": 1,
-    "per_page": 10,
-    "total_items": 1,
-    "total_pages": 1,
-    "has_next": false,
-    "has_prev": false,
-    "request_id": "req_1792547075000_k3j9x2ab",
-    "timestamp": "2026-10-21T01:44:35.000Z"
+  "message": "Specialists retrieved successfully",
+  "data": {
+    "catalog_version": "cat-2026-10-22-a",
+    "items": [
+      {
+        "agent_slug": "sinofinance",
+        "handle": "SinoFinance",
+        "display_name": "SinoFinance",
+        "category": "finance_ops",
+        "wave": 1,
+        "status": "live",
+        "enabled": true,
+        "accent_key": "finance",
+        "room_theme_id": "sinofinance",
+        "order": 2,
+        "copy": {
+          "en": {
+            "role_title": "Finance & Cash Flow Specialist",
+            "short_description": "Explains invoices, flags unusual spending and outlines your cash flow. Gives information, never moves money.",
+            "starter_prompts": ["Make a simple cash flow plan for next month", "Explain this invoice and what I should check", "Draft a polite payment reminder to a client"]
+          },
+          "id": {
+            "role_title": "Spesialis Keuangan & Arus Kas",
+            "short_description": "Menjelaskan invoice, menandai pengeluaran yang tidak biasa, dan menyusun gambaran arus kas. Memberi informasi, tidak pernah memindahkan uang.",
+            "starter_prompts": ["Buat rencana arus kas sederhana untuk bulan depan", "Jelaskan invoice ini dan apa yang perlu aku periksa", "Buat draf pengingat pembayaran yang sopan untuk klien"]
+          }
+        },
+        "my_access": "available"
+      }
+    ]
   },
+  "meta": { "request_id": "req_1792547075000_k3j9x2ab", "timestamp": "2026-10-21T01:44:35.000Z" },
   "errors": null
 }
 ```
 
-Errors: 422 (`validation_failed`), 500 (`internal_error`).
+### Fields
 
----
-
-## `POST /api/v1/agents`
-
-Registers an agent in the platform registry (`agent_configs`). Requires authenticated owner role or internal service authorization (`allowInternalApiKey: true`, `requiredRoleOrInternal: 'owner'`).
-
-### Request Body (`createAgentDtoSchema`)
-
-| Field | Type | Required | Constraint |
-| :--- | :--- | :--- | :--- |
-| `agent_slug` | string | yes | 3 to 64 characters, `^[a-z0-9-]+$` |
-| `display_name` | string | yes | 2 to 80 characters |
-| `role_title` | string | yes | 2 to 120 characters |
-| `category` | enum | yes | `people_hr`, `finance_ops`, `sales_growth`, `social_marketing`, `customer_support`, `data_insights` |
-| `short_description` | string | yes | 10 to 400 characters |
-| `capabilities` | string[] | yes | at least 1 item, each >= 2 characters |
-| `model_name` | string | no | 2 to 80 characters, default `sineva-core-v2` |
+- `enabled` is derived in this release: a wave 1 specialist that sineva-ai reports `live` is on. It is not a stored setting; per-workspace enablement arrives with `workspace_specialists` (M1).
+- `my_access` is `available` or `unavailable`, from the caller's role (`specialist.use`) and `specialist_scope` with its allowed list. A specialist the caller may not use has the same keys as one that is not enabled, so the response does not say why.
+- There are no latency, token, session-count or model fields: the platform never held real values for them.
+- A catalog entry the manifest cannot present (the orchestrator `sino`, wave 2 and 3 `coming_soon`) is skipped. A manifest specialist missing from the catalog fails the call with 502 `catalog_drift`.
 
 ### Errors
 
 | Status | Code | When |
 | :--- | :--- | :--- |
-| 403 | `forbidden` | Caller does not possess workspace owner role or internal authorization |
-| 409 | `RESOURCE_CONFLICT` | `agent_slug` already exists in registry |
-| 422 | `validation_failed` | Body fields fail validation constraints |
-| 500 | `internal_error` | Internal failure during database persist |
+| 401 | `unauthorized` | No session |
+| 404 | `RESOURCE_NOT_FOUND` | The caller is not a member of the workspace |
+| 422 | `validation_failed` | Unknown `category_filter` |
+| 502 | `UPSTREAM_ERROR`, `catalog_drift` | sineva-ai answered non-2xx, non-JSON or off-contract, or its catalog does not list a manifest specialist |
+| 503 | `UPSTREAM_UNAVAILABLE` | sineva-ai is unreachable. The manifest is never served as a roster |
+
+### Assumed sineva-ai shape
+
+The sineva-ai half (WP-M0-19) and its `catalog_slugs.json` fixture do not exist yet. The platform reads, after an optional `{ success, data }` envelope, `{ catalog_version, agents: [{ agent_slug, handle, category, wave, status }] }` and ignores other fields. The Zod schema is `agentCatalogV2Schema` in `src/server/infrastructure/gateways/ai_engine_v2_schemas.ts`; adjust it when the fixture lands.
 
 ---
 
@@ -137,7 +129,7 @@ Every service-to-service invocation from `sineva-platform` to `sineva-ai` sends 
 
 - `POST /api/v2/agents/{agent_slug}/chat` (Unary synchronous turn execution)
 - `POST /api/v2/agents/{agent_slug}/chat/stream` (SSE Event stream execution)
-- `GET /api/v2/agents` (List agents available in sineva-ai)
+- `GET /api/v2/agents` (The specialist catalog with `catalog_version`; sent with the internal key only, no signed context)
 - `GET /api/v2/runs/{run_id}/events?after={seq}` (Replay run event transcript)
 - `POST /api/v2/runs/{run_id}/cancel` (Cancel active execution)
 

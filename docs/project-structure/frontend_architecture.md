@@ -26,7 +26,7 @@ Frontend code is `src/client` (components, store), the routing files in `src/app
 ## 1. The boundary
 
 - `src/client/**` never imports `@/server/**` or `server-only`. ESLint (`no-restricted-imports`) and `architecture.test.ts` both fail on it.
-- Types the browser reads come from `src/shared` (`AgentView`, `ChatReplyView`). `server/http/*_contract.ts` guards them against the server types.
+- Types the browser reads come from `src/shared` (`WorkspaceSpecialistRosterView`, `ChatReplyView`; the shell's `ShellSpecialistView` is built from the static manifest). `server/http/*_contract.ts` guards them against the server types.
 - Server components in `src/app` may call use cases from `@/server/container` directly. `app/page.tsx` does. Props passed to a client component must be serializable and typed with a `src/shared` view.
 - Shared presentation primitives (`Button`, `Card`, `Badge`, `Container`, `StatusPill`) come from `@sineva/ui`.
 

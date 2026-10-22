@@ -324,36 +324,6 @@
         "a": "@SinoSales buatkan draf tindak lanjut untuk pertemuan klien kemarin",
         "b": "Susun rencana minggu ini dengan tiga prioritas",
         "c": "@SinoFinance dan @SinoInsights tinjau pengeluaran bulan lalu"
-      },
-      "sinopeople": {
-        "a": "Tulis iklan lowongan untuk barista paruh waktu",
-        "b": "Buat draf daftar periksa onboarding yang ramah untuk karyawan baru",
-        "c": "Bantu aku menyiapkan pertanyaan untuk evaluasi kinerja"
-      },
-      "sinofinance": {
-        "a": "Buat rencana arus kas sederhana untuk bulan depan",
-        "b": "Jelaskan invoice ini dan apa yang perlu aku periksa",
-        "c": "Buat draf pengingat pembayaran yang sopan untuk klien"
-      },
-      "sinosales": {
-        "a": "Tulis email tindak lanjut setelah demo produk",
-        "b": "Ubah catatanku jadi proposal penjualan singkat",
-        "c": "Sarankan tiga cara menjangkau pelanggan lokal baru"
-      },
-      "sinosocial": {
-        "a": "Rencanakan lima unggahan Instagram untuk minggu ini",
-        "b": "Tulis caption untuk menu baru kami",
-        "c": "Ubah pengumuman ini jadi unggahan LinkedIn"
-      },
-      "sinohelp": {
-        "a": "Buat draf balasan untuk pelanggan yang minta pengembalian dana",
-        "b": "Tulis jawaban untuk lima pertanyaan yang paling sering muncul",
-        "c": "Buat balasan yang tenang untuk ulasan yang kurang puas"
-      },
-      "sinoinsights": {
-        "a": "Apa yang perlu aku lihat di angka penjualan bulananku?",
-        "b": "Bandingkan bulan ini dan bulan lalu, lalu kasih tahu apa yang berubah",
-        "c": "Sarankan tiga angka yang perlu aku pantau tiap minggu"
       }
     }
   },

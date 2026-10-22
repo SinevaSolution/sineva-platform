@@ -101,18 +101,19 @@ Target: make `dark:` follow the same attribute. In Tailwind v4 this is a `@custo
 
 ## Product accent tokens
 
-The seed sets `accent_token` per product, and `GET /api/v1/agents` returns it. No UI code reads it: product cards use a fixed teal tile.
+A specialist's accent is `accent_key`, a fixed 13-value enum in the specialist manifest (`src/shared/specialists/manifest.ts`, [ADR-0024](../decisions/0024-specialist-manifest-and-catalog-split.md)). It replaces the old seeded `accent_token` (a CSS variable name that no UI read and that data could have set to anything). No data can inject a color: the key picks one of the ramps defined in CSS.
 
-| Product | `accent_token` |
-| :--- | :--- |
-| SinoPeople | `--teal-500` |
-| SinoFinance | `--teal-700` |
-| SinoSales | `--aqua-400` |
-| SinoSocial | `--sun-500` |
-| SinoHelp | `--teal-500` |
-| SinoInsights | `--teal-700` |
+| Specialist | `accent_key` | CSS variable today |
+| :--- | :--- | :--- |
+| SinoPeople | `people` | `--accent-people` |
+| SinoFinance | `finance` | `--accent-finance` |
+| SinoSales | `sales` | `--accent-sales` |
+| SinoSocial | `social` | `--accent-social` |
+| SinoHelp | `help` | `--accent-help` |
+| SinoInsights | `insights` | `--accent-insights` |
+| Sino (orchestrator, no manifest entry) | `brand` in the UI | `--accent-brand` |
 
-A product created through `POST /api/v1/agents` gets `--teal-500`. The value is a CSS variable name, so it has to be one of the primitives above.
+The enum also reserves `desk`, `write`, `shop`, `guard`, `tax`, `legal` and `ops` for waves 2 and 3. Their ramps are not in `globals.css` yet, so `specialistAccent()` renders any key without a ramp as the brand accent instead of inventing a color.
 
 ## Adding or changing a token
 

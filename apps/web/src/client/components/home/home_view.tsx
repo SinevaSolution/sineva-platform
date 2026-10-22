@@ -4,7 +4,6 @@ import type * as React from 'react';
 import { SinoFigure } from '@/client/components/ui/sino_figure';
 import { specialistPose } from '@/client/components/ui/specialist_accent';
 import { Tooltip } from '@/client/components/ui/tooltip';
-import { startersFor } from '@/client/components/room/room_model';
 import { getTranslations } from '@/i18n/server';
 import type { ShellSpecialistView } from '@/shared/shell_view';
 import { HomeRecent } from './home_recent';
@@ -39,10 +38,9 @@ export async function HomeView({
 }) {
   const t = await getTranslations('workspace');
   const tShell = await getTranslations('shell');
-  const tRoom = await getTranslations('room');
   const tSpecialists = await getTranslations('specialists');
   const base = `/w/${workspaceSlug}`;
-  const ideas = specialists.slice(0, 3).map((s) => ({ s, text: tRoom(startersFor(s.agent_slug)[0]!) }));
+  const ideas = specialists.slice(0, 3).map((s) => ({ s, text: s.starter_prompts[0] }));
 
   return (
     <div className="min-h-0 flex-1 overflow-y-auto">

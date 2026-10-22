@@ -89,7 +89,7 @@ sineva-platform/
 │           │   ├── http/           # snake_case response helper, view-type contract guards
 │           │   └── container.ts    # Composition root
 │           ├── client/             # Frontend: components/, store/ (Redux Toolkit)
-│           ├── shared/             # Wire/view types both sides may import (agent_view, chat_view)
+│           ├── shared/             # Wire/view types both sides may import (specialist_view, chat_view, specialists/manifest)
 │           └── __tests__/          # Unit tests with fakes, contract/ (sineva-ai fixtures), integration/, architecture.test.ts
 ├── packages/
 │   ├── shared/                     # @sineva/shared: canonical snake_case response utility and types
@@ -157,15 +157,15 @@ The platform tables live in the `platform` schema, and migrations are an explici
 docker compose up -d postgres
 DATABASE_URL="postgresql://sineva_user:sineva_secret_password@localhost:5432/sineva_platform?schema=platform" \
   npm --workspace=@sineva/web run db:migrate:deploy
-npm --workspace=@sineva/web run db:seed   # uses the plain DATABASE_URL from .env
+npm --workspace=@sineva/web run db:seed   # two development tenants; uses the plain DATABASE_URL from .env
 ```
 
 Never run `prisma migrate reset` or `prisma db push` against this database, and never accept a reset prompt: it is shared with `sineva-ai`. Create new migrations with `db:migrate:dev` against a throwaway database and a plain URL ([ADR-0006](docs/decisions/0006-shared-postgres-platform-schema.md)).
 
-If an existing database was seeded earlier with the old `sino-*` slugs, re-seeding adds the canonical rows and leaves the old ones. Remove or rename them by hand ([ADR-0012](docs/decisions/0012-canonical-product-slugs-and-guardrails.md)).
+The specialist registry table is gone: the roster is sineva-ai's catalog presented through a static manifest in code, so old `sino-*` rows disappear with migration `20261022120000_drop_agent_configs` ([ADR-0024](docs/decisions/0024-specialist-manifest-and-catalog-split.md), [ADR-0012](docs/decisions/0012-canonical-product-slugs-and-guardrails.md)).
 
 ### Option A: Run Local Development Server (UI and BFF iteration)
-Needs Postgres from the step above. The agent registry is read from Postgres, so a missing database fails the request. Redis and S3 are real dependencies: `GET /api/v1/health` probes them (`PING`, `HeadBucket`) and answers 503 when one is down, and a presign signing failure is a 502, never an unsigned URL ([ADR-0008](docs/decisions/0008-no-silent-fallbacks.md)). `sineva-ai` has no host port, so chat returns `503` in this mode. Use Option B to exercise chat.
+Needs Postgres from the step above. The shell reads its specialists from a static manifest, but sign-in and workspaces need Postgres, so a missing database fails the request. Redis and S3 are real dependencies: `GET /api/v1/health` probes them (`PING`, `HeadBucket`) and answers 503 when one is down, and a presign signing failure is a 502, never an unsigned URL ([ADR-0008](docs/decisions/0008-no-silent-fallbacks.md)). `sineva-ai` has no host port, so chat returns `503` in this mode. Use Option B to exercise chat.
 
 ```bash
 npm run dev

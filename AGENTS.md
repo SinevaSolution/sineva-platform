@@ -70,10 +70,10 @@ apps/web/
       domain/              entities, ports, domain errors (incl. 409, 502, 503 types)
       application/         use cases, Zod DTOs
       infrastructure/      adapters (database, cache, storage, gateways, config, openapi)
-      http/                response_helper, agent_view_contract, chat_view_contract
+      http/                response_helper, specialist_view_contract, chat_view_contract
       container.ts         the only place adapters are constructed
     client/                components/, store/ (Redux Toolkit)
-    shared/                wire/view types (agent_view, chat_view)
+    shared/                wire/view types (specialist_view, chat_view) and the static specialists/manifest
     __tests__/             unit tests, fakes/, contract/ (+ fixtures/), integration/, stubs/, architecture.test.ts
 packages/shared/           @sineva/shared: response envelope, snake_case helpers, pii/ (identifier detectors and mask)
 packages/ui/               @sineva/ui
@@ -93,14 +93,14 @@ docs/                      see docs/README.md
 - `server-only` throws outside a React Server Components build. Vitest aliases it to `src/__tests__/stubs/server_only.ts` (`apps/web/vitest.config.ts` and `vitest.integration.config.ts`). Keep both aliases.
 - The container memoizes adapters, including the Prisma connection pool, so state persists across calls in one process. There is no reset hook (`resetContainerForTests` was removed). Unit tests build use cases with fakes directly, and route tests mock `@/server/container`; do not reach into the container from tests.
 - `src/__tests__/contract/fixtures/` are copied byte-for-byte from `../sineva-ai/tests/contract/fixtures/`. Never edit the copies. Change them in `sineva-ai` first, copy them here in the same change, and open the matching change in both repos (ADR-0015).
-- Re-seeding an existing database that was seeded with the old `sino-*` slugs leaves stale rows. `prisma/seed.ts` upserts by `agent_slug`, so it adds the canonical rows and never removes or renames the old ones. Fix such a database with a manual or data migration (ADR-0012).
+- Specialists are not in the database. sineva-ai owns the catalog; the platform presents it through the static manifest `src/shared/specialists/manifest.ts` (display copy, `accent_key`, room theme, starter prompts, order; ADR-0024). The shell reads only the manifest, so it works when sineva-ai is down; `GET /api/v1/workspaces/{workspace_id}/agents` reads availability from sineva-ai and answers 503 when it is down. Adding a specialist is a manifest entry, never a seed row.
 - Known debt: see [known_issues_and_tech_debt](docs/development/known_issues_and_tech_debt.md). The cache is a real ioredis adapter, health is probed, presign fails with a 502 instead of returning an unsigned URL, and credentials have no default in code: development reads them from `.env.example`, production must supply real ones or startup fails.
 - Cross-service: `sineva-ai` has migrated to the canonical slugs (`sinopeople`, `sinofinance`, and so on; its orchestrator is `sino`), so the old `sino_*` mismatch no longer exists. It owns the chat contract (ADR-0015): the platform sends `user_message` and reads `reply_content`, so the public chat response no longer has `reply_text`. The internal header is `X-Internal-Api-Key` (ADR-0013). `sineva-ai` non-2xx or an invalid body becomes 502, and an unreachable `sineva-ai` becomes 503 (ADR-0016).
 
 ## 7. Product wording
 
 - One chat: the user talks to Sino and calls a product by @mention, `@SinoHelp …`, no comma.
-- User-facing copy: Sino is a "companion" (ID: "teman kerja", "teman AI"). Never "chatbot", "assistant" or "agent". Code identifiers and `/api/v1/agents` keep "agent".
+- User-facing copy: Sino is a "companion" (ID: "teman kerja", "teman AI"). Never "chatbot", "assistant" or "agent". Code identifiers and `/api/v1/workspaces/{workspace_id}/agents` keep "agent".
 - Slugs: `sinopeople`, `sinofinance`, `sinosales`, `sinosocial`, `sinohelp`, `sinoinsights`. SinoMoney is now SinoFinance.
 - Guardrails and integrations wording: R-34, R-35, and [product_model_and_wording](docs/product/product_model_and_wording.md).
 

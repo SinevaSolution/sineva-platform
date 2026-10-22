@@ -1,8 +1,7 @@
 import 'server-only';
-import { GetAgentsUseCase } from './application/use-cases/get_agents_use_case';
+import { ListWorkspaceSpecialistsUseCase } from './application/use-cases/list_workspace_specialists_use_case';
 import { GetSystemHealthUseCase } from './application/use-cases/get_system_health_use_case';
 import { PresignStorageUploadUseCase } from './application/use-cases/presign_storage_upload_use_case';
-import type { AgentRepository } from './domain/repositories/agent_repository';
 import type { AiEngineGateway } from './domain/repositories/ai_engine_gateway';
 import type { CacheRepository } from './domain/repositories/cache_repository';
 import type { DatabaseHealthProbe } from './domain/repositories/database_health_probe';
@@ -25,7 +24,6 @@ import { FakeEmailSender } from './infrastructure/email/fake_email_sender';
 import { SmtpEmailSender } from './infrastructure/email/smtp_email_sender';
 import { RedisCacheRepository } from './infrastructure/cache/redis_cache_repository';
 import { getEnvConfig } from './infrastructure/config/env';
-import { PrismaAgentRepository } from './infrastructure/database/prisma_agent_repository';
 import { PrismaDatabaseHealthProbe } from './infrastructure/database/prisma_database_health_probe';
 import { getPrismaClient } from './infrastructure/database/prisma_client';
 import { InternalAiEngineGateway } from './infrastructure/gateways/internal_ai_engine_gateway';
@@ -42,6 +40,7 @@ import { PwnedPasswordsBreachedChecker } from './infrastructure/security/pwned_p
 import { JwtAuthService } from './infrastructure/auth/jwt_auth_service';
 import type { SigningKeyRepository } from './domain/repositories/signing_key_repository';
 import { PrismaSigningKeyRepository } from './infrastructure/database/prisma_signing_key_repository';
+import { SPECIALIST_MANIFEST } from '@/shared/specialists/manifest';
 import type { ContextSigner } from './domain/context/signed_context';
 import { createDefaultContextSigner } from './infrastructure/security/context_signer';
 import type { OAuthProvider } from './domain/auth/oauth_provider';
@@ -135,9 +134,6 @@ export const getEntitlementService = memoize<EntitlementService>(
     ),
 );
 
-const getAgentRepository = memoize<AgentRepository>(
-  () => new PrismaAgentRepository(getPrismaClient()),
-);
 const getDatabaseHealthProbe = memoize<DatabaseHealthProbe>(
   () => new PrismaDatabaseHealthProbe(getPrismaClient()),
 );
@@ -185,8 +181,8 @@ export const getJwtAuthService = memoize<JwtAuthService>(() => {
   });
 });
 
-export const getGetAgentsUseCase = memoize(
-  () => new GetAgentsUseCase(getAgentRepository(), getCacheRepository()),
+export const getListWorkspaceSpecialistsUseCase = memoize(
+  () => new ListWorkspaceSpecialistsUseCase(getAiEngineGateway(), SPECIALIST_MANIFEST),
 );
 
 export const getPresignStorageUploadUseCase = memoize(

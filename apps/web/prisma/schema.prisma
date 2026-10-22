@@ -52,7 +52,6 @@ model Workspace {
   members            WorkspaceMember[]
   member_specialists WorkspaceMemberSpecialist[]
   invitations        WorkspaceInvitation[]
-  agent_configs      AgentConfig[]
   conversations      Conversation[]
   storage_objects    StorageObject[]
   chat_runs          ChatRun[]
@@ -266,30 +265,6 @@ model SigningKey {
 // ---------------------------------------------------------------------------
 // Agents & Operations (Carried over from Init)
 // ---------------------------------------------------------------------------
-
-model AgentConfig {
-  id                    String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  workspace_id          String?  @db.Uuid
-  agent_slug            String   @unique
-  display_name          String
-  role_title            String
-  category              String
-  status                String   @default("online")
-  short_description     String
-  capabilities          Json     @default("[]")
-  model_name            String   @default("sineva-core-v2")
-  avg_latency_ms        Int      @default(420)
-  active_sessions_count Int      @default(0)
-  daily_tokens_used     Int      @default(0)
-  accent_token          String   @default("--teal-500")
-  created_at            DateTime @default(now()) @db.Timestamptz(6)
-  updated_at            DateTime @default(now()) @db.Timestamptz(6)
-
-  workspace Workspace? @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
-
-  @@map("agent_configs")
-  @@schema("platform")
-}
 
 model Conversation {
   id                String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid

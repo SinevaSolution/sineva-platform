@@ -9,7 +9,6 @@ import {
   UpstreamUnavailableError,
 } from '@/server/domain/errors/domain_error';
 import type {
-  AgentListItem,
   AiEngineChatRequest,
   AiEngineChatResponse,
   AiEngineGateway,
@@ -20,11 +19,14 @@ import type {
   StreamCallOptions,
 } from '@/server/domain/repositories/ai_engine_gateway';
 import {
+  agentCatalogEnvelopeV2Schema,
+  agentCatalogV2Schema,
   chatTurnResultEnvelopeV2Schema,
   chatTurnResultV2Schema,
   parseSseTranscript,
 } from './ai_engine_v2_schemas';
 import type { ChatTurnResultV2 } from '@/server/domain/chat/chat_v2';
+import type { AgentCatalog } from '@/server/domain/specialists/agent_catalog';
 import { getEnvConfig } from '../config/env';
 import { logger, utf8ByteLength } from '../logging/logger';
 
@@ -220,13 +222,16 @@ export class InternalAiEngineGateway implements AiEngineGateway {
   }
 
   /**
-   * Lists available agents from sineva-ai
+   * The specialist catalog (`GET /api/v2/agents`). Called with the internal key
+   * only: the catalog is not tenant data, so no signed context is needed.
+   * Unreachable is 503; a non-2xx, non-JSON or off-contract answer is 502.
+   * Never cached here, so a down sineva-ai cannot be hidden behind a stale list.
    */
   async listAgents(options: {
     contextToken?: string;
     requestId?: string;
     traceparent?: string;
-  }): Promise<AgentListItem[]> {
+  }): Promise<AgentCatalog> {
     const env = getEnvConfig();
     const url = `${env.ai_engine_internal_url}/api/v2/agents`;
 
@@ -242,36 +247,54 @@ export class InternalAiEngineGateway implements AiEngineGateway {
       headers[SINEVA_CONTEXT_HEADER] = options.contextToken;
     }
 
+    let status: number;
+    let rawBody: string;
     try {
       const response = await fetch(url, {
         method: 'GET',
         headers,
         signal: controller.signal,
       });
-
-      const rawBody = await response.text();
-      if (!response.ok) {
-        this.handleUpstreamError(response.status, rawBody);
-      }
-
-      const json = JSON.parse(rawBody);
-      const items = Array.isArray(json) ? json : json?.data || [];
-      return items as AgentListItem[];
+      status = response.status;
+      rawBody = await response.text();
     } catch (error) {
-      if (
-        error instanceof UpstreamServiceError ||
-        error instanceof UpstreamUnavailableError ||
-        error instanceof ModelUnavailableError ||
-        error instanceof DependencyUnavailableError ||
-        error instanceof ContextInvalidError
-      ) {
-        throw error;
-      }
-      logger.error('ai_engine.request_failed', { reason: 'listAgents' });
+      logger.error('ai_engine.request_failed', {
+        reason: error instanceof Error ? error.name : 'unknown',
+        aborted: controller.signal.aborted,
+      });
       throw new UpstreamUnavailableError();
     } finally {
       clearTimeout(timeout);
     }
+
+    if (status < 200 || status >= 300) {
+      this.handleUpstreamError(status, rawBody);
+    }
+
+    let json: unknown;
+    try {
+      json = JSON.parse(rawBody);
+    } catch {
+      logger.error('ai_engine.non_json', { status, byte_length: utf8ByteLength(rawBody) });
+      throw new UpstreamServiceError();
+    }
+
+    // Envelope first, then the bare body, as for the chat turn.
+    const parsed = agentCatalogEnvelopeV2Schema.safeParse(json);
+    if (parsed.success) {
+      return parsed.data.data;
+    }
+    const direct = agentCatalogV2Schema.safeParse(json);
+    if (direct.success) {
+      return direct.data;
+    }
+
+    // Paths only: a Zod message can quote the offending value.
+    logger.error('ai_engine.contract_violation', {
+      status,
+      issue_paths: direct.error.issues.map((issue) => issue.path.join('.')),
+    });
+    throw new UpstreamServiceError();
   }
 
   /**

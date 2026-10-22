@@ -1,25 +1,5 @@
 import 'server-only';
 
-function errorExample(
-  status: number,
-  message: string,
-  code: string,
-  field: string | null = null,
-  detail: string = message,
-) {
-  return {
-    success: false,
-    status,
-    message,
-    data: null,
-    meta: {
-      request_id: 'req_1760980000_ab12cd',
-      timestamp: '2026-10-21T01:44:35.000Z',
-    },
-    errors: [{ code, field, detail }],
-  };
-}
-
 export function getOpenApiSpec(): Record<string, unknown> {
   return {
     openapi: '3.1.0',
@@ -46,7 +26,7 @@ export function getOpenApiSpec(): Record<string, unknown> {
       },
       {
         name: 'Agents',
-        description: 'Specialized AI companion registry',
+        description: 'Specialist roster: sineva-ai catalog merged with the static presentation manifest',
       },
       {
         name: 'Storage',
@@ -191,23 +171,26 @@ export function getOpenApiSpec(): Record<string, unknown> {
           },
         },
       },
-      '/api/v1/agents': {
+      '/api/v1/workspaces/{workspace_id}/agents': {
         get: {
           tags: ['Agents'],
-          summary: 'List specialized Sineva AI companions with pagination',
-          operationId: 'list_agents',
+          summary: 'List the specialists of a workspace',
+          description:
+            "sineva-ai's specialist catalog (GET /api/v2/agents) merged with the platform's static presentation manifest. " +
+            'Availability (existence, wave, status, category) comes from sineva-ai on every call; display copy (role title, description, ' +
+            'starter prompts in en and id), accent_key, room_theme_id and order come from the manifest. ' +
+            'When sineva-ai is unreachable the answer is 503, and when it answers badly 502: the manifest is never served as a roster. ' +
+            '`enabled` is derived in this release (a wave 1 specialist that sineva-ai reports live is on) because per-workspace enablement ' +
+            'arrives with workspace_specialists; it is not a stored setting yet. ' +
+            '`my_access` is computed from the caller role and specialist scope; a specialist the caller may not use has the same shape as one that is not enabled. ' +
+            'The roster is returned whole, without pagination.',
+          operationId: 'list_workspace_agents',
           parameters: [
             {
-              name: 'page',
-              in: 'query',
-              required: false,
-              schema: { type: 'integer', default: 1 },
-            },
-            {
-              name: 'per_page',
-              in: 'query',
-              required: false,
-              schema: { type: 'integer', default: 10 },
+              name: 'workspace_id',
+              in: 'path',
+              required: true,
+              schema: { type: 'string', format: 'uuid' },
             },
             {
               name: 'category_filter',
@@ -222,63 +205,41 @@ export function getOpenApiSpec(): Record<string, unknown> {
                   'social_marketing',
                   'customer_support',
                   'data_insights',
+                  'personal_ops',
+                  'content_studio',
+                  'marketplace_ops',
+                  'it_security',
+                  'tax_compliance',
+                  'legal_drafting',
+                  'inventory_procurement',
                 ],
               },
             },
           ],
           responses: {
             '200': {
-              description: 'Paginated list of specialized AI companions',
-              content: {
-                'application/json': {
-                  schema: {
-                    $ref: '#/components/schemas/StandardEnvelope',
-                  },
-                },
-              },
+              description: 'The specialist roster with the sineva-ai catalog_version it was built from',
+              content: { 'application/json': { schema: { $ref: '#/components/schemas/StandardEnvelope' } } },
             },
-          },
-        },
-        post: {
-          tags: ['Agents'],
-          summary: 'Register a custom workspace AI companion configuration',
-          operationId: 'create_agent',
-          requestBody: {
-            required: true,
-            content: {
-              'application/json': {
-                schema: {
-                  $ref: '#/components/schemas/CreateAgentRequest',
-                },
-              },
+            '401': {
+              description: 'Authentication required',
+              content: { 'application/json': { schema: { $ref: '#/components/schemas/StandardEnvelope' } } },
             },
-          },
-          responses: {
-            '201': {
-              description: 'Created agent companion configuration',
-              content: {
-                'application/json': {
-                  schema: {
-                    $ref: '#/components/schemas/StandardEnvelope',
-                  },
-                },
-              },
-            },
-            '409': {
-              description: 'An agent with this agent_slug already exists',
-              content: {
-                'application/json': {
-                  schema: { $ref: '#/components/schemas/StandardEnvelope' },
-                  example: errorExample(
-                    409,
-                    "Agent 'sinofinance' already exists",
-                    'RESOURCE_CONFLICT',
-                  ),
-                },
-              },
+            '404': {
+              description: 'Workspace not found, or the caller is not a member',
+              content: { 'application/json': { schema: { $ref: '#/components/schemas/StandardEnvelope' } } },
             },
             '422': {
-              description: 'Validation error',
+              description: 'Invalid category_filter',
+              content: { 'application/json': { schema: { $ref: '#/components/schemas/StandardEnvelope' } } },
+            },
+            '502': {
+              description: 'sineva-ai answered badly, or its catalog does not list a specialist this app presents',
+              content: { 'application/json': { schema: { $ref: '#/components/schemas/StandardEnvelope' } } },
+            },
+            '503': {
+              description: 'sineva-ai is unreachable',
+              content: { 'application/json': { schema: { $ref: '#/components/schemas/StandardEnvelope' } } },
             },
           },
         },
@@ -1536,36 +1497,6 @@ export function getOpenApiSpec(): Record<string, unknown> {
                 },
               },
             },
-          },
-        },
-        CreateAgentRequest: {
-          type: 'object',
-          required: [
-            'agent_slug',
-            'display_name',
-            'role_title',
-            'category',
-            'short_description',
-            'capabilities',
-          ],
-          properties: {
-            agent_slug: { type: 'string', example: 'sinolegal' },
-            display_name: { type: 'string', example: 'SinoLegal' },
-            role_title: {
-              type: 'string',
-              example: 'Contract & Compliance Counsel',
-            },
-            category: { type: 'string', example: 'finance_ops' },
-            short_description: {
-              type: 'string',
-              example: 'Reviews MSA clauses and DPA schedules.',
-            },
-            capabilities: {
-              type: 'array',
-              items: { type: 'string' },
-              example: ['msa_redlining', 'gdpr_dpa_audit'],
-            },
-            model_name: { type: 'string', example: 'sineva-core-v2' },
           },
         },
         PresignUploadRequest: {

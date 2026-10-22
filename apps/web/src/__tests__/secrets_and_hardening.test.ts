@@ -267,14 +267,14 @@ describe('WP-M0-09: Secrets Without Defaults & Web Hardening (H2)', () => {
 
   describe('CSRF Guard for Cookie-Authenticated Mutations', () => {
     it('allows GET, HEAD, OPTIONS requests without CSRF check', () => {
-      const getReq = new Request('http://localhost:3000/api/v1/agents', {
+      const getReq = new Request('http://localhost:3000/api/v1/storage/presign', {
         method: 'GET',
       });
       expect(() => verifyCsrf(getReq)).not.toThrow();
     });
 
     it('rejects mutating request with mismatched origin', () => {
-      const req = new Request('http://localhost:3000/api/v1/agents', {
+      const req = new Request('http://localhost:3000/api/v1/storage/presign', {
         method: 'POST',
         headers: {
           origin: 'http://malicious-site.com',
@@ -286,7 +286,7 @@ describe('WP-M0-09: Secrets Without Defaults & Web Hardening (H2)', () => {
     });
 
     it('rejects an origin on the same hostname but another port', () => {
-      const req = new Request('http://localhost:3000/api/v1/agents', {
+      const req = new Request('http://localhost:3000/api/v1/storage/presign', {
         method: 'POST',
         headers: {
           origin: 'http://localhost:8080',
@@ -298,7 +298,7 @@ describe('WP-M0-09: Secrets Without Defaults & Web Hardening (H2)', () => {
     });
 
     it('accepts mutating request with matching origin or custom header', () => {
-      const reqWithOrigin = new Request('http://localhost:3000/api/v1/agents', {
+      const reqWithOrigin = new Request('http://localhost:3000/api/v1/storage/presign', {
         method: 'POST',
         headers: {
           origin: 'http://localhost:3000',
@@ -307,7 +307,7 @@ describe('WP-M0-09: Secrets Without Defaults & Web Hardening (H2)', () => {
       });
       expect(() => verifyCsrf(reqWithOrigin)).not.toThrow();
 
-      const reqWithHeader = new Request('http://localhost:3000/api/v1/agents', {
+      const reqWithHeader = new Request('http://localhost:3000/api/v1/storage/presign', {
         method: 'POST',
         headers: {
           'x-sineva-action': '1',

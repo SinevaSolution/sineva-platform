@@ -5,9 +5,26 @@ import { MentionMenu } from '@/client/components/chat/mention_menu';
 import { I18nProvider } from '@/i18n/provider';
 import { CATALOGS } from '@/i18n/catalogs';
 
+const starters = ['a', 'b', 'c'] as const;
 const items = [
-  { agent_slug: 'sinofinance', display_name: 'SinoFinance', role_title: 'Spend and invoices', short_description: '' },
-  { agent_slug: 'sinohelp', display_name: 'SinoHelp', role_title: 'Support', short_description: '' },
+  {
+    agent_slug: 'sinofinance',
+    display_name: 'SinoFinance',
+    role_title: 'Spend and invoices',
+    short_description: '',
+    accent_key: 'finance' as const,
+    room_theme_id: 'sinofinance',
+    starter_prompts: starters,
+  },
+  {
+    agent_slug: 'sinohelp',
+    display_name: 'SinoHelp',
+    role_title: 'Support',
+    short_description: '',
+    accent_key: 'help' as const,
+    room_theme_id: 'sinohelp',
+    starter_prompts: starters,
+  },
 ];
 
 const noop = () => {};

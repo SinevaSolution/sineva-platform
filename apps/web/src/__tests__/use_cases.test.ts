@@ -1,33 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { GetAgentsUseCase } from '@/server/application/use-cases/get_agents_use_case';
 import { GetSystemHealthUseCase } from '@/server/application/use-cases/get_system_health_use_case';
 import { PresignStorageUploadUseCase } from '@/server/application/use-cases/presign_storage_upload_use_case';
-import { FakeAgentRepository } from './fakes/fake_agent_repository';
 import { FakeCache } from './fakes/fake_cache';
 import { FakeDatabaseHealthProbe } from './fakes/fake_database_health_probe';
 import { FakeStorage } from './fakes/fake_storage';
 import { FakeAiEngineGateway } from './fakes/fake_ai_engine_gateway';
 
 describe('Clean Architecture Use Cases', () => {
-  it('lists all 6 default specialized companions and filters by category', async () => {
-    const repo = new FakeAgentRepository();
-    const cache = new FakeCache();
-    const useCase = new GetAgentsUseCase(repo, cache);
-
-    const allResult = await useCase.execute({ page: 1, per_page: 10 });
-    expect(allResult.total_items).toBe(6);
-    expect(allResult.items.map((a) => a.agent_slug)).toContain('sinofinance');
-    expect(allResult.items.map((a) => a.agent_slug)).toContain('sinopeople');
-
-    const financeOnly = await useCase.execute({
-      page: 1,
-      per_page: 10,
-      category_filter: 'finance_ops',
-    });
-    expect(financeOnly.total_items).toBe(1);
-    expect(financeOnly.items[0]?.display_name).toBe('SinoFinance');
-  });
-
   it('delegates presigned upload URL generation to the storage port', async () => {
     const storage = new FakeStorage();
     const useCase = new PresignStorageUploadUseCase(storage);

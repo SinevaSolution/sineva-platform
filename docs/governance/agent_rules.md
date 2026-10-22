@@ -97,7 +97,7 @@ Use cases and adapters import domain types and ports. Adapters never import use 
 - **Check**: `architecture.test.ts`, plus review of non-layer imports.
 
 ### R-14 MUST keep wire types in `src/shared` and guarded
-Browser-facing shapes (for example `AgentView`) live in `src/shared`. A compile-time guard must keep the domain type assignable to the view: `server/http/agent_view_contract.ts` for `AgentView`, `server/http/chat_view_contract.ts` for the chat reply (`chat_view.ts`). Add a guard when you add a shared view.
+Browser-facing shapes (for example `WorkspaceSpecialistRosterView`) live in `src/shared`. A compile-time guard must keep the domain type assignable to the view: `server/http/specialist_view_contract.ts` for the roster, `server/http/chat_view_contract.ts` for the chat reply (`chat_view.ts`). Add a guard when you add a shared view.
 - **Why**: Backend entity changes would otherwise break the client at runtime.
 - **Check**: `npm run typecheck` fails when the entity or chat response drifts from its view.
 
@@ -243,7 +243,7 @@ Write "the tools you already use". Do not name specific platforms in user-facing
 ### R-37 MUST use the canonical product slugs
 `sinopeople`, `sinofinance`, `sinosales`, `sinosocial`, `sinohelp`, `sinoinsights`. Not `sino-*`, not `sino_*`. SinoMoney is SinoFinance.
 The orchestrator slug in `sineva-ai` is `sino`. Handles keep their casing (`@SinoFinance`).
-- **Why**: A slug is a routing key shared with `sineva-compro` and `sineva-ai`, and `sineva-ai` has migrated to the canonical slugs. A database seeded earlier with `sino-*` slugs keeps those rows after a re-seed (the seed upserts by slug), so it needs a manual or data migration. ([ADR-0012](../decisions/0012-canonical-product-slugs-and-guardrails.md))
+- **Why**: A slug is a routing key shared with `sineva-compro` and `sineva-ai`, and `sineva-ai` has migrated to the canonical slugs. The platform no longer stores specialists (`agent_configs` was dropped, ADR-0024), so a stale `sino-*` slug cannot persist there. ([ADR-0012](../decisions/0012-canonical-product-slugs-and-guardrails.md))
 - **Check**: `grep -rnE "sino[-_](people|finance|sales|social|help|insights)|SinoMoney|sino[-_]?money" apps docs` returns only text that discusses the old names.
 
 ### R-38 MUST update docs in the same change
@@ -259,4 +259,4 @@ These exist today and break the rules above. Do not extend them. Details and rem
 - `@sineva/shared` type import in `domain/errors/domain_error.ts`, and domain errors that carry an HTTP status. Breaks R-12 (Target).
 - No `loading.tsx`, `error.tsx` or `not-found.tsx` yet. Breaks R-31.
 
-Removed since the first version of this list: the canned AI reply on `sineva-ai` failure (now R-41), the in-memory agent registry (Prisma repository is wired in `container.ts`), the `X-Internal-Service-Token` header, the old `sino-*` slugs in gateway playbooks, upstream 4xx/500 masked body logging and request id propagation (WP-M0-07), truthful infrastructure probes (Postgres SELECT 1, Redis ping, S3 HeadBucket, sineva-ai health version), typed 502 on presign failure, S3 public endpoint presigning host, and real ioredis cache repository with prefix invalidation (WP-M0-08), and validated secrets without fallback defaults in production, bounded `AI_ENGINE_TIMEOUT_MS`, security headers, and CSRF protection baseline (WP-M0-09).
+Removed since the first version of this list: the canned AI reply on `sineva-ai` failure (now R-41), the in-memory agent registry (later the Prisma registry, itself replaced by the manifest, ADR-0024), the `X-Internal-Service-Token` header, the old `sino-*` slugs in gateway playbooks, upstream 4xx/500 masked body logging and request id propagation (WP-M0-07), truthful infrastructure probes (Postgres SELECT 1, Redis ping, S3 HeadBucket, sineva-ai health version), typed 502 on presign failure, the platform specialist table and its `POST /api/v1/agents` (DOM-3, DOM-4, DOM-6, COPY-2, closed by the static manifest and the sineva-ai catalog, ADR-0024), S3 public endpoint presigning host, and real ioredis cache repository with prefix invalidation (WP-M0-08), and validated secrets without fallback defaults in production, bounded `AI_ENGINE_TIMEOUT_MS`, security headers, and CSRF protection baseline (WP-M0-09).

@@ -3,14 +3,12 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { NextRequest } from 'next/server';
 import { GET as getHealth } from '@/app/api/v1/health/route';
 import { POST as postPresign } from '@/app/api/v1/storage/presign/route';
-import { GetAgentsUseCase } from '@/server/application/use-cases/get_agents_use_case';
 import { GetSystemHealthUseCase } from '@/server/application/use-cases/get_system_health_use_case';
 import { PresignStorageUploadUseCase } from '@/server/application/use-cases/presign_storage_upload_use_case';
 import { UpstreamServiceError } from '@/server/domain/errors/domain_error';
 import { InternalAiEngineGateway } from '@/server/infrastructure/gateways/internal_ai_engine_gateway';
 import { RedisCacheRepository } from '@/server/infrastructure/cache/redis_cache_repository';
 import { SeaweedStorageRepository } from '@/server/infrastructure/storage/seaweed_storage_repository';
-import { FakeAgentRepository } from './fakes/fake_agent_repository';
 import { FakeAiEngineGateway } from './fakes/fake_ai_engine_gateway';
 import { FakeCache } from './fakes/fake_cache';
 import { FakeDatabaseHealthProbe } from './fakes/fake_database_health_probe';
@@ -32,7 +30,6 @@ const mockContainer = vi.hoisted(() => ({
 vi.mock('@/server/container', () => ({
   getSystemHealthUseCase: () => mockContainer.current.systemHealth,
   getPresignStorageUploadUseCase: () => mockContainer.current.presignStorageUpload,
-  getGetAgentsUseCase: vi.fn(),
   getSendAgentMessageUseCase: vi.fn(),
 }));
 
@@ -230,33 +227,20 @@ describe('WP-M0-08: Truthful Infrastructure (H4)', () => {
   });
 
   describe('Cache Invalidation of Pattern/Prefix (DOM-2)', () => {
-    it('registerAgent clears all cached agent list pages by prefix', async () => {
-      const repo = new FakeAgentRepository();
+    it('delByPrefix clears every key under the prefix and keeps unrelated keys', async () => {
       const cacheRepo = new FakeCache();
-      const useCase = new GetAgentsUseCase(repo, cacheRepo);
 
-      // Populate multiple list cache keys
-      await cacheRepo.set('agents:list:p_1:pp_10:cat_all', { items: [] });
-      await cacheRepo.set('agents:list:p_2:pp_10:cat_all', { items: [] });
-      await cacheRepo.set('agents:list:p_1:pp_10:cat_finance_ops', { items: [] });
-      await cacheRepo.set('agents:detail:sinopeople', { name: 'SinoPeople' });
+      await cacheRepo.set('lists:p_1:pp_10:cat_all', { items: [] });
+      await cacheRepo.set('lists:p_2:pp_10:cat_all', { items: [] });
+      await cacheRepo.set('lists:p_1:pp_10:cat_finance_ops', { items: [] });
+      await cacheRepo.set('detail:sinopeople', { name: 'SinoPeople' });
 
-      await useCase.registerAgent({
-        agent_slug: 'sinocustom',
-        display_name: 'SinoCustom',
-        role_title: 'Custom Agent',
-        category: 'finance_ops',
-        short_description: 'Test agent',
-        capabilities: ['test'],
-        model_name: 'test-model',
-      });
+      await cacheRepo.delByPrefix('lists:');
 
-      // All list queries should be invalidated
-      expect(await cacheRepo.get('agents:list:p_1:pp_10:cat_all')).toBeNull();
-      expect(await cacheRepo.get('agents:list:p_2:pp_10:cat_all')).toBeNull();
-      expect(await cacheRepo.get('agents:list:p_1:pp_10:cat_finance_ops')).toBeNull();
-      // Unrelated detail key should remain intact
-      expect(await cacheRepo.get('agents:detail:sinopeople')).not.toBeNull();
+      expect(await cacheRepo.get('lists:p_1:pp_10:cat_all')).toBeNull();
+      expect(await cacheRepo.get('lists:p_2:pp_10:cat_all')).toBeNull();
+      expect(await cacheRepo.get('lists:p_1:pp_10:cat_finance_ops')).toBeNull();
+      expect(await cacheRepo.get('detail:sinopeople')).not.toBeNull();
     });
   });
 
