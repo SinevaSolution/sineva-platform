@@ -16,6 +16,7 @@ export interface CopyViolation {
     | 'dash'
     | 'mention_comma'
     | 'internal_term'
+    | 'technical_term'
     | 'voice'
     | 'emoji'
     | 'sinofinance_word'
@@ -68,6 +69,22 @@ const DASHES = /[‒-―]/;
 const MENTION_COMMA = /@Sino[A-Za-z]*,/;
 // Internal vocabulary a customer should never read (copywriting_and_brand).
 const INTERNAL_TERMS = /\b(BFF|Docker|Prisma|upstream|orchestrator|tenant|502)\b/;
+// Engineering words a customer should never have to learn (ADR-0033). Say what
+// it means for them instead: "Sino is reading your file", "pages read from
+// photos and scans". Matched as whole words in every locale, with the
+// Indonesian counterparts alongside, so one rule covers both catalogs.
+// RAG is case-sensitive because "rag" is an ordinary English word. There is
+// no allowlist on purpose: a string that needs one of these words is a string
+// to rephrase.
+const TECHNICAL_TERMS = new RegExp(
+  [
+    String.raw`\b(?:ocr|embeddings?|chunks?|chunking|vectors?|index(?:es|ed|ing)?|ingest(?:s|ed|ing|ion)?|tokens?|payloads?|webhooks?|json|bff)\b`,
+    // Indonesian: indeks, mengindeks, pengindeksan, terindeks, vektor, tokenisasi, penyematan (embedding).
+    String.raw`\b(?:indeks|mengindeks|diindeks|terindeks|pengindeksan|vektor|tokenisasi|penyematan)\b`,
+  ].join('|'),
+  'i',
+);
+const TECHNICAL_ACRONYMS = /\bRAG\b/;
 // Indonesian copy says "kamu" and Sino says "aku" (D-03).
 const INDONESIAN_VOICE = /\b(anda|saya)\b/i;
 const EMOJI = /\p{Extended_Pictographic}/u;
@@ -90,6 +107,8 @@ export function lintCopyString(value: string, ctx: { locale: string; key: string
   if (MENTION_COMMA.test(value)) add('mention_comma', 'write "@SinoHelp request" with no comma after the mention');
   const internal = INTERNAL_TERMS.exec(value);
   if (internal) add('internal_term', `"${internal[0]}" is internal vocabulary`);
+  const technical = TECHNICAL_TERMS.exec(value) ?? TECHNICAL_ACRONYMS.exec(value);
+  if (technical) add('technical_term', `"${technical[0]}" is a technical word; say what it means for the customer`);
   if (ctx.locale === 'id') {
     const voice = INDONESIAN_VOICE.exec(value);
     if (voice) add('voice', `"${voice[0]}": Indonesian copy uses "kamu" and Sino says "aku"`);

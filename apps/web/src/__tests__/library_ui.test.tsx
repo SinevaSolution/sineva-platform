@@ -307,7 +307,7 @@ describe('LibraryScreen', () => {
     const quotaButton = screen.getByRole('button', { name: 'Usage & limits' });
     fireEvent.click(quotaButton);
     expect(await screen.findByRole('dialog', { name: 'Storage & limits' })).toBeTruthy();
-    expect(screen.getByText('OCR monthly limit reached')).toBeTruthy();
+    expect(screen.getByText('Monthly limit for pages read from photos and scans reached')).toBeTruthy();
   });
 
   it('renders scope, source type, and language filter controls and updates URL', () => {
