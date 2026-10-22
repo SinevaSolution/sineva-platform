@@ -5,7 +5,11 @@ const SIZES: SNButtonSize[] = ['xs', 'sm', 'md', 'lg'];
 
 // Every state of SNButton for /dev/ui. Forced hover and focus are applied by
 // the gallery shell (data attributes), not here.
-export function SNButtonGallery() {
+export function SNButtonGallery({
+  disabledLabel = 'Disabled',
+  loadingLabel = 'Loading',
+  pillLabel = 'Pill',
+}: { disabledLabel?: string; loadingLabel?: string; pillLabel?: string } = {}) {
   return (
     <section aria-labelledby="gallery-sn-button" className="space-y-4">
       <h2 id="gallery-sn-button" className="text-lg font-semibold text-text">
@@ -20,13 +24,13 @@ export function SNButtonGallery() {
             </SNButton>
           ))}
           <SNButton variant={variant} disabled>
-            Disabled
+            {disabledLabel}
           </SNButton>
           <SNButton variant={variant} loading>
-            Loading
+            {loadingLabel}
           </SNButton>
           <SNButton variant={variant} shape="pill">
-            Pill
+            {pillLabel}
           </SNButton>
         </div>
       ))}

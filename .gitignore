@@ -32,3 +32,7 @@ AGENTS.md
 
 # Prisma generated client (rebuilt by `npm run db:generate`)
 apps/web/src/server/infrastructure/database/generated
+
+# Playwright output; approved baselines stay tracked in e2e/__screenshots__.
+apps/web/test-results/
+apps/web/playwright-report/

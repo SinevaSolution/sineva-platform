@@ -11,7 +11,14 @@ export async function generateMetadata(): Promise<Metadata> {
   return { title: t('sign_up') };
 }
 
-export default async function SignUpPage() {
+export default async function SignUpPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ next?: string }>;
+}) {
+  const { next } = await searchParams;
+  const returnTo =
+    next && /^\/(invite|ownership)\/[A-Za-z0-9_-]{16,128}$/.test(next) ? next : undefined;
   if (await getPageSession()) {
     redirect('/');
   }
@@ -22,12 +29,16 @@ export default async function SignUpPage() {
       title={t('sign_up.title')}
       subtitle={t('sign_up.subtitle')}
       footer={t.rich('sign_up.footer', {
-        link: <AuthLink href="/sign-in">{t('sign_up.footer_link')}</AuthLink>,
+        link: (
+          <AuthLink href={returnTo ? `/sign-in?next=${encodeURIComponent(returnTo)}` : '/sign-in'}>
+            {t('sign_up.footer_link')}
+          </AuthLink>
+        ),
       })}
     >
-      <OAuthButtons />
+      <OAuthButtons returnTo={returnTo} />
       <OrDivider />
-      <SignUpForm />
+      <SignUpForm returnTo={returnTo} />
     </AuthCard>
   );
 }

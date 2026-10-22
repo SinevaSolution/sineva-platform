@@ -12,7 +12,8 @@ export type RunRelayStep =
   | 'store_reply_failed'
   | 'store_cards_failed'
   | 'deferred_cancel_failed'
-  | 'cancel_before_delete_failed';
+  | 'cancel_before_delete_failed'
+  | 'inbox_item_failed';
 
 export interface RunRelayLog {
   failed(step: RunRelayStep, detail: { run_handle?: string; cause?: unknown }): void;

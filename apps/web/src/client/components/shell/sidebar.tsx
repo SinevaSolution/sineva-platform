@@ -7,7 +7,8 @@ import * as React from 'react';
 import { cn } from '@/client/components/ui/cn';
 import { SNTooltip } from '@sineva/ui';
 import { useAppDispatch, useAppSelector } from '@/client/store/hooks';
-import { useTranslations } from '@/i18n/provider';
+import { formatNumber } from '@sineva/ui/format';
+import { useLocale, useTranslations } from '@/i18n/provider';
 import { toggleSidebarSection } from '@/client/store/slices/ui_slice';
 import type { ShellSpecialistView, ShellUserView, ShellWorkspaceView } from '@/shared/shell_view';
 import { NavIcon } from './nav_icon';
@@ -18,6 +19,7 @@ import { WorkspaceMenu } from './workspace_menu';
 
 export interface SidebarProps {
   workspace: ShellWorkspaceView;
+  inboxCount?: number;
   workspaces: ShellWorkspaceView[];
   user: ShellUserView;
   specialists: ShellSpecialistView[];
@@ -41,6 +43,7 @@ export function Sidebar({
   user,
   specialists,
   collapsed = false,
+  inboxCount = 0,
   onToggleCollapsed,
   onNavigate,
 }: SidebarProps) {
@@ -59,13 +62,14 @@ export function Sidebar({
     href: `/w/${workspace.slug}/settings`,
     icon: 'settings',
     exact: false,
-    soon: true,
+    soon: false,
   };
 
   const row = (item: NavItem) => (
     <NavRow
       key={item.id}
       item={item}
+      count={item.id === 'inbox' ? inboxCount : 0}
       active={isNavItemActive(pathname, item.href, item.exact)}
       compact={collapsed}
       onNavigate={onNavigate}
@@ -73,11 +77,23 @@ export function Sidebar({
   );
 
   return (
-    <nav aria-label={t('sidebar.main_label')} className={cn('flex h-full flex-col pb-2 pt-3', collapsed ? 'items-center px-2' : 'px-3')}>
+    <nav
+      aria-label={t('sidebar.main_label')}
+      className={cn('flex h-full flex-col pb-2 pt-3', collapsed ? 'items-center px-2' : 'px-3')}
+    >
       <div className={cn('flex items-center gap-1', collapsed ? 'flex-col' : 'justify-between')}>
-        <WorkspaceMenu workspace={workspace} workspaces={workspaces} user={user} compact={collapsed} />
+        <WorkspaceMenu
+          workspace={workspace}
+          workspaces={workspaces}
+          user={user}
+          compact={collapsed}
+        />
         {onToggleCollapsed ? (
-          <SNTooltip label={collapsed ? t('sidebar.expand') : t('sidebar.collapse')} shortcut="[" side={collapsed ? 'right' : 'bottom'}>
+          <SNTooltip
+            label={collapsed ? t('sidebar.expand') : t('sidebar.collapse')}
+            shortcut="["
+            side={collapsed ? 'right' : 'bottom'}
+          >
             <button
               type="button"
               onClick={onToggleCollapsed}
@@ -94,12 +110,21 @@ export function Sidebar({
         ) : null}
       </div>
 
-      <div className={cn('mt-3 flex min-h-0 w-full flex-1 flex-col overflow-y-auto', collapsed ? 'gap-3' : '-mx-1 gap-4 px-1')}>
+      <div
+        className={cn(
+          'mt-3 flex min-h-0 w-full flex-1 flex-col overflow-y-auto',
+          collapsed ? 'gap-3' : '-mx-1 gap-4 px-1',
+        )}
+      >
         {sections.map((section) => {
-          const isClosed = !collapsed && section.labelKey !== null && closedSections.includes(section.id);
+          const isClosed =
+            !collapsed && section.labelKey !== null && closedSections.includes(section.id);
           const listId = `sidebar-section-${section.id}`;
           return (
-            <div key={section.id} className={cn(collapsed && section.labelKey && 'border-t border-border pt-3')}>
+            <div
+              key={section.id}
+              className={cn(collapsed && section.labelKey && 'border-t border-border pt-3')}
+            >
               {section.labelKey && !collapsed ? (
                 <SectionHeader
                   label={t(section.labelKey)}
@@ -109,7 +134,10 @@ export function Sidebar({
                 />
               ) : null}
               {!isClosed ? (
-                <ul id={listId} className={cn('space-y-px', collapsed && 'flex flex-col items-center gap-0.5')}>
+                <ul
+                  id={listId}
+                  className={cn('space-y-px', collapsed && 'flex flex-col items-center gap-0.5')}
+                >
                   {section.items.map(row)}
                 </ul>
               ) : null}
@@ -139,7 +167,12 @@ export function Sidebar({
         ) : null}
       </div>
 
-      <div className={cn('mt-2 w-full border-t border-border pt-2', collapsed && 'flex flex-col items-center gap-1')}>
+      <div
+        className={cn(
+          'mt-2 w-full border-t border-border pt-2',
+          collapsed && 'flex flex-col items-center gap-1',
+        )}
+      >
         <ul className={cn(collapsed && 'flex flex-col items-center')}>{row(settings)}</ul>
         <div className="mt-1">
           <UserMenu user={user} workspaceSlug={workspace.slug} compact={collapsed} />
@@ -151,16 +184,19 @@ export function Sidebar({
 
 function NavRow({
   item,
+  count,
   active,
   compact,
   onNavigate,
 }: {
   item: NavItem;
+  count: number;
   active: boolean;
   compact: boolean;
   onNavigate?: () => void;
 }) {
   const t = useTranslations('shell');
+  const locale = useLocale();
   const label = t(item.labelKey);
   const hint = item.soon ? t('sidebar.hint_soon', { label }) : label;
   const link = (
@@ -168,7 +204,9 @@ function NavRow({
       href={item.href}
       onClick={onNavigate}
       aria-current={active ? 'page' : undefined}
-      aria-label={compact ? hint : undefined}
+      aria-label={
+        compact ? (count > 0 ? `${hint} (${formatNumber(count, locale)})` : hint) : undefined
+      }
       className={cn(
         'flex items-center rounded-sm text-[13px] text-text-secondary transition-colors duration-100 hover:bg-(--state-hover) hover:text-text',
         compact ? 'size-9 justify-center' : 'h-7 gap-2 px-2',
@@ -179,8 +217,15 @@ function NavRow({
       {!compact ? (
         <>
           <span className="min-w-0 flex-1 truncate">{label}</span>
+          {count > 0 ? (
+            <span className="rounded-full bg-surface-tint px-1.5 text-xs text-text">
+              {formatNumber(count, locale)}
+            </span>
+          ) : null}
           {item.soon ? (
-            <span className="rounded-full bg-(--state-hover) px-1.5 text-[10px] font-medium leading-4 text-text-tertiary">{t('sidebar.soon_tag')}</span>
+            <span className="rounded-full bg-(--state-hover) px-1.5 text-[10px] font-medium leading-4 text-text-tertiary">
+              {t('sidebar.soon_tag')}
+            </span>
           ) : null}
         </>
       ) : null}

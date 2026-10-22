@@ -1,0 +1,62 @@
+{
+  "success": true,
+  "status_code": 200,
+  "message": "Website scan completed.",
+  "data": {
+    "scan_id": "5b0f9a3e-2c4d-4e1a-8f6b-7d3c1a9e0b42",
+    "status": "succeeded",
+    "source_url": "https://tokokopinusantara.example/",
+    "final_url": "https://www.tokokopinusantara.example/",
+    "fetched_pages": 3,
+    "site_language": "id",
+    "fields": {
+      "display_name": {
+        "value": "Toko Kopi Nusantara",
+        "source_url": "https://www.tokokopinusantara.example/",
+        "evidence_snippet": "Selamat datang di Toko Kopi Nusantara"
+      },
+      "description": {
+        "value": "Kopi single origin dari petani Gayo, dipanggang setiap minggu.",
+        "source_url": "https://www.tokokopinusantara.example/tentang",
+        "evidence_snippet": "Kami menjual kopi single origin dari petani Gayo, dipanggang setiap minggu."
+      },
+      "tone_cues": {
+        "value": ["santai", "ramah"],
+        "source_url": "https://www.tokokopinusantara.example/",
+        "evidence_snippet": "Halo, kak! Yuk cobain kopi favoritmu."
+      },
+      "contact_channels": {
+        "value": [
+          { "kind": "whatsapp", "value": "+6281234567890" },
+          { "kind": "instagram", "value": "@tokokopinusantara" }
+        ],
+        "source_url": "https://www.tokokopinusantara.example/kontak",
+        "evidence_snippet": "Chat WhatsApp 0812-3456-7890, IG @tokokopinusantara"
+      }
+    },
+    "offers": [
+      {
+        "name": "Kopi Gayo 250g",
+        "description": "Biji kopi arabika Gayo, medium roast.",
+        "source_url": "https://www.tokokopinusantara.example/produk",
+        "evidence_snippet": "Kopi Gayo 250g, biji arabika, medium roast"
+      },
+      {
+        "name": "Dripper V60",
+        "description": null,
+        "source_url": "https://www.tokokopinusantara.example/produk",
+        "evidence_snippet": "Dripper V60 keramik"
+      }
+    ],
+    "policies": [
+      {
+        "kind": "shipping",
+        "title": "Pengiriman",
+        "body": "Pesanan sebelum jam 14.00 dikirim di hari yang sama.",
+        "source_url": "https://www.tokokopinusantara.example/pengiriman",
+        "evidence_snippet": "Pesanan sebelum jam 14.00 dikirim di hari yang sama."
+      }
+    ],
+    "error_code": null
+  }
+}

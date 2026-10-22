@@ -42,17 +42,32 @@ export function sanitizeNextRedirect(rawPath?: string | null, fallback: string =
  */
 // Auth screens a signed-out visitor must be able to reach. The emailed
 // verify and reset links land here before any session exists.
-const PUBLIC_PAGES = new Set(['/', '/sign-in', '/sign-up', '/forgot-password', '/reset-password', '/verify-email']);
+const PUBLIC_PAGES = new Set([
+  '/',
+  '/sign-in',
+  '/sign-up',
+  '/forgot-password',
+  '/reset-password',
+  '/verify-email',
+]);
 
 export function proxyPageGuard(request: NextRequest): NextResponse | null {
   const pathname = request.nextUrl.pathname;
+
+  if (pathname === '/dev/ui' || pathname.startsWith('/dev/ui/')) {
+    if (process.env.NODE_ENV === 'production' && process.env.ENABLE_DEV_UI !== '1') {
+      return new NextResponse(null, { status: 404 });
+    }
+    return null;
+  }
 
   // Static assets and API endpoints are ignored by the page guard
   if (
     pathname.startsWith('/api') ||
     pathname.startsWith('/_next') ||
     pathname.includes('.') ||
-    PUBLIC_PAGES.has(pathname)
+    PUBLIC_PAGES.has(pathname) ||
+    /^\/(invite|ownership)\/[A-Za-z0-9_-]{16,128}$/.test(pathname)
   ) {
     return null;
   }
@@ -89,4 +104,3 @@ export function proxy(request: NextRequest): NextResponse {
 }
 
 export default proxy;
-

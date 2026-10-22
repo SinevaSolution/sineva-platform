@@ -35,7 +35,7 @@ interface Envelope<T> {
 
 export async function apiRequest<T>(
   path: string,
-  init: { method?: 'GET' | 'POST' | 'PATCH' | 'DELETE'; body?: unknown } = {},
+  init: { method?: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE'; body?: unknown } = {},
 ): Promise<T> {
   const method = init.method ?? 'GET';
   let response: Response;
@@ -68,7 +68,9 @@ export async function apiRequest<T>(
       envelope?.code,
       (envelope?.errors ?? []).flatMap((e) => (e.code ? [e.code] : [])),
       Object.fromEntries(
-        (envelope?.errors ?? []).flatMap((e) => (e.field && e.code ? [[e.field, e.code] as const] : [])),
+        (envelope?.errors ?? []).flatMap((e) =>
+          e.field && e.code ? [[e.field, e.code] as const] : [],
+        ),
       ),
     );
   }

@@ -11,14 +11,8 @@ import {
   parseSidebarCookie,
   type FeatureId,
 } from '@/client/components/shell/nav_model';
-import {
-  specialistAccent,
-  specialistPose,
-} from '@/client/components/ui/specialist_accent';
-import uiReducer, {
-  setMobileNavOpen,
-  toggleSidebarSection,
-} from '@/client/store/slices/ui_slice';
+import { specialistAccent, specialistPose } from '@/client/components/ui/specialist_accent';
+import uiReducer, { setMobileNavOpen, toggleSidebarSection } from '@/client/store/slices/ui_slice';
 
 describe('sidebar navigation model', () => {
   it('starts with Home and New chat, scoped to the workspace', () => {
@@ -36,10 +30,19 @@ describe('sidebar navigation model', () => {
 
   it('shows every planned feature, marking unbuilt ones as soon', () => {
     const items = buildNavSections('kopi-senja').flatMap((s) => s.items);
-    for (const id of ['inbox', 'customers', 'squads', 'library', 'tools', 'workflows', 'routines', 'skills']) {
+    for (const id of [
+      'inbox',
+      'customers',
+      'squads',
+      'library',
+      'tools',
+      'workflows',
+      'routines',
+      'skills',
+    ]) {
       const item = items.find((i) => i.id === id);
       expect(item?.href).toBe(`/w/kopi-senja/${FEATURES[id as FeatureId].segment}`);
-      expect(item?.soon).toBe(true);
+      expect(item?.soon).toBe(id !== 'inbox' && id !== 'library');
     }
     expect(items.find((i) => i.id === 'home')?.soon).toBe(false);
   });
@@ -96,7 +99,11 @@ describe('nav copy keys', () => {
 describe('recent chat marker', () => {
   const names = { sinofinance: 'SinoFinance' };
   it('marks a hub chat as the team chat', () => {
-    expect(chatMarker({ kind: 'hub', agent_slug: null }, names)).toEqual({ kind: 'team', name: null, pose: 'wave' });
+    expect(chatMarker({ kind: 'hub', agent_slug: null }, names)).toEqual({
+      kind: 'team',
+      name: null,
+      pose: 'wave',
+    });
   });
   it('marks a private chat with the specialist name and pose', () => {
     expect(chatMarker({ kind: 'room', agent_slug: 'sinofinance' }, names)).toEqual({
@@ -106,7 +113,10 @@ describe('recent chat marker', () => {
     });
   });
   it('leaves the name empty for an unknown slug so the caller shows the generic label', () => {
-    expect(chatMarker({ kind: 'room', agent_slug: 'ghost' }, names)).toMatchObject({ kind: 'specialist', name: null });
+    expect(chatMarker({ kind: 'room', agent_slug: 'ghost' }, names)).toMatchObject({
+      kind: 'specialist',
+      name: null,
+    });
   });
 });
 

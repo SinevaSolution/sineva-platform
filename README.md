@@ -106,7 +106,7 @@ sineva-platform/
 
 ## 4. Prerequisites
 
-- **Node.js**: `v24.21.0` (specified in `.nvmrc`; `engines` in `package.json` is `>=24.0.0`)
+- **Node.js**: `v24.22.1` (specified in `.nvmrc`; `engines` in `package.json` is `^24.22.1`)
 - **npm**: `v11+`
 - **Docker & Docker Compose**: v2+ (for running PostgreSQL, Redis, SeaweedFS S3, Qdrant, and internal `sineva-ai`)
 

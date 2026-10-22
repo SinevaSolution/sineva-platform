@@ -1,0 +1,20 @@
+{
+  "success": true,
+  "status_code": 200,
+  "message": "OK",
+  "data": {
+    "results": [
+      {
+        "document_id": "20000000-0000-4000-8000-000000000001",
+        "chunk_id": "50000000-0000-4000-8000-000000000001",
+        "page": 2,
+        "section_path": "Daftar harga > Minuman",
+        "snippet": "Kopi susu 25.000",
+        "source_uri": null,
+        "trust_label": "owner_upload"
+      }
+    ],
+    "abstained": false,
+    "abstain_reason": null
+  }
+}

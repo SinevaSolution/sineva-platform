@@ -1,0 +1,10 @@
+{
+  "success": true,
+  "status_code": 200,
+  "message": "OK",
+  "data": {
+    "results": [],
+    "abstained": true,
+    "abstain_reason": "no_results_above_threshold"
+  }
+}

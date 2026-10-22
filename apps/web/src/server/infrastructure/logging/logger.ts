@@ -28,9 +28,17 @@ export const LOG_EVENTS = [
   'http.unhandled_error',
   'run.relay_failed',
   'run.metrics',
+  'inbox.step_failed',
   'card.rejected',
   'entitlement.checked',
   'entitlement.would_block',
+  'library.ingest_request_failed',
+  'library.ingest_event_ignored',
+  'library.delete_unverified',
+  'library.retrieval_rejected',
+  'library.acl_sync_failed',
+  'library.review_reminder_failed',
+  'library.cleanup_failed',
 ] as const;
 export type LogEvent = (typeof LOG_EVENTS)[number];
 
@@ -65,6 +73,8 @@ export interface LogFields {
   allowed?: boolean;
   quantity?: number;
   plan_required?: string;
+  /** Opaque id of a Library document (a resource, not a person). */
+  document_id?: string;
 }
 
 type FieldKind = 'number' | 'string' | 'boolean' | 'string_list';
@@ -92,6 +102,7 @@ const FIELD_KINDS: Record<keyof LogFields, FieldKind> = {
   allowed: 'boolean',
   quantity: 'number',
   plan_required: 'string',
+  document_id: 'string',
 };
 
 // Bounds what an allowed string field can smuggle: a pasted body would be cut

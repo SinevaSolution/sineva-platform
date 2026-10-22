@@ -29,15 +29,28 @@ export type PermissionKey =
   | 'storage.upload'
   | 'storage.read'
   | 'storage.delete'
+  | 'library.read'
+  | 'library.upload'
+  | 'library.manage'
+  | 'library.delete'
+  | 'library.usage.view'
   | 'audit.view'
   | 'billing.view'
   | 'billing.manage'
   | 'profile.view'
   | 'profile.update'
+  | 'business_profile.view'
+  | 'business_profile.update'
+  | 'business_profile.scan'
+  | 'onboarding.run'
   | 'preferences.manage_own'
   | 'model.view'
   | 'model.manage'
-  | 'model.manage_keys';
+  | 'model.manage_keys'
+  | 'inbox.view'
+  | 'approval.decide_own'
+  | 'approval.decide_any'
+  | 'inbox.answer';
 
 export type PermissionAccess = 'yes' | 'no' | 'limited';
 
@@ -49,10 +62,14 @@ export interface PermissionDefinition {
     | 'specialist'
     | 'chat'
     | 'storage'
+    | 'library'
     | 'audit'
     | 'billing'
     | 'profile'
-    | 'model';
+    | 'business_profile'
+    | 'onboarding'
+    | 'model'
+    | 'inbox';
   description: string;
   roles: Record<UserRole, PermissionAccess>;
 }
@@ -84,15 +101,32 @@ export const C2_PERMISSION_MATRIX_FIXTURE: Record<
   'storage.upload': { owner: 'yes', admin: 'yes', member: 'yes', viewer: 'no' },
   'storage.read': { owner: 'yes', admin: 'yes', member: 'yes', viewer: 'yes' },
   'storage.delete': { owner: 'yes', admin: 'yes', member: 'no', viewer: 'no' },
+  'library.read': { owner: 'yes', admin: 'yes', member: 'yes', viewer: 'yes' },
+  'library.upload': { owner: 'yes', admin: 'yes', member: 'yes', viewer: 'no' },
+  'library.manage': { owner: 'yes', admin: 'yes', member: 'no', viewer: 'no' },
+  'library.delete': { owner: 'yes', admin: 'yes', member: 'no', viewer: 'no' },
+  'library.usage.view': { owner: 'yes', admin: 'yes', member: 'no', viewer: 'no' },
   'audit.view': { owner: 'yes', admin: 'yes', member: 'no', viewer: 'no' },
   'billing.view': { owner: 'yes', admin: 'yes', member: 'no', viewer: 'no' },
   'billing.manage': { owner: 'yes', admin: 'no', member: 'no', viewer: 'no' },
   'profile.view': { owner: 'yes', admin: 'yes', member: 'yes', viewer: 'yes' },
   'profile.update': { owner: 'yes', admin: 'yes', member: 'yes', viewer: 'yes' },
+  // Business Profile and onboarding (ADR-0031): the PRD's profile.* names are
+  // taken by the account profile above, so these carry a prefix.
+  'business_profile.view': { owner: 'yes', admin: 'yes', member: 'yes', viewer: 'yes' },
+  'business_profile.update': { owner: 'yes', admin: 'yes', member: 'no', viewer: 'no' },
+  'business_profile.scan': { owner: 'yes', admin: 'yes', member: 'no', viewer: 'no' },
+  'onboarding.run': { owner: 'yes', admin: 'no', member: 'no', viewer: 'no' },
   'preferences.manage_own': { owner: 'yes', admin: 'yes', member: 'yes', viewer: 'yes' },
   'model.view': { owner: 'yes', admin: 'yes', member: 'no', viewer: 'no' },
   'model.manage': { owner: 'yes', admin: 'yes', member: 'no', viewer: 'no' },
   'model.manage_keys': { owner: 'yes', admin: 'no', member: 'no', viewer: 'no' },
+  // Viewer opens the Inbox but the use cases show only Done summaries without draft bodies.
+  'inbox.view': { owner: 'yes', admin: 'yes', member: 'yes', viewer: 'yes' },
+  // Member decides only items addressed to them; the use case checks the recipient.
+  'approval.decide_own': { owner: 'yes', admin: 'yes', member: 'yes', viewer: 'no' },
+  'approval.decide_any': { owner: 'yes', admin: 'yes', member: 'no', viewer: 'no' },
+  'inbox.answer': { owner: 'yes', admin: 'yes', member: 'yes', viewer: 'no' },
 };
 
 export const CANONICAL_PERMISSION_KEYS = Object.keys(

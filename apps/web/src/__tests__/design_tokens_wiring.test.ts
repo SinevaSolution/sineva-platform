@@ -86,7 +86,7 @@ describe('design token wiring (FR-UX-01, FR-UX-05, FR-UX-06, FR-UX-42)', () => {
     expect(layout).toMatch(/from '@\/styles\/fonts'/);
     expect(layout).toContain('plusJakartaSans.variable');
     expect(layout).toContain('geistMono.variable');
-    // next/script beforeInteractive: Next lifts it into <head> before hydration.
+    // ThemeScript registers a server HTML insertion; its client render returns null.
     expect(layout).toMatch(/<body>[\s\S]*<ThemeScript nonce=\{nonce\}/);
   });
 

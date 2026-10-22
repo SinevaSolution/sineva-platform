@@ -123,6 +123,10 @@ describe('Prisma Schema Conventions (WP-M0-21)', () => {
       'WorkspaceInvitation',
       'Conversation',
       'StorageObject',
+      'LibraryFolder',
+      'LibraryDocument',
+      'LibraryDocumentScope',
+      'LibraryIngestEvent',
     ];
 
     for (const modelName of tenantModels) {

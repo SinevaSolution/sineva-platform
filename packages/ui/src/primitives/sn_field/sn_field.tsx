@@ -1,3 +1,5 @@
+'use client';
+
 import * as React from 'react';
 import { cx } from '../../lib/cx';
 import { FieldContext, type FieldState } from '../../lib/field_context';

@@ -1,0 +1,23 @@
+{
+  "success": true,
+  "status_code": 200,
+  "message": "Website scan completed with partial results.",
+  "data": {
+    "scan_id": "5b0f9a3e-2c4d-4e1a-8f6b-7d3c1a9e0b42",
+    "status": "partial",
+    "source_url": "https://tokokopinusantara.example/",
+    "final_url": "https://tokokopinusantara.example/",
+    "fetched_pages": 1,
+    "site_language": "id",
+    "fields": {
+      "display_name": {
+        "value": "Toko Kopi Nusantara",
+        "source_url": "https://tokokopinusantara.example/",
+        "evidence_snippet": "Toko Kopi Nusantara"
+      }
+    },
+    "offers": [],
+    "policies": [],
+    "error_code": null
+  }
+}

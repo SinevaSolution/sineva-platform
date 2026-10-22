@@ -9,7 +9,13 @@ import { SNBanner, SNButton } from '@sineva/ui';
 type Status = 'verifying' | 'verified' | 'failed';
 
 /** Confirms the emailed token once on load (POST, not on the GET link). */
-export function VerifyEmailStatus({ token }: { token: string | null }) {
+export function VerifyEmailStatus({
+  token,
+  returnTo,
+}: {
+  token: string | null;
+  returnTo?: string;
+}) {
   const t = useTranslations('auth');
   const [status, setStatus] = React.useState<Status>(token ? 'verifying' : 'failed');
   const started = React.useRef(false);
@@ -34,7 +40,9 @@ export function VerifyEmailStatus({ token }: { token: string | null }) {
       <div className="space-y-4">
         <SNBanner tone="success">{t('verify_email.verified')}</SNBanner>
         <SNButton asChild variant="primary" size="lg" className="w-full">
-          <Link href="/sign-in">{t('verify_email.continue')}</Link>
+          <Link href={returnTo ? `/sign-in?next=${encodeURIComponent(returnTo)}` : '/sign-in'}>
+            {t('verify_email.continue')}
+          </Link>
         </SNButton>
       </div>
     );

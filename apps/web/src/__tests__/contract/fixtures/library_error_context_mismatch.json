@@ -1,0 +1,12 @@
+{
+  "success": false,
+  "status_code": 403,
+  "message": "The signed context does not match the request.",
+  "errors": [
+    {
+      "code": "context_mismatch",
+      "field": null,
+      "detail": "tenant_id differs from the signed context"
+    }
+  ]
+}

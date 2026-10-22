@@ -1,0 +1,24 @@
+{
+  "success": true,
+  "status_code": 200,
+  "message": "OK",
+  "data": {
+    "job_id": "30000000-0000-4000-8000-000000000001",
+    "document_id": "20000000-0000-4000-8000-000000000001",
+    "status": "needs_attention",
+    "sequence": 6,
+    "stage": "ocr",
+    "progress": null,
+    "page_count": 10,
+    "chunk_count": null,
+    "language": "id",
+    "embedding_model": null,
+    "ocr_pages": 10,
+    "reason_code": "unreadable_pages",
+    "pages": [
+      3,
+      7
+    ],
+    "personal_data_hint": true
+  }
+}

@@ -1,0 +1,12 @@
+{
+  "kind": "approval",
+  "approval_id": "5d0c6a4e-7b1f-4c2a-9e83-0f6a2b1d4c77",
+  "revision": 1,
+  "decided_at": "2026-10-22T10:05:00.000Z",
+  "decision": "approved",
+  "payload_hash": "sha256:4d2c2d8008d09872b7bccc93428b7f1848f29c37013ab00f10732f9d2dfc8ecb",
+  "edited": false,
+  "result": {
+    "executed": false
+  }
+}

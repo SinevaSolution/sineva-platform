@@ -57,6 +57,20 @@ model Workspace {
   storage_objects     StorageObject[]
   chat_runs           ChatRun[]
   message_cards       MessageCard[]
+  inbox_items        InboxItem[]
+  approvals          Approval[]
+  input_requests     InputRequest[]
+  library_folders    LibraryFolder[]
+  library_documents  LibraryDocument[]
+  library_scopes     LibraryDocumentScope[]
+  library_events     LibraryIngestEvent[]
+  business_profile   BusinessProfile?
+  business_offerings BusinessOffering[]
+  business_policies  BusinessPolicy[]
+  profile_versions   BusinessProfileVersion[]
+  onboarding_states  OnboardingState[]
+  profile_scans      ProfileScan[]
+  checklist_items    WorkspaceChecklistState[]
 
   @@map("workspaces")
   @@schema("platform")
@@ -187,6 +201,7 @@ model User {
   staff_profile            PlatformStaff?
   conversations            Conversation[]
   preferences              UserPreferences?
+  onboarding_states OnboardingState[]
 
   @@map("users")
   @@schema("platform")
@@ -444,6 +459,155 @@ model MessageCard {
   @@schema("platform")
 }
 
+// ---------------------------------------------------------------------------
+// Inbox, approvals and input requests (ADR-0032)
+// ---------------------------------------------------------------------------
+
+// One thing waiting on a person, or finished work. `approval` and
+// `input_request` hang off it through their own unique `inbox_item_id`, so the
+// link has a single source of truth. `recipient_user_id` has no foreign key on
+// purpose: an item must outlive a removed member for the audit trail.
+model InboxItem {
+  id                String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  workspace_id      String    @map("workspace_id") @db.Uuid
+  recipient_user_id String?   @map("recipient_user_id") @db.Uuid
+  kind              String    @map("kind") // approval | input_request | result (handoff, system, idea come later)
+  state             String    @default("open") @map("state") // open | resolved | dismissed | expired
+  agent_slug        String?   @map("agent_slug")
+  title             String    @map("title")
+  summary_key       String    @map("summary_key")
+  summary_params    Json      @default("{}") @map("summary_params")
+  source_type       String    @map("source_type") // chat | room | system
+  source_id         String?   @map("source_id")
+  dedupe_key        String?   @map("dedupe_key")
+  expires_at        DateTime? @map("expires_at") @db.Timestamptz(6)
+  resolved_at       DateTime? @map("resolved_at") @db.Timestamptz(6)
+  created_at        DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updated_at        DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  workspace     Workspace       @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
+  reads         InboxItemRead[]
+  approval      Approval?
+  input_request InputRequest?
+
+  @@unique([workspace_id, dedupe_key])
+  @@index([workspace_id, kind, state, created_at])
+  @@index([workspace_id, recipient_user_id, state])
+  @@map("inbox_items")
+  @@schema("platform")
+}
+
+model InboxItemRead {
+  id            String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  inbox_item_id String   @map("inbox_item_id") @db.Uuid
+  user_id       String   @map("user_id") @db.Uuid
+  read_at       DateTime @default(now()) @map("read_at") @db.Timestamptz(6)
+
+  item InboxItem @relation(fields: [inbox_item_id], references: [id], onDelete: Cascade)
+
+  @@unique([inbox_item_id, user_id])
+  @@index([user_id])
+  @@map("inbox_item_reads")
+  @@schema("platform")
+}
+
+// A proposed action with a structured payload. `status` is final once it
+// leaves `pending`. `claimed_*` is an in-flight decision (the row is still
+// pending while sineva-ai is told); `version` is the optimistic guard.
+model Approval {
+  id                   String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  workspace_id         String    @map("workspace_id") @db.Uuid
+  inbox_item_id        String    @unique @map("inbox_item_id") @db.Uuid
+  agent_slug           String    @map("agent_slug")
+  source_type          String    @map("source_type")
+  source_id            String?   @map("source_id")
+  run_id               String?   @map("run_id")
+  upstream_approval_id String    @map("upstream_approval_id")
+  action_type          String    @map("action_type")
+  payload              Json      @map("payload")
+  payload_hash         String    @map("payload_hash")
+  risk_level           String    @map("risk_level") // low | medium | high
+  requirement          String    @map("requirement") // guardrail | policy
+  guardrail_reason     String?   @map("guardrail_reason")
+  status               String    @default("pending") @map("status") // pending | approved | rejected | expired | cancelled
+  revision             Int       @default(1) @map("revision")
+  version              Int       @default(1) @map("version")
+  awaiting_revision    Boolean   @default(false) @map("awaiting_revision")
+  change_request       String?   @map("change_request") @db.Text
+  claimed_by           String?   @map("claimed_by") @db.Uuid
+  claimed_decision     String?   @map("claimed_decision") // approve | reject | changes
+  claimed_at           DateTime? @map("claimed_at") @db.Timestamptz(6)
+  decided_by           String?   @map("decided_by") @db.Uuid
+  decided_at           DateTime? @map("decided_at") @db.Timestamptz(6)
+  decision_note        String?   @map("decision_note") @db.Text
+  resume_delivered_at  DateTime? @map("resume_delivered_at") @db.Timestamptz(6)
+  expires_at           DateTime  @map("expires_at") @db.Timestamptz(6)
+  created_at           DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updated_at           DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  workspace Workspace          @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
+  item      InboxItem          @relation(fields: [inbox_item_id], references: [id], onDelete: Cascade)
+  revisions ApprovalRevision[]
+
+  @@unique([workspace_id, upstream_approval_id])
+  @@index([workspace_id, status, expires_at])
+  @@index([status, expires_at])
+  @@map("approvals")
+  @@schema("platform")
+}
+
+// Immutable: a revision row is never updated, a new draft is a new row.
+model ApprovalRevision {
+  id                 String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  approval_id        String   @map("approval_id") @db.Uuid
+  revision           Int      @map("revision")
+  payload            Json     @map("payload")
+  payload_hash       String   @map("payload_hash")
+  created_by         String   @map("created_by") // specialist | user
+  created_by_user_id String?  @map("created_by_user_id") @db.Uuid
+  note               String?  @map("note") @db.Text
+  created_at         DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  approval Approval @relation(fields: [approval_id], references: [id], onDelete: Cascade)
+
+  @@unique([approval_id, revision])
+  @@map("approval_revisions")
+  @@schema("platform")
+}
+
+// A question a run is blocked on. `answer` is user content: it is stored here
+// and sent to the run, and nowhere else.
+model InputRequest {
+  id                  String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  workspace_id        String    @map("workspace_id") @db.Uuid
+  inbox_item_id       String    @unique @map("inbox_item_id") @db.Uuid
+  agent_slug          String    @map("agent_slug")
+  source_id           String?   @map("source_id")
+  run_id              String?   @map("run_id")
+  upstream_request_id String    @map("upstream_request_id")
+  question            String    @map("question") @db.Text
+  form_schema         Json      @map("form_schema")
+  answer              Json?     @map("answer")
+  status              String    @default("pending") @map("status") // pending | answered | dismissed | expired
+  version             Int       @default(1) @map("version")
+  claimed_by          String?   @map("claimed_by") @db.Uuid
+  claimed_at          DateTime? @map("claimed_at") @db.Timestamptz(6)
+  answered_by         String?   @map("answered_by") @db.Uuid
+  answered_at         DateTime? @map("answered_at") @db.Timestamptz(6)
+  resume_delivered_at DateTime? @map("resume_delivered_at") @db.Timestamptz(6)
+  due_at              DateTime? @map("due_at") @db.Timestamptz(6)
+  created_at          DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updated_at          DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  workspace Workspace @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
+  item      InboxItem @relation(fields: [inbox_item_id], references: [id], onDelete: Cascade)
+
+  @@unique([workspace_id, upstream_request_id])
+  @@index([status, due_at])
+  @@map("input_requests")
+  @@schema("platform")
+}
+
 model StorageObject {
   id              String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   workspace_id    String   @db.Uuid
@@ -458,6 +622,302 @@ model StorageObject {
   workspace Workspace @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
 
   @@map("storage_objects")
+  @@schema("platform")
+}
+
+// ---------------------------------------------------------------------------
+// Sino Library (ADR-0030). Metadata only: parsing, chunks and vectors belong to
+// sineva-ai. `created_by` carries no foreign key on purpose: a document belongs
+// to the workspace, and removing a user must not remove what they uploaded.
+// ---------------------------------------------------------------------------
+
+// `parent_key` is the parent folder id, or the workspace id at the root. It
+// exists because a unique index over a nullable `parent_id` does not stop two
+// root folders with the same name (NULLs are distinct), so the unique index is
+// built over a column that is never null. Folders are never cascade-deleted by
+// a folder delete: the folder foreign keys are NO ACTION, which blocks deleting
+// a folder that is still referenced but, unlike RESTRICT, is checked at the end
+// of the statement, so deleting a whole workspace can still cascade through
+// folders and documents together.
+model LibraryFolder {
+  id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  workspace_id String   @map("workspace_id") @db.Uuid
+  parent_id    String?  @map("parent_id") @db.Uuid
+  parent_key   String   @map("parent_key") @db.Uuid
+  name         String   @map("name")
+  created_by   String?  @map("created_by") @db.Uuid
+  created_at   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updated_at   DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  workspace Workspace         @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
+  parent    LibraryFolder?    @relation("LibraryFolderTree", fields: [parent_id], references: [id], onDelete: NoAction)
+  children  LibraryFolder[]   @relation("LibraryFolderTree")
+  documents LibraryDocument[]
+
+  @@unique([workspace_id, parent_key, name])
+  @@index([workspace_id, parent_id])
+  @@map("library_folders")
+  @@schema("platform")
+}
+
+// `uploaded_at` is null between the presign and `complete`: such a row is not a
+// document yet (hidden from lists, not counted by quotas). `status` stays
+// `queued` until sineva-ai reports otherwise; the platform never sets `ready`
+// itself. `ingest_job_id` is chosen by the platform and sent to sineva-ai, so
+// an event that races the accepting response still correlates;
+// `last_ingest_sequence` makes event application a compare-and-set.
+model LibraryDocument {
+  id                   String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  workspace_id         String    @map("workspace_id") @db.Uuid
+  folder_id            String?   @map("folder_id") @db.Uuid
+  title                String    @map("title")
+  source_type          String    @map("source_type") // upload | url | crawl | sync | chat_save | note | ai_tool
+  source_id            String?   @map("source_id") @db.Uuid
+  storage_key          String?   @map("storage_key")
+  mime_type            String    @map("mime_type")
+  byte_size            Int       @map("byte_size")
+  content_hash         String    @map("content_hash") @db.VarChar(64)
+  language             String    @default("unknown") @map("language") // id | en | mixed | unknown
+  status               String    @default("queued") @map("status") // queued | processing | ready | needs_attention | failed | deleting
+  status_detail        Json?     @map("status_detail")
+  page_count           Int?      @map("page_count")
+  chunk_count          Int       @default(0) @map("chunk_count")
+  ocr_page_count       Int       @default(0) @map("ocr_page_count")
+  embedding_model      String?   @map("embedding_model")
+  last_indexed_at      DateTime? @map("last_indexed_at") @db.Timestamptz(6)
+  source_updated_at    DateTime? @map("source_updated_at") @db.Timestamptz(6)
+  review_interval_days Int?      @map("review_interval_days")
+  review_due_at        DateTime? @map("review_due_at") @db.Timestamptz(6)
+  review_reminded_at   DateTime? @map("review_reminded_at") @db.Timestamptz(6)
+  ingest_job_id        String?   @map("ingest_job_id") @db.Uuid
+  ingest_attempted_at  DateTime? @map("ingest_attempted_at") @db.Timestamptz(6)
+  last_ingest_sequence Int       @default(0) @map("last_ingest_sequence")
+  acl_synced_at        DateTime? @map("acl_synced_at") @db.Timestamptz(6)
+  uploaded_at          DateTime? @map("uploaded_at") @db.Timestamptz(6)
+  created_by           String    @map("created_by") @db.Uuid
+  created_at           DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updated_at           DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  workspace Workspace              @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
+  folder    LibraryFolder?         @relation(fields: [folder_id], references: [id], onDelete: NoAction)
+  scopes    LibraryDocumentScope[]
+  events    LibraryIngestEvent[]
+
+  @@index([workspace_id, status])
+  @@index([workspace_id, content_hash])
+  @@index([workspace_id, folder_id])
+  @@index([review_due_at])
+  @@map("library_documents")
+  @@schema("platform")
+}
+
+// `scope_ref` is never null so the unique index works: the workspace id for the
+// workspace scope, the agent slug for a specialist, the squad id for a squad.
+model LibraryDocumentScope {
+  id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  document_id  String   @map("document_id") @db.Uuid
+  workspace_id String   @map("workspace_id") @db.Uuid
+  scope_type   String   @map("scope_type") // workspace | specialist | squad
+  scope_ref    String   @map("scope_ref")
+  created_at   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  document  LibraryDocument @relation(fields: [document_id], references: [id], onDelete: Cascade)
+  workspace Workspace       @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
+
+  @@unique([document_id, scope_type, scope_ref])
+  @@index([workspace_id, scope_type, scope_ref])
+  @@map("library_document_scopes")
+  @@schema("platform")
+}
+
+// Append-only: the repository has no update. `event_id` is the idempotency key
+// of an event reported by sineva-ai (null for events the platform records
+// itself); `applied` is false for an event that was stored but ignored because
+// it was stale or the document was being deleted.
+model LibraryIngestEvent {
+  id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  document_id  String   @map("document_id") @db.Uuid
+  workspace_id String   @map("workspace_id") @db.Uuid
+  event_id     String?  @map("event_id") @db.Uuid
+  job_id       String?  @map("job_id") @db.Uuid
+  sequence     Int?     @map("sequence")
+  stage        String   @map("stage")
+  outcome      String   @map("outcome")
+  status       String?  @map("status")
+  detail       Json?    @map("detail")
+  applied      Boolean  @default(true) @map("applied")
+  created_at   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  document  LibraryDocument @relation(fields: [document_id], references: [id], onDelete: Cascade)
+  workspace Workspace       @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
+
+  @@unique([document_id, event_id])
+  @@index([document_id, created_at])
+  @@map("library_ingest_events")
+  @@schema("platform")
+}
+
+// Business Profile, onboarding and website scan (ADR-0031)
+// ---------------------------------------------------------------------------
+
+// One profile per workspace. A field counts as confirmed when `field_meta`
+// holds an entry for it (source and `confirmed_at`); only confirmed values
+// reach the profile pack. List-like fields are jsonb so "never set" (null)
+// stays distinct from "set to an empty list". `updated_by` has no foreign key
+// on purpose: authorship of a version must outlive the person's account.
+model BusinessProfile {
+  id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  workspace_id   String    @unique @db.Uuid
+  version        Int       @default(0)
+  display_name   String?
+  legal_name     String?
+  industry       String?
+  city           String?
+  province       String?
+  languages      Json?
+  website_url    String?
+  social_handles Json?
+  business_hours Json?
+  brand_voice    Json?
+  audience       String?
+  goals          Json?
+  field_meta     Json      @default("{}")
+  confirmed_at   DateTime? @db.Timestamptz(6)
+  updated_by     String?   @db.Uuid
+  created_at     DateTime  @default(now()) @db.Timestamptz(6)
+  updated_at     DateTime  @default(now()) @updatedAt @db.Timestamptz(6)
+
+  workspace Workspace @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
+
+  @@map("business_profiles")
+  @@schema("platform")
+}
+
+// Price is integer IDR (`bigint`, conventions section 2) and exists only when
+// the user typed it (FR-ONB-16).
+model BusinessOffering {
+  id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  workspace_id   String    @db.Uuid
+  name           String
+  description    String?
+  price_amount   BigInt?
+  price_currency String    @default("IDR")
+  url            String?
+  position       Int
+  source         String    @default("user") // user | scan
+  confirmed_at   DateTime? @db.Timestamptz(6)
+  created_at     DateTime  @default(now()) @db.Timestamptz(6)
+  updated_at     DateTime  @default(now()) @updatedAt @db.Timestamptz(6)
+
+  workspace Workspace @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
+
+  @@index([workspace_id, position])
+  @@map("business_offerings")
+  @@schema("platform")
+}
+
+model BusinessPolicy {
+  id           String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  workspace_id String    @db.Uuid
+  kind         String // returns | shipping | payment | hours | faq | other
+  title        String
+  body         String    @db.Text
+  source       String    @default("user") // user | scan
+  confirmed_at DateTime? @db.Timestamptz(6)
+  updated_by   String?   @db.Uuid
+  created_at   DateTime  @default(now()) @db.Timestamptz(6)
+  updated_at   DateTime  @default(now()) @updatedAt @db.Timestamptz(6)
+
+  workspace Workspace @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
+
+  @@index([workspace_id, kind])
+  @@map("business_policies")
+  @@schema("platform")
+}
+
+// Frozen copy of the profile, offers and policies after each save. Unique per
+// workspace and version, which is also what makes two concurrent saves of the
+// same base version fail instead of both succeeding.
+model BusinessProfileVersion {
+  id            String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  workspace_id  String   @db.Uuid
+  version       Int
+  snapshot      Json
+  changed_paths Json     @default("[]")
+  change_kind   String // save | restore
+  restored_from Int?
+  changed_by    String   @db.Uuid
+  created_at    DateTime @default(now()) @db.Timestamptz(6)
+
+  workspace Workspace @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
+
+  @@unique([workspace_id, version])
+  @@map("business_profile_versions")
+  @@schema("platform")
+}
+
+model OnboardingState {
+  id              String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  workspace_id    String    @db.Uuid
+  user_id         String    @db.Uuid
+  flow            String    @default("owner") // owner | member
+  status          String    @default("in_progress") // in_progress | completed | abandoned
+  current_step    Int       @default(1)
+  answers         Json      @default("{}")
+  skipped_steps   Json      @default("[]")
+  dismissed_tasks Json      @default("[]")
+  started_at      DateTime  @default(now()) @db.Timestamptz(6)
+  completed_at    DateTime? @db.Timestamptz(6)
+  created_at      DateTime  @default(now()) @db.Timestamptz(6)
+  updated_at      DateTime  @default(now()) @updatedAt @db.Timestamptz(6)
+
+  workspace Workspace @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
+  user      User      @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@unique([workspace_id, user_id])
+  @@index([user_id])
+  @@map("onboarding_states")
+  @@schema("platform")
+}
+
+// One row per scan request. `deleted_at` is a soft delete on purpose: a
+// deleted row still counts toward the 5 per hour quota, so deleting cannot
+// reset the limit. `result` is the unconfirmed suggestion and is blanked after
+// `expires_at` (24 hours).
+model ProfileScan {
+  id           String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  workspace_id String    @db.Uuid
+  requested_by String    @db.Uuid
+  url          String
+  status       String    @default("running") // queued | running | partial | succeeded | failed
+  result       Json?
+  error_code   String?
+  deleted_at   DateTime? @db.Timestamptz(6)
+  created_at   DateTime  @default(now()) @db.Timestamptz(6)
+  updated_at   DateTime  @default(now()) @updatedAt @db.Timestamptz(6)
+  expires_at   DateTime  @db.Timestamptz(6)
+
+  workspace Workspace @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
+
+  @@index([workspace_id, created_at(sort: Desc)])
+  @@map("profile_scans")
+  @@schema("platform")
+}
+
+model WorkspaceChecklistState {
+  id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  workspace_id String   @db.Uuid
+  item_key     String
+  status       String   @default("done") // done | dismissed
+  source       String
+  completed_at DateTime @default(now()) @db.Timestamptz(6)
+  created_at   DateTime @default(now()) @db.Timestamptz(6)
+  updated_at   DateTime @default(now()) @updatedAt @db.Timestamptz(6)
+
+  workspace Workspace @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
+
+  @@unique([workspace_id, item_key])
+  @@map("workspace_checklist_state")
   @@schema("platform")
 }
 

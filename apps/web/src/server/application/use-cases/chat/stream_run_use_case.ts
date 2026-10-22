@@ -1,5 +1,9 @@
 import { chatTurnRequestV2Schema } from '@/server/application/dtos/chat_v2_dto';
 import {
+  approvalRequiredEventSchema,
+  inputRequiredEventSchema,
+} from '@/server/application/inbox/approval_contract_dto';
+import {
   sseDoneEventSchema,
   sseErrorEventSchema,
   sseTokenEventSchema,
@@ -26,6 +30,7 @@ import {
   UpstreamServiceError,
   UpstreamUnavailableError,
 } from '@/server/domain/errors/domain_error';
+import type { InboxItemCreator } from '@/server/domain/inbox/inbox_item_creator';
 import type { AiEngineGateway } from '@/server/domain/repositories/ai_engine_gateway';
 import type { ChatRunRepository } from '@/server/domain/repositories/chat_run_repository';
 import type { ConversationRepository } from '@/server/domain/repositories/conversation_repository';
@@ -50,6 +55,8 @@ export interface StreamRunDeps {
   gateway: AiEngineGateway;
   contextSigner: ContextSigner;
   hub: RunHub;
+  /** Turns `approval_required` and `input_required` into Inbox items (ADR-0032). */
+  inbox: InboxItemCreator;
   guard: RunFrameGuard;
   metrics: RunMetricsRecorder;
   log: RunRelayLog;
@@ -90,6 +97,8 @@ interface DrainState {
   terminal: boolean;
   /** Cards the guard validated or rejected, stored with the reply. */
   scope: RunFrameScope;
+  /** Producer card id to platform approval id, so a stored card links to the Inbox record. */
+  approvalByCard: Map<string, string>;
 }
 
 const encoder = new TextEncoder();
@@ -274,6 +283,7 @@ export class StreamRunUseCase {
       firstTokenAt: null,
       terminal: false,
       scope: { run_handle: run.run_handle, cards: [] },
+      approvalByCard: new Map(),
     };
     const reader = body.getReader();
     const decoder = new TextDecoder();
@@ -350,6 +360,12 @@ export class StreamRunUseCase {
       return false;
     }
 
+    if (frame.event === 'approval_required' || frame.event === 'input_required') {
+      const bridged = await this.bridgeInboxFrame(frame, run, context, session.upstreamRunId, state.approvalByCard);
+      if (bridged) session.publish({ kind: 'frame', frame: bridged });
+      return false;
+    }
+
     if (frame.event === 'done' || frame.event === 'error') {
       const terminal = this.terminalFromFrame(frame, state.text);
       if (!terminal) {
@@ -359,7 +375,7 @@ export class StreamRunUseCase {
       state.terminal = true;
       // Store first, forward second: when the browser sees `done` the message
       // is already on disk, so a reload cannot lose it.
-      const stored = await this.storeTerminal(run, session, terminal, state.scope.cards);
+      const stored = await this.storeTerminal(run, session, terminal, this.linkedCards(state.scope.cards, state.approvalByCard));
       if (stored) {
         session.publish({ kind: 'frame', frame });
       } else {
@@ -406,7 +422,7 @@ export class StreamRunUseCase {
     this.deps.log.failed('bad_frame', { run_handle: run.run_handle });
     state.terminal = true;
     const terminal = this.errorTerminal('upstream_bad_response', state.text);
-    await this.storeTerminal(run, session, terminal, state.scope.cards);
+    await this.storeTerminal(run, session, terminal, this.linkedCards(state.scope.cards, state.approvalByCard));
     session.publish({
       kind: 'frame',
       frame: relayErrorFrame({
@@ -436,7 +452,7 @@ export class StreamRunUseCase {
         outcome: 'cancelled',
         errorCode: null,
       };
-      await this.storeTerminal(run, session, terminal, state.scope.cards);
+      await this.storeTerminal(run, session, terminal, this.linkedCards(state.scope.cards, state.approvalByCard));
       session.publish({
         kind: 'frame',
         frame: relayErrorFrame({
@@ -451,7 +467,7 @@ export class StreamRunUseCase {
     }
 
     const terminal = this.errorTerminal('upstream_interrupted', state.text);
-    await this.storeTerminal(run, session, terminal, state.scope.cards);
+    await this.storeTerminal(run, session, terminal, this.linkedCards(state.scope.cards, state.approvalByCard));
     session.publish({
       kind: 'frame',
       frame: relayErrorFrame({
@@ -462,6 +478,116 @@ export class StreamRunUseCase {
       }),
     });
     this.recordMetrics(run, terminal, state.firstTokenAt, startedAt);
+  }
+
+  // ---------------------------------------------------------------------
+  // Inbox bridge (ADR-0032)
+  // ---------------------------------------------------------------------
+
+  /**
+   * Turns an `approval_required` or `input_required` frame into an Inbox item
+   * and returns the frame the browser gets: platform ids, the summary, expiry
+   * and guardrail reason, never the draft body (that lives in the Inbox detail
+   * behind the role check). The recipient is the owner of this run, taken from
+   * the caller's session. A failure is logged and the frame is dropped rather
+   * than forwarded with an upstream id the browser cannot use; the producer can
+   * still create the item through the internal endpoint, which is idempotent.
+   */
+  private async bridgeInboxFrame(
+    frame: SseFrame,
+    run: ChatRunEntity,
+    context: RequestContext,
+    upstreamRunId: string | null | undefined,
+    approvalByCard: Map<string, string>,
+  ): Promise<SseFrame | null> {
+    const data = parseJson(frame.data);
+    try {
+      if (frame.event === 'approval_required') {
+        const parsed = approvalRequiredEventSchema.safeParse(data);
+        if (!parsed.success) throw new Error('approval_required off contract');
+        const event = parsed.data;
+        const created = await this.deps.inbox.create(
+          {
+            kind: 'approval',
+            workspace_id: run.workspace_id,
+            recipient_user_id: context.user_id,
+            agent_slug: event.agent_slug ?? run.agent_slug,
+            title: event.draft_summary,
+            source: { type: 'chat', id: run.run_handle },
+            approval: {
+              upstream_approval_id: event.approval_id,
+              upstream_run_id: upstreamRunId ?? run.upstream_run_id,
+              revision: event.revision,
+              action_type: event.action_kind,
+              payload: event.payload,
+              guardrail_reason: event.guardrail_reason,
+              expires_at: event.expires_at ? new Date(event.expires_at) : null,
+            },
+          },
+          context,
+        );
+        if (!created.approval) throw new Error('approval missing');
+        if (event.card_id) approvalByCard.set(event.card_id, created.approval.id);
+        return {
+          ...frame,
+          data: JSON.stringify({
+            approval_id: created.approval.id,
+            inbox_item_id: created.item.id,
+            revision: created.approval.revision,
+            action_kind: created.approval.action_type,
+            draft_summary: created.item.title,
+            expires_at: created.approval.expires_at,
+            guardrail_reason: created.approval.guardrail_reason,
+            ...(event.card_id ? { card_id: event.card_id } : {}),
+          }),
+        };
+      }
+
+      const parsed = inputRequiredEventSchema.safeParse(data);
+      if (!parsed.success) throw new Error('input_required off contract');
+      const event = parsed.data;
+      const created = await this.deps.inbox.create(
+        {
+          kind: 'input_request',
+          workspace_id: run.workspace_id,
+          recipient_user_id: context.user_id,
+          agent_slug: event.agent_slug ?? run.agent_slug,
+          title: event.question,
+          source: { type: 'chat', id: run.run_handle },
+          input: {
+            upstream_request_id: event.input_request_id,
+            upstream_run_id: upstreamRunId ?? run.upstream_run_id,
+            question: event.question,
+            fields: event.fields,
+            expires_at: event.expires_at ? new Date(event.expires_at) : null,
+          },
+        },
+        context,
+      );
+      if (!created.input_request) throw new Error('input request missing');
+      return {
+        ...frame,
+        data: JSON.stringify({
+          input_request_id: created.input_request.id,
+          inbox_item_id: created.item.id,
+          question: created.input_request.question,
+          fields: created.input_request.fields,
+          expires_at: created.input_request.due_at,
+        }),
+      };
+    } catch (error) {
+      this.deps.log.failed('inbox_item_failed', { run_handle: run.run_handle, cause: error });
+      return null;
+    }
+  }
+
+  private linkedCards(cards: GuardedCard[], approvalByCard: Map<string, string>): GuardedCard[] {
+    if (approvalByCard.size === 0) return cards;
+    return cards.map((card) =>
+      card.card_id && approvalByCard.has(card.card_id)
+        ? { ...card, approval_id: approvalByCard.get(card.card_id) ?? card.approval_id }
+        : card,
+    );
   }
 
   // ---------------------------------------------------------------------
@@ -695,6 +821,7 @@ export class StreamRunUseCase {
       let after = Number(lastEventId);
       if (!Number.isFinite(after)) after = 0;
       const scope: RunFrameScope = { run_handle: initial.run_handle, cards: [] };
+      const approvalByCard = new Map<string, string>();
       const deadline = this.now() + this.replayDeadlineMs;
       let run = initial;
 
@@ -722,10 +849,16 @@ export class StreamRunUseCase {
           if (frame.id !== undefined && Number.isFinite(Number(frame.id))) {
             after = Number(frame.id);
           }
+          if (frame.event === 'approval_required' || frame.event === 'input_required') {
+            // Idempotent: the item already exists when the drain saw this frame first.
+            const bridged = await this.bridgeInboxFrame(frame, run, context, run.upstream_run_id, approvalByCard);
+            if (bridged) emit(bridged);
+            continue;
+          }
           emit(frame);
           if (frame.event === 'done' || frame.event === 'error') {
             sawTerminal = true;
-            await this.adopt(run, frame, scope.cards);
+            await this.adopt(run, frame, this.linkedCards(scope.cards, approvalByCard));
           }
         }
         if (sawTerminal) return;

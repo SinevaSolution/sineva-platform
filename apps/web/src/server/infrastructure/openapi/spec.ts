@@ -1,5 +1,8 @@
 import 'server-only';
+import { businessProfilePaths } from './business_profile_paths';
 import { membersPaths } from './members_paths';
+import { getInboxPaths } from './inbox_paths';
+import { LIBRARY_COMPONENT_SCHEMAS, libraryOpenApiPaths } from './library_paths';
 
 // Response object of the standard envelope, for the profile family below.
 function envelopeResponse(description: string) {
@@ -10,12 +13,18 @@ function envelopeResponse(description: string) {
 }
 
 const PROFILE_PATCH_PROPERTIES = {
-  full_name: { type: 'string', minLength: 2, maxLength: 100, description: 'Letters, spaces, apostrophe, period and hyphen; trimmed' },
+  full_name: {
+    type: 'string',
+    minLength: 2,
+    maxLength: 100,
+    description: 'Letters, spaces, apostrophe, period and hyphen; trimmed',
+  },
   preferred_name: { type: ['string', 'null'], minLength: 1, maxLength: 40 },
   salutation: { type: ['string', 'null'], enum: ['none', 'pak', 'bu', 'kak', 'mas', 'mbak', null] },
   phone_number: {
     type: ['string', 'null'],
-    description: 'Normalised to E.164 (0812... becomes +62812...). Changing it clears phone_verified',
+    description:
+      'Normalised to E.164 (0812... becomes +62812...). Changing it clears phone_verified',
   },
   about_me: { type: ['string', 'null'], maxLength: 280 },
   use_profile_in_context: { type: 'boolean' },
@@ -49,7 +58,8 @@ export function getOpenApiSpec(): Record<string, unknown> {
       },
       {
         name: 'Agents',
-        description: 'Specialist roster: sineva-ai catalog merged with the static presentation manifest',
+        description:
+          'Specialist roster: sineva-ai catalog merged with the static presentation manifest',
       },
       {
         name: 'Storage',
@@ -61,7 +71,8 @@ export function getOpenApiSpec(): Record<string, unknown> {
       },
       {
         name: 'Profile',
-        description: 'Own profile, member attributes, avatar and UI preferences (/api/v1/me family)',
+        description:
+          'Own profile, member attributes, avatar and UI preferences (/api/v1/me family)',
       },
       {
         name: 'Workspaces',
@@ -69,11 +80,23 @@ export function getOpenApiSpec(): Record<string, unknown> {
       },
       {
         name: 'Members',
-        description: 'Members, roles, specialist scope, invitations and ownership transfer (ADR-0029)',
+        description:
+          'Members, roles, specialist scope, invitations and ownership transfer (ADR-0029)',
       },
       {
         name: 'Conversations',
-        description: 'Multi-tenant conversations and messages persistence and ownership (FR-HUB-20, FR-HUB-32)',
+        description:
+          'Multi-tenant conversations and messages persistence and ownership (FR-HUB-20, FR-HUB-32)',
+      },
+      {
+        name: 'Inbox',
+        description:
+          'Inbox items, approvals of drafts and input requests (FR-INBOX-01 to FR-INBOX-15)',
+      },
+      {
+        name: 'Library',
+        description:
+          'Sino Library: documents, folders, scopes, uploads, quotas and retrieval tests (ADR-0030)',
       },
       {
         name: 'Internal',
@@ -82,11 +105,15 @@ export function getOpenApiSpec(): Record<string, unknown> {
     ],
     paths: {
       ...membersPaths(),
+      ...getInboxPaths(),
+      ...libraryOpenApiPaths(),
+      ...businessProfilePaths(),
       '/api/internal/v1/keys': {
         get: {
           tags: ['Internal'],
           summary: 'Retrieve valid public signing keys for context verification',
-          description: 'Guarded by X-Internal-Api-Key. Used by internal services to fetch valid Ed25519 public keys during key rotation.',
+          description:
+            'Guarded by X-Internal-Api-Key. Used by internal services to fetch valid Ed25519 public keys during key rotation.',
           operationId: 'list_internal_signing_keys',
           responses: {
             '200': {
@@ -121,7 +148,9 @@ export function getOpenApiSpec(): Record<string, unknown> {
               summary: 'Record an audit event reported by sineva-ai',
               description:
                 'Guarded by X-Internal-Api-Key only (sineva-ai cannot mint a signed context). actor_type is limited to specialist or system. A workspace_id, when present, must belong to an existing workspace. Message text, tokens and personal data are never stored: sensitive metadata keys are redacted.',
-              operationId: path.startsWith('/api') ? 'ingest_audit_event_api_alias' : 'ingest_audit_event',
+              operationId: path.startsWith('/api')
+                ? 'ingest_audit_event_api_alias'
+                : 'ingest_audit_event',
               requestBody: {
                 required: true,
                 content: {
@@ -138,7 +167,11 @@ export function getOpenApiSpec(): Record<string, unknown> {
                         action: { type: 'string', example: 'session.access_denied' },
                         target_type: { type: 'string', nullable: true },
                         target_id: { type: 'string', nullable: true },
-                        outcome: { type: 'string', enum: ['allowed', 'denied', 'error'], default: 'allowed' },
+                        outcome: {
+                          type: 'string',
+                          enum: ['allowed', 'denied', 'error'],
+                          default: 'allowed',
+                        },
                         reason_code: { type: 'string', nullable: true },
                         request_id: { type: 'string', nullable: true },
                         run_id: { type: 'string', nullable: true },
@@ -151,23 +184,44 @@ export function getOpenApiSpec(): Record<string, unknown> {
               responses: {
                 '201': {
                   description: 'Event recorded',
-                  content: { 'application/json': { schema: { $ref: '#/components/schemas/StandardEnvelope' } } },
+                  content: {
+                    'application/json': {
+                      schema: { $ref: '#/components/schemas/StandardEnvelope' },
+                    },
+                  },
                 },
                 '401': {
                   description: 'Missing or invalid X-Internal-Api-Key header',
-                  content: { 'application/json': { schema: { $ref: '#/components/schemas/StandardEnvelope' } } },
+                  content: {
+                    'application/json': {
+                      schema: { $ref: '#/components/schemas/StandardEnvelope' },
+                    },
+                  },
                 },
                 '404': {
                   description: 'workspace_id does not match an existing workspace',
-                  content: { 'application/json': { schema: { $ref: '#/components/schemas/StandardEnvelope' } } },
+                  content: {
+                    'application/json': {
+                      schema: { $ref: '#/components/schemas/StandardEnvelope' },
+                    },
+                  },
                 },
                 '422': {
                   description: 'Body failed validation',
-                  content: { 'application/json': { schema: { $ref: '#/components/schemas/StandardEnvelope' } } },
+                  content: {
+                    'application/json': {
+                      schema: { $ref: '#/components/schemas/StandardEnvelope' },
+                    },
+                  },
                 },
                 '500': {
-                  description: 'The audit write failed; the event was not recorded and the caller must retry or count the failure',
-                  content: { 'application/json': { schema: { $ref: '#/components/schemas/StandardEnvelope' } } },
+                  description:
+                    'The audit write failed; the event was not recorded and the caller must retry or count the failure',
+                  content: {
+                    'application/json': {
+                      schema: { $ref: '#/components/schemas/StandardEnvelope' },
+                    },
+                  },
                 },
               },
             },
@@ -250,28 +304,42 @@ export function getOpenApiSpec(): Record<string, unknown> {
           ],
           responses: {
             '200': {
-              description: 'The specialist roster with the sineva-ai catalog_version it was built from',
-              content: { 'application/json': { schema: { $ref: '#/components/schemas/StandardEnvelope' } } },
+              description:
+                'The specialist roster with the sineva-ai catalog_version it was built from',
+              content: {
+                'application/json': { schema: { $ref: '#/components/schemas/StandardEnvelope' } },
+              },
             },
             '401': {
               description: 'Authentication required',
-              content: { 'application/json': { schema: { $ref: '#/components/schemas/StandardEnvelope' } } },
+              content: {
+                'application/json': { schema: { $ref: '#/components/schemas/StandardEnvelope' } },
+              },
             },
             '404': {
               description: 'Workspace not found, or the caller is not a member',
-              content: { 'application/json': { schema: { $ref: '#/components/schemas/StandardEnvelope' } } },
+              content: {
+                'application/json': { schema: { $ref: '#/components/schemas/StandardEnvelope' } },
+              },
             },
             '422': {
               description: 'Invalid category_filter',
-              content: { 'application/json': { schema: { $ref: '#/components/schemas/StandardEnvelope' } } },
+              content: {
+                'application/json': { schema: { $ref: '#/components/schemas/StandardEnvelope' } },
+              },
             },
             '502': {
-              description: 'sineva-ai answered badly, or its catalog does not list a specialist this app presents',
-              content: { 'application/json': { schema: { $ref: '#/components/schemas/StandardEnvelope' } } },
+              description:
+                'sineva-ai answered badly, or its catalog does not list a specialist this app presents',
+              content: {
+                'application/json': { schema: { $ref: '#/components/schemas/StandardEnvelope' } },
+              },
             },
             '503': {
               description: 'sineva-ai is unreachable',
-              content: { 'application/json': { schema: { $ref: '#/components/schemas/StandardEnvelope' } } },
+              content: {
+                'application/json': { schema: { $ref: '#/components/schemas/StandardEnvelope' } },
+              },
             },
           },
         },
@@ -661,7 +729,8 @@ export function getOpenApiSpec(): Record<string, unknown> {
           operationId: 'get_my_profile',
           responses: {
             '200': {
-              description: 'Profile (alias of GET /api/v1/me without memberships): identity, name fields, phone, about_me, avatar_url, locale, timezone',
+              description:
+                'Profile (alias of GET /api/v1/me without memberships): identity, name fields, phone, about_me, avatar_url, locale, timezone',
               content: {
                 'application/json': {
                   schema: { $ref: '#/components/schemas/StandardEnvelope' },
@@ -688,7 +757,8 @@ export function getOpenApiSpec(): Record<string, unknown> {
         },
         patch: {
           tags: ['Auth'],
-          summary: 'Update the profile of the authenticated user (identity comes from the session, never the body)',
+          summary:
+            'Update the profile of the authenticated user (identity comes from the session, never the body)',
           operationId: 'update_my_profile',
           requestBody: {
             required: true,
@@ -721,7 +791,8 @@ export function getOpenApiSpec(): Record<string, unknown> {
               },
             },
             '403': {
-              description: 'Missing CSRF header (x-sineva-action) or a mismatched origin on a cookie-authenticated request',
+              description:
+                'Missing CSRF header (x-sineva-action) or a mismatched origin on a cookie-authenticated request',
               content: {
                 'application/json': {
                   schema: { $ref: '#/components/schemas/StandardEnvelope' },
@@ -737,7 +808,8 @@ export function getOpenApiSpec(): Record<string, unknown> {
               },
             },
             '422': {
-              description: 'Validation failed: empty body, unknown key, blank or over-long full_name, unsupported locale, invalid time zone',
+              description:
+                'Validation failed: empty body, unknown key, blank or over-long full_name, unsupported locale, invalid time zone',
               content: {
                 'application/json': {
                   schema: { $ref: '#/components/schemas/StandardEnvelope' },
@@ -750,17 +822,21 @@ export function getOpenApiSpec(): Record<string, unknown> {
       '/api/v1/me': {
         get: {
           tags: ['Profile'],
-          summary: 'Get the profile and workspace memberships (with roles) of the authenticated user',
+          summary:
+            'Get the profile and workspace memberships (with roles) of the authenticated user',
           operationId: 'get_me',
           responses: {
-            '200': envelopeResponse('Profile fields plus memberships: workspace_id, workspace_slug, workspace_name, role, job_title, department'),
+            '200': envelopeResponse(
+              'Profile fields plus memberships: workspace_id, workspace_slug, workspace_name, role, job_title, department',
+            ),
             '401': envelopeResponse('Unauthenticated'),
             '404': envelopeResponse('The session user no longer exists'),
           },
         },
         patch: {
           tags: ['Profile'],
-          summary: 'Update the editable profile fields of the authenticated user. Read-only fields (email, status, verification timestamps) are rejected',
+          summary:
+            'Update the editable profile fields of the authenticated user. Read-only fields (email, status, verification timestamps) are rejected',
           operationId: 'update_me',
           requestBody: {
             required: true,
@@ -778,19 +854,26 @@ export function getOpenApiSpec(): Record<string, unknown> {
           responses: {
             '200': envelopeResponse('Updated profile with memberships'),
             '401': envelopeResponse('Unauthenticated'),
-            '403': envelopeResponse('Missing CSRF header (x-sineva-action) or a mismatched origin on a cookie-authenticated request'),
+            '403': envelopeResponse(
+              'Missing CSRF header (x-sineva-action) or a mismatched origin on a cookie-authenticated request',
+            ),
             '404': envelopeResponse('The session user no longer exists'),
-            '422': envelopeResponse('Validation failed: empty body, unknown or read-only key, invalid name, salutation, phone number, about_me, locale or time zone'),
+            '422': envelopeResponse(
+              'Validation failed: empty body, unknown or read-only key, invalid name, salutation, phone number, about_me, locale or time zone',
+            ),
           },
         },
       },
       '/api/v1/me/preferences': {
         get: {
           tags: ['Profile'],
-          summary: 'Get the UI preferences of the authenticated user (defaults when none were saved)',
+          summary:
+            'Get the UI preferences of the authenticated user (defaults when none were saved)',
           operationId: 'get_my_preferences',
           responses: {
-            '200': envelopeResponse('theme, density, focus_mode, reduce_motion, sidebar_collapsed, pause_character, room_view'),
+            '200': envelopeResponse(
+              'theme, density, focus_mode, reduce_motion, sidebar_collapsed, pause_character, room_view',
+            ),
             '401': envelopeResponse('Unauthenticated'),
           },
         },
@@ -823,7 +906,9 @@ export function getOpenApiSpec(): Record<string, unknown> {
             '200': envelopeResponse('Updated preferences'),
             '401': envelopeResponse('Unauthenticated'),
             '403': envelopeResponse('Missing CSRF header or a mismatched origin'),
-            '422': envelopeResponse('Validation failed: empty body, unknown key or an invalid value'),
+            '422': envelopeResponse(
+              'Validation failed: empty body, unknown key or an invalid value',
+            ),
           },
         },
       },
@@ -832,9 +917,19 @@ export function getOpenApiSpec(): Record<string, unknown> {
           tags: ['Profile'],
           summary: 'Read the avatar image of the authenticated user (WebP, private cache)',
           operationId: 'get_my_avatar',
-          parameters: [{ name: 'size', in: 'query', required: false, schema: { type: 'integer', enum: [256, 64], default: 256 } }],
+          parameters: [
+            {
+              name: 'size',
+              in: 'query',
+              required: false,
+              schema: { type: 'integer', enum: [256, 64], default: 256 },
+            },
+          ],
           responses: {
-            '200': { description: 'The image bytes', content: { 'image/webp': { schema: { type: 'string', format: 'binary' } } } },
+            '200': {
+              description: 'The image bytes',
+              content: { 'image/webp': { schema: { type: 'string', format: 'binary' } } },
+            },
             '401': envelopeResponse('Unauthenticated'),
             '404': envelopeResponse('No avatar set'),
             '422': envelopeResponse('Unsupported size'),
@@ -843,7 +938,8 @@ export function getOpenApiSpec(): Record<string, unknown> {
         },
         post: {
           tags: ['Profile'],
-          summary: 'Step 1 of an avatar upload: returns a presigned PUT URL for a pending object (JPEG, PNG or WebP, up to 2 MB)',
+          summary:
+            'Step 1 of an avatar upload: returns a presigned PUT URL for a pending object (JPEG, PNG or WebP, up to 2 MB)',
           operationId: 'request_my_avatar_upload',
           requestBody: {
             required: true,
@@ -854,7 +950,10 @@ export function getOpenApiSpec(): Record<string, unknown> {
                   additionalProperties: false,
                   required: ['content_type', 'file_size_bytes'],
                   properties: {
-                    content_type: { type: 'string', enum: ['image/jpeg', 'image/png', 'image/webp'] },
+                    content_type: {
+                      type: 'string',
+                      enum: ['image/jpeg', 'image/png', 'image/webp'],
+                    },
                     file_size_bytes: { type: 'integer', minimum: 1, maximum: 2097152 },
                   },
                 },
@@ -862,7 +961,9 @@ export function getOpenApiSpec(): Record<string, unknown> {
             },
           },
           responses: {
-            '201': envelopeResponse('upload_id, upload_url, method, headers, expires_in_seconds, max_bytes'),
+            '201': envelopeResponse(
+              'upload_id, upload_url, method, headers, expires_in_seconds, max_bytes',
+            ),
             '401': envelopeResponse('Unauthenticated'),
             '403': envelopeResponse('Missing CSRF header or a mismatched origin'),
             '422': envelopeResponse('Unsupported type or size'),
@@ -884,7 +985,8 @@ export function getOpenApiSpec(): Record<string, unknown> {
       '/api/v1/me/avatar/complete': {
         post: {
           tags: ['Profile'],
-          summary: 'Step 2 of an avatar upload: the server reads the uploaded object, checks the magic bytes, re-encodes to square WebP at 256 and 64 px without metadata and switches the avatar',
+          summary:
+            'Step 2 of an avatar upload: the server reads the uploaded object, checks the magic bytes, re-encodes to square WebP at 256 and 64 px without metadata and switches the avatar',
           operationId: 'complete_my_avatar_upload',
           requestBody: {
             required: true,
@@ -904,7 +1006,9 @@ export function getOpenApiSpec(): Record<string, unknown> {
             '401': envelopeResponse('Unauthenticated'),
             '403': envelopeResponse('Missing CSRF header or a mismatched origin'),
             '404': envelopeResponse('Nothing was uploaded under that upload_id for this user'),
-            '422': envelopeResponse('Not a JPEG, PNG or WebP (SVG and other types are refused), over 2 MB, or not decodable'),
+            '422': envelopeResponse(
+              'Not a JPEG, PNG or WebP (SVG and other types are refused), over 2 MB, or not decodable',
+            ),
             '502': envelopeResponse('The storage service did not answer correctly'),
           },
         },
@@ -914,7 +1018,14 @@ export function getOpenApiSpec(): Record<string, unknown> {
           tags: ['Profile'],
           summary: 'Update job_title and department of the caller own membership in this workspace',
           operationId: 'update_my_member_profile',
-          parameters: [{ name: 'workspace_id', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } }],
+          parameters: [
+            {
+              name: 'workspace_id',
+              in: 'path',
+              required: true,
+              schema: { type: 'string', format: 'uuid' },
+            },
+          ],
           requestBody: {
             required: true,
             content: {
@@ -927,7 +1038,19 @@ export function getOpenApiSpec(): Record<string, unknown> {
                     job_title: { type: ['string', 'null'], maxLength: 60 },
                     department: {
                       type: ['string', 'null'],
-                      enum: ['management', 'finance', 'sales', 'marketing', 'operations', 'hr', 'it', 'customer_support', 'legal', 'other', null],
+                      enum: [
+                        'management',
+                        'finance',
+                        'sales',
+                        'marketing',
+                        'operations',
+                        'hr',
+                        'it',
+                        'customer_support',
+                        'legal',
+                        'other',
+                        null,
+                      ],
                     },
                   },
                 },
@@ -948,7 +1071,14 @@ export function getOpenApiSpec(): Record<string, unknown> {
           description:
             'Any role except the owner. The owner gets 409 last_owner and must transfer ownership first. Sessions pinned to the workspace are revoked and authored content stays attributed to a Former member.',
           operationId: 'leave_workspace',
-          parameters: [{ name: 'workspace_id', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } }],
+          parameters: [
+            {
+              name: 'workspace_id',
+              in: 'path',
+              required: true,
+              schema: { type: 'string', format: 'uuid' },
+            },
+          ],
           responses: {
             '200': envelopeResponse('Left the workspace'),
             '401': envelopeResponse('Unauthenticated'),
@@ -1266,7 +1396,7 @@ export function getOpenApiSpec(): Record<string, unknown> {
           tags: ['Conversations'],
           summary: 'Rename a conversation',
           description:
-            'Sets the title (trimmed, 1 to 120 characters) and marks it as the caller\'s own (`title_source = user`), so automatic titles never overwrite it. Only the owner can rename; anyone else gets 404 (FR-HUB-32).',
+            "Sets the title (trimmed, 1 to 120 characters) and marks it as the caller's own (`title_source = user`), so automatic titles never overwrite it. Only the owner can rename; anyone else gets 404 (FR-HUB-32).",
           operationId: 'rename_conversation',
           parameters: [
             {
@@ -1290,7 +1420,12 @@ export function getOpenApiSpec(): Record<string, unknown> {
                   type: 'object',
                   required: ['title'],
                   properties: {
-                    title: { type: 'string', minLength: 1, maxLength: 120, example: 'Q4 budget review' },
+                    title: {
+                      type: 'string',
+                      minLength: 1,
+                      maxLength: 120,
+                      example: 'Q4 budget review',
+                    },
                   },
                 },
               },
@@ -1498,7 +1633,8 @@ export function getOpenApiSpec(): Record<string, unknown> {
           },
           responses: {
             '201': {
-              description: 'Message processed and run allocated (returns message_id and run_id handle, D-M0-3)',
+              description:
+                'Message processed and run allocated (returns message_id and run_id handle, D-M0-3)',
               content: {
                 'application/json': {
                   schema: { $ref: '#/components/schemas/StandardEnvelope' },
@@ -1530,7 +1666,8 @@ export function getOpenApiSpec(): Record<string, unknown> {
               },
             },
             '422': {
-              description: 'Validation failed (e.g. content exceeds 8,000 chars or room specialist mismatch)',
+              description:
+                'Validation failed (e.g. content exceeds 8,000 chars or room specialist mismatch)',
               content: {
                 'application/json': {
                   schema: { $ref: '#/components/schemas/StandardEnvelope' },
@@ -1560,7 +1697,8 @@ export function getOpenApiSpec(): Record<string, unknown> {
               name: 'run_id',
               in: 'path',
               required: true,
-              description: 'Run handle returned by POST .../messages (run_<uuid>), not the sineva-ai run id (ADR-0022)',
+              description:
+                'Run handle returned by POST .../messages (run_<uuid>), not the sineva-ai run id (ADR-0022)',
               schema: { type: 'string' },
             },
             {
@@ -1592,7 +1730,8 @@ export function getOpenApiSpec(): Record<string, unknown> {
               },
             },
             '404': {
-              description: 'Run not found or not owned by caller (FR-HUB-32); same answer for another workspace',
+              description:
+                'Run not found or not owned by caller (FR-HUB-32); same answer for another workspace',
               content: {
                 'application/json': {
                   schema: { $ref: '#/components/schemas/StandardEnvelope' },
@@ -1620,13 +1759,15 @@ export function getOpenApiSpec(): Record<string, unknown> {
               name: 'run_id',
               in: 'path',
               required: true,
-              description: 'Run handle returned by POST .../messages (run_<uuid>), not the sineva-ai run id (ADR-0022)',
+              description:
+                'Run handle returned by POST .../messages (run_<uuid>), not the sineva-ai run id (ADR-0022)',
               schema: { type: 'string' },
             },
           ],
           responses: {
             '200': {
-              description: 'Stop requested (status cancelling) or the final status of a finished run',
+              description:
+                'Stop requested (status cancelling) or the final status of a finished run',
               content: {
                 'application/json': {
                   schema: { $ref: '#/components/schemas/StandardEnvelope' },
@@ -1658,7 +1799,8 @@ export function getOpenApiSpec(): Record<string, unknown> {
               },
             },
             '409': {
-              description: 'The run cannot be stopped right now (no upstream run id yet and no live stream on this instance)',
+              description:
+                'The run cannot be stopped right now (no upstream run id yet and no live stream on this instance)',
               content: {
                 'application/json': {
                   schema: { $ref: '#/components/schemas/StandardEnvelope' },
@@ -1687,6 +1829,7 @@ export function getOpenApiSpec(): Record<string, unknown> {
     },
     components: {
       schemas: {
+        ...LIBRARY_COMPONENT_SCHEMAS,
         StandardEnvelope: {
           type: 'object',
           required: ['success', 'status', 'message', 'data', 'meta', 'errors'],
@@ -1744,11 +1887,7 @@ export function getOpenApiSpec(): Record<string, unknown> {
         },
         PresignUploadRequest: {
           type: 'object',
-          required: [
-            'file_name',
-            'content_type',
-            'file_size_bytes',
-          ],
+          required: ['file_name', 'content_type', 'file_size_bytes'],
           properties: {
             file_name: { type: 'string', example: 'q3_board_deck.pdf' },
             content_type: { type: 'string', example: 'application/pdf' },

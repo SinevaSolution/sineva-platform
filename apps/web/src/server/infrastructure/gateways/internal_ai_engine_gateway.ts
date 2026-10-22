@@ -15,6 +15,8 @@ import type {
   AiEngineHealthResult,
   CancelRunResult,
   ChatTurnCallOptions,
+  ResumeRunOptions,
+  ResumeRunResult,
   RunEventsResult,
   StreamCallOptions,
 } from '@/server/domain/repositories/ai_engine_gateway';
@@ -24,6 +26,7 @@ import {
   chatTurnResultEnvelopeV2Schema,
   chatTurnResultV2Schema,
   parseSseTranscript,
+  resumeRunResponseSchema,
 } from './ai_engine_v2_schemas';
 import type { ChatTurnResultV2 } from '@/server/domain/chat/chat_v2';
 import type { AgentCatalog } from '@/server/domain/specialists/agent_catalog';
@@ -415,6 +418,74 @@ export class InternalAiEngineGateway implements AiEngineGateway {
     } finally {
       clearTimeout(timeout);
     }
+  }
+
+  /**
+   * Tells a paused run what the person decided (ADR-0032, proposed contract).
+   * Unreachable is a typed 503 and anything off-contract a typed 502, so the
+   * decision flow can leave the item pending instead of pretending it resumed.
+   * The body carries the draft payload hash and instruction or answers, never
+   * logged here.
+   */
+  async resumeRun(options: ResumeRunOptions): Promise<ResumeRunResult> {
+    const env = getEnvConfig();
+    const url = `${env.ai_engine_internal_url}/api/v2/runs/${encodeURIComponent(options.runId)}/resume`;
+
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), STANDARD_CALL_TIMEOUT_MS);
+
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+      [INTERNAL_API_KEY_HEADER]: env.ai_engine_internal_api_key,
+      [SINEVA_CONTEXT_HEADER]: options.contextToken,
+      [TRACEPARENT_HEADER]: options.traceparent || generateTraceparent(),
+      [REQUEST_ID_HEADER]: options.requestId || crypto.randomUUID(),
+      'Idempotency-Key': options.idempotencyKey,
+    };
+
+    let status: number;
+    let rawBody: string;
+    try {
+      const response = await fetch(url, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify(options.body),
+        signal: controller.signal,
+      });
+      status = response.status;
+      rawBody = await response.text();
+    } catch (error) {
+      logger.error('ai_engine.request_failed', {
+        reason: error instanceof Error ? error.name : 'unknown',
+        aborted: controller.signal.aborted,
+      });
+      throw new UpstreamUnavailableError();
+    } finally {
+      clearTimeout(timeout);
+    }
+
+    if (status < 200 || status >= 300) {
+      this.handleUpstreamError(status, rawBody);
+    }
+
+    let json: unknown;
+    try {
+      json = JSON.parse(rawBody);
+    } catch {
+      logger.error('ai_engine.non_json', { status, byte_length: utf8ByteLength(rawBody) });
+      throw new UpstreamServiceError();
+    }
+    const enveloped =
+      json !== null && typeof json === 'object' && 'data' in json ? (json as { data: unknown }).data : json;
+    const parsed = resumeRunResponseSchema.safeParse(enveloped);
+    if (!parsed.success) {
+      logger.error('ai_engine.contract_violation', {
+        status,
+        issue_paths: parsed.error.issues.map((issue) => issue.path.join('.')),
+      });
+      throw new UpstreamServiceError();
+    }
+    return { run_id: options.runId, status: parsed.data.status };
   }
 
   /**

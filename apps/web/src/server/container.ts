@@ -1,4 +1,44 @@
 import 'server-only';
+import { randomBytes } from 'node:crypto';
+import type { BusinessProfileRepository } from './domain/repositories/business_profile_repository';
+import type {
+  ChecklistRepository,
+  InvitationReader,
+  OnboardingStateRepository,
+  ProfileScanRepository,
+} from './domain/repositories/onboarding_repositories';
+import type { WebsiteScanGateway } from './domain/repositories/website_scan_gateway';
+import { PrismaBusinessProfileRepository } from './infrastructure/database/prisma_business_profile_repository';
+import {
+  PrismaChecklistRepository,
+  PrismaInvitationReader,
+  PrismaOnboardingStateRepository,
+  PrismaProfileScanRepository,
+} from './infrastructure/database/prisma_onboarding_repositories';
+import { InternalWebsiteScanGateway } from './infrastructure/gateways/internal_website_scan_gateway';
+import { BusinessProfileWriter } from './application/use-cases/business-profile/profile_writer';
+import { GetBusinessProfileUseCase } from './application/use-cases/business-profile/get_business_profile_use_case';
+import { SaveBusinessProfileUseCase } from './application/use-cases/business-profile/save_business_profile_use_case';
+import { ListProfileVersionsUseCase } from './application/use-cases/business-profile/list_profile_versions_use_case';
+import { GetProfileVersionUseCase } from './application/use-cases/business-profile/get_profile_version_use_case';
+import { RestoreProfileVersionUseCase } from './application/use-cases/business-profile/restore_profile_version_use_case';
+import { CreateOfferingUseCase } from './application/use-cases/business-profile/create_offering_use_case';
+import { UpdateOfferingUseCase } from './application/use-cases/business-profile/update_offering_use_case';
+import { DeleteOfferingUseCase } from './application/use-cases/business-profile/delete_offering_use_case';
+import { CreatePolicyUseCase } from './application/use-cases/business-profile/create_policy_use_case';
+import { UpdatePolicyUseCase } from './application/use-cases/business-profile/update_policy_use_case';
+import { DeletePolicyUseCase } from './application/use-cases/business-profile/delete_policy_use_case';
+import { GetProfilePackUseCase } from './application/use-cases/business-profile/get_profile_pack_use_case';
+import { CreateFirstWorkspaceUseCase } from './application/use-cases/onboarding/create_first_workspace_use_case';
+import { GetOnboardingUseCase } from './application/use-cases/onboarding/get_onboarding_use_case';
+import { UpdateOnboardingUseCase } from './application/use-cases/onboarding/update_onboarding_use_case';
+import { CompleteOnboardingUseCase } from './application/use-cases/onboarding/complete_onboarding_use_case';
+import { RequestProfileScanUseCase } from './application/use-cases/onboarding/request_profile_scan_use_case';
+import { GetProfileScanUseCase } from './application/use-cases/onboarding/get_profile_scan_use_case';
+import { DeleteProfileScanUseCase } from './application/use-cases/onboarding/delete_profile_scan_use_case';
+import { GetFirstTasksUseCase } from './application/use-cases/onboarding/get_first_tasks_use_case';
+import { DismissFirstTaskUseCase } from './application/use-cases/onboarding/dismiss_first_task_use_case';
+import { RecordChecklistEventUseCase } from './application/use-cases/onboarding/record_checklist_event_use_case';
 import { ListWorkspaceSpecialistsUseCase } from './application/use-cases/list_workspace_specialists_use_case';
 import { GetSystemHealthUseCase } from './application/use-cases/get_system_health_use_case';
 import { PresignStorageUploadUseCase } from './application/use-cases/presign_storage_upload_use_case';
@@ -102,6 +142,21 @@ import { PrismaChatRunRepository } from './infrastructure/database/prisma_chat_r
 import { LoggerRunRelayLog } from './infrastructure/logging/log_run_relay_log';
 import { LogRunMetricsRecorder } from './infrastructure/metrics/log_run_metrics_recorder';
 import { RunHub } from './application/chat/run_hub';
+import type { InboxRepository } from './domain/repositories/inbox_repository';
+import type { InboxLog } from './domain/inbox/inbox_log';
+import { PrismaInboxRepository } from './infrastructure/database/prisma_inbox_repository';
+import { LoggerInboxLog } from './infrastructure/logging/log_inbox_log';
+import { CreateInboxItemUseCase } from './application/use-cases/inbox/create_inbox_item_use_case';
+import { IngestRunInboxEventUseCase } from './application/use-cases/inbox/ingest_run_inbox_event_use_case';
+import { ListInboxUseCase } from './application/use-cases/inbox/list_inbox_use_case';
+import { GetInboxItemUseCase } from './application/use-cases/inbox/get_inbox_item_use_case';
+import { GetInboxCountsUseCase } from './application/use-cases/inbox/get_inbox_counts_use_case';
+import { MarkInboxItemReadUseCase } from './application/use-cases/inbox/mark_inbox_item_read_use_case';
+import { DecideApprovalUseCase } from './application/use-cases/inbox/decide_approval_use_case';
+import { RequestApprovalChangesUseCase } from './application/use-cases/inbox/request_approval_changes_use_case';
+import { AnswerInputRequestUseCase } from './application/use-cases/inbox/answer_input_request_use_case';
+import { DismissInboxItemUseCase } from './application/use-cases/inbox/dismiss_inbox_item_use_case';
+import { ExpireInboxItemsUseCase } from './application/use-cases/inbox/expire_inbox_items_use_case';
 import { StreamRunUseCase } from './application/use-cases/chat/stream_run_use_case';
 import { CancelRunUseCase } from './application/use-cases/chat/cancel_run_use_case';
 import { RenameConversationUseCase } from './application/use-cases/chat/rename_conversation_use_case';
@@ -128,6 +183,34 @@ import { PrismaUserPreferencesRepository } from './infrastructure/database/prism
 import { SeaweedObjectStore } from './infrastructure/storage/seaweed_object_store';
 import { SharpAvatarImageProcessor } from './infrastructure/media/sharp_avatar_image_processor';
 import { AllowlistedRemoteImageFetcher } from './infrastructure/media/allowlisted_remote_image_fetcher';
+import type { LibraryDeps } from './application/library/library_support';
+import type { KnowledgeIngestGateway } from './domain/library/knowledge_ingest_gateway';
+import type {
+  LibraryDocumentRepository,
+  LibraryFolderRepository,
+  LibraryIngestEventRepository,
+} from './domain/repositories/library_repository';
+import { PrismaLibraryDocumentRepository } from './infrastructure/database/prisma_library_document_repository';
+import { PrismaLibraryFolderRepository } from './infrastructure/database/prisma_library_folder_repository';
+import { PrismaLibraryIngestEventRepository } from './infrastructure/database/prisma_library_ingest_event_repository';
+import { InternalKnowledgeGateway } from './infrastructure/gateways/internal_knowledge_gateway';
+import { LoggerLibraryLog } from './infrastructure/logging/log_library_log';
+import { RequestLibraryUploadUseCase } from './application/use-cases/library/request_library_upload_use_case';
+import { CompleteLibraryUploadUseCase } from './application/use-cases/library/complete_library_upload_use_case';
+import { CreateLibraryDocumentUseCase } from './application/use-cases/library/create_library_document_use_case';
+import { ListLibraryDocumentsUseCase } from './application/use-cases/library/list_library_documents_use_case';
+import { GetLibraryDocumentUseCase } from './application/use-cases/library/get_library_document_use_case';
+import { UpdateLibraryDocumentUseCase } from './application/use-cases/library/update_library_document_use_case';
+import { DeleteLibraryDocumentUseCase } from './application/use-cases/library/delete_library_document_use_case';
+import { ReindexLibraryDocumentUseCase } from './application/use-cases/library/reindex_library_document_use_case';
+import { PreviewLibraryDocumentUseCase } from './application/use-cases/library/preview_library_document_use_case';
+import { ApplyIngestEventUseCase } from './application/use-cases/library/apply_ingest_event_use_case';
+import { TryLibraryRetrievalUseCase } from './application/use-cases/library/try_library_retrieval_use_case';
+import { GetLibraryUsageUseCase } from './application/use-cases/library/get_library_usage_use_case';
+import { CreateLibraryFolderUseCase } from './application/use-cases/library/create_library_folder_use_case';
+import { ListLibraryFoldersUseCase } from './application/use-cases/library/list_library_folders_use_case';
+import { UpdateLibraryFolderUseCase } from './application/use-cases/library/update_library_folder_use_case';
+import { DeleteLibraryFolderUseCase } from './application/use-cases/library/delete_library_folder_use_case';
 
 // Composition root: the only module that knows which concrete adapter backs
 // each port. Route handlers and pages ask for use cases here instead of
@@ -473,6 +556,7 @@ export const getStreamRunUseCase = memoize(
       gateway: getAiEngineGateway(),
       contextSigner: getContextSigner(),
       hub: getRunHub(),
+      inbox: getCreateInboxItemUseCase(),
       // The platform is the authority on cards: every card frame is validated
       // here before it is stored or forwarded (FR-AX-09, ADR-0025).
       guard: new CardFrameGuard(getCardValidator(), new LoggerCardRejectionLog()),
@@ -763,4 +847,234 @@ export const getAcceptOwnershipTransferUseCase = memoize(
       transactions: getTransactionRunner(),
       clock: systemClock,
     }),
+);
+// Inbox, approvals and input requests (ADR-0032).
+export const getInboxRepository = memoize<InboxRepository>(
+  () => new PrismaInboxRepository(getPrismaClient()),
+);
+const getInboxLog = memoize<InboxLog>(() => new LoggerInboxLog());
+const getInboxDecisionDeps = memoize(() => ({
+  inbox: getInboxRepository(),
+  audit: getAuditLogger(),
+  transactions: getTransactionRunner(),
+  gateway: getAiEngineGateway(),
+  contextSigner: getContextSigner(),
+  log: getInboxLog(),
+}));
+export const getCreateInboxItemUseCase = memoize(
+  () =>
+    new CreateInboxItemUseCase({
+      inbox: getInboxRepository(),
+      audit: getAuditLogger(),
+      transactions: getTransactionRunner(),
+    }),
+);
+export const getIngestRunInboxEventUseCase = memoize(
+  () =>
+    new IngestRunInboxEventUseCase({
+      chatRuns: getChatRunRepository(),
+      conversations: getConversationRepository(),
+      creator: getCreateInboxItemUseCase(),
+    }),
+);
+export const getListInboxUseCase = memoize(() => new ListInboxUseCase({ inbox: getInboxRepository() }));
+export const getGetInboxItemUseCase = memoize(() => new GetInboxItemUseCase({ inbox: getInboxRepository() }));
+export const getGetInboxCountsUseCase = memoize(() => new GetInboxCountsUseCase({ inbox: getInboxRepository() }));
+export const getMarkInboxItemReadUseCase = memoize(
+  () => new MarkInboxItemReadUseCase({ inbox: getInboxRepository() }),
+);
+export const getDecideApprovalUseCase = memoize(() => new DecideApprovalUseCase(getInboxDecisionDeps()));
+export const getRequestApprovalChangesUseCase = memoize(
+  () => new RequestApprovalChangesUseCase(getInboxDecisionDeps()),
+);
+export const getAnswerInputRequestUseCase = memoize(() => new AnswerInputRequestUseCase(getInboxDecisionDeps()));
+export const getDismissInboxItemUseCase = memoize(() => new DismissInboxItemUseCase(getInboxDecisionDeps()));
+export const getExpireInboxItemsUseCase = memoize(() => new ExpireInboxItemsUseCase(getInboxDecisionDeps()));
+// --- Sino Library (ADR-0030) ------------------------------------------------
+// The review-reminder sweep (`SendLibraryReviewRemindersUseCase`) has no getter
+// on purpose: it needs the Inbox adapter of the Inbox backend, which does not
+// exist yet, and wiring a no-op would make "reminded" a lie.
+export const getLibraryDocumentRepository = memoize<LibraryDocumentRepository>(
+  () => new PrismaLibraryDocumentRepository(getPrismaClient()),
+);
+export const getLibraryFolderRepository = memoize<LibraryFolderRepository>(
+  () => new PrismaLibraryFolderRepository(getPrismaClient()),
+);
+export const getLibraryIngestEventRepository = memoize<LibraryIngestEventRepository>(
+  () => new PrismaLibraryIngestEventRepository(getPrismaClient()),
+);
+const getKnowledgeIngestGateway = memoize<KnowledgeIngestGateway>(() => new InternalKnowledgeGateway());
+
+const getLibraryDeps = memoize<LibraryDeps>(() => ({
+  documents: getLibraryDocumentRepository(),
+  folders: getLibraryFolderRepository(),
+  events: getLibraryIngestEventRepository(),
+  gateway: getKnowledgeIngestGateway(),
+  contextSigner: getContextSigner(),
+  store: getObjectStore(),
+  audit: getAuditLogger(),
+  entitlements: getEntitlementService(),
+  transactions: getTransactionRunner(),
+  log: new LoggerLibraryLog(),
+  // Correlation id sent to sineva-ai, not a database id.
+  newJobId: () => crypto.randomUUID(),
+  now: () => new Date(),
+}));
+
+export const getRequestLibraryUploadUseCase = memoize(() => new RequestLibraryUploadUseCase(getLibraryDeps()));
+export const getCompleteLibraryUploadUseCase = memoize(() => new CompleteLibraryUploadUseCase(getLibraryDeps()));
+export const getCreateLibraryDocumentUseCase = memoize(
+  () => new CreateLibraryDocumentUseCase({ ...getLibraryDeps(), conversations: getConversationRepository() }),
+);
+export const getListLibraryDocumentsUseCase = memoize(() => new ListLibraryDocumentsUseCase(getLibraryDeps()));
+export const getGetLibraryDocumentUseCase = memoize(() => new GetLibraryDocumentUseCase(getLibraryDeps()));
+export const getUpdateLibraryDocumentUseCase = memoize(() => new UpdateLibraryDocumentUseCase(getLibraryDeps()));
+export const getDeleteLibraryDocumentUseCase = memoize(() => new DeleteLibraryDocumentUseCase(getLibraryDeps()));
+export const getReindexLibraryDocumentUseCase = memoize(() => new ReindexLibraryDocumentUseCase(getLibraryDeps()));
+export const getPreviewLibraryDocumentUseCase = memoize(() => new PreviewLibraryDocumentUseCase(getLibraryDeps()));
+export const getApplyIngestEventUseCase = memoize(() => new ApplyIngestEventUseCase(getLibraryDeps()));
+export const getTryLibraryRetrievalUseCase = memoize(() => new TryLibraryRetrievalUseCase(getLibraryDeps()));
+export const getGetLibraryUsageUseCase = memoize(() => new GetLibraryUsageUseCase(getLibraryDeps()));
+export const getCreateLibraryFolderUseCase = memoize(() => new CreateLibraryFolderUseCase(getLibraryDeps()));
+export const getListLibraryFoldersUseCase = memoize(() => new ListLibraryFoldersUseCase(getLibraryDeps()));
+export const getUpdateLibraryFolderUseCase = memoize(() => new UpdateLibraryFolderUseCase(getLibraryDeps()));
+export const getDeleteLibraryFolderUseCase = memoize(() => new DeleteLibraryFolderUseCase(getLibraryDeps()));
+
+// Business Profile, onboarding and the website scan (ADR-0031).
+const now = (): Date => new Date();
+
+export const getBusinessProfileRepository = memoize<BusinessProfileRepository>(
+  () => new PrismaBusinessProfileRepository(getPrismaClient()),
+);
+const getOnboardingStateRepository = memoize<OnboardingStateRepository>(
+  () => new PrismaOnboardingStateRepository(getPrismaClient()),
+);
+const getProfileScanRepository = memoize<ProfileScanRepository>(
+  () => new PrismaProfileScanRepository(getPrismaClient()),
+);
+const getChecklistRepository = memoize<ChecklistRepository>(
+  () => new PrismaChecklistRepository(getPrismaClient()),
+);
+const getInvitationReader = memoize<InvitationReader>(() => new PrismaInvitationReader(getPrismaClient()));
+const getWebsiteScanGateway = memoize<WebsiteScanGateway>(() => new InternalWebsiteScanGateway());
+
+const getBusinessProfileWriter = memoize(
+  () => new BusinessProfileWriter(getBusinessProfileRepository(), getAuditLogger(), getTransactionRunner()),
+);
+
+export const getGetBusinessProfileUseCase = memoize(
+  () => new GetBusinessProfileUseCase(getBusinessProfileRepository()),
+);
+export const getSaveBusinessProfileUseCase = memoize(
+  () => new SaveBusinessProfileUseCase({ writer: getBusinessProfileWriter(), scans: getProfileScanRepository(), now }),
+);
+export const getListProfileVersionsUseCase = memoize(
+  () => new ListProfileVersionsUseCase(getBusinessProfileRepository()),
+);
+export const getGetProfileVersionUseCase = memoize(
+  () => new GetProfileVersionUseCase(getBusinessProfileRepository()),
+);
+export const getRestoreProfileVersionUseCase = memoize(
+  () => new RestoreProfileVersionUseCase({ writer: getBusinessProfileWriter(), repo: getBusinessProfileRepository() }),
+);
+export const getCreateOfferingUseCase = memoize(
+  () => new CreateOfferingUseCase({ writer: getBusinessProfileWriter(), repo: getBusinessProfileRepository(), now }),
+);
+export const getUpdateOfferingUseCase = memoize(
+  () => new UpdateOfferingUseCase({ writer: getBusinessProfileWriter(), repo: getBusinessProfileRepository(), now }),
+);
+export const getDeleteOfferingUseCase = memoize(
+  () => new DeleteOfferingUseCase({ writer: getBusinessProfileWriter() }),
+);
+export const getCreatePolicyUseCase = memoize(
+  () => new CreatePolicyUseCase({ writer: getBusinessProfileWriter(), now }),
+);
+export const getUpdatePolicyUseCase = memoize(
+  () => new UpdatePolicyUseCase({ writer: getBusinessProfileWriter(), repo: getBusinessProfileRepository(), now }),
+);
+export const getDeletePolicyUseCase = memoize(
+  () => new DeletePolicyUseCase({ writer: getBusinessProfileWriter() }),
+);
+export const getGetProfilePackUseCase = memoize(
+  () => new GetProfilePackUseCase(getBusinessProfileRepository()),
+);
+
+export const getCreateFirstWorkspaceUseCase = memoize(
+  () =>
+    new CreateFirstWorkspaceUseCase({
+      workspaces: getWorkspaceRepository(),
+      createWorkspace: getCreateWorkspaceUseCase(),
+      profiles: getUserProfileRepository(),
+      invitations: getInvitationReader(),
+      states: getOnboardingStateRepository(),
+      audit: getAuditLogger(),
+      transactions: getTransactionRunner(),
+      now,
+      // Lowercase hex, 6 characters: a slug suffix, not an identifier.
+      newSlugSuffix: () => randomBytes(3).toString('hex'),
+    }),
+);
+export const getGetOnboardingUseCase = memoize(
+  () =>
+    new GetOnboardingUseCase({
+      states: getOnboardingStateRepository(),
+      checklist: getChecklistRepository(),
+      invitations: getInvitationReader(),
+    }),
+);
+export const getUpdateOnboardingUseCase = memoize(
+  () =>
+    new UpdateOnboardingUseCase({
+      states: getOnboardingStateRepository(),
+      workspaces: getWorkspaceRepository(),
+      updateWorkspace: getUpdateWorkspaceUseCase(),
+      audit: getAuditLogger(),
+      transactions: getTransactionRunner(),
+      now,
+      newSlugSuffix: () => randomBytes(2).toString('hex'),
+    }),
+);
+export const getCompleteOnboardingUseCase = memoize(
+  () =>
+    new CompleteOnboardingUseCase({
+      states: getOnboardingStateRepository(),
+      writer: getBusinessProfileWriter(),
+      scans: getProfileScanRepository(),
+      checklist: getChecklistRepository(),
+      audit: getAuditLogger(),
+      transactions: getTransactionRunner(),
+      now,
+    }),
+);
+export const getRequestProfileScanUseCase = memoize(
+  () =>
+    new RequestProfileScanUseCase({
+      scans: getProfileScanRepository(),
+      gateway: getWebsiteScanGateway(),
+      contextSigner: getContextSigner(),
+      audit: getAuditLogger(),
+      now,
+    }),
+);
+export const getGetProfileScanUseCase = memoize(
+  () => new GetProfileScanUseCase({ scans: getProfileScanRepository(), now }),
+);
+export const getDeleteProfileScanUseCase = memoize(
+  () => new DeleteProfileScanUseCase({ scans: getProfileScanRepository() }),
+);
+export const getGetFirstTasksUseCase = memoize(
+  () =>
+    new GetFirstTasksUseCase({
+      states: getOnboardingStateRepository(),
+      repo: getBusinessProfileRepository(),
+      now,
+    }),
+);
+export const getDismissFirstTaskUseCase = memoize(
+  () => new DismissFirstTaskUseCase({ states: getOnboardingStateRepository(), now }),
+);
+// Called by the code that owns a real event (a Library document reaching Ready,
+// an accepted invitation); no route exposes it.
+export const getRecordChecklistEventUseCase = memoize(
+  () => new RecordChecklistEventUseCase({ checklist: getChecklistRepository() }),
 );

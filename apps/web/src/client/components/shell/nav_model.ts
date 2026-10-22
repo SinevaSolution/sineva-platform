@@ -89,7 +89,10 @@ export const FEATURES = {
     icon: 'settings',
     blurbKey: 'features.settings.blurb',
   },
-} as const satisfies Record<string, { id: string; segment: string; labelKey: string; icon: NavIcon; blurbKey: string }>;
+} as const satisfies Record<
+  string,
+  { id: string; segment: string; labelKey: string; icon: NavIcon; blurbKey: string }
+>;
 
 export type FeatureId = keyof typeof FEATURES;
 
@@ -113,7 +116,11 @@ export interface NavSection {
 }
 
 export function featureBySegment(segment: string) {
-  return (Object.values(FEATURES) as (typeof FEATURES)[FeatureId][]).find((f) => f.segment === segment) ?? null;
+  return (
+    (Object.values(FEATURES) as (typeof FEATURES)[FeatureId][]).find(
+      (f) => f.segment === segment,
+    ) ?? null
+  );
 }
 
 export function buildNavSections(workspaceSlug: string): NavSection[] {
@@ -124,7 +131,7 @@ export function buildNavSections(workspaceSlug: string): NavSection[] {
     href: `${base}/${FEATURES[id].segment}`,
     icon: FEATURES[id].icon,
     exact: false,
-    soon: true,
+    soon: id !== 'inbox' && id !== 'library',
   });
   return [
     {
@@ -132,13 +139,28 @@ export function buildNavSections(workspaceSlug: string): NavSection[] {
       labelKey: null,
       items: [
         { id: 'home', labelKey: 'nav.home', href: base, icon: 'home', exact: true, soon: false },
-        { id: 'new', labelKey: 'nav.new_chat', href: `${base}/new`, icon: 'new-chat', exact: false, soon: false },
+        {
+          id: 'new',
+          labelKey: 'nav.new_chat',
+          href: `${base}/new`,
+          icon: 'new-chat',
+          exact: false,
+          soon: false,
+        },
         feature('inbox'),
         feature('customers'),
       ],
     },
-    { id: 'workspace', labelKey: 'sections.workspace', items: [feature('squads'), feature('library'), feature('tools')] },
-    { id: 'automate', labelKey: 'sections.automate', items: [feature('workflows'), feature('routines'), feature('skills')] },
+    {
+      id: 'workspace',
+      labelKey: 'sections.workspace',
+      items: [feature('squads'), feature('library'), feature('tools')],
+    },
+    {
+      id: 'automate',
+      labelKey: 'sections.automate',
+      items: [feature('workflows'), feature('routines'), feature('skills')],
+    },
   ];
 }
 
@@ -158,7 +180,11 @@ export function chatMarker(
   names: Record<string, string>,
 ): { kind: 'team' | 'specialist'; name: string | null; pose: SinoPose } {
   if (chat.kind !== 'room' || !chat.agent_slug) return { kind: 'team', name: null, pose: 'wave' };
-  return { kind: 'specialist', name: names[chat.agent_slug] ?? null, pose: specialistPose(chat.agent_slug) };
+  return {
+    kind: 'specialist',
+    name: names[chat.agent_slug] ?? null,
+    pose: specialistPose(chat.agent_slug),
+  };
 }
 
 export const SIDEBAR_COOKIE = 'sineva_sidebar';

@@ -72,6 +72,7 @@ function textPairs(): Pair[] {
     ['--color-text-inverse', '--color-action-primary-hover', TEXT],
     ['--color-text-inverse', '--color-action-dark', TEXT],
     ['--color-text-inverse', '--color-surface-inverse', TEXT],
+    ['--color-text-on-danger', '--color-danger', TEXT],
     ['--color-danger', '--color-canvas', TEXT],
     ['--color-danger', '--color-surface', TEXT],
     ['--color-danger', '--color-danger-surface', TEXT],
@@ -238,6 +239,7 @@ describe('app-density layer', () => {
     for (const token of [
       '--state-hover',
       '--state-pressed',
+      '--color-text-on-danger',
       '--color-warning',
       '--color-warning-surface',
       '--color-scrim',
@@ -249,9 +251,9 @@ describe('app-density layer', () => {
     }
   });
 
-  it('swaps warning and scrim in dark and nothing else is theme-specific without a dark value', () => {
+  it('swaps danger foreground, warning and scrim in dark without redefining vendored tokens', () => {
     const dark = block(density, ":root[data-theme='dark']");
-    expect(Object.keys(dark).sort()).toEqual(['--color-scrim', '--color-warning', '--color-warning-surface']);
+    expect(Object.keys(dark).sort()).toEqual(['--color-scrim', '--color-text-on-danger', '--color-warning', '--color-warning-surface']);
   });
 });
 
