@@ -39,6 +39,9 @@ export const LOG_EVENTS = [
   'library.acl_sync_failed',
   'library.review_reminder_failed',
   'library.cleanup_failed',
+  'workflow.run_start_failed',
+  'workflow.run_event_ignored',
+  'workflow.run_reconcile_failed',
 ] as const;
 export type LogEvent = (typeof LOG_EVENTS)[number];
 

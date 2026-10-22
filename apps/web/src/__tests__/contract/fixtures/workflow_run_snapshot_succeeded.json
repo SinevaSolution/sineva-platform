@@ -1,0 +1,58 @@
+{
+  "success": true,
+  "status_code": 200,
+  "message": "Run retrieved.",
+  "data": {
+    "run_id": "60000000-0000-4000-8000-000000000001",
+    "status": "succeeded",
+    "credits_used": 5,
+    "error_code": null,
+    "started_at": "2026-10-23T09:00:01.000Z",
+    "finished_at": "2026-10-23T09:03:00.000Z",
+    "last_sequence": 7,
+    "steps": [
+      {
+        "step_key": "reminder",
+        "step_type": "specialist_task",
+        "position": 0,
+        "status": "done",
+        "attempt": 1,
+        "progress": null,
+        "output_preview": null,
+        "error_code": null,
+        "credits": 3,
+        "approval_id": null,
+        "started_at": null,
+        "finished_at": "2026-10-23T09:00:09.000Z"
+      },
+      {
+        "step_key": "approval",
+        "step_type": "review",
+        "position": 1,
+        "status": "done",
+        "attempt": 1,
+        "progress": null,
+        "output_preview": null,
+        "error_code": null,
+        "credits": 0,
+        "approval_id": null,
+        "started_at": null,
+        "finished_at": "2026-10-23T09:02:00.000Z"
+      },
+      {
+        "step_key": "summary",
+        "step_type": "specialist_task",
+        "position": 2,
+        "status": "done",
+        "attempt": 1,
+        "progress": null,
+        "output_preview": "Satu pengingat terkirim ke Pak Budi.",
+        "error_code": null,
+        "credits": 2,
+        "approval_id": null,
+        "started_at": null,
+        "finished_at": "2026-10-23T09:03:00.000Z"
+      }
+    ]
+  }
+}

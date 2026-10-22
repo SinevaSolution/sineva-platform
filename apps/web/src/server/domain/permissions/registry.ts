@@ -50,7 +50,15 @@ export type PermissionKey =
   | 'inbox.view'
   | 'approval.decide_own'
   | 'approval.decide_any'
-  | 'inbox.answer';
+  | 'inbox.answer'
+  | 'workflow.read'
+  | 'workflow.create'
+  | 'workflow.edit'
+  | 'workflow.publish'
+  | 'workflow.run'
+  | 'workflow.review'
+  | 'workflow.delete'
+  | 'workflow.trace.view';
 
 export type PermissionAccess = 'yes' | 'no' | 'limited';
 
@@ -69,7 +77,8 @@ export interface PermissionDefinition {
     | 'business_profile'
     | 'onboarding'
     | 'model'
-    | 'inbox';
+    | 'inbox'
+    | 'workflow';
   description: string;
   roles: Record<UserRole, PermissionAccess>;
 }
@@ -127,6 +136,16 @@ export const C2_PERMISSION_MATRIX_FIXTURE: Record<
   'approval.decide_own': { owner: 'yes', admin: 'yes', member: 'yes', viewer: 'no' },
   'approval.decide_any': { owner: 'yes', admin: 'yes', member: 'no', viewer: 'no' },
   'inbox.answer': { owner: 'yes', admin: 'yes', member: 'yes', viewer: 'no' },
+  // Workflows (ADR-0045, PRD 10). A Member edits only drafts they created; the
+  // use case checks the creator, so the guard lets a Member through.
+  'workflow.read': { owner: 'yes', admin: 'yes', member: 'yes', viewer: 'yes' },
+  'workflow.create': { owner: 'yes', admin: 'yes', member: 'yes', viewer: 'no' },
+  'workflow.edit': { owner: 'yes', admin: 'yes', member: 'limited', viewer: 'no' },
+  'workflow.publish': { owner: 'yes', admin: 'yes', member: 'no', viewer: 'no' },
+  'workflow.run': { owner: 'yes', admin: 'yes', member: 'yes', viewer: 'no' },
+  'workflow.review': { owner: 'yes', admin: 'yes', member: 'yes', viewer: 'no' },
+  'workflow.delete': { owner: 'yes', admin: 'yes', member: 'no', viewer: 'no' },
+  'workflow.trace.view': { owner: 'yes', admin: 'yes', member: 'no', viewer: 'no' },
 };
 
 export const CANONICAL_PERMISSION_KEYS = Object.keys(

@@ -1,0 +1,15 @@
+{
+  "event_id": "80000000-0000-4000-8000-000000000002",
+  "tenant_id": "11111111-1111-4111-8111-111111111111",
+  "run_id": "60000000-0000-4000-8000-000000000001",
+  "sequence": 2,
+  "type": "step_started",
+  "occurred_at": "2026-10-23T09:00:01.500Z",
+  "data": {
+    "step_key": "reminder",
+    "step_type": "specialist_task",
+    "position": 0,
+    "attempt": 1,
+    "progress": null
+  }
+}

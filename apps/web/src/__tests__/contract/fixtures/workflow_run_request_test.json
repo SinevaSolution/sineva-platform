@@ -1,0 +1,75 @@
+{
+  "run_id": "60000000-0000-4000-8000-000000000001",
+  "kind": "workflow",
+  "mode": "test",
+  "workflow_id": "50000000-0000-4000-8000-000000000001",
+  "version_number": null,
+  "definition": {
+    "schema_version": 1,
+    "inputs": [
+      {
+        "key": "customer",
+        "type": "text",
+        "label": "Customer",
+        "required": true,
+        "default": "Budi Santoso"
+      }
+    ],
+    "steps": [
+      {
+        "key": "reminder",
+        "type": "specialist_task",
+        "title": "Draft a reminder",
+        "specialist": "sinofinance",
+        "instruction": "Write a polite payment reminder for {{inputs.customer}}.",
+        "output_type": "text"
+      },
+      {
+        "key": "approval",
+        "type": "review",
+        "title": "Review the reminder",
+        "instruction": "Edit or approve the reminder.",
+        "subject": "{{steps.reminder.output}}",
+        "expiry_days": 7,
+        "on_reject": "end",
+        "output_type": "list"
+      },
+      {
+        "key": "summary",
+        "type": "specialist_task",
+        "title": "Summarize",
+        "specialist": "sinoinsights",
+        "instruction": "Summarize {{steps.approval.output}} in one line.",
+        "output_type": "text"
+      }
+    ],
+    "outputs": [
+      {
+        "key": "report",
+        "from": "{{steps.summary.output}}"
+      }
+    ],
+    "limits": {}
+  },
+  "definition_revision": 3,
+  "inputs": {
+    "customer": "Budi Santoso"
+  },
+  "trigger_type": "manual",
+  "routine_id": null,
+  "locale": "id",
+  "library_principals": [
+    "agent:sinofinance",
+    "agent:sinoinsights",
+    "workflow:50000000-0000-4000-8000-000000000001",
+    "workspace"
+  ],
+  "budget": {
+    "max_credits": null,
+    "max_tokens": null,
+    "max_tool_calls": null,
+    "max_wall_ms": null,
+    "max_media_jobs": null,
+    "max_media_cost": null
+  }
+}

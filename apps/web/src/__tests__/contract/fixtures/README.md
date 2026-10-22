@@ -76,3 +76,32 @@ The call is `POST /internal/v1/profile/scan` with `X-Internal-Api-Key`,
 `X-Sineva-Context`, `X-Request-Id` and `traceparent`. A scan that ran but could
 not read the page is HTTP 200 with `status: "failed"` and a typed `error_code`;
 an unreachable or failing sineva-ai is an HTTP error (platform ADR-0016).
+
+## `workflow_*.json`: proposed by the platform, pending sineva-ai
+
+The run contract v2.1 for Workflows (platform ADR-0046, WP-M3-02 and WP-M3-04 on
+the platform side). They are **not** copies: sineva-ai has not built the durable
+engine, so the platform wrote these as a proposal and tests its gateway, event
+intake and run screens against them through a fake upstream
+(`../workflow_run_gateway.contract.test.ts`). When sineva-ai accepts or
+changes them, move the files to `sineva-ai/tests/contract/fixtures/`, copy them
+back byte for byte and delete this section. Until then they are the only files
+here the platform may edit (besides this README).
+
+| File | Direction | Call |
+| :--- | :--- | :--- |
+| `workflow_run_request_test.json`, `workflow_run_request_live.json` | platform to sineva-ai | `POST /api/v2/runs` (body; tenant and user come from `X-Sineva-Context`) |
+| `workflow_run_accepted.json` | sineva-ai to platform | answer of the start call (202) |
+| `workflow_run_snapshot_*.json` | sineva-ai to platform | `GET /api/v2/runs/{run_id}`: needs review, succeeded, failed step, budget exceeded |
+| `workflow_run_cancel_response.json` | sineva-ai to platform | `POST /api/v2/runs/{run_id}/cancel` |
+| `workflow_run_resume_request.json`, `workflow_run_resume_response.json` | both | `POST /api/v2/runs/{run_id}/resume` (`from_failed_step` or `continue_after_budget`, with an `Idempotency-Key`) |
+| `workflow_run_event_*.json` | sineva-ai to platform | `POST /api/internal/v1/workflow-runs/events` (internal key only): `run_status`, `step_started`, `step_completed` |
+| `workflow_run_events_transcript_review.json` | sineva-ai to platform | one run in order, replayed by the screen reducer test |
+
+Rules the fixtures encode: the platform chooses `run_id` (its `engine_run_id`);
+the body carries a definition snapshot, never a reference to a draft; no
+`tenant_id` or `user_id` in the request body; every pushed event has a per-run
+`sequence` (applied only when higher than the stored one) and an `event_id` for
+idempotency; the run status set is `queued`, `running`, `waiting`,
+`needs_review`, `succeeded`, `failed`, `cancelled`, `budget_exceeded`; the step
+status set is `waiting`, `running`, `needs_review`, `done`, `failed`, `skipped`.

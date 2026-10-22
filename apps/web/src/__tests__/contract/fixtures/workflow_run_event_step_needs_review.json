@@ -1,0 +1,20 @@
+{
+  "event_id": "80000000-0000-4000-8000-000000000004",
+  "tenant_id": "11111111-1111-4111-8111-111111111111",
+  "run_id": "60000000-0000-4000-8000-000000000001",
+  "sequence": 4,
+  "type": "step_completed",
+  "occurred_at": "2026-10-23T09:00:10.000Z",
+  "data": {
+    "step_key": "approval",
+    "step_type": "review",
+    "position": 1,
+    "status": "needs_review",
+    "attempt": 1,
+    "credits": 0,
+    "output_preview": null,
+    "error_code": null,
+    "approval_id": "70000000-0000-4000-8000-000000000001",
+    "progress": null
+  }
+}

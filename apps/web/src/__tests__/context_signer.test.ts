@@ -55,6 +55,24 @@ describe('Ed25519ContextSigner & Signed Context (WP-M0-27, FR-AIR-06, D-M0-2)', 
     expect(claims.autonomy_ceiling).toBe('supervised');
   });
 
+  it('carries the run budget claim only when one is given (ADR-0046)', async () => {
+    const budget = {
+      max_credits: 40,
+      max_tokens: null,
+      max_tool_calls: 100,
+      max_wall_ms: null,
+      max_media_jobs: null,
+      max_media_cost: null,
+    };
+    const withBudget = await signer.mint(baseRequestContext, { run_id: 'run-1', budget });
+    expect(withBudget.claims.budget).toEqual(budget);
+    const publicKeys = new Map<string, string>([[keyPair1.kid, keyPair1.publicKeyPem]]);
+    expect(verifySignedContext(withBudget.token, publicKeys).budget).toEqual(budget);
+
+    const withoutBudget = await signer.mint(baseRequestContext, {});
+    expect('budget' in withoutBudget.claims).toBe(false);
+  });
+
   it('verifies token successfully with corresponding public key', async () => {
     const { token } = await signer.mint(baseRequestContext, {
       locale: 'id',

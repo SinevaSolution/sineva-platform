@@ -11,6 +11,16 @@ export interface UserProfileProjection {
   about_me?: string | null;
 }
 
+/** Ceilings carried in the signed context. Null is "no ceiling set here"; the engine still has its own (FR-AIR-06). */
+export interface RunBudget {
+  max_credits: number | null;
+  max_tokens: number | null;
+  max_tool_calls: number | null;
+  max_wall_ms: number | null;
+  max_media_jobs: number | null;
+  max_media_cost: number | null;
+}
+
 export interface SignedContextClaims {
   // Standard JWS / JWT claims
   iss: string;
@@ -44,6 +54,8 @@ export interface SignedContextClaims {
   // Additional optional claims reserved for subsequent milestones
   agent_slug?: string | null;
   run_id?: string | null;
+  /** Present on run starts only. */
+  budget?: RunBudget;
 }
 
 export interface MintContextOptions {
@@ -56,6 +68,7 @@ export interface MintContextOptions {
   profile?: UserProfileProjection;
   allowed_agents?: string[];
   trace_id?: string;
+  budget?: RunBudget;
 }
 
 export interface ContextSigner {
