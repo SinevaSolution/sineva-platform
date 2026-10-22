@@ -5,6 +5,14 @@ import { PrismaJobQueue } from './infrastructure/database/prisma_job_queue';
 import { LoggerJobLog } from './infrastructure/logging/log_job_log';
 import { JobRunner } from './application/jobs/job_runner';
 import { TickJobsUseCase, type JobPlanner } from './application/jobs/tick_jobs_use_case';
+import { CredentialResolver } from './application/connections/credential_resolver';
+import type { ConnectionRepository } from './domain/repositories/connection_repository';
+import { VaultUnavailableError, type KmsPort, type SecretWriter } from './domain/vault/vault';
+import { PrismaConnectionRepository } from './infrastructure/database/prisma_connection_repository';
+import { PrismaVaultSecretRepository } from './infrastructure/database/prisma_vault_secret_repository';
+import { getVaultPrismaClient } from './infrastructure/database/prisma_client';
+import { CloudKmsStub, LocalKms } from './infrastructure/vault/local_kms';
+import { VaultService } from './infrastructure/vault/vault_service';
 import type { BusinessProfileRepository } from './domain/repositories/business_profile_repository';
 import type {
   ChecklistRepository,
@@ -1082,6 +1090,42 @@ export const getDismissFirstTaskUseCase = memoize(
 // an accepted invitation); no route exposes it.
 export const getRecordChecklistEventUseCase = memoize(
   () => new RecordChecklistEventUseCase({ checklist: getChecklistRepository() }),
+);
+
+// ---------------------------------------------------------------------------
+// Connections and the credential vault (ADR-0036, ADR-0037, ADR-0039)
+// ---------------------------------------------------------------------------
+
+export const getConnectionRepository = memoize<ConnectionRepository>(
+  () => new PrismaConnectionRepository(getPrismaClient()),
+);
+
+// Resolved on first use, so a missing key fails the first connection call with a
+// typed 503 instead of failing the whole app at boot.
+const getKms = memoize<KmsPort>(() => {
+  const env = getEnvConfig();
+  if ((env.vault_kms_provider ?? 'local') === 'cloud') {
+    return new CloudKmsStub();
+  }
+  if (!env.vault_local_kek) {
+    throw new VaultUnavailableError('VAULT_LOCAL_KEK is not set');
+  }
+  return new LocalKms({
+    current: env.vault_local_kek,
+    previous: env.vault_local_kek_previous,
+    production: env.node_env === 'production',
+  });
+});
+
+// One vault object, held privately: the container hands out its write half
+// (`getSecretWriter`) and builds the read half into the credential resolver
+// only, so no other module can obtain a `SecretReader` (vault_access.test.ts).
+const getVaultService = memoize(
+  () => new VaultService(new PrismaVaultSecretRepository(getVaultPrismaClient()), getKms()),
+);
+export const getSecretWriter = memoize<SecretWriter>(() => getVaultService());
+export const getCredentialResolver = memoize(
+  () => new CredentialResolver({ connections: getConnectionRepository(), secrets: getVaultService() }),
 );
 
 // ---------------------------------------------------------------------------

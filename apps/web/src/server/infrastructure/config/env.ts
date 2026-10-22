@@ -34,6 +34,22 @@ export interface AppEnvConfig {
   github_client_id?: string;
   github_client_secret?: string;
   entitlements_mode: EntitlementMode;
+  // Connection layer (ADR-0036, ADR-0037). All optional at boot: a provider
+  // without credentials is listed as unavailable, and the vault fails typed
+  // when it is used without a key. Separate from the sign-in OAuth variables.
+  vault_kms_provider?: 'local' | 'cloud';
+  vault_local_kek?: string;
+  vault_local_kek_previous?: string;
+  vault_database_url?: string;
+  google_connect_client_id?: string;
+  google_connect_client_secret?: string;
+  notion_client_id?: string;
+  notion_client_secret?: string;
+}
+
+function optional(raw: Record<string, string | undefined>, key: string): string | undefined {
+  const value = raw[key]?.trim();
+  return value ? value : undefined;
 }
 
 // SHA-256 hashes of dev secrets from .env.example.
@@ -59,7 +75,7 @@ function matchesDevDefault(candidate: string): boolean {
   return KNOWN_DEV_SECRET_HASHES.has(hash) || DEV_MARKER.test(candidate);
 }
 
-function isDevDefaultSecret(value: string | undefined): boolean {
+export function isDevDefaultSecret(value: string | undefined): boolean {
   if (!value) {
     return false;
   }
@@ -181,6 +197,32 @@ export function validateEnvConfig(
     );
   }
 
+  const vaultKmsProvider = (optional(raw, 'VAULT_KMS_PROVIDER') ?? 'local') as 'local' | 'cloud';
+  if (vaultKmsProvider !== 'local' && vaultKmsProvider !== 'cloud') {
+    throw new Error('Configuration error: VAULT_KMS_PROVIDER must be local or cloud');
+  }
+  const vaultKek = optional(raw, 'VAULT_LOCAL_KEK');
+  const vaultDatabaseUrl = optional(raw, 'VAULT_DATABASE_URL');
+  if (isProduction) {
+    // The key id carries the marker word of a development default (for
+    // example `dev-local-1:...`), so the check needs no plaintext copy of any
+    // key. Checked here as well as in the KMS adapter so the process fails at
+    // startup, not at the first connection.
+    for (const [name, value] of [
+      ['VAULT_LOCAL_KEK', vaultKek],
+      ['VAULT_LOCAL_KEK_PREVIOUS', optional(raw, 'VAULT_LOCAL_KEK_PREVIOUS')],
+    ] as const) {
+      if (value && isDevDefaultSecret(value.split(':')[0])) {
+        throw new Error(`Configuration error: ${name} cannot be a development default in production (SEC-4)`);
+      }
+    }
+    // Role separation (G4) is the point of a second URL: the same URL would
+    // hand the vault table to the application role.
+    if (vaultDatabaseUrl && vaultDatabaseUrl === raw.DATABASE_URL) {
+      throw new Error('Configuration error: VAULT_DATABASE_URL must use a different role than DATABASE_URL (ADR-0036)');
+    }
+  }
+
   return {
     node_env: nodeEnv,
     next_public_app_url:
@@ -218,6 +260,14 @@ export function validateEnvConfig(
     github_client_id: raw.GITHUB_CLIENT_ID,
     github_client_secret: raw.GITHUB_CLIENT_SECRET,
     entitlements_mode: entitlementsMode,
+    vault_kms_provider: vaultKmsProvider,
+    vault_local_kek: vaultKek,
+    vault_local_kek_previous: optional(raw, 'VAULT_LOCAL_KEK_PREVIOUS'),
+    vault_database_url: vaultDatabaseUrl,
+    google_connect_client_id: optional(raw, 'GOOGLE_CONNECT_CLIENT_ID'),
+    google_connect_client_secret: optional(raw, 'GOOGLE_CONNECT_CLIENT_SECRET'),
+    notion_client_id: optional(raw, 'NOTION_CLIENT_ID'),
+    notion_client_secret: optional(raw, 'NOTION_CLIENT_SECRET'),
   };
 }
 

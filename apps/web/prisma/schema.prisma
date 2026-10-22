@@ -71,6 +71,9 @@ model Workspace {
   onboarding_states  OnboardingState[]
   profile_scans      ProfileScan[]
   checklist_items    WorkspaceChecklistState[]
+  connections        Connection[]
+  connection_grants  ConnectionGrant[]
+  vault_secrets      VaultSecret[]
 
   @@map("workspaces")
   @@schema("platform")
@@ -202,6 +205,7 @@ model User {
   conversations            Conversation[]
   preferences              UserPreferences?
   onboarding_states OnboardingState[]
+  connections_owned Connection[] @relation("ConnectionOwner")
 
   @@map("users")
   @@schema("platform")
@@ -994,5 +998,104 @@ model Job {
   @@index([status, run_at])
   @@index([workspace_id])
   @@map("jobs")
+  @@schema("platform")
+}
+
+// ---------------------------------------------------------------------------
+// Connections and the credential vault (ADR-0036, ADR-0037, ADR-0039)
+// ---------------------------------------------------------------------------
+
+// A workspace's link to one provider account. Providers are code manifests, not
+// rows (ADR-0037), so `provider_id` is the manifest key. Nothing secret lives
+// here: tokens are in `vault_secrets`, which the application database role
+// cannot read. `access_expires_at` is plain metadata so the refresh planner
+// never touches the vault. A disconnect keeps the row as a `revoked` tombstone.
+// One active connection per (workspace, provider, owner, external account) is
+// enforced by a partial unique index in the migration SQL
+// (`connections_active_account_idx`), which Prisma schema syntax cannot express.
+model Connection {
+  id                  String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  workspace_id        String    @db.Uuid
+  provider_id         String    @db.VarChar(64)
+  owner_scope         String    @default("workspace") @db.VarChar(16) // workspace | user
+  owner_user_id       String?   @db.Uuid
+  created_by_user_id  String?   @db.Uuid
+  auth_type           String    @db.VarChar(32) // oauth2_pkce | api_key | hmac | embedded_signup
+  status              String    @default("connected") @db.VarChar(24) // connected | partial | needs_reconnect | error | revoked
+  scope_bundle        String?   @db.VarChar(64)
+  requested_scopes    String[]  @default([])
+  granted_scopes      String[]  @default([])
+  external_account_id String?
+  account_label       String?
+  access_expires_at   DateTime? @db.Timestamptz(6)
+  refresh_expires_at  DateTime? @db.Timestamptz(6)
+  last_refreshed_at   DateTime? @db.Timestamptz(6)
+  last_health_at      DateTime? @db.Timestamptz(6)
+  last_error_code     String?   @db.VarChar(128)
+  secret_rotated_at   DateTime? @db.Timestamptz(6)
+  revoked_at          DateTime? @db.Timestamptz(6)
+  revoked_by_user_id  String?   @db.Uuid
+  created_at          DateTime  @default(now()) @db.Timestamptz(6)
+  updated_at          DateTime  @default(now()) @db.Timestamptz(6)
+
+  workspace Workspace         @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
+  owner     User?             @relation("ConnectionOwner", fields: [owner_user_id], references: [id], onDelete: Cascade)
+  grants    ConnectionGrant[]
+
+  @@index([workspace_id, provider_id, status])
+  @@index([status, access_expires_at])
+  @@index([owner_user_id])
+  @@map("connections")
+  @@schema("platform")
+}
+
+// What a specialist may do with a connection. No row means no access; `write`
+// implies `read`. `approval_policy` is read by the Tool Gateway later.
+model ConnectionGrant {
+  id                 String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  workspace_id       String   @db.Uuid
+  connection_id      String   @db.Uuid
+  agent_slug         String   @db.VarChar(64)
+  access_level       String   @default("read") @db.VarChar(16) // read | write
+  approval_policy    String   @default("ask_every_time") @db.VarChar(32)
+  granted_by_user_id String?  @db.Uuid
+  created_at         DateTime @default(now()) @db.Timestamptz(6)
+  updated_at         DateTime @default(now()) @db.Timestamptz(6)
+
+  workspace  Workspace  @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
+  connection Connection @relation(fields: [connection_id], references: [id], onDelete: Cascade)
+
+  @@unique([connection_id, agent_slug])
+  @@index([workspace_id])
+  @@map("connection_grants")
+  @@schema("platform")
+}
+
+// Envelope-encrypted secrets (ADR-0036). The application database role has no
+// privilege on this table; only the vault role (`VAULT_DATABASE_URL`) reads and
+// writes it, and only the vault repository mentions it in code. `owner_id` is
+// polymorphic (a connection, an OAuth flow, later a model credential), so it has
+// no foreign key; the workspace key makes the rows leave with the tenant.
+model VaultSecret {
+  id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  owner_type   String   @db.VarChar(32) // connection | oauth_flow | model_credential
+  owner_id     String   @db.Uuid
+  workspace_id String   @db.Uuid
+  provider_id  String   @db.VarChar(64)
+  ciphertext   Bytes
+  nonce        Bytes
+  dek_wrapped  Bytes
+  kek_id       String   @db.VarChar(64)
+  key_version  Int      @default(1)
+  version      Int      @default(1)
+  created_at   DateTime @default(now()) @db.Timestamptz(6)
+  updated_at   DateTime @default(now()) @db.Timestamptz(6)
+
+  workspace Workspace @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
+
+  @@unique([owner_type, owner_id])
+  @@index([workspace_id])
+  @@index([kek_id])
+  @@map("vault_secrets")
   @@schema("platform")
 }

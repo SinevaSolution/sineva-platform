@@ -57,7 +57,7 @@ Items marked "cross-service" are mirrored in `sineva-ai` (`docs/decisions/` ther
 | [0031](0031-business-profile-onboarding-and-website-scan.md) | First workspace endpoint, onboarding state, versioned Business Profile, profile pack, website scan port (cross-service, proposed contract)        | You touch onboarding, the Business Profile, the profile pack or the website scan |
 
 | [0032](0032-inbox-items-approvals-and-run-resume.md) | Inbox items, approvals, revisions, input requests; claim then resume then commit decisions (cross-service, proposed upstream contract) | You touch the Inbox, approvals, input requests or run resume |
-| [0036](0036-credential-vault-kms-and-key-hierarchy.md) | Generalized `vault_secret`, envelope AES-256-GCM with AAD, `KmsPort`, separate vault database role | You store or read a credential or a key |
+| [0036](0036-credential-vault-kms-and-key-hierarchy.md) | Generalized `vault_secrets`, envelope AES-256-GCM with AAD, `KmsPort`, separate vault database role | You store or read a credential or a key |
 | [0037](0037-oauth-flow-and-connector-driver.md) | OAuth code flow with PKCE, `ConnectorDriver`, manifests as data, provider credentials from env | You touch connections, OAuth or a connector |
 | [0038](0038-durable-job-runner.md) | Postgres jobs table with SKIP LOCKED, retries, idempotency, single-flight, internal tick endpoint | You add background work |
 | [0039](0039-connection-grants-and-scopes.md) | Workspace and personal connections, grants (read or write), permission keys, audit events | You touch who may use or manage a connection |
