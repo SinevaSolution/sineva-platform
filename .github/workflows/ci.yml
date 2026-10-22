@@ -32,6 +32,9 @@ jobs:
       - name: Run Unit & Contract Tests
         run: npm run test
 
+      - name: Cross-tenant route canary
+        run: npm --workspace=@sineva/web run test -- canary
+
       - name: Build Production Bundle
         run: npm run build
 
