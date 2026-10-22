@@ -45,3 +45,5 @@ This folder is for the person about to change the platform: the order to build a
 ## Checkpoint continuation
 
 - [22 October integration batch](resume-batch-2026-10-22.md): merged backends, screens, test evidence and remaining acceptance work.
+
+- [Implementation plan alignment](implementation-plan-alignment-2026-10-22.md): WP status, current evidence, missing acceptance and next dependency order.

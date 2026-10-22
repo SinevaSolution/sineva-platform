@@ -115,6 +115,10 @@ A specialist's accent is `accent_key`, a fixed 13-value enum in the specialist m
 
 The old `--accent-people` style variables no longer exist; read `--accent-surface`, `--accent-tile`, `--accent-text` and `--accent-glow` inside the wrapper.
 
+## Solid danger actions
+
+`--color-text-on-danger` is a platform-only semantic token in `app-density.css`: white in light mode and ink-950 in dark mode. `SNButton` uses it for the solid danger variant because compro's dark `--color-danger` is a light tint. Using the unchanged white inverse text there failed the gallery's browser contrast check at 2.28:1. The token contrast suite now covers this foreground/background pair in both themes. Vendored compro tokens remain unchanged.
+
 ## Adding or changing a token
 
 1. Does compro have it? Change compro's `docs/design/tokens.md` and CSS first, then run the sync script and review the diff. Never hand-edit a vendored file.

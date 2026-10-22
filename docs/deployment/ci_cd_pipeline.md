@@ -29,7 +29,7 @@ Triggers: a push to `main` or `develop`, and a pull request targeting `main` or 
 Steps, in order:
 
 1. `actions/checkout@v4`.
-2. `actions/setup-node@v4` with Node `24` and the npm cache. `.nvmrc` pins `24.21.0` locally; CI takes the latest 24.x.
+2. `actions/setup-node@v4` reads `.nvmrc` (`24.22.1`) and uses the npm cache. Local development, CI and Docker share this patched Node 24 baseline.
 3. `npm ci`.
 4. `npm run lint`.
 5. `npm run typecheck`.
@@ -50,7 +50,7 @@ The integration job follows [ADR-0007](../decisions/0007-tdd-fakes-integration-c
 
 ## Dockerfile
 
-The root `Dockerfile` has four stages on `node:24-alpine`:
+The root `Dockerfile` has four stages on `node:24.22.1-alpine`:
 
 | Stage | What it does |
 | :--- | :--- |
@@ -90,3 +90,13 @@ Order matters in one direction: apply the migration before the code that needs i
 - [ ] `GET /api/v1/workspaces/{workspace_id}/agents` returns the six companions. This reaches sineva-ai (503 when it is down) and the membership lookup, so it proves the engine catalog and the database together. If a deployment may have used the removed `POST /api/v1/agents`, run the check in `20261022120000_drop_agent_configs` before migrating.
 - [ ] A chat request to one companion returns 200. A 502 or 503 here points at the key, the slug or the engine ([troubleshooting](../troubleshooting/docker_and_internal_network.md)).
 - [ ] `/api/openapi.json` loads and lists every route.
+
+## Component browser workflow
+
+`.github/workflows/e2e-visual.yml` runs a separate `e2e-visual` job on pull requests in the pinned Playwright 1.64.1 Ubuntu image. `actions/setup-node` installs the patched runtime from `.nvmrc` inside that image. The job builds the application and starts a CI-only production server with `ENABLE_DEV_UI=1`; it needs no user session or seeded database for component fixtures.
+
+The initial suite covers SNButton in both themes/locales at the three primary widths plus narrow, touch and landscape views, dropzone keyboard selection, and pseudo-locale/text zoom. Axe rejects serious or critical findings. The clock and timezone are fixed.
+
+Before approved PNGs exist, the job uploads screenshots as review artifacts and emits a warning; this does not fulfill visual-regression acceptance. A PR labeled `visual-update` may generate or update baselines in CI. Download and review the `component-browser-evidence` artifact, then commit the approved `e2e/__screenshots__` files. Once baselines exist, ordinary runs compare them with a maximum pixel difference ratio of 0.002 and never rewrite them.
+
+Locally, start the server yourself and use `PLAYWRIGHT_BASE_URL=http://127.0.0.1:3001 npm --workspace=@sineva/web run test:e2e`. No Playwright `webServer` auto-start is configured. `ENABLE_DEV_UI` is optional in development and must be exactly `1` to expose `/dev/ui` in production. Never commit local screenshot baselines.

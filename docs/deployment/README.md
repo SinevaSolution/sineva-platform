@@ -28,6 +28,8 @@ How the Sineva stack is run and released: the Docker Compose topology, how `sine
 | [secret_inventory.md](secret_inventory.md) | Inventory of production secrets, rotation policies, and injection methods | You deploy, rotate secrets, or configure production |
 | [ci_cd_pipeline.md](ci_cd_pipeline.md) | What CI runs, the Dockerfile stages, release order, rollout checklist | You change CI, the image or a release |
 
+- [Node.js security patch, 22 October 2026](node-security-2026-10-22.md): runtime baseline, CVE evidence and rollout verification.
+
 ## Suggested reading order
 
 1. `docker_compose_topology.md` to see what runs.

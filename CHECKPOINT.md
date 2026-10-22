@@ -9,7 +9,20 @@
 
 ## 0. Resume here (continued 2026-10-22)
 
-**Current checkout:** `feat/m0-platform`. PR #1 is confirmed merged. [Draft PR #2](https://github.com/SinevaSolution/sineva-platform/pull/2) contains this integration batch. All CI checks passed for `e0870df` ([run](https://github.com/SinevaSolution/sineva-platform/actions/runs/39718628686)). The three saved branches in the paused checkpoint are now integrated locally:
+**Paused at the Founder's request, 2026-10-22. Resume on `main` after syncing the merged PR.** [PR #2](https://github.com/SinevaSolution/sineva-platform/pull/2) is the delivery record for this batch; its final checks and merge commit are authoritative. Implementation branch: `feat/m0-platform`. PR #1 was already merged.
+
+### Handoff for the next session
+
+1. Sync `main` and read this section, [plan alignment](docs/development/implementation-plan-alignment-2026-10-22.md), and [the integration report](docs/development/resume-batch-2026-10-22.md). The workspace-level plan is at `../docs/implementation-plan/`; its older checkpoint is superseded by the current code and this handoff.
+2. Use Node `24.22.1` (`nvm install && nvm use`). Local, Docker and CI pins include CVE-2026-111497's fix. The built image `sineva-platform:20261022-node-security` uses this runtime and uid 1001. No remote rollout was performed.
+3. Latest local verification: lint, typecheck, build and bundle gate pass; web 2,091 tests pass with one existing skip, UI 548 pass. Shared and card-schema suites also pass with one existing skip each. Component browser smoke: 36 passed against a temporary production container; production gallery without opt-in returned HTTP 404. The PR runs the final code, including runtime-console assertions. All temporary app containers are stopped; no local dev server was started.
+4. Database release is complete: all 15 migrations are applied to approved local `sineva_platform`, and `_prisma_migrations` exists only in `platform`. Use `?schema=platform` for future status/deploy. No reset, seed or new migration is needed for this continuation.
+5. Resume with WP-M0-41: review CI screenshot artifacts, approve baselines through a `visual-update` PR, finish pattern galleries/forced states/remaining fixture localization and full accessibility coverage. Then finish the M0 shell/auth/settings audits and the real tenant repository/Qdrant gate. WP-M1-29/33/38/41 remain partial; see the exact gaps below and in the alignment report.
+6. Keep operational follow-ups visible: storage PUT CORS, Inbox expiry scheduler, Founder-managed `.env.example` entry `ENTITLEMENTS_MODE=open`, native Indonesian copy review, and sineva-ai contract acceptance. The full development audit still has five High reports through braces with no published patched version; the production-dependency audit is clean. See [security details](docs/deployment/node-security-2026-10-22.md).
+
+No further feature work was started after the pause request. Completing the commit, PR checks and merge is the authorized handoff work.
+
+### Integrated implementation
 
 | Work                                        | Integration                     | Current status                                                                                           |
 | :------------------------------------------ | :------------------------------ | :------------------------------------------------------------------------------------------------------- |
@@ -23,12 +36,16 @@
 
 **Local release:** completed with Founder approval: moved `_prisma_migrations` from `public` to `platform`, then deployed the Library, Business Profile/onboarding and Inbox migrations with `?schema=platform`. All 15 migrations succeeded; Prisma reports up to date. Existing counts remain 2 users, 2 workspaces and 1 conversation. Future status/deploy commands must use `?schema=platform`.
 
+**Plan review:** [Implementation plan alignment](docs/development/implementation-plan-alignment-2026-10-22.md) supersedes earlier UI completion claims. The current batch adds per-file upload status/retry, member detail and usage drawers, Inbox navigation fixes, a gated `/dev/ui` gallery and the initial browser harness. WP-M1-29/33/38/41 and WP-M0-41 remain partial until their full acceptance criteria pass.
+
+**Runtime security:** Node 24.22.1 is installed and pinned for local/Docker/CI use, with a guard against older runtimes (CVE-2026-111497). See [security evidence and rollout limits](docs/deployment/node-security-2026-10-22.md).
+
 **Next work, in order**
 
 1. Browser-check the two runtime fixes and new flows on the Founder-run server at port 3001. No dev server was started. Port 3001 had no listener when checked.
-2. Finish design acceptance: members detail/acceptance journeys, Inbox row/filter/diff/mobile behavior, Library multi-upload/folder tree/filter/usage UI, onboarding About you and in-wizard scan review. The integration report lists the remaining items; do not call WP-M1-29/33/38/41 fully accepted yet.
+2. Finish design acceptance: members browser journeys and OAuth-only recovery, Inbox repository source/date filters and mobile/detail behavior, Library nested folder tree/table/mobile behavior, onboarding About you and in-wizard scan review. The integration report lists the remaining items; do not call WP-M1-29/33/38/41 fully accepted yet.
 3. Coordinate acceptance of the proposed approval, Library and scan fixtures with the sineva-ai team. No files outside `sineva-platform` were edited.
-4. Finish M0: WP-M0-35 real repository/Qdrant canaries (the 71-route platform lane is now in CI), WP-M0-41 gallery and browser harness, WP-M0-43..46 audits, WP-M0-47 integration gate.
+4. Finish M0: WP-M0-35 real repository/Qdrant canaries (the 71-route platform lane is now in CI), WP-M0-41 remaining patterns/states/localization and approved browser evidence, WP-M0-43..46 audits, WP-M0-47 integration gate.
 
 **CI**
 
