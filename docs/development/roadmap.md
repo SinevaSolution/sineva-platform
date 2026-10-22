@@ -95,7 +95,7 @@ Goal: the product the Founder described. One conversation with Sino, a product c
 
 These came from the earlier roadmap. No design, owner or priority exists for them. Do not plan against them.
 
-- Streaming replies from `sineva-ai` to the browser. It needs `sineva-ai` support and a change to the contract.
+- Streaming replies from `sineva-ai` to the browser: the platform side exists (run relay, ADR-0022) and waits for the sineva-ai v2 stream endpoints (WP-M0-18). Markdown rendering of streamed text is M1.
 - A file upload UI on top of presign, after H1 and H4.
 - Roles and an audit log, after H1.
 

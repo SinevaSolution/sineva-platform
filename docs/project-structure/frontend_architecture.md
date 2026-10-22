@@ -91,6 +91,17 @@ Gotchas:
 - Retry state lives in a closure inside one call. Closing the toast discards it.
 - The first turn sends no `session_id`, so a retry of the first turn also sends none. If the first request reached sineva-ai before failing on the way back, the retry can create a second session.
 
+### Chat thread streaming (WP-M0-30)
+
+`ChatThread` (`src/client/components/chat/chat_thread.tsx`) shows replies as they stream. After a send it calls `openRunStream` (`src/client/lib/event_stream.ts`) with the run handle that `POST .../messages` returned. The state machine is `live_reply_model.ts` (pure, unit tested).
+
+- Streamed text renders as plain text in the existing `RoomBubble`. It is never HTML. The room mood is `working` while streaming, `done` on done, `error` on error.
+- A Stop button (with a Tooltip) calls `POST .../runs/{run_id}/cancel`; the partial text stays.
+- An error shows a friendly message from the error code (`stream_errors.ts`) and a Try again button. If nothing was produced, Try again attaches to the same run; if the run ended, it sends the same words again as a new message.
+- On opening a chat, if the last message is the person's, has a run handle, has no reply and is under 15 minutes old, the thread attaches to that run. That is how a new chat gets its reply (`StartChat` only creates the chat and navigates) and how a reload mid-reply resumes. Older unanswered messages are not started automatically.
+- The log region does not announce tokens; completion is announced once through a status line.
+- The English strings live in `stream_errors.ts` and the component until the message catalogs land (WP-M0-42).
+
 ## 6. Markdown rendering (debt)
 
 sineva-ai returns `reply_content`, which can contain markdown. The transcript renders it inside `<p className="whitespace-pre-wrap">`, so users see raw `**` and `#` characters.
