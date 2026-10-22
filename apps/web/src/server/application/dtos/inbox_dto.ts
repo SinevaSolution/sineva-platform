@@ -8,8 +8,11 @@ const SLUG = /^[a-z][a-z0-9_]{0,63}$/;
 
 export const ListInboxQuerySchema = z.object({
   // `ideas` is not a tab yet; asking for it is a 422 rather than an empty page.
-  tab: z.enum(['needs_review', 'needs_input', 'done']).optional(),
+  tab: z.enum(['needs_review', 'needs_input', 'needs_you', 'updates', 'done']).optional(),
   agent_slug: z.string().regex(SLUG).optional(),
+  kind: z.enum(['approval', 'input_request', 'result']).optional(),
+  source_type: z.enum(['chat', 'room', 'system']).optional(),
+  q: z.string().trim().min(1).max(80).optional(),
   cursor: z.string().min(1).max(300).optional(),
   limit: z.coerce.number().int().min(1).max(50).default(20),
 });

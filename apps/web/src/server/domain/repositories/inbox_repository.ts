@@ -4,7 +4,8 @@ import type {
   ApprovalRevisionEntity,
   ApprovalStatus,
   InboxItemEntity,
-  InboxTab,
+  InboxItemKind,
+  InboxListTab,
   InputField,
   InputRequestEntity,
   InputRequestStatus,
@@ -69,8 +70,12 @@ export interface NewResultRecord {
 
 export interface InboxListQuery {
   workspace_id: string;
-  tab?: InboxTab;
+  tab?: InboxListTab;
   agent_slug?: string;
+  kind?: InboxItemKind;
+  source_type?: InboxSourceType;
+  /** Case-insensitive part of the title. */
+  q?: string;
   /** Member scope: only items addressed to this person. Owner and admin leave it unset. */
   recipient_user_id?: string;
   limit: number;
@@ -85,10 +90,13 @@ export interface InboxListResult {
 export interface InboxCounts {
   needs_review: number;
   needs_input: number;
+  /** Results (news). Not part of Done, see ADR-0034. */
+  updates: number;
   done: number;
   /** Open items this user has not opened yet. */
   unread_needs_review: number;
   unread_needs_input: number;
+  unread_updates: number;
 }
 
 export interface ClaimInput {

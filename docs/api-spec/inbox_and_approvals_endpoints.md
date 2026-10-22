@@ -18,7 +18,7 @@ related_docs:
 
 Source: `apps/web/src/app/api/v1/workspaces/[workspace_id]/{inbox,approvals}/**`, `apps/web/src/app/internal/v1/{approvals,input-requests,inbox}/**` (each also mounted under `/api/internal/v1/`), `application/use-cases/inbox/`, `application/inbox/approval_contract_dto.ts`, `domain/approvals/action_types.ts`. Decision: [ADR-0032](../decisions/0032-inbox-items-approvals-and-run-resume.md). Envelope and errors are in [overview](overview.md). Identity is the session user and the workspace is in the URL; no body names a user.
 
-Current: backend only. The Inbox pages are a later work package.
+Current: the routes below, and the Inbox screen at `/w/{slug}/inbox` (two panes on desktop, list then detail on a phone). The screen asks for the views Needs you, Updates and Done ([ADR-0034](../decisions/0034-inbox-triage-views-and-updates-tab.md)).
 
 ## Public routes
 
@@ -26,16 +26,16 @@ All under `/api/v1/workspaces/{workspace_id}`. A workspace the caller is not in 
 
 | Route | Permission | What it does |
 | :--- | :--- | :--- |
-| `GET /inbox?tab=&agent_slug=&cursor=&limit=` | `inbox.view` | Items, newest first, with `next_cursor`. `tab` is `needs_review`, `needs_input` or `done` (`ideas` is a 422). `limit` 1 to 50, default 20 |
-| `GET /inbox/counts` | `inbox.view` | `needs_review`, `needs_input`, `done`, `unread_needs_review`, `unread_needs_input`, `badge` (`needs_review + needs_input`). Poll every 30 seconds and on tab focus |
-| `GET /inbox/{item_id}` | `inbox.view` | Detail: payload, `editable_fields`, `approve_note_key`, revisions |
+| `GET /inbox?tab=&agent_slug=&kind=&source_type=&q=&cursor=&limit=` | `inbox.view` | Items, newest first, with `next_cursor`. `tab` is `needs_review`, `needs_input`, `needs_you` (both of those), `updates` (results) or `done` (resolved, dismissed or expired approvals and questions; `ideas` is a 422). `kind` is `approval`, `input_request` or `result`; `source_type` is `chat`, `room` or `system`; `q` is a case-insensitive part of the title, 80 characters at most. Filters apply before paging. `limit` 1 to 50, default 20 |
+| `GET /inbox/counts` | `inbox.view` | `needs_review`, `needs_input`, `updates`, `done`, `unread_needs_review`, `unread_needs_input`, `unread_updates`, `badge` (`needs_review + needs_input`). Poll every 30 seconds and on tab focus, and after a decision |
+| `GET /inbox/{item_id}` | `inbox.view` | Detail: payload, `editable_fields`, `approve_note_key`, revisions, and `source.conversation_id` for a chat item (the link back to the chat) |
 | `POST /inbox/{item_id}/read` | `inbox.view` | Marks read for the caller. Idempotent, the first read time is kept |
 | `POST /inbox/{item_id}/dismiss` | `inbox.answer` | Dismisses an open input request. An approval answers 409 `not_dismissable` |
 | `POST /inbox/{item_id}/answer` | `inbox.answer` | Body `{version, answers}`, validated against the form |
 | `POST /approvals/{approval_id}/decision` | `approval.decide_own` | Body `{decision: approve or reject, version, note?, edited_payload?}` |
 | `POST /approvals/{approval_id}/changes` | `approval.decide_own` | Body `{version, instruction}`. The approval stays pending and awaits a revision |
 
-Visibility: owner and admin see every item and may decide any (`approval.decide_any`); a member sees and decides items addressed to them (the person whose chat produced the item), anything else is a 404; a viewer sees Done only and receives summaries without payload, revision bodies, answers, notes or the source link. `GET /inbox?tab=needs_review` as a viewer is an empty page, not an error.
+Visibility: owner and admin see every item and may decide any (`approval.decide_any`); a member sees and decides items addressed to them (the person whose chat produced the item), anything else is a 404; a viewer sees Updates and Done only and receives summaries without payload, revision bodies, answers, notes or the source link. `GET /inbox?tab=needs_you` as a viewer is an empty page, not an error.
 
 The decision, changes, answer and dismiss routes accept a Sineva session only. A bearer token that carries an `aud` claim, or starts with `mcp_`, is refused with 403 `wrong_token_audience` (stub until MCP tokens exist).
 

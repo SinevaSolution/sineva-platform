@@ -6,8 +6,17 @@ export const INBOX_ITEM_KINDS: readonly InboxItemKind[] = ['approval', 'input_re
 /** `open` waits for a person; the other three are final. */
 export type InboxItemState = 'open' | 'resolved' | 'dismissed' | 'expired';
 
-export type InboxTab = 'needs_review' | 'needs_input' | 'done';
-export const INBOX_TABS: readonly InboxTab[] = ['needs_review', 'needs_input', 'done'];
+/** The tab an item belongs to. `needs_you` is a list-only union of the first two (see `InboxListTab`). */
+export type InboxTab = 'needs_review' | 'needs_input' | 'updates' | 'done';
+export const INBOX_TABS: readonly InboxTab[] = ['needs_review', 'needs_input', 'updates', 'done'];
+
+/**
+ * What a list call may ask for: a tab, both "waiting for a person" tabs at once
+ * (`needs_you`), or everything finished (`finished`, Updates plus Done, which is
+ * what a viewer sees when no tab is named). `finished` is internal: the public
+ * query does not accept it.
+ */
+export type InboxListTab = InboxTab | 'needs_you' | 'finished';
 
 export type InboxSourceType = 'chat' | 'room' | 'system';
 
@@ -37,9 +46,13 @@ export interface InboxItemEntity {
   updated_at: string;
 }
 
-/** Tab mapping of FR-INBOX-02, as far as M1 kinds go. */
+/**
+ * Tab mapping of FR-INBOX-02, as far as M1 kinds go, with results in their own
+ * Updates tab (ADR-0034): a result is news, not a task someone handled.
+ */
 export function tabOf(item: Pick<InboxItemEntity, 'kind' | 'state'>): InboxTab {
-  if (item.state !== 'open' || item.kind === 'result') return 'done';
+  if (item.kind === 'result') return 'updates';
+  if (item.state !== 'open') return 'done';
   return item.kind === 'approval' ? 'needs_review' : 'needs_input';
 }
 

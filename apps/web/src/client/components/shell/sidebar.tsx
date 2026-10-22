@@ -11,6 +11,7 @@ import { formatNumber } from '@sineva/ui/format';
 import { useLocale, useTranslations } from '@/i18n/provider';
 import { toggleSidebarSection } from '@/client/store/slices/ui_slice';
 import type { ShellSpecialistView, ShellUserView, ShellWorkspaceView } from '@/shared/shell_view';
+import { useInboxBadge } from '@/client/components/inbox/inbox_events';
 import { NavIcon } from './nav_icon';
 import { buildNavSections, FEATURES, isNavItemActive, type NavItem } from './nav_model';
 import { RecentChats } from './recent_chats';
@@ -51,6 +52,9 @@ export function Sidebar({
   const t = useTranslations('shell');
   const dispatch = useAppDispatch();
   const closedSections = useAppSelector((s) => s.ui.collapsed_sections);
+  // What waits for this person: server-rendered at first, then kept fresh by
+  // polling and by the Inbox screen itself when something is decided.
+  const waiting = useInboxBadge(workspace.id, inboxCount);
   const sections = React.useMemo(() => buildNavSections(workspace.slug), [workspace.slug]);
   const names = React.useMemo(
     () => Object.fromEntries(specialists.map((s) => [s.agent_slug, s.display_name])),
@@ -69,7 +73,7 @@ export function Sidebar({
     <NavRow
       key={item.id}
       item={item}
-      count={item.id === 'inbox' ? inboxCount : 0}
+      count={item.id === 'inbox' ? waiting : 0}
       active={isNavItemActive(pathname, item.href, item.exact)}
       compact={collapsed}
       onNavigate={onNavigate}

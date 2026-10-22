@@ -57,6 +57,7 @@ Items marked "cross-service" are mirrored in `sineva-ai` (`docs/decisions/` ther
 | [0031](0031-business-profile-onboarding-and-website-scan.md) | First workspace endpoint, onboarding state, versioned Business Profile, profile pack, website scan port (cross-service, proposed contract)        | You touch onboarding, the Business Profile, the profile pack or the website scan |
 
 | [0032](0032-inbox-items-approvals-and-run-resume.md) | Inbox items, approvals, revisions, input requests; claim then resume then commit decisions (cross-service, proposed upstream contract) | You touch the Inbox, approvals, input requests or run resume |
+| [0034](0034-inbox-triage-views-and-updates-tab.md) | Inbox views Needs you, Updates and Done; results move to Updates; kind, source and text filters; chat link by conversation id | You touch the Inbox tabs, filters or counts |
 
 ## Suggested reading order
 

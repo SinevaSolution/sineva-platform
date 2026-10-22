@@ -15,8 +15,17 @@ export class GetInboxCountsUseCase {
       scope.kind === 'own' ? scope.user_id : undefined,
     );
     if (scope.kind === 'done_only') {
-      // A viewer has no open items to count.
-      return { needs_review: 0, needs_input: 0, done: counts.done, badge: 0, unread_needs_review: 0, unread_needs_input: 0 };
+      // A viewer has no open items to count; finished work (Updates, Done) is theirs to see.
+      return {
+        needs_review: 0,
+        needs_input: 0,
+        updates: counts.updates,
+        done: counts.done,
+        badge: 0,
+        unread_needs_review: 0,
+        unread_needs_input: 0,
+        unread_updates: counts.unread_updates,
+      };
     }
     return { ...counts, badge: counts.needs_review + counts.needs_input };
   }

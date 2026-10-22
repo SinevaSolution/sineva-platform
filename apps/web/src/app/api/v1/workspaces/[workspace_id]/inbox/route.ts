@@ -15,6 +15,9 @@ export const GET = withAuth<{ workspace_id: string }>(
         {
           ...(query.tab ? { tab: query.tab } : {}),
           ...(query.agent_slug ? { agent_slug: query.agent_slug } : {}),
+          ...(query.kind ? { kind: query.kind } : {}),
+          ...(query.source_type ? { source_type: query.source_type } : {}),
+          ...(query.q ? { q: query.q } : {}),
           ...(query.cursor ? { cursor: query.cursor } : {}),
           limit: query.limit,
         },

@@ -34,7 +34,7 @@ Shared schema relations, container getters, permission keys, OpenAPI paths and d
 | :-------------------------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `/w/{slug}/settings/members`            | Role-filtered directory, invitations, copied links, resend/revoke, member roles and specialist scope, removal, leave and ownership transfer. Sensitive operations can request password reauthentication.                                                 |
 | `/invite/{token}`, `/ownership/{token}` | Server-loaded public preview, explicit acceptance, inactive links, account mismatch and sign-in/sign-up return links. OAuth and email verification retain the invitation return path.                                                                    |
-| `/w/{slug}/inbox`                       | Server-loaded list/detail, first nonempty default tab, tab counts, URL-selected item/page, draft review/edit/reject/changes, input answers, read state and revision history. Mobile detail hides the list and provides a return action.                  |
+| `/w/{slug}/inbox`                       | Two panes beside each other on a wide screen, list then full-screen detail on a phone. Needs you, Updates and Done tabs with counts, filters and search in the address, the open item in the address, optimistic draft decisions and question answers, read state, revision history. See the Inbox section below and ADR-0034.                  |
 | `/w/{slug}/library`                     | Server-loaded documents and folders, search/status/folder URL state, file or note creation, extracted text preview, document metadata/scope/review edits, reindex, deletion confirmation and scoped retrieval checks. Usage counts are owner/admin only. |
 | `/onboarding`                           | Explicit first-workspace creation for a verified account with no workspace; pending invitations and duplicate submissions are handled. Root no longer ends at a non-actionable no-workspace page.                                                        |
 | `/w/{slug}/onboarding`                  | Saved owner steps, required language/business name, optional links/goals, profile confirmation and three first tasks. The member flow has two steps. A task opens a visible draft message for review.                                                    |
@@ -56,14 +56,16 @@ Dropzone component tests (`sn_dropzone.test.tsx`) and the Library component suit
 - Reading progress row with `SNProgressBar` for documents in `processing` status.
 - Scope, source type, and language filter controls wired to URL query params.
 
-### Inbox UI enhancements (WP-M1-41 partial)
+### Inbox triage screen (WP-M1-41 partial)
 
-- `InboxScreen` master list with full row summaries, unread indicators, specialist badges, and localized source indicators.
-- Specialist filter and a source dropdown. Source filtering currently applies only to the loaded page; repository/API filtering and date filtering remain open.
-- Keyboard navigation shortcuts (`j` and `k` navigation across list items).
-- Edited-draft diff view with toggle (`show_diff` / `hide_diff`) and visual distinction of added/removed content.
-- Expired item state presentation with "Draft again" link returning to source chat.
-- Component coverage in `inbox_ui.test.tsx`; browser/mobile acceptance remains open.
+- Layout: list pane 380 px (420 from `xl`) and detail pane; on a phone the list, then the detail full screen with a back button and a sticky action bar.
+- Views: Needs you (open drafts and questions), Updates (results), Done (handled or expired). Counts per tab; Updates counts unread news. Results moved out of Done (ADR-0034).
+- Filters, all server-side and in the address: specialist (Sino in that specialist's pose), kind (Drafts, Questions), source (chat, room, system) and text search. Updates hides the kind chips.
+- Rows: specialist avatar, title, the plain "what will happen" sentence, relative time, unread dot, kind icon with label, "Expires in 2 h" inside the last day.
+- Detail: who, what, when, link back to the chat (by conversation id), draft preview card with inline edit and word diff, Approve, Edit, Ask for changes (short instruction), Reject (optional note), the reassurance line, result states (who decided and when), conflict state naming who decided first, expired state with Draft again, question form with `SNInput`, `SNSelect`, `SNCheckbox` and `SNSegmented`.
+- Keyboard: `j` and `k` move (and open beside the list), Enter opens, `a` and `r` focus Approve and Reject (Enter decides, FR-INBOX-30), `e` edit, `c` ask for changes, `Esc` closes a field, a panel or the item, `/` searches. Nothing fires while a field, menu or dialog has focus.
+- Optimistic decisions with rollback and a toast; the sidebar badge reads `GET .../inbox/counts` (poll 30 s, on focus, and at once after a decision).
+- Not done: date filter, browser, mobile and axe matrix, screenshot baselines.
 
 ### Members UI enhancements (WP-M1-29 partial)
 
