@@ -138,6 +138,12 @@
       "image_too_large": "That photo is over 2 MB. Choose a smaller one.",
       "invalid_image": "We couldn't read that image. Try another one.",
       "upload_failed": "The photo didn't upload. Try again in a moment."
+    },
+    "not_found": {
+      "title": "Sino can't find this page"
+    },
+    "workspace_error": {
+      "title": "Something went wrong on our side"
     }
   },
   "meta": {
@@ -257,16 +263,6 @@
     }
   },
   "account": {
-    "settings": {
-      "title": "Settings",
-      "edit_profile": "Edit your profile"
-    },
-    "tabs": {
-      "label": "Account settings",
-      "profile": "Profile",
-      "preferences": "Preferences",
-      "sign_in": "Sign-in methods"
-    },
     "save_bar": {
       "label": "Unsaved changes",
       "unsaved": "You have unsaved changes",
@@ -579,7 +575,6 @@
       "generic": "Something went wrong while {name} was replying. Try again."
     }
   },
-  "mcp": {},
   "members": {
     "title": "Members",
     "description": "Manage who can work in this workspace.",
@@ -830,7 +825,6 @@
     "start_task": "Review task",
     "dismiss_task": "Show another task",
     "go_home": "Go to workspace",
-    "resume": "Continue setup",
     "types": {
       "online_shop": "Online shop",
       "food_beverage": "Food and beverage",
@@ -919,5 +913,68 @@
       "sometimes": "Sometimes",
       "often": "Often"
     }
-  }
+  },
+  "settings_ui": {
+    "title": "Settings",
+    "nav_label": "Settings sections",
+    "soon": "Soon",
+    "groups": {
+      "account": "Your account",
+      "workspace": "Workspace"
+    },
+    "items": {
+      "profile": {
+        "label": "Profile",
+        "description": "Your name, photo and how Sino greets you."
+      },
+      "preferences": {
+        "label": "Preferences",
+        "description": "Language, time zone and theme."
+      },
+      "sign_in": {
+        "label": "Sign-in methods",
+        "description": "Password and linked Google or GitHub accounts."
+      },
+      "business": {
+        "label": "Business profile",
+        "description": "The business details Sino can use in its work."
+      },
+      "members": {
+        "label": "Members",
+        "description": "Invite people and choose what each person can do."
+      },
+      "usage": {
+        "label": "Usage & plan",
+        "description": "How much your team uses Sino and what your plan includes."
+      },
+      "tools": {
+        "label": "Connected tools",
+        "description": "Connect the tools you already use."
+      },
+      "models": {
+        "label": "AI setup",
+        "description": "Choose which AI does the thinking for your team."
+      },
+      "billing": {
+        "label": "Billing",
+        "description": "Invoices, payment method and receipts."
+      },
+      "security": {
+        "label": "Security & audit",
+        "description": "Active sign-ins and a record of who changed what."
+      }
+    },
+    "hub": {
+      "signed_in_as": "Signed in as {name}",
+      "members_one": "1 member",
+      "members_other": "{count} members",
+      "profile_complete": "{percent}% complete",
+      "email_verified": "Email verified",
+      "email_unverified": "Email not verified",
+      "resume_title": "Resume setup",
+      "resume_body": "Your workspace setup is not finished. Pick up where you left off, it only takes a few minutes.",
+      "resume_action": "Continue setup"
+    }
+  },
+  "mcp": {}
 }

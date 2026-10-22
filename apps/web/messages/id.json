@@ -138,6 +138,12 @@
       "image_too_large": "Foto itu lebih dari 2 MB. Pilih yang lebih kecil.",
       "invalid_image": "Gambar itu tidak bisa dibaca. Coba yang lain.",
       "upload_failed": "Foto tidak terunggah. Coba lagi sebentar lagi."
+    },
+    "not_found": {
+      "title": "Sino tidak menemukan halaman ini"
+    },
+    "workspace_error": {
+      "title": "Ada masalah di pihak kami"
     }
   },
   "meta": {
@@ -257,16 +263,6 @@
     }
   },
   "account": {
-    "settings": {
-      "title": "Pengaturan",
-      "edit_profile": "Ubah profilmu"
-    },
-    "tabs": {
-      "label": "Pengaturan akun",
-      "profile": "Profil",
-      "preferences": "Preferensi",
-      "sign_in": "Cara masuk"
-    },
     "save_bar": {
       "label": "Perubahan belum disimpan",
       "unsaved": "Ada perubahan yang belum disimpan",
@@ -579,7 +575,6 @@
       "generic": "Ada yang tidak beres saat {name} membalas. Coba lagi."
     }
   },
-  "mcp": {},
   "members": {
     "title": "Anggota",
     "description": "Kelola siapa yang dapat bekerja di workspace ini.",
@@ -830,7 +825,6 @@
     "start_task": "Tinjau tugas",
     "dismiss_task": "Tampilkan tugas lain",
     "go_home": "Buka workspace",
-    "resume": "Lanjutkan penyiapan",
     "types": {
       "online_shop": "Toko online",
       "food_beverage": "Makanan dan minuman",
@@ -919,5 +913,68 @@
       "sometimes": "Kadang-kadang",
       "often": "Sering"
     }
-  }
+  },
+  "settings_ui": {
+    "title": "Pengaturan",
+    "nav_label": "Bagian pengaturan",
+    "soon": "Segera",
+    "groups": {
+      "account": "Akunmu",
+      "workspace": "Workspace"
+    },
+    "items": {
+      "profile": {
+        "label": "Profil",
+        "description": "Nama, foto, dan cara Sino menyapamu."
+      },
+      "preferences": {
+        "label": "Preferensi",
+        "description": "Bahasa, zona waktu, dan tema."
+      },
+      "sign_in": {
+        "label": "Metode masuk",
+        "description": "Kata sandi dan akun Google atau GitHub yang terhubung."
+      },
+      "business": {
+        "label": "Profil bisnis",
+        "description": "Detail bisnis yang boleh dipakai Sino saat bekerja."
+      },
+      "members": {
+        "label": "Anggota",
+        "description": "Undang orang dan atur apa yang boleh dilakukan tiap orang."
+      },
+      "usage": {
+        "label": "Pemakaian & paket",
+        "description": "Seberapa sering timmu memakai Sino dan apa isi paketmu."
+      },
+      "tools": {
+        "label": "Aplikasi terhubung",
+        "description": "Hubungkan alat yang sudah kamu pakai."
+      },
+      "models": {
+        "label": "Pengaturan AI",
+        "description": "Pilih AI mana yang berpikir untuk timmu."
+      },
+      "billing": {
+        "label": "Tagihan",
+        "description": "Faktur, metode pembayaran, dan bukti bayar."
+      },
+      "security": {
+        "label": "Keamanan & audit",
+        "description": "Sesi masuk yang aktif dan catatan siapa mengubah apa."
+      }
+    },
+    "hub": {
+      "signed_in_as": "Masuk sebagai {name}",
+      "members_one": "1 anggota",
+      "members_other": "{count} anggota",
+      "profile_complete": "{percent}% lengkap",
+      "email_verified": "Email terverifikasi",
+      "email_unverified": "Email belum terverifikasi",
+      "resume_title": "Lanjutkan penyiapan",
+      "resume_body": "Penyiapan workspace-mu belum selesai. Lanjutkan dari terakhir kamu berhenti, hanya butuh beberapa menit.",
+      "resume_action": "Lanjutkan penyiapan"
+    }
+  },
+  "mcp": {}
 }

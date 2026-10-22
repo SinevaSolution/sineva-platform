@@ -17,6 +17,7 @@ import { formatDate } from '@sineva/ui/format';
 import { PresetEmptyState } from '@/client/components/ui/empty_state';
 import { ApiError, apiRequest } from '@/client/lib/api';
 import { useApiErrorText } from '@/client/lib/use_api_error';
+import { SettingsPageHeader } from '@/client/components/settings/settings_page_header';
 import { useLocale, useTranslations } from '@/i18n/provider';
 import type {
   InvitationCreatedView,
@@ -114,24 +115,24 @@ export function MembersScreen({
     });
 
   return (
-    <section className="mx-auto w-full max-w-4xl space-y-8 p-5 sm:p-8">
-      <header className="flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-semibold">{t('title')}</h1>
-          <p className="mt-2 text-sm text-text-secondary">{t('description')}</p>
-        </div>
-        {manager ? (
-          <SNButton
-            variant="primary"
-            onClick={() => {
-              setEditor('invite');
-              setError(null);
-            }}
-          >
-            {t('invite')}
-          </SNButton>
-        ) : null}
-      </header>
+    <section className="space-y-8">
+      <SettingsPageHeader
+        title={t('title')}
+        description={t('description')}
+        actions={
+          manager ? (
+            <SNButton
+              variant="primary"
+              onClick={() => {
+                setEditor('invite');
+                setError(null);
+              }}
+            >
+              {t('invite')}
+            </SNButton>
+          ) : null
+        }
+      />
       {error ? <SNBanner tone="danger">{error}</SNBanner> : null}
       {created ? (
         <div className="space-y-3 rounded-md border border-border p-4">
