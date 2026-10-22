@@ -1,3 +1,5 @@
+'use client';
+
 import * as React from 'react';
 
 // SNField wires a label, helper and error to the control inside it. The control
