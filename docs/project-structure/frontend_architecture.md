@@ -28,7 +28,7 @@ Frontend code is `src/client` (components, store), the routing files in `src/app
 - `src/client/**` never imports `@/server/**` or `server-only`. ESLint (`no-restricted-imports`) and `architecture.test.ts` both fail on it.
 - Types the browser reads come from `src/shared` (`WorkspaceSpecialistRosterView`, `ChatReplyView`; the shell's `ShellSpecialistView` is built from the static manifest). `server/http/*_contract.ts` guards them against the server types.
 - Server components in `src/app` may call use cases from `@/server/container` directly. `app/page.tsx` does. Props passed to a client component must be serializable and typed with a `src/shared` view.
-- Shared presentation primitives (`Button`, `Card`, `Badge`, `Container`, `StatusPill`) come from `@sineva/ui`.
+- Shared presentation components come from `@sineva/ui` and all start with `SN` (`SNButton`, `SNSelect`, `SNDialog`, ...; [ADR-0028](../decisions/0028-sn-component-prefix-and-form-controls.md)). The Sino pieces `SNSinoFigure`, `SNSinoLoop` and `SNSpecialistTile` live in `client/components/ui/`. Dropdown fields use `SNSelect` or `SNCombobox`, never a native `<select>`.
 
 ## 2. Current
 

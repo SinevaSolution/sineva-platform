@@ -121,3 +121,4 @@ More specific rules apply inside these folders. Read them when you work there.
 - [`apps/web/src/client/AGENTS.md`](apps/web/src/client/AGENTS.md): components, store, boundary rules
 - [`apps/web/src/app/AGENTS.md`](apps/web/src/app/AGENTS.md): routes and handlers
 - [`apps/web/prisma/AGENTS.md`](apps/web/prisma/AGENTS.md): schema, migrations, safety
+- [`packages/ui/AGENTS.md`](packages/ui/AGENTS.md): design-system components, the `SN` prefix, lint and test rails
