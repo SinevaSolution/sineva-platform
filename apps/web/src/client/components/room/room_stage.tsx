@@ -21,6 +21,7 @@ export function RoomStage({
   mood,
   label,
   header,
+  topBar,
   footer,
   children,
 }: {
@@ -30,6 +31,8 @@ export function RoomStage({
   /** Name tag over Sino, e.g. "SinoFinance". */
   label: string;
   header?: React.ReactNode;
+  /** Full-width strip above the chat column and Sino (New chat's cast picker). */
+  topBar?: React.ReactNode;
   footer?: React.ReactNode;
   children: React.ReactNode;
 }) {
@@ -60,7 +63,7 @@ export function RoomStage({
   return (
     <section
       ref={ref}
-      className="relative isolate flex min-h-0 flex-1 overflow-hidden bg-[var(--ink-950,#0b2a31)] [container-type:size] [--px:0] [--py:0]"
+      className="relative isolate flex min-h-0 flex-1 flex-col overflow-hidden bg-[var(--ink-950,#0b2a31)] [container-type:size] [--px:0] [--py:0]"
     >
       {/* Room. A 16:9 box that always covers the panel (container units),
           anchored at 70% across and 60% down so Sino and the floor stay in
@@ -109,6 +112,7 @@ export function RoomStage({
         className="absolute inset-0 -z-10 bg-[linear-gradient(90deg,rgba(6,24,28,0.62)_0%,rgba(6,24,28,0.38)_42%,rgba(6,24,28,0.04)_70%),linear-gradient(0deg,rgba(6,24,28,0.4),transparent_30%)]"
       />
 
+      {topBar}
       {/* Chat column */}
       <div className="relative flex min-h-0 w-full flex-1 flex-col md:max-w-[min(640px,58%)]">
         {header}

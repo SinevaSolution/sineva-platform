@@ -309,6 +309,7 @@
   "room": {
     "picker_label": "Kamu mau bekerja dengan siapa?",
     "team_hint": "Sino dan semua spesialis. Ketik @ untuk memanggil seseorang.",
+    "team_role": "Sino bersama semua",
     "specialist_hint": "Obrolan pribadi dengan {name} ({role})",
     "placeholder_team": "Tanya Sino apa saja. Ketik @ untuk memanggil spesialis",
     "placeholder_specialist": "Kirim pesan ke {name}",

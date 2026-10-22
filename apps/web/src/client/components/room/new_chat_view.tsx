@@ -59,14 +59,22 @@ export function NewChatView({
     router.replace(slug ? `/w/${workspaceSlug}/new?with=${slug}` : `/w/${workspaceSlug}/new`, { scroll: false });
   }
 
+  // The cast spans the whole room, not just the chat column: a frosted
+  // track with one chip per companion. Chips share the width evenly on wide
+  // screens (name and role), and scroll sideways on narrow ones.
   const picker = (
-    <div className="px-4 pt-4 sm:px-6">
-      <div role="radiogroup" aria-label={t('picker_label')} className="flex gap-1.5 overflow-x-auto pb-1">
+    <div className="relative px-4 pt-4 sm:px-6">
+      <div
+        role="radiogroup"
+        aria-label={t('picker_label')}
+        className="flex gap-1 overflow-x-auto rounded-[28px] bg-black/25 p-1.5 ring-1 ring-white/10 backdrop-blur-xl [scrollbar-width:none] lg:overflow-visible"
+      >
         <CastChip
           checked={withSlug === null}
           onSelect={() => choose(null)}
           pose="wave"
           label={tSpecialists('marker.team')}
+          role={t('team_role')}
           hint={t('team_hint')}
         />
         {specialists.map((s) => (
@@ -76,6 +84,7 @@ export function NewChatView({
             onSelect={() => choose(s.agent_slug)}
             pose={specialistPose(s.agent_slug)}
             label={s.display_name}
+            role={s.role_title}
             hint={t('specialist_hint', { name: s.display_name, role: s.role_title })}
           />
         ))}
@@ -103,7 +112,7 @@ export function NewChatView({
   );
 
   return (
-    <RoomStage slug={withSlug} mood={mood} label={withSlug ? name : t('stage_team')} header={picker} footer={footer}>
+    <RoomStage slug={withSlug} mood={mood} topBar={picker} label={withSlug ? name : t('stage_team')} footer={footer}>
       <div key={withSlug ?? 'team'} className="flex min-h-full flex-col justify-end gap-3 px-4 pb-4 pt-8 sm:px-6">
         <div className="anim-rise flex items-end gap-2">
           <SinoFigure pose={specialistPose(withSlug ?? 'sino')} size={36} className="md:hidden" />
@@ -138,12 +147,15 @@ function CastChip({
   onSelect,
   pose,
   label,
+  role,
   hint,
 }: {
   checked: boolean;
   onSelect: () => void;
   pose: Parameters<typeof SinoFigure>[0]['pose'];
   label: string;
+  /** Second line on wide screens, so a chip says who the companion is. */
+  role: string;
   hint: string;
 }) {
   return (
@@ -154,18 +166,28 @@ function CastChip({
         aria-checked={checked}
         onClick={onSelect}
         className={cn(
-          'group flex h-11 shrink-0 items-center gap-1.5 rounded-full pl-0.5 pr-3.5 text-[13px] font-medium ring-1 backdrop-blur-md transition-[background-color,color,box-shadow] duration-200',
+          'group flex h-14 min-w-[148px] shrink-0 items-center gap-2 rounded-full pl-1 pr-4 text-left ring-1 transition-[background-color,color,box-shadow] duration-200 lg:min-w-0 lg:flex-1',
           checked
-            ? 'bg-[color-mix(in_oklab,var(--color-surface)_94%,transparent)] text-fg ring-white/60'
-            : 'bg-white/10 text-white/85 ring-white/15 hover:bg-white/20 hover:text-white',
+            ? 'bg-[color-mix(in_oklab,var(--color-surface)_95%,transparent)] text-fg shadow-[0_6px_20px_-8px_rgb(0_0_0/0.45)] ring-white/70'
+            : 'text-white/85 ring-transparent hover:bg-white/12 hover:text-white',
         )}
       >
         <SinoFigure
           pose={pose}
-          size={40}
+          size={46}
           className="transition-transform duration-300 ease-[var(--ease-out-quint)] group-hover:-translate-y-0.5"
         />
-        {label}
+        <span className="min-w-0">
+          <span className="block truncate text-[13px] font-semibold leading-4">{label}</span>
+          <span
+            className={cn(
+              'mt-0.5 hidden truncate text-[11px] leading-4 xl:block',
+              checked ? 'text-fg-tertiary' : 'text-white/60',
+            )}
+          >
+            {role}
+          </span>
+        </span>
       </button>
     </Tooltip>
   );

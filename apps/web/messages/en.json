@@ -309,6 +309,7 @@
   "room": {
     "picker_label": "Who do you want to work with?",
     "team_hint": "Sino and every specialist. Type @ to bring someone in.",
+    "team_role": "Sino with everyone",
     "specialist_hint": "Private chat with {name}, your {role}",
     "placeholder_team": "Ask Sino anything. Type @ to bring in a specialist",
     "placeholder_specialist": "Message {name}",
