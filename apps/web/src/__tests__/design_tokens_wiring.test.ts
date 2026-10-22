@@ -81,12 +81,13 @@ describe('design token wiring (FR-UX-01, FR-UX-05, FR-UX-06, FR-UX-42)', () => {
     );
   });
 
-  it('applies both font variables on <html> and renders the theme script in <head>', () => {
+  it('applies both font variables on <html> and renders the theme script in the root layout', () => {
     const layout = read(join(SRC, 'app/layout.tsx'));
     expect(layout).toMatch(/from '@\/styles\/fonts'/);
     expect(layout).toContain('plusJakartaSans.variable');
     expect(layout).toContain('geistMono.variable');
-    expect(layout).toMatch(/<head>[\s\S]*<ThemeScript nonce=\{nonce\}[\s\S]*<\/head>/);
+    // next/script beforeInteractive: Next lifts it into <head> before hydration.
+    expect(layout).toMatch(/<body>[\s\S]*<ThemeScript nonce=\{nonce\}/);
   });
 
   it('uses the compro canvas-alt values as the browser theme color', () => {

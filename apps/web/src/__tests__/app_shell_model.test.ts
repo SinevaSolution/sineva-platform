@@ -36,12 +36,18 @@ describe('sidebar navigation model', () => {
 
   it('shows every planned feature, marking unbuilt ones as soon', () => {
     const items = buildNavSections('kopi-senja').flatMap((s) => s.items);
-    for (const id of ['inbox', 'squads', 'library', 'tools', 'workflows', 'routines', 'skills']) {
+    for (const id of ['inbox', 'customers', 'squads', 'library', 'tools', 'workflows', 'routines', 'skills']) {
       const item = items.find((i) => i.id === id);
       expect(item?.href).toBe(`/w/kopi-senja/${FEATURES[id as FeatureId].segment}`);
       expect(item?.soon).toBe(true);
     }
     expect(items.find((i) => i.id === 'home')?.soon).toBe(false);
+  });
+
+  it('lists Customer chats right after Inbox in the primary group', () => {
+    const primary = buildNavSections('kopi-senja').find((s) => s.id === 'primary');
+    const ids = primary?.items.map((i) => i.id) ?? [];
+    expect(ids.indexOf('customers')).toBe(ids.indexOf('inbox') + 1);
   });
 
   it('knows which path segments are planned features', () => {

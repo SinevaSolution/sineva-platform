@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const createTransport = vi.hoisted(() => vi.fn(() => ({ sendMail: vi.fn() })));
+const createTransport = vi.hoisted(() => vi.fn<(options: unknown) => { sendMail: () => void }>(() => ({ sendMail: vi.fn() })));
 vi.mock('nodemailer', () => ({ default: { createTransport }, createTransport }));
 
 import { SmtpEmailSender } from '@/server/infrastructure/email/smtp_email_sender';
@@ -8,7 +8,7 @@ import { SmtpEmailSender } from '@/server/infrastructure/email/smtp_email_sender
 function transportOptions(port: number, secure?: boolean) {
   createTransport.mockClear();
   new SmtpEmailSender({ host: 'smtp.example.test', port, secure, from: 'Sineva <noreply@sineva.id>' });
-  return createTransport.mock.calls[0][0] as { port: number; secure: boolean };
+  return createTransport.mock.calls[0]?.[0] as { port: number; secure: boolean };
 }
 
 // EMAIL_SERVER_PORT=465 is SMTPS: TLS from the first byte. nodemailer needs

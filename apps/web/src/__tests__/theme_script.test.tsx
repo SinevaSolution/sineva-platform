@@ -15,4 +15,10 @@ describe('ThemeScript', () => {
     expect(el.props.nonce).toBe('abc123');
     expect(el.props.children).toBe(THEME_SCRIPT);
   });
+
+  it('passes no nonce when none is provided (CSP off in development)', () => {
+    const el = ThemeScript({});
+    expect(el.props.nonce).toBeUndefined();
+    expect(el.props.id).toBe('sineva-theme');
+  });
 });
