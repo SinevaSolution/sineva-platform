@@ -9,7 +9,7 @@
 
 ## 0. Resume here (continued 2026-10-22)
 
-**Current checkout:** `feat/m0-platform`. PR #1 is confirmed merged. The three saved branches in the paused checkpoint are now integrated locally:
+**Current checkout:** `feat/m0-platform`. PR #1 is confirmed merged. [Draft PR #2](https://github.com/SinevaSolution/sineva-platform/pull/2) contains this integration batch; CI was running when this note was written. The three saved branches in the paused checkpoint are now integrated locally:
 
 | Work                                        | Integration                     | Current status                                                                                           |
 | :------------------------------------------ | :------------------------------ | :------------------------------------------------------------------------------------------------------- |
