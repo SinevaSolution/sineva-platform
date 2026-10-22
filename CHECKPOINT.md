@@ -20,7 +20,7 @@
 5. Resume with WP-M0-41: review CI screenshot artifacts, approve baselines through a `visual-update` PR, finish pattern galleries/forced states/remaining fixture localization and full accessibility coverage. Then finish the M0 shell/auth/settings audits and the real tenant repository/Qdrant gate. WP-M1-29/33/38/41 remain partial; see the exact gaps below and in the alignment report.
 6. Keep operational follow-ups visible: storage PUT CORS, Inbox expiry scheduler, Founder-managed `.env.example` entry `ENTITLEMENTS_MODE=open`, native Indonesian copy review, and sineva-ai contract acceptance. The full development audit still has five High reports through braces with no published patched version; the production-dependency audit is clean. See [security details](docs/deployment/node-security-2026-10-22.md).
 
-No further feature work was started after the pause request. Completing the commit, PR checks and merge is the authorized handoff work.
+Merge-only repair after pausing: Linux CI exposed unbroken pseudo-locale padding overflowing at 200% text zoom on 360/390 px viewports. The gallery now wraps long text; the existing overflow assertion stays enabled. No further feature work was started after the pause request. Completing the commit, PR checks and merge is the authorized handoff work.
 
 ### Integrated implementation
 

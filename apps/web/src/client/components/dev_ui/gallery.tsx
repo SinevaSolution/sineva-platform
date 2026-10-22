@@ -74,7 +74,7 @@ function GalleryContent({
     `/dev/ui?${new URLSearchParams({ theme, locale, pseudo: pseudo ? '1' : '0', width: String(width), ...(component ? { component } : {}), ...values })}`;
   return (
     <main
-      className="mx-auto space-y-6 bg-canvas-alt p-4 text-text sm:p-8"
+      className="mx-auto space-y-6 wrap-anywhere bg-canvas-alt p-4 text-text sm:p-8"
       style={{ maxWidth: width }}
       data-testid="component-gallery"
     >
