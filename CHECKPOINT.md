@@ -1,13 +1,47 @@
 # Sineva Platform Implementation Checkpoint
 
-> **Last Updated:** 2026-10-22 WIB  
-> **Current Git Branch:** `feat/m0-platform` (integration branch, local, not pushed)  
-> **Latest Commit:** see `git log feat/m0-platform`  
-> **Current Milestone:** **M0 — Foundations**  
-> **Last Completed Work Packages:** WP-M0-06..09, 30, 33, 34, 42, 48 (platform halves) + UI revamp  
-> **Next:** batch 2: WP-M0-31, 32, 36, 37, 38; then 39 to 41, 43 to 46, 35, 47  
+> **Last Updated:** 2026-10-22 (session paused by the Founder)  
+> **Branch:** `main` (PR #1 merged `feat/m0-platform`, see section 0); keep integrating on `feat/m0-platform` and open a PR per batch  
+> **Current Milestone:** M0 Foundations, with M1 items pulled forward  
+> **Resume here:** section 0  
 
 ---
+
+## 0. Resume here (paused 2026-10-22)
+
+**State of git**
+- `feat/m0-platform` was pushed and opened as PR #1 (https://github.com/SinevaSolution/sineva-platform/pull/1) into `main`. Check whether it is merged (`gh pr view 1`); if CI blocked it, see "CI" below.
+- Unmerged work, saved on backup branches on origin (`wip/<branch>`):
+
+| Branch (local worktree under `.claude/worktrees/`) | Work | State | Next step |
+| :--- | :--- | :--- | :--- |
+| `worktree-agent-a0ea201ff87df7df2` | WP-M1-40 Inbox backend (ADR-0032, migration `20261022170000_inbox_items_and_approvals`) | Done, all tests green in its worktree | Merge into `feat/m0-platform`: conflicts in `schema.prisma`, `container.ts`, `route_policy.ts`, `openapi/spec.ts`, `docs/api-spec/README.md`, `docs/decisions/README.md` (all unions with WP-M1-28 members). Then deploy its migration and schedule `POST /internal/v1/inbox/expire` every minute. |
+| `worktree-agent-ad2911b505e8daeb6` | WP-M1-32 Sino Library backend (ADR-0030, migration prefix `20261022150000`) | Stopped mid-work; last commit is a WIP save, gate not passing yet | Resume the agent or finish by hand, then merge. |
+| `worktree-agent-a41cc777f3b90d3b6` | WP-M1-35/36 Business Profile + onboarding backend (ADR-0031, migration prefix `20261022160000`); fixes the new-user dead end (`src/app/page.tsx`) | Stopped mid-work (was writing route files); WIP save | Resume, then merge. |
+
+**Next work, in order (Founder: prioritise features not yet built)**
+1. Merge the three branches above.
+2. UI on the SN components: WP-M1-29 (members screens + `/invite/{token}` and `/ownership/{token}` pages; add both to `PUBLIC_PAGES` in `src/proxy.ts`; flow in `docs/api-spec/members_and_invitations_endpoints.md`), WP-M1-41 Inbox UI (sidebar badge from `GET .../inbox/counts`), WP-M1-33 Library UI, WP-M1-38 onboarding UI.
+3. Fill the M1 contract placeholders in `sineva-ai/docs/api-spec/platform_integration_contract.md` section 11 from the agents' proposed fixtures: `approval_*.json` (Inbox), `library_*.json`, `scan_*.json`.
+4. Remaining M0: WP-M0-35 cross-tenant canary suite, WP-M0-41 `/dev/ui` gallery, WP-M0-43..46 audits, WP-M0-47 gate.
+
+**CI**
+- Jobs: Lint/Typecheck/Test/Build and Integration pass. Security & Compliance failed twice on our side and was fixed: credential pattern false positives (`4ef5112`) and `npm sbom` rejecting React 18-only peers of the unused `swagger-ui-react` (removed in `2d56b83`). Local `npm sbom` is not a reliable check because worktree agents changed the shared `node_modules`; trust CI.
+
+**Founder decisions this session (also in the plan or ADRs)**
+- Components use the `SN` prefix (`SNButton`, `SNSelect`, ...), ADR-0028; a test enforces it; native `<select>` is banned.
+- Customer chats: own section after Inbox, default mode Draft, SinoHelp owns customer replies (D-M3-9, WP-M3-44/45, Linear "PRD Addendum: Customer chats").
+- BYOK keys: vault-encrypted (AES-256-GCM envelope) and shown only as `key_hint` (prefix + last 4) after save (added to WP-M2-35 and WP-M3-32).
+- Invitations pulled forward (WP-M1-28 done); seat limits per plan tier stay `open` until M6.
+- Rooms are office scenes (Blender, `sino-3d-mascot/scripts/rooms/`), Sino placement fractions in `room_stage.tsx`.
+- sineva-ai docs may be updated with contracts (docs only, no code, no commits there): `sineva-ai/docs/api-spec/platform_integration_contract.md` lists gaps G-01..G-16 (G-12 fixed on the platform).
+
+**Pending for the Founder**
+- Storage bucket CORS for `PUT` from the app origin (avatar and library uploads).
+- Add `ENTITLEMENTS_MODE=open` to `.env.example` (agents cannot read or edit it).
+- Browser pass of the new UI (no agent started a dev server): theme script fix, SN components, glow, rooms, profile tabs, rename/delete dialog, cast picker.
+- Native review of Indonesian copy.
+
 
 ## 1. Project Directives & Constraints (CRITICAL FOR ALL AGENTS)
 
@@ -68,13 +102,21 @@ The database has been migrated and seeded (`npm run db:seed`):
 | **WP-M0-33 / 48** | **DONE (platform)** | `audit_events` (migration `20261022100000_audit_events`), route policy inventory, internal ingest; entitlement seam in `open` mode (`ENTITLEMENTS_MODE`). |
 | **WP-M0-34** | **DONE (platform)** | PII detectors and `mask()` in `@sineva/shared`, allowlisted logger, lint bans `console` in server code. sineva-ai copy of vectors pending. |
 | **WP-M0-42** | **DONE** | i18n EN/ID (in-repo translator, ADR-0023), catalogs in `apps/web/messages`, copy lint, all UI strings migrated. Indonesian needs native review. |
+| **WP-M0-31** | **DONE (platform)** | Specialist manifest (display copy, EN/ID), `agent_configs` dropped, workspace agents route (ADR-0024). |
+| **WP-M0-32** | **DONE (platform)** | Card schema registry, `message_cards`, fallback renderer (ADR-0025). |
+| **WP-M0-36** | **DONE** | Profile attributes, preferences, avatar pipeline, revamped profile page (ADR-0026). Email change deferred. |
+| **WP-M0-37 / 38** | **DONE** | Compro token re-base, theme script, design lint, token and contrast tests (ADR-0027). |
+| **WP-M0-39 / 40** | **DONE** | SN component library (32 components, `SNSelect`, `SNCombobox`), app migrated (ADR-0028). |
+| **WP-M1-16 (part)** | **DONE** | Rename and delete chats. |
+| **WP-M1-28** | **DONE (backend)** | Members, invitations, ownership transfer (ADR-0029, migration `20261022140000`). UI is WP-M1-29. |
+| **Extras** | **DONE** | @mention pills, Customer chats nav item, glow on Ask Sino inputs, office rooms, favicon/manifest, fixes (Redis lazy connect, run attach race, theme script via next/script, sineva-ai `error_code`, SMTP renderer). |
 | **Hotfix (React 19)** | **DONE** | Commit `61855a0`: Suppressed React 19 false-positive console error regarding `<script>` tag in `next-themes` (`apps/web/src/client/store/provider.tsx`). Superseded: `next-themes` was removed in WP-M0-37 (compro theme script and `useTheme` replace it), so the console-error suppression is gone too. |
 
 ---
 
 ## 4. Pending integrator actions
 
-- Done 2026-10-22: `chat_runs` and `audit_events` deployed to the shared DB; `test:integration` green (5 files, 33 tests) on a throwaway DB, since dropped.
+- Deployed on the local dev DB: every migration up to `20261022140000_members_invitations_ownership_transfer` (chat_runs, audit_events, message_cards, drop_agent_configs, user_preferences, members). Earlier note: `chat_runs` and `audit_events` deployed to the shared DB; `test:integration` green (5 files, 33 tests) on a throwaway DB, since dropped.
 - Gotcha for this local DB: `_prisma_migrations` lives in `public` (the DB was first migrated with a plain URL) while every table is in `platform`. Run `migrate status`/`deploy` with the plain `DATABASE_URL` from `.env`; adding `?schema=platform` makes Prisma look for `platform._prisma_migrations`, see nothing applied and try to re-run `init`. All migration SQL is schema-qualified, so tables still land in `platform`.
 - Add `ENTITLEMENTS_MODE=open` to `.env.example`.
 - Blocked on sineva-ai team: WP-M0-13..20 (v2 contract, SSE, catalog), PII vectors copy, audit publisher.
