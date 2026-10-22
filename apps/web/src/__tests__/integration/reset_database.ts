@@ -12,7 +12,7 @@ async function truncatePlatformTables(): Promise<void> {
     'TRUNCATE TABLE "platform"."chat_runs", "platform"."messages", "platform"."conversations", ' +
       '"platform"."storage_objects", ' +
       '"platform"."workspace_member_specialists", "platform"."workspace_members", ' +
-      '"platform"."workspace_invitations", "platform"."sessions", "platform"."accounts", ' +
+      '"platform"."workspace_invitations", "platform"."ownership_transfers", "platform"."sessions", "platform"."accounts", ' +
       '"platform"."verifications", "platform"."platform_staff", "platform"."auth_login_attempts", ' +
       '"platform"."workspaces", "platform"."users", ' +
       // No foreign key links these to the tables above (audit rows outlive
