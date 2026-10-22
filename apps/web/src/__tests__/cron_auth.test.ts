@@ -3,6 +3,8 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { GET as getApiExpire, POST as postApiExpire } from '@/app/api/internal/v1/inbox/expire/route';
 import { GET as getExpire, POST as postExpire } from '@/app/internal/v1/inbox/expire/route';
 import { POST as postApprovals } from '@/app/internal/v1/approvals/route';
+import { GET as getApiTick, POST as postApiTick } from '@/app/api/internal/v1/jobs/tick/route';
+import { GET as getStats } from '@/app/internal/v1/jobs/stats/route';
 import * as container from '@/server/container';
 import * as envModule from '@/server/infrastructure/config/env';
 import { validateEnvConfig } from '@/server/infrastructure/config/env';
@@ -96,6 +98,40 @@ describe('cron authentication for the internal job routes (ADR-0047)', () => {
     it('accepts the Bearer CRON_SECRET and rejects a wrong one', async () => {
       expect((await postApiExpire(req('POST', { authorization: `Bearer ${CRON}` }))).status).toBe(200);
       expect((await postApiExpire(req('POST', { authorization: 'Bearer wrong' }))).status).toBe(401);
+    });
+  });
+
+  describe('the Connections job tick takes the same credentials', () => {
+    const tick = vi.fn();
+    const tickResult = { planned: 1, reaped: 0, ran: 1, succeeded: 1, retried: 0, failed: 0, planner_errors: 0 };
+
+    beforeEach(() => {
+      tick.mockResolvedValue(tickResult);
+      vi.spyOn(container, 'getTickJobsUseCase').mockReturnValue({ execute: tick } as never);
+    });
+
+    it('GET with the Bearer CRON_SECRET runs one beat with the default batch', async () => {
+      const res = await getApiTick(req('GET', { authorization: `Bearer ${CRON}` }, '/api/internal/v1/jobs/tick'));
+      expect(res.status).toBe(200);
+      expect(tick).toHaveBeenCalledWith({ max_jobs: 25 });
+      expect((await res.json()).data).toEqual(tickResult);
+    });
+
+    it('GET without credentials or with a wrong bearer is 401 and runs nothing', async () => {
+      expect((await getApiTick(req('GET', {}, '/api/internal/v1/jobs/tick'))).status).toBe(401);
+      expect((await getApiTick(req('GET', { authorization: 'Bearer wrong' }, '/api/internal/v1/jobs/tick'))).status).toBe(401);
+      expect(tick).not.toHaveBeenCalled();
+    });
+
+    it('POST keeps X-Internal-Api-Key and also takes the bearer', async () => {
+      expect((await postApiTick(req('POST', { 'x-internal-api-key': KEY }, '/api/internal/v1/jobs/tick'))).status).toBe(200);
+      expect((await postApiTick(req('POST', { authorization: `Bearer ${CRON}` }, '/api/internal/v1/jobs/tick'))).status).toBe(200);
+      expect((await postApiTick(req('POST', { authorization: 'Bearer nope' }, '/api/internal/v1/jobs/tick'))).status).toBe(401);
+    });
+
+    it('the stats route stays internal-key only', async () => {
+      vi.spyOn(container, 'getJobQueue').mockReturnValue({ stats: vi.fn().mockResolvedValue({}) } as never);
+      expect((await getStats(req('GET', { authorization: `Bearer ${CRON}` }, '/internal/v1/jobs/stats'))).status).toBe(401);
     });
   });
 
