@@ -60,6 +60,8 @@ Items marked "cross-service" are mirrored in `sineva-ai` (`docs/decisions/` ther
 | [0034](0034-inbox-triage-views-and-updates-tab.md) | Inbox views Needs you, Updates and Done; results move to Updates; kind, source and text filters; chat link by conversation id | You touch the Inbox tabs, filters or counts |
 
 | [0033](0033-library-collections-access-and-plain-language.md) | Library collections carry 'Who can use this', documents inherit or override, Squad and Workflow scopes reserved, retrieval scope equals access, plain-language statuses and banned technical words | You touch Library access, the Library page or the technical-word copy rule |
+| [0043](0043-squads-data-model-access-and-templates.md) | Squads: tables, computed Needs attention, access and overrides, permissions, code templates, Library squad scope, tool-policy seam, reserved Workflow and Routine hooks | You touch squads, squad access or the squad Library scope |
+| [0044](0044-squad-chat-relay-signed-context-and-turn-bounds.md) | Squad chat on the shared run relay, signed context squad claim, handoff events, stored handoffs, points ceiling (cross-service, proposed contract) | You touch squad chat, the squad claim or the squad events |
 
 ## Suggested reading order
 
