@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { SinoFigure } from '@/client/components/ui/sino_figure';
+import { SNSinoFigure } from '@/client/components/ui/sn_sino_figure';
 import type { SinoPose } from '@/client/components/ui/specialist_accent';
 import { useTranslations } from '@/i18n/provider';
 
@@ -39,7 +39,7 @@ export function ActivityTicker() {
   return (
     <div className="inline-flex h-12 items-center gap-2 rounded-full bg-surface/78 py-1 ps-1 pe-4 shadow-md ring-1 ring-[color-mix(in_oklab,var(--color-border)_70%,transparent)] backdrop-blur-sm">
       <span key={item.name} className="anim-swap flex items-center gap-2">
-        <SinoFigure pose={item.pose} size={40} />
+        <SNSinoFigure pose={item.pose} size={40} />
         <span className="text-sm text-text-secondary">
           <span className="font-semibold text-text">{item.name}</span> {t(item.textKey)}
         </span>

@@ -1,27 +1,29 @@
 'use client';
 
-import { buttonVariants } from '@/client/components/ui/button';
 import { useTranslations } from '@/i18n/provider';
-import { cn } from '@/client/components/ui/cn';
+import { SNButton } from '@sineva/ui';
 
 // Plain links on purpose: the OAuth start URL is a route handler that answers
 // with a redirect to the provider. <Link> would prefetch it and try a client
 // transition, which breaks the cross-origin redirect. A full page load is right.
 export function OAuthButtons() {
   const t = useTranslations('auth');
-  const cls = cn(buttonVariants({ variant: 'secondary', size: 'lg' }), 'w-full');
   return (
     <div className="space-y-2">
-      {/* eslint-disable-next-line @next/next/no-html-link-for-pages -- route handler redirect, see above */}
-      <a href="/api/v1/auth/oauth/google" className={cls}>
-        <GoogleMark />
-        {t('oauth.google')}
-      </a>
-      {/* eslint-disable-next-line @next/next/no-html-link-for-pages -- route handler redirect, see above */}
-      <a href="/api/v1/auth/oauth/github" className={cls}>
-        <GitHubMark />
-        {t('oauth.github')}
-      </a>
+      <SNButton asChild variant="secondary" size="lg" className="w-full">
+        {/* eslint-disable-next-line @next/next/no-html-link-for-pages -- route handler redirect, see above */}
+        <a href="/api/v1/auth/oauth/google">
+          <GoogleMark />
+          {t('oauth.google')}
+        </a>
+      </SNButton>
+      <SNButton asChild variant="secondary" size="lg" className="w-full">
+        {/* eslint-disable-next-line @next/next/no-html-link-for-pages -- route handler redirect, see above */}
+        <a href="/api/v1/auth/oauth/github">
+          <GitHubMark />
+          {t('oauth.github')}
+        </a>
+      </SNButton>
     </div>
   );
 }

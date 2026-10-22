@@ -5,9 +5,9 @@ import * as React from 'react';
 import type { ComposerHandle } from '@/client/components/chat/composer';
 import { StartChat } from '@/client/components/chat/start_chat';
 import { cn } from '@/client/components/ui/cn';
-import { SinoFigure } from '@/client/components/ui/sino_figure';
+import { SNSinoFigure } from '@/client/components/ui/sn_sino_figure';
 import { specialistPose } from '@/client/components/ui/specialist_accent';
-import { Tooltip } from '@/client/components/ui/tooltip';
+import { SNTooltip } from '@sineva/ui';
 import { useTranslations } from '@/i18n/provider';
 import type { ShellSpecialistView } from '@/shared/shell_view';
 import { teamStarterKeys, type RoomMood } from './room_model';
@@ -115,7 +115,7 @@ export function NewChatView({
     <RoomStage slug={withSlug} mood={mood} topBar={picker} label={withSlug ? name : t('stage_team')} footer={footer}>
       <div key={withSlug ?? 'team'} className="flex min-h-full flex-col justify-end gap-3 px-4 pb-4 pt-8 sm:px-6">
         <div className="anim-rise flex items-end gap-2">
-          <SinoFigure pose={specialistPose(withSlug ?? 'sino')} size={36} className="md:hidden" />
+          <SNSinoFigure pose={specialistPose(withSlug ?? 'sino')} size={36} className="md:hidden" />
           <RoomBubble from="companion">
             <span className="block text-xs font-semibold text-text-brand">{name}</span>
             {t('hello', { name: firstName })}{' '}
@@ -152,14 +152,14 @@ function CastChip({
 }: {
   checked: boolean;
   onSelect: () => void;
-  pose: Parameters<typeof SinoFigure>[0]['pose'];
+  pose: Parameters<typeof SNSinoFigure>[0]['pose'];
   label: string;
   /** Second line on wide screens, so a chip says who the companion is. */
   role: string;
   hint: string;
 }) {
   return (
-    <Tooltip label={hint} side="bottom">
+    <SNTooltip label={hint} side="bottom">
       <button
         type="button"
         role="radio"
@@ -172,7 +172,7 @@ function CastChip({
             : 'text-text-inverse/85 ring-transparent hover:bg-text-inverse/12 hover:text-text-inverse',
         )}
       >
-        <SinoFigure
+        <SNSinoFigure
           pose={pose}
           size={46}
           className="transition-transform duration-300 ease-out group-hover:-translate-y-0.5"
@@ -189,6 +189,6 @@ function CastChip({
           </span>
         </span>
       </button>
-    </Tooltip>
+    </SNTooltip>
   );
 }

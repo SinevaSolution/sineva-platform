@@ -2,7 +2,7 @@
 
 import { usePathname, useRouter } from 'next/navigation';
 import * as React from 'react';
-import { toast } from 'sonner';
+import { snToast } from '@sineva/ui';
 import { ApiError, apiRequest } from '@/client/lib/api';
 import { useApiErrorText } from '@/client/lib/use_api_error';
 import { useAppDispatch } from '@/client/store/hooks';
@@ -49,7 +49,7 @@ export function useConversationActions({
         return true;
       } catch (error) {
         apply(previous);
-        toast.error(errorText(error));
+        snToast.error(errorText(error));
         return false;
       }
     },
@@ -65,11 +65,11 @@ export function useConversationActions({
       } catch (error) {
         // Already gone (another tab): the lists are stale, so refresh them too.
         if (error instanceof ApiError && error.status === 404) dispatch(chatsChanged());
-        toast.error(errorText(error));
+        snToast.error(errorText(error));
         return false;
       }
       dispatch(chatsChanged());
-      toast.success(t('deleted'));
+      snToast.success(t('deleted'));
       // Never leave the person on a chat that no longer exists.
       if (pathname === `/w/${workspaceSlug}/chat/${id}`) router.replace(`/w/${workspaceSlug}/new`);
       return true;

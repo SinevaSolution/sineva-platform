@@ -2,9 +2,8 @@
 
 import { ArrowUp, AtSign, Plus } from 'lucide-react';
 import * as React from 'react';
-import { toast } from 'sonner';
+import { snToast, SNTooltip } from '@sineva/ui';
 import { cn } from '@/client/components/ui/cn';
-import { Tooltip } from '@/client/components/ui/tooltip';
 import { useTranslations } from '@/i18n/provider';
 import type { ShellSpecialistView } from '@/shared/shell_view';
 import { insertMention } from './mention_insert';
@@ -324,7 +323,7 @@ export function Composer({
       <div className="mt-1 flex items-center justify-between gap-2">
         <div className="flex items-center gap-1">
           {specialists.length > 0 ? (
-            <Tooltip label={t('composer.mention_tooltip')} shortcut="@">
+            <SNTooltip label={t('composer.mention_tooltip')} shortcut="@">
               <button
                 type="button"
                 disabled={disabled}
@@ -334,19 +333,19 @@ export function Composer({
               >
                 <AtSign aria-hidden="true" className="size-[18px]" strokeWidth={2} />
               </button>
-            </Tooltip>
+            </SNTooltip>
           ) : null}
-          <Tooltip label={t('composer.attach_label')}>
+          <SNTooltip label={t('composer.attach_label')}>
             <button
               type="button"
               aria-disabled="true"
               aria-label={t('composer.attach_label')}
-              onClick={() => toast.info(t('composer.attach_toast'))}
+              onClick={() => snToast.info(t('composer.attach_toast'))}
               className={iconButton}
             >
               <Plus aria-hidden="true" className="size-[18px]" strokeWidth={2} />
             </button>
-          </Tooltip>
+          </SNTooltip>
         </div>
         <div className="flex items-center gap-2.5">
           {value.length > COUNTER_FROM ? (
@@ -360,7 +359,7 @@ export function Composer({
           {/* aria-disabled, not disabled: a disabled button gets no pointer
               events, so its tooltip could never explain why it is off.
               send() already ignores the click while !canSend. */}
-          <Tooltip label={canSend ? t('composer.send_tooltip') : t('composer.send_disabled')} shortcut={canSend ? 'Enter' : undefined}>
+          <SNTooltip label={canSend ? t('composer.send_tooltip') : t('composer.send_disabled')} shortcut={canSend ? 'Enter' : undefined}>
             <button
               type="submit"
               aria-disabled={!canSend}
@@ -369,7 +368,7 @@ export function Composer({
             >
               <ArrowUp aria-hidden="true" className={cn('size-4', sending && 'animate-pulse')} strokeWidth={2.25} />
             </button>
-          </Tooltip>
+          </SNTooltip>
         </div>
       </div>
     </form>

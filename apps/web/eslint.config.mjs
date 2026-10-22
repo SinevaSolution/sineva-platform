@@ -76,6 +76,13 @@ export default defineConfig([
               message:
                 "'server-only' marks backend modules and must not appear in client code.",
             },
+            {
+              // The SN components own these libraries (ADR-0028): one place
+              // decides how a menu, dialog or toast looks and behaves.
+              group: ['@radix-ui/*', 'sonner', 'vaul', 'cmdk'],
+              message:
+                'Use the SN component from @sineva/ui (SNDropdownMenu, SNDialog, SNDrawer, SNSelect, snToast) instead of the underlying library.',
+            },
           ],
         },
       ],

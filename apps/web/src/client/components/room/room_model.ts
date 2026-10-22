@@ -4,7 +4,7 @@
 // the manifest's `room_theme_id`; the team chat with Sino uses the shared
 // studio. A specialist's own starter prompts live in the manifest.
 
-import type { SinoLoopName } from '@/client/components/ui/sino_loop';
+import type { SNSinoLoopName } from '@/client/components/ui/sn_sino_loop';
 import { findManifestEntry } from '@/shared/specialists/manifest';
 
 export type RoomMood = 'idle' | 'working' | 'done' | 'error';
@@ -19,7 +19,7 @@ export function roomFor(slug: string | null): { slug: string; background: string
  * Idle: a wave, or the phone for SinoHelp (customer calls are the job).
  * Working while a message is out, thumbs up when it lands, confused on error.
  */
-export function roomLoop(slug: string | null, mood: RoomMood): SinoLoopName {
+export function roomLoop(slug: string | null, mood: RoomMood): SNSinoLoopName {
   if (mood === 'working') return 'build';
   if (mood === 'done') return 'thumbs';
   if (mood === 'error') return 'confused';

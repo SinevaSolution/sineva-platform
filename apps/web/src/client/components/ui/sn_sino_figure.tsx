@@ -6,7 +6,7 @@ import type { SinoPose } from './specialist_accent';
  * stage glow: Sino is pale teal and disappears on white without it.
  * Decorative by default (`alt=""`); pass `alt` when the pose carries meaning.
  */
-export function SinoFigure({
+export function SNSinoFigure({
   pose,
   size,
   alt = '',

@@ -2,10 +2,9 @@
 
 import { Check } from 'lucide-react';
 import * as React from 'react';
-import { toast } from 'sonner';
+import { SNSegmented, SNSwitch, snToast } from '@sineva/ui';
 import { usePersistedTheme } from '@/client/components/theme_sync';
 import { cn } from '@/client/components/ui/cn';
-import { Switch } from '@/client/components/ui/controls';
 import { savePreferences } from '@/client/lib/preferences';
 import { useApiErrorText } from '@/client/lib/use_api_error';
 import { useTranslations } from '@/i18n/provider';
@@ -74,7 +73,7 @@ export function PreferencesForm({ initial }: { initial: PreferencesView }) {
     } catch (error) {
       // Put the control back where the server still has it.
       setPrefs(before);
-      toast.error(errorText(error));
+      snToast.error(errorText(error));
     }
   }
 
@@ -137,34 +136,19 @@ export function PreferencesForm({ initial }: { initial: PreferencesView }) {
           </div>
         </SettingsRow>
         <SettingsRow label={t('preferences.density')} helper={t('preferences.density_helper')}>
-          <div
-            role="radiogroup"
+          <SNSegmented
             aria-label={t('preferences.density')}
-            className="inline-flex rounded-lg bg-surface-alt p-1"
-          >
-            {DENSITIES.map((value) => (
-              <button
-                key={value}
-                type="button"
-                role="radio"
-                aria-checked={prefs.density === value}
-                onClick={() => void update({ density: value })}
-                className={cn(
-                  'h-9 rounded-md px-3.5 text-[13px] font-medium transition-colors',
-                  prefs.density === value ? 'bg-surface text-fg shadow-panel' : 'text-fg-secondary hover:text-fg',
-                )}
-              >
-                {densityLabel(value)}
-              </button>
-            ))}
-          </div>
+            value={prefs.density}
+            onValueChange={(value) => void update({ density: value as Density })}
+            options={DENSITIES.map((value) => ({ value, label: densityLabel(value) }))}
+          />
         </SettingsRow>
       </SettingsSection>
 
       <SettingsSection title={t('preferences.section_motion')} delay={80}>
         {flags.map((flag) => (
           <SettingsRow key={flag.key} inline label={flag.label} helper={flag.helper} htmlFor={`${id}-${flag.key}`}>
-            <Switch
+            <SNSwitch
               id={`${id}-${flag.key}`}
               checked={prefs[flag.key]}
               aria-describedby={`${id}-${flag.key}-helper`}

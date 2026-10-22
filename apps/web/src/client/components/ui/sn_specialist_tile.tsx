@@ -13,7 +13,7 @@ const SIZES = {
  * name next to it carries the meaning, so the tile is hidden from assistive
  * technology.
  */
-export function SpecialistTile({
+export function SNSpecialistTile({
   agentSlug,
   name,
   size = 'sm',

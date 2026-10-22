@@ -2,9 +2,8 @@
 
 import { Camera, Loader2 } from 'lucide-react';
 import * as React from 'react';
-import { toast } from 'sonner';
+import { snToast, SNTooltip } from '@sineva/ui';
 import { cn } from '@/client/components/ui/cn';
-import { Tooltip } from '@/client/components/ui/tooltip';
 import { apiRequest } from '@/client/lib/api';
 import { AVATAR_CONTENT_TYPES } from '@/shared/avatar_limits';
 import { uploadAvatar } from '@/client/lib/avatar_upload';
@@ -46,9 +45,9 @@ export function AvatarEditor({
     setBusy(true);
     try {
       onChanged(await uploadAvatar(file));
-      toast.success(t('avatar.updated'));
+      snToast.success(t('avatar.updated'));
     } catch (error) {
-      toast.error(errorText(error));
+      snToast.error(errorText(error));
     } finally {
       setBusy(false);
     }
@@ -58,9 +57,9 @@ export function AvatarEditor({
     setBusy(true);
     try {
       onChanged(await apiRequest<ProfileView>('/api/v1/me/avatar', { method: 'DELETE' }));
-      toast.success(t('avatar.removed'));
+      snToast.success(t('avatar.removed'));
     } catch (error) {
-      toast.error(errorText(error));
+      snToast.error(errorText(error));
     } finally {
       setBusy(false);
     }
@@ -70,7 +69,7 @@ export function AvatarEditor({
 
   return (
     <div className="flex shrink-0 flex-col items-center gap-2">
-      <Tooltip label={t('avatar.change')} side="bottom">
+      <SNTooltip label={t('avatar.change')} side="bottom">
         <button
           type="button"
           onClick={() => inputRef.current?.click()}
@@ -117,7 +116,7 @@ export function AvatarEditor({
             <Camera className="size-3.5" />
           </span>
         </button>
-      </Tooltip>
+      </SNTooltip>
       <input
         ref={inputRef}
         type="file"

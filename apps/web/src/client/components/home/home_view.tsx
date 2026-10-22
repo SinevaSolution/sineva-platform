@@ -1,9 +1,9 @@
 import { ArrowRight, CalendarClock, Inbox, Workflow } from 'lucide-react';
 import Link from 'next/link';
 import type * as React from 'react';
-import { SinoFigure } from '@/client/components/ui/sino_figure';
+import { SNSinoFigure } from '@/client/components/ui/sn_sino_figure';
 import { specialistPose } from '@/client/components/ui/specialist_accent';
-import { Tooltip } from '@/client/components/ui/tooltip';
+import { SNTooltip } from '@sineva/ui';
 import { getTranslations } from '@/i18n/server';
 import type { ShellSpecialistView } from '@/shared/shell_view';
 import { HomeRecent } from './home_recent';
@@ -86,7 +86,7 @@ export async function HomeView({
           className="anim-rise group mt-6 flex h-14 items-center gap-3 rounded-lg border border-border-strong bg-surface ps-2 pe-4 text-[15px] text-text-tertiary shadow-xs transition-[border-color,box-shadow] duration-200 hover:border-focus hover:shadow-(--shadow-focus-halo)"
           style={delay(420)}
         >
-          <SinoFigure pose="wave" size={40} />
+          <SNSinoFigure pose="wave" size={40} />
           <span className="flex-1">{t('home.launch')}</span>
           <ArrowRight aria-hidden="true" className="size-4 transition-transform duration-200 group-hover:translate-x-0.5" />
         </Link>
@@ -112,7 +112,7 @@ export async function HomeView({
                         href={`${base}/new?with=${s.agent_slug}&prompt=${encodeURIComponent(text)}`}
                         className="flex items-center gap-2.5 rounded-md border border-border p-2 pe-3 text-[13px] text-text transition-colors hover:border-border-strong hover:bg-(--state-hover)"
                       >
-                        <SinoFigure pose={specialistPose(s.agent_slug)} size={36} />
+                        <SNSinoFigure pose={specialistPose(s.agent_slug)} size={36} />
                         <span className="min-w-0 flex-1">
                           <span className="block text-[11px] font-medium text-text-tertiary">{s.display_name}</span>
                           {text}
@@ -162,7 +162,7 @@ function TeamMember({
   d,
 }: {
   href: string;
-  pose: Parameters<typeof SinoFigure>[0]['pose'];
+  pose: Parameters<typeof SNSinoFigure>[0]['pose'];
   name: string;
   role: string;
   hint: string;
@@ -170,13 +170,13 @@ function TeamMember({
 }) {
   return (
     <li className="anim-rise w-[116px] shrink-0 snap-start sm:w-auto" style={delay(d)}>
-      <Tooltip label={hint}>
+      <SNTooltip label={hint}>
         <Link
           href={href}
           className="group flex flex-col items-center rounded-lg px-1.5 pb-2.5 pt-1.5 text-center transition-colors duration-150 hover:bg-(--state-hover)"
         >
           <span className="relative flex w-full justify-center after:absolute after:inset-x-3 after:bottom-0 after:h-px after:bg-[linear-gradient(90deg,transparent,var(--color-border-strong),transparent)]">
-            <SinoFigure
+            <SNSinoFigure
               pose={pose}
               size={84}
               className="transition-transform duration-300 ease-out group-hover:-translate-y-1.5"
@@ -185,7 +185,7 @@ function TeamMember({
           <span className="mt-2 text-[13px] font-medium text-text transition-colors group-hover:text-text-brand">{name}</span>
           <span className="mt-0.5 line-clamp-2 text-[11px] leading-4 text-text-tertiary">{role}</span>
         </Link>
-      </Tooltip>
+      </SNTooltip>
     </li>
   );
 }

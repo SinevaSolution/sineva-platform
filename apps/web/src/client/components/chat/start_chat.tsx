@@ -2,7 +2,7 @@
 
 import { useRouter } from 'next/navigation';
 import type * as React from 'react';
-import { toast } from 'sonner';
+import { snToast } from '@sineva/ui';
 import { apiRequest } from '@/client/lib/api';
 import { useApiErrorText } from '@/client/lib/use_api_error';
 import { useAppDispatch } from '@/client/store/hooks';
@@ -61,7 +61,7 @@ export function StartChat({
       router.push(`/w/${workspaceSlug}/chat/${conversation.id}`);
       return true;
     } catch (error) {
-      toast.error(errorText(error));
+      snToast.error(errorText(error));
       onPendingChange?.(false);
       return false;
     }

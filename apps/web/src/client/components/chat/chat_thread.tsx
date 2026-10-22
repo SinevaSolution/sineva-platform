@@ -2,15 +2,13 @@
 
 import { Square } from 'lucide-react';
 import * as React from 'react';
-import { toast } from 'sonner';
+import { SNButton, snToast, SNTooltip } from '@sineva/ui';
 import { ConversationActions } from '@/client/components/conversation/conversation_actions';
 import { InlineTitleEdit } from '@/client/components/conversation/inline_title_edit';
 import { useConversationActions } from '@/client/components/conversation/use_conversation_actions';
 import { RoomBubble, RoomStage } from '@/client/components/room/room_stage';
-import { SinoFigure } from '@/client/components/ui/sino_figure';
+import { SNSinoFigure } from '@/client/components/ui/sn_sino_figure';
 import { specialistPose } from '@/client/components/ui/specialist_accent';
-import { Button } from '@/client/components/ui/button';
-import { Tooltip } from '@/client/components/ui/tooltip';
 import { apiRequest } from '@/client/lib/api';
 import { openRunStream, type RunDoneResult, type RunStreamEvent, type RunStreamHandle } from '@/client/lib/event_stream';
 import { streamErrorText } from '@/client/lib/stream_errors';
@@ -211,7 +209,7 @@ export function ChatThread({
       await apiRequest(`/api/v1/workspaces/${workspaceId}/runs/${live.run_id}/cancel`, { method: 'POST' });
     } catch {
       dispatchLive({ type: 'stop_failed' });
-      toast.error(t('thread.stop_failed'));
+      snToast.error(t('thread.stop_failed'));
     }
   }
 
@@ -230,7 +228,7 @@ export function ChatThread({
 
   async function send(text: string): Promise<boolean> {
     if (live.phase === 'streaming') {
-      toast.info(t('thread.still_replying', { name: companionName }));
+      snToast.info(t('thread.still_replying', { name: companionName }));
       return false;
     }
     setSendFailed(false);
@@ -269,7 +267,7 @@ export function ChatThread({
       return true;
     } catch (error) {
       setSendFailed(true);
-      toast.error(errorText(error));
+      snToast.error(errorText(error));
       return false;
     }
   }
@@ -285,9 +283,11 @@ export function ChatThread({
   if (state.status === 'error') {
     return (
       <div className="flex flex-1 flex-col items-center justify-center gap-3 p-6 text-center">
-        <SinoFigure pose="confused" size={120} />
+        <SNSinoFigure pose="confused" size={120} />
         <p className="max-w-sm text-sm text-text-secondary">{errorText(state.error)}</p>
-        <Button onClick={() => setAttempt((n) => n + 1)}>{tCommon('try_again')}</Button>
+        <SNButton size="sm" onClick={() => setAttempt((n) => n + 1)}>
+          {tCommon('try_again')}
+        </SNButton>
       </div>
     );
   }
@@ -317,7 +317,7 @@ export function ChatThread({
 
   const header = (
     <div className="flex items-center gap-2 px-4 pb-2 pt-3 sm:px-6">
-      <SinoFigure pose={specialistPose(specialist?.agent_slug ?? 'sino')} size={34} />
+      <SNSinoFigure pose={specialistPose(specialist?.agent_slug ?? 'sino')} size={34} />
       <div className="min-w-0">
         {renaming ? (
           <InlineTitleEdit
@@ -353,18 +353,21 @@ export function ChatThread({
     <div className="px-4 pb-4 pt-2 sm:px-6">
       {live.phase === 'streaming' ? (
         <div className="mb-2 flex justify-center">
-          <Tooltip label={t('thread.stop_tooltip')} side="top">
-            <Button
+          <SNTooltip label={t('thread.stop_tooltip')} side="top">
+            <SNButton
               size="lg"
               onClick={() => void stop()}
               aria-disabled={live.stopping}
               aria-label={t('thread.stop_tooltip')}
-              className="bg-surface/90 backdrop-blur-md"
+              // `!` makes the translucent surface win over the variant's solid one
+              // deterministically; without tailwind-merge two bg utilities on one
+              // element are ordered by the stylesheet, not by this string.
+              className="bg-surface/90! backdrop-blur-md"
             >
               <Square aria-hidden="true" fill="currentColor" />
               {live.stopping ? t('thread.stopping') : t('thread.stop')}
-            </Button>
-          </Tooltip>
+            </SNButton>
+          </SNTooltip>
         </div>
       ) : null}
       <Composer
@@ -392,7 +395,7 @@ export function ChatThread({
           // each one out, so this row opts out and completion is announced
           // once in the status line below.
           <li className="anim-rise flex items-end gap-2" aria-live="off" aria-busy="true">
-            <SinoFigure pose={specialistPose(specialist?.agent_slug ?? 'sino')} size={32} />
+            <SNSinoFigure pose={specialistPose(specialist?.agent_slug ?? 'sino')} size={32} />
             <RoomBubble from="companion">
               <span className="block text-xs font-semibold text-text-brand">{companionName}</span>
               {/* Plain text on purpose: model output is never rendered as HTML. */}
@@ -405,7 +408,7 @@ export function ChatThread({
           <li className="anim-rise flex flex-col items-start gap-2">
             {live.text ? (
               <div className="flex items-end gap-2">
-                <SinoFigure pose={specialistPose(specialist?.agent_slug ?? 'sino')} size={32} />
+                <SNSinoFigure pose={specialistPose(specialist?.agent_slug ?? 'sino')} size={32} />
                 <RoomBubble from="companion">
                   <span className="block text-xs font-semibold text-text-brand">{companionName}</span>
                   {live.text}
@@ -414,9 +417,9 @@ export function ChatThread({
             ) : null}
             <RoomBubble from="companion">
               <span className="block">{streamErrorText(tFull, live.code, companionName)}</span>
-              <Button size="md" variant="primary" onClick={retry} className="mt-2">
+              <SNButton size="sm" variant="primary" onClick={retry} className="mt-2">
                 {tCommon('try_again')}
-              </Button>
+              </SNButton>
             </RoomBubble>
           </li>
         ) : null}
@@ -465,7 +468,7 @@ function MessageRow({
   const name = specialists.find((s) => s.agent_slug === slug)?.display_name ?? 'Sino';
   return (
     <li className="anim-rise flex items-end gap-2">
-      <SinoFigure pose={specialistPose(slug)} size={32} />
+      <SNSinoFigure pose={specialistPose(slug)} size={32} />
       <RoomBubble from="companion">
         <span className="block text-xs font-semibold text-text-brand">{name}</span>
         {/* Plain text until the sanitized markdown renderer lands (M1). */}

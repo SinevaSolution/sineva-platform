@@ -15,7 +15,7 @@ export const SINO_LOOPS = {
   'flyby-mail': { file: 'sino-flyby-mail', width: 1280, height: 540 },
 } as const;
 
-export type SinoLoopName = keyof typeof SINO_LOOPS;
+export type SNSinoLoopName = keyof typeof SINO_LOOPS;
 
 const REDUCED = '(prefers-reduced-motion: reduce)';
 
@@ -45,12 +45,12 @@ function useLoopKind(): LoopKind | null {
  * page with several loops never decodes ones nobody can see. Decorative:
  * no controls, hidden from assistive tech.
  */
-export function SinoLoop({
+export function SNSinoLoop({
   loop,
   className,
   priority = false,
 }: {
-  loop: SinoLoopName;
+  loop: SNSinoLoopName;
   className?: string;
   priority?: boolean;
 }) {
