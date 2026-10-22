@@ -287,7 +287,7 @@ The cross-tenant session issue in `sineva-ai` (AI-1) is also a security item; it
 | :--- | :--- |
 | Symptom | `dark:` classes follow the OS setting, not the app theme. They misfire in both directions. |
 | Root cause | Tailwind v4's default `dark:` variant, and no `@custom-variant` in `globals.css`. |
-| Location | `packages/ui/src/index.tsx` (`Badge`), `client/components/sineva_dashboard.tsx`, `app/globals.css` |
+| Location | was `packages/ui` (`Badge`), the dashboard and `app/globals.css` |
 | Severity | Medium |
 | Do not copy | A `dark:` class. Use semantic tokens. |
 | Suggested fix | Resolved by the token re-base: no component uses `dark:` (the lint rule and `design_tokens_wiring.test.ts` keep it that way) and every color is a semantic token that swaps under `data-theme`. See [design tokens](../design-context/design_tokens.md). |
@@ -320,7 +320,7 @@ The cross-tenant session issue in `sineva-ai` (AI-1) is also a security item; it
 | :--- | :--- |
 | Symptom | Controls under 44 px, `role="tab"` with no panel or arrow keys, a focus cue that is only a border color, no announcement of new replies, an input border under 3:1. |
 | Root cause | The UI was not checked against R-32. |
-| Location | `packages/ui/src/index.tsx` (`Button` `sm`), `client/components/sineva_dashboard.tsx`, `command_palette.tsx` |
+| Location | `packages/ui/src/primitives/legacy.tsx` (`Button` `sm`), `client/components/sineva_dashboard.tsx`, `command_palette.tsx` |
 | Severity | Medium |
 | Do not copy | A role the component does not implement. |
 | Suggested fix | The list and measured values are in [design system](../design-context/design_system.md). Fix with the UI rebuild and re-check by keyboard in both themes. |

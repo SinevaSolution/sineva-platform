@@ -207,7 +207,7 @@ When `sineva-ai` answers with a non-2xx status or a body that fails the Zod enve
 ### R-30 MUST use semantic design tokens, never raw hex
 Reference CSS variables such as `--color-surface` and `--color-text`.
 - **Why**: Tokens carry light and dark themes.
-- **Check**: `grep -rnE "#[0-9a-fA-F]{3,8}\b" apps/web/src/client` returns nothing. See [design tokens](../design-context/design_tokens.md).
+- **Check**: `npm run lint` fails on a hex, `rgb(`, Tailwind palette color, primitive variable, `dark:` class, arbitrary `z-[n]` or physical-direction class in `src/client` and `packages/ui` (rules in `packages/ui/eslint/design_rules.mjs`), and `packages/ui` tests assert token drift and contrast in both themes. See [design tokens](../design-context/design_tokens.md).
 
 ### R-31 MUST give new routes loading, error and not-found states
 Add `loading.tsx`, `error.tsx` and `not-found.tsx` as the route needs them.

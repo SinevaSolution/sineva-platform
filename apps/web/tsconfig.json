@@ -30,7 +30,7 @@
         "../../packages/i18n/index.ts"
       ],
       "@sineva/ui": [
-        "../../packages/ui/src/index.tsx"
+        "../../packages/ui/src/index.ts"
       ],
       "@sineva/ui/format": [
         "../../packages/ui/src/lib/format.ts"

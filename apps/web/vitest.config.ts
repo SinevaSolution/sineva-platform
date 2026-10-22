@@ -22,7 +22,7 @@ export default defineConfig({
       '@sineva/ui/theme': resolve(import.meta.dirname, '../../packages/ui/src/lib/theme.ts'),
       // Listed after the sub-path aliases: Vite tries aliases in order and a
       // plain string key also matches `@sineva/ui/...`.
-      '@sineva/ui': resolve(import.meta.dirname, '../../packages/ui/src/index.tsx'),
+      '@sineva/ui': resolve(import.meta.dirname, '../../packages/ui/src/index.ts'),
       // `server-only` resolves to a module that throws on import outside a
       // React Server Components build. Vitest runs plain Node, so without this
       // stub every test touching `server/infrastructure` or the container

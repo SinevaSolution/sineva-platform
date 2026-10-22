@@ -8,6 +8,7 @@
     "build": "npm run db:generate && next build",
     "start": "next start --hostname 0.0.0.0 --port 3000",
     "lint": "eslint . --max-warnings 0",
+    "bundle:report": "node scripts/bundle_report.mjs",
     "typecheck": "npm run db:generate && next typegen && tsc --noEmit",
     "test": "vitest run",
     "test:integration": "npm run db:generate && vitest run -c vitest.integration.config.ts",

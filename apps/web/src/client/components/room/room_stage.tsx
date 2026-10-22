@@ -95,8 +95,8 @@ export function RoomStage({
             transform: 'translate3d(calc(var(--px) * 18px), calc(var(--py) * 6px), 0)',
           }}
         >
-          <span className="absolute bottom-[4%] left-1/2 h-[7%] w-[52%] -translate-x-1/2 rounded-[50%] bg-(image:--room-contact-shadow)" />
-          <div className="anim-rise absolute left-1/2 top-[2%] flex -translate-x-1/2 items-center gap-1.5 whitespace-nowrap rounded-full bg-surface/90 px-3 py-1 text-xs font-semibold text-text shadow-md backdrop-blur-md [--d:300ms]">
+          <span className="absolute bottom-[4%] start-1/2 h-[7%] w-[52%] -translate-x-1/2 rtl:translate-x-1/2 rounded-[50%] bg-(image:--room-contact-shadow)" />
+          <div className="anim-rise absolute start-1/2 top-[2%] flex -translate-x-1/2 rtl:translate-x-1/2 items-center gap-1.5 whitespace-nowrap rounded-full bg-surface/90 px-3 py-1 text-xs font-semibold text-text shadow-md backdrop-blur-md [--d:300ms]">
             <span className={cn('size-1.5 rounded-full', mood === 'working' ? 'animate-pulse bg-warning' : 'bg-success')} />
             {label}
           </div>

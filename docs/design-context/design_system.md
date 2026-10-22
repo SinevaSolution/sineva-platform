@@ -31,7 +31,7 @@ related_docs:
 
 ## Components
 
-`packages/ui/src/index.tsx` exports the primitives. `apps/web` has no other shared components besides the dashboard, the command palette and the theme toggle.
+`packages/ui/src/index.ts` exports the primitives (the legacy ones live in `primitives/legacy.tsx` until WP-M0-39 replaces them; the package layout is in [turborepo workspaces](../project-structure/turborepo_workspaces.md)). `apps/web` has no other shared components besides the dashboard, the command palette and the theme toggle.
 
 | Component | Variants and behavior |
 | :--- | :--- |

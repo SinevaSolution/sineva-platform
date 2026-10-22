@@ -103,11 +103,14 @@ function AuthBackdrop() {
   return (
     <div aria-hidden="true" className="pointer-events-none absolute inset-0 -z-10">
       {/* Desktop: left-to-right fade. */}
+      {/* The fade mask runs 90deg (towards the right), so the box is anchored physically left: mirroring it would put the tint under the form column. */}
+      {/* eslint-disable sineva-design/no-physical-direction -- scene artwork with physical geometry */}
       <div className="absolute inset-y-0 left-0 hidden w-[72%] overflow-hidden bg-[color-mix(in_oklab,var(--color-focus)_10%,var(--color-surface))] [mask-image:var(--mask-fade-end)] lg:block">
         <span className="anim-drift absolute -left-[10%] -top-[15%] size-[70%] rounded-full bg-(image:--gradient-blob-mint) [--drift-duration:26s]" />
         <span className="anim-drift absolute bottom-[-20%] left-[25%] size-[65%] rounded-full bg-(image:--gradient-blob-sun) [--d:-9s] [--drift-duration:31s]" />
         <span className="anim-drift absolute right-[5%] top-[20%] size-[45%] rounded-full bg-(image:--gradient-blob-teal) [--d:-4s] [--drift-duration:23s]" />
       </div>
+      {/* eslint-enable sineva-design/no-physical-direction */}
       {/* Phones and tablets: the same tint, fading downward instead. */}
       <div className="absolute inset-x-0 top-0 h-72 bg-[linear-gradient(180deg,color-mix(in_oklab,var(--color-focus)_12%,var(--color-surface)),transparent)] lg:hidden" />
     </div>
@@ -139,8 +142,8 @@ function Lineup() {
           </li>
         ))}
       </ul>
-      <div className="absolute bottom-0 left-1/2 w-[min(260px,19vw)] -translate-x-1/2">
-        <span className="absolute bottom-[4%] left-1/2 h-[7%] w-1/2 -translate-x-1/2 rounded-[50%] bg-(image:--gradient-contact-shadow)" />
+      <div className="absolute bottom-0 start-1/2 w-[min(260px,19vw)] -translate-x-1/2 rtl:translate-x-1/2">
+        <span className="absolute bottom-[4%] start-1/2 h-[7%] w-1/2 -translate-x-1/2 rtl:translate-x-1/2 rounded-[50%] bg-(image:--gradient-contact-shadow)" />
         <SinoLoop loop="wave" priority className="anim-rise relative [--d:700ms]" />
       </div>
     </div>
@@ -171,7 +174,7 @@ function MailFlight() {
 function SoloLoop({ loop }: { loop: 'build' | 'thumbs' }) {
   return (
     <div className="relative w-[min(380px,30vw,48vh)]">
-      <span className="absolute bottom-[5%] left-1/2 h-[7%] w-1/2 -translate-x-1/2 rounded-[50%] bg-(image:--gradient-contact-shadow)" />
+      <span className="absolute bottom-[5%] start-1/2 h-[7%] w-1/2 -translate-x-1/2 rtl:translate-x-1/2 rounded-[50%] bg-(image:--gradient-contact-shadow)" />
       <SinoLoop loop={loop} priority className="anim-rise relative" />
     </div>
   );
@@ -197,6 +200,8 @@ function Orbit() {
         {[0, 180].map((a) => (
           <span
             key={a}
+            // Orbit geometry: the dot is placed by rotate() and translateX() from the box center.
+            // eslint-disable-next-line sineva-design/no-physical-direction -- orbit artwork
             className="absolute left-1/2 top-1/2 -ms-1 -mt-1 size-2 rounded-full bg-focus shadow-(--shadow-focus-dot)"
             style={{ transform: `rotate(${a}deg) translateX(calc(var(--box) * 0.24))` }}
           />
@@ -215,6 +220,8 @@ function Orbit() {
           return (
             <div
               key={c.name}
+              // Orbit geometry: the figure is centered with left/top plus a negative margin.
+              // eslint-disable-next-line sineva-design/no-physical-direction -- orbit artwork
               className="absolute left-1/2 top-1/2"
               style={{
                 width: FIGURE,

@@ -82,7 +82,7 @@ sineva-platform/
       shared/                  agent_view.ts, chat_view.ts (wire types)
       __tests__/               unit tests, fakes/, contract/, integration/, stubs/
   packages/shared/             @sineva/shared: response envelope, snake_case helpers
-  packages/ui/                 @sineva/ui: Button, Card, Badge, Container, StatusPill
+  packages/ui/                 @sineva/ui: tokens, lib, primitives, shell, chat, domain
   docs/
   docker-compose.yml, Dockerfile, turbo.json, package.json
 ```
